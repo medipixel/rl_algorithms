@@ -1,2 +1,3 @@
-# reinforcement_learning_examples
+# Reinforcement Learning by Examples
+
 Simple implementations of RL key papers
