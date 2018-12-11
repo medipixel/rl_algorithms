@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-"""Reinforce method for episodic tasks with continuous actions in OpenAI Gym.
+"""Actor-Critic method for the environments with discrete action in OpenAI Gym.
 
-This module demonstrates Reinforce with baseline model on the episodic tasks
-with continuous action space in OpenAI Gym.
+This module demonstrates Reinforce with baseline model on the environment
+with discrete action space in OpenAI Gym.
 
 - Author: Curt Park
 - Contact: curt.park@medipixel.io
@@ -13,24 +13,22 @@ import gym
 
 import torch
 import torch.nn as nn
-from torch.distributions import Normal
+import torch.nn.functional as F
+from torch.distributions.categorical import Categorical
 
-from reinforce_agent import ReinforceAgent
+from actor_critic_agent import ActorCriticAgent
 
 
 # configurations
-parser = argparse.ArgumentParser(description='Reinforce with continuous action\
+parser = argparse.ArgumentParser(description='Actor-Critic with discrete action\
                                              example by Pytorch')
 parser.add_argument('--gamma', type=float, default=0.99,
                     help='discount factor')
-parser.add_argument('--std', type=float, default=1.0,
-                    help='standard deviation for normal distribution')
 parser.add_argument('--seed', type=int, default=777,
                     help='random seed for reproducibility')
-parser.add_argument('--env', type=str, default='LunarLanderContinuous-v2',
-                    help='openai gym environment name\
-                          (continuous action only)')
-parser.add_argument('--max-episode-steps', type=int, default=500,
+parser.add_argument('--env', type=str, default='CartPole-v0',
+                    help='openai gym environment name (discrete action only)')
+parser.add_argument('--max-episode-steps', type=int, default=200,
                     help='max steps per episode')
 parser.add_argument('--episode-num', type=int, default=1500,
                     help='total episode number')
@@ -49,17 +47,15 @@ args = parser.parse_args()
 env = gym.make(args.env)
 env._max_episode_steps = args.max_episode_steps
 state_dim = env.observation_space.shape[0]
-action_dim = env.action_space.shape[0]
-action_low = float(env.action_space.low[0])
-action_high = float(env.action_space.high[0])
+action_dim = env.action_space.n
 
 # set random seed
 env.seed(args.seed)
 torch.manual_seed(args.seed)
 
 
-class ReinforceContinuousAction(nn.Module):
-    """Reinforce continuous action model with simple FC layers.
+class ActorCriticDiscreteAction(nn.Module):
+    """Actor-Critic discrete action model with simple FC layers.
 
     Args:
         state_dim (int): dimension of state space
@@ -68,27 +64,26 @@ class ReinforceContinuousAction(nn.Module):
     Attributes:
         state_dim (int): dimension of state space
         action_dim (int): dimension of action space
-        actor_mu (nn.Sequential): actor model for mu with FC layers
+        actor (nn.Sequential): actor model with FC layers
         critic (nn.Sequential): critic model with FC layers
 
     """
 
     def __init__(self, state_dim, action_dim):
         """Initialization."""
-        super(ReinforceContinuousAction, self).__init__()
+        super(ActorCriticDiscreteAction, self).__init__()
 
         self.state_dim = state_dim
         self.action_dim = action_dim
-        self.actor_mu = nn.Sequential(
-                            nn.Linear(self.state_dim, 24),
-                            nn.ReLU(),
-                            nn.Linear(24, 48),
-                            nn.ReLU(),
-                            nn.Linear(48, 24),
-                            nn.ReLU(),
-                            nn.Linear(24, self.action_dim),
-                            nn.Tanh()
-                         )
+        self.actor = nn.Sequential(
+                        nn.Linear(self.state_dim, 24),
+                        nn.ReLU(),
+                        nn.Linear(24, 48),
+                        nn.ReLU(),
+                        nn.Linear(48, 24),
+                        nn.ReLU(),
+                        nn.Linear(24, self.action_dim)
+                     )
 
         self.critic = nn.Sequential(
                         nn.Linear(self.state_dim, 24),
@@ -98,37 +93,29 @@ class ReinforceContinuousAction(nn.Module):
                         nn.Linear(48, 24),
                         nn.ReLU(),
                         nn.Linear(24, 1)
-                )
+                    )
 
     def forward(self, state):
         """Forward method implementation.
-
-        The original paper suggests to employ an approximator
-        for standard deviation, but, practically, it shows worse performance
-        rather than using constant value by setting a hyper-parameter.
-        The default std is 1.0 that leads to a good result on
-        LunarLanderContinuous-v2 environment.
 
         Args:
             state (numpy.ndarray): input vector on the state space
 
         Returns:
-            normal distribution parameters as the output of actor model and
+            softmax distribution as the output of actor model and
             approximated value of the input state as the output of
-            critic model
+            critic model.
 
         """
-        norm_dist_mu = self.actor_mu(state)
-        norm_dist_std = args.std
+        action_probs = F.softmax(self.actor(state), dim=-1)
         predicted_value = self.critic(state)
-
-        dist = Normal(norm_dist_mu, norm_dist_std)
-        selected_action = torch.clamp(dist.rsample(), action_low, action_high)
+        dist = Categorical(action_probs)
+        selected_action = dist.sample()
 
         return selected_action, predicted_value, dist
 
 
 if __name__ == '__main__':
-    model = ReinforceContinuousAction(state_dim, action_dim)
-    agent = ReinforceAgent(env, model, args)
+    model = ActorCriticDiscreteAction(state_dim, action_dim)
+    agent = ActorCriticAgent(env, model, args)
     agent.run()

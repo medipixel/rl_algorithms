@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""Reinforce method for episodic tasks with continuous actions in OpenAI Gym.
+"""ActorCritic method for episodic tasks with continuous actions in OpenAI Gym.
 
-This module demonstrates Reinforce with baseline model on the episodic tasks
+This module demonstrates Actor-Critic with baseline model on the episodic tasks
 with continuous action space in OpenAI Gym.
 
 - Author: Curt Park
@@ -15,11 +15,11 @@ import torch
 import torch.nn as nn
 from torch.distributions import Normal
 
-from reinforce_agent import ReinforceAgent
+from actor_critic_agent import ActorCriticAgent
 
 
 # configurations
-parser = argparse.ArgumentParser(description='Reinforce with continuous action\
+parser = argparse.ArgumentParser(description='Actor-Critic with continuous action\
                                              example by Pytorch')
 parser.add_argument('--gamma', type=float, default=0.99,
                     help='discount factor')
@@ -58,8 +58,8 @@ env.seed(args.seed)
 torch.manual_seed(args.seed)
 
 
-class ReinforceContinuousAction(nn.Module):
-    """Reinforce continuous action model with simple FC layers.
+class ActorCriticContinuousAction(nn.Module):
+    """Actor-Critic continuous action model with simple FC layers.
 
     Args:
         state_dim (int): dimension of state space
@@ -75,7 +75,7 @@ class ReinforceContinuousAction(nn.Module):
 
     def __init__(self, state_dim, action_dim):
         """Initialization."""
-        super(ReinforceContinuousAction, self).__init__()
+        super(ActorCriticContinuousAction, self).__init__()
 
         self.state_dim = state_dim
         self.action_dim = action_dim
@@ -129,6 +129,6 @@ class ReinforceContinuousAction(nn.Module):
 
 
 if __name__ == '__main__':
-    model = ReinforceContinuousAction(state_dim, action_dim)
-    agent = ReinforceAgent(env, model, args)
+    model = ActorCriticContinuousAction(state_dim, action_dim)
+    agent = ActorCriticAgent(env, model, args)
     agent.run()
