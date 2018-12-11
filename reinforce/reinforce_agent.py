@@ -1,9 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Reinforce agent for episodic tasks with discrete actions in OpenAI Gym.
-
-This module defines the behavior of Reinforce agent
-working on the OpenAI Gym episodic tasks.
-
+"""Reinforce agent for episodic tasks in OpenAI Gym.
 - Author: Curt Park
 - Contact: curt.park@medipixel.io
 """
