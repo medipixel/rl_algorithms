@@ -182,7 +182,6 @@ class ReinforceAgent(object):
                 print('[INFO] episode %d\ttotal score: %d\tloss: %f'
                       % (i_episode, score, loss))
 #                wandb.log({'score': score, 'loss': loss})
-                break
 
         # termination
         self.env.close()
