@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Reinforce agent for episodic tasks in OpenAI Gym.
+
 - Author: Curt Park
 - Contact: curt.park@medipixel.io
 """
