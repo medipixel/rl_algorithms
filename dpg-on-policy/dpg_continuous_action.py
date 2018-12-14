@@ -29,9 +29,9 @@ parser.add_argument('--seed', type=int, default=777,
 parser.add_argument('--env', type=str, default='LunarLanderContinuous-v2',
                     help='openai gym environment name\
                           (continuous action only)')
-parser.add_argument('--max-episode-steps', type=int, default=500,
+parser.add_argument('--max-episode-steps', type=int, default=300,
                     help='max steps per episode')
-parser.add_argument('--episode-num', type=int, default=3000,
+parser.add_argument('--episode-num', type=int, default=1500,
                     help='total episode number')
 parser.add_argument('--model-path', type=str,
                     help='load the saved model and optimizer at the beginning')
@@ -104,6 +104,7 @@ class DPGActor(nn.Module):
         state = torch.tensor(state).float().to(device)
         action = self.actor(state)
 
+        # adjust the output range to [action_low, action_high]
         scale_factor = (action_high - action_low) / 2
         reloc_factor = (action_high - scale_factor)
         action = action * scale_factor + reloc_factor
@@ -133,8 +134,8 @@ class DPGCritic(nn.Module):
         self.state_dim = state_dim
         self.action_dim = action_dim
 
-        self.fc1 = nn.Linear(self.state_dim, 24)
-        self.fc2 = nn.Linear(24+self.action_dim, 48)
+        self.fc1 = nn.Linear(self.state_dim+self.action_dim, 24)
+        self.fc2 = nn.Linear(24, 48)
         self.fc3 = nn.Linear(48, 24)
         self.fc4 = nn.Linear(24, 1)
 
@@ -150,8 +151,8 @@ class DPGCritic(nn.Module):
         """
         state = torch.tensor(state).float().to(device)
 
-        x = F.relu(self.fc1(state))
-        x = torch.cat((x, action), dim=-1)  # concat action
+        x = torch.cat((state, action), dim=-1)  # concat action
+        x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = F.relu(self.fc3(x))
         predicted_value = self.fc4(x)

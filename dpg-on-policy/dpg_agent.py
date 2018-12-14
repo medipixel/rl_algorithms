@@ -16,7 +16,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-import wandb  # 'wandb off' in the shell makes this diabled
+# import wandb  # 'wandb off' in the shell makes this diabled
 
 
 # device selection: cpu / gpu
@@ -140,10 +140,10 @@ class DPGAgent(object):
     def run(self):
         """Run the agent."""
         # logger
-        wandb.init()
-        wandb.config.update(self.args)
-        wandb.watch(self.actor, log='parameters')
-        wandb.watch(self.critic, log='parameters')
+#        wandb.init()
+#        wandb.config.update(self.args)
+#        wandb.watch(self.actor, log='parameters')
+#        wandb.watch(self.critic, log='parameters')
 
         for i_episode in range(self.args.episode_num):
             state = self.env.reset()
@@ -168,7 +168,7 @@ class DPGAgent(object):
                 avg_loss = np.array(loss_episode).mean()
                 print('[INFO] episode %d\ttotal score: %d\tloss: %f'
                       % (i_episode, score, avg_loss))
-                wandb.log({'score': score, 'avg_loss': avg_loss})
+#                wandb.log({'score': score, 'avg_loss': avg_loss})
 
         # termination
         self.env.close()
