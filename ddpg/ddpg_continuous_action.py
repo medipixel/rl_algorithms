@@ -31,9 +31,9 @@ parser.add_argument('--seed', type=int, default=777,
 parser.add_argument('--env', type=str, default='LunarLanderContinuous-v2',
                     help='openai gym environment name\
                           (continuous action only)')
-parser.add_argument('--buffer-size', type=int, default=10000,
+parser.add_argument('--buffer-size', type=int, default=int(1e5),
                     help='replay memory size')
-parser.add_argument('--batch-size', type=int, default=64,
+parser.add_argument('--batch-size', type=int, default=128,
                     help='batch size')
 parser.add_argument('--max-episode-steps', type=int, default=300,
                     help='max steps per episode')

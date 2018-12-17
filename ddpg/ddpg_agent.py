@@ -67,8 +67,8 @@ class DDPGAgent(object):
         self.actor_target = actor_target
         self.critic_local = critic_local
         self.critic_target = critic_target
-        self.actor_optimizer = optim.Adam(actor_local.parameters())
-        self.critic_optimizer = optim.Adam(critic_local.parameters())
+        self.actor_optimizer = optim.Adam(actor_local.parameters(), lr=1e-4)
+        self.critic_optimizer = optim.Adam(critic_local.parameters(), lr=1e-3)
 
         # load the optimizer and model parameters
         if args.model_path is not None and os.path.exists(args.model_path):
@@ -113,13 +113,13 @@ class DDPGAgent(object):
 
         # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
         #       = r                       otherwise
-        values = self.critic_local(states, actions)
-        next_actions = self.actor_local(next_states)
-        next_values = self.critic_target(next_states, next_actions).detach()
+        next_actions = self.actor_target(next_states)
+        next_values = self.critic_target(next_states, next_actions)
         curr_returns = rewards + (self.args.gamma * next_values * (1 - dones))
         curr_returns = curr_returns.to(device)
 
         # train critic
+        values = self.critic_local(states, actions)
         critic_loss = F.mse_loss(values, curr_returns)
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
