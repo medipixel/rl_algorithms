@@ -8,13 +8,15 @@
 
 import os
 import git
-import numpy as np
+from collections import deque
 
 import gym
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+
+import utils
 
 import wandb  # 'wandb off' in the shell makes this diabled
 
@@ -53,44 +55,44 @@ class TRPOAgent(object):
         if args.model_path is not None and os.path.exists(args.model_path):
             self.load_params(args.model_path)
         self.args = args
+        self.memory = deque()
 
     def select_action(self, state):
         """Select an action from the input space."""
-        selected_action = self.actor(state)
+        selected_action, _, _ = self.actor(state)
 
         return selected_action
 
-    def step(self, action):
+    def step(self, state, action):
         """Take an action and return the response of the env."""
         action = action.detach().to('cpu').numpy()
         next_state, reward, done, _ = self.env.step(action)
+        self.memory.append([state, action, reward, done])
 
         return next_state, reward, done
 
-    def train(self, experience):
-        """Train the model after each episode."""
-        state, action, reward, next_state, done = experience
+    def train(self):
+        """Train the model after every N episodes."""
+        states, actions, rewards, dones = utils.decompose_memory(self.memory)
+        values = self.critic(states)
 
-        # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
-        #       = r                       otherwise
-        value = self.critic(state, action)
-        next_action = self.actor(next_state)
-        next_value = self.critic(next_state, next_action).detach()
-        curr_return = reward + (self.args.gamma * next_value * (1 - done))
-        curr_return = curr_return.to(device)
+        returns, advantages = utils.get_ret_and_gae(rewards, values, dones,
+                                                    self.args.gamma,
+                                                    self.args.lambd)
+
+        # normalize the advantages
+        advantages = (advantages - advantages.mean()) /\
+                     (advantages.std() + 1e-7)
+
+        # train actor
+        actor_loss = utils.trpo_step(self.actor, states, advantages,
+                                     self.args.max_kl, self.args.damping)
 
         # train critic
-        critic_loss = F.mse_loss(value, curr_return)
+        critic_loss = F.mse_loss(values, returns)
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
         self.critic_optimizer.step()
-
-        # train actor
-        action = self.actor(state)
-        actor_loss = -self.critic(state, action).mean()
-        self.actor_optimizer.zero_grad()
-        actor_loss.backward()
-        self.actor_optimizer.step()
 
         # for logging
         total_loss = critic_loss + actor_loss
@@ -130,9 +132,7 @@ class TRPOAgent(object):
 
         repo = git.Repo(search_parent_directories=True)
         sha = repo.head.object.hexsha
-        path = os.path.join('./save/trpo_continuous_' +
-                            sha[:7] +
-                            '_ep_' +
+        path = os.path.join('./save/trpo_' + sha[:7] + '_ep_' +
                             str(n_episode)+'.pt')
         torch.save(params, path)
         print('[INFO] saved the model and optimizer to', path)
@@ -149,26 +149,23 @@ class TRPOAgent(object):
             state = self.env.reset()
             done = False
             score = 0
-            loss_episode = list()
 
             while not done:
                 if self.args.render and i_episode >= self.args.render_after:
                     self.env.render()
 
                 action = self.select_action(state)
-                next_state, reward, done = self.step(action)
-                loss = self.train((state, action, reward, next_state, done))
+                next_state, reward, done = self.step(state, action)
 
                 state = next_state
                 score += reward
 
-                loss_episode.append(loss)  # for logging
-
-            else:
-                avg_loss = np.array(loss_episode).mean()
+            # train every self.args.epicodes_per_batch
+            if i_episode % self.args.episodes_per_batch == 0:
+                loss = self.train()
                 print('[INFO] episode %d\ttotal score: %d\tloss: %f'
-                      % (i_episode, score, avg_loss))
-                wandb.log({'score': score, 'avg_loss': avg_loss})
+                      % (i_episode, score, loss))
+                wandb.log({'score': score, 'loss': loss})
 
         # termination
         self.env.close()

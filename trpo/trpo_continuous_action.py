@@ -14,7 +14,6 @@ import gym
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from trpo_agent import TRPOAgent
 
@@ -22,16 +21,24 @@ from trpo_agent import TRPOAgent
 # configurations
 parser = argparse.ArgumentParser(description='TRPO with continuous\
                                              action example by Pytorch')
-parser.add_argument('--gamma', type=float, default=0.99,
-                    help='discount factor')
+parser.add_argument('--gamma', type=float, default=0.98,
+                    help='discount factor for rewards')
+parser.add_argument('--lambd', type=float, default=0.92,
+                    help='discount factor for advantages')
+parser.add_argument('--max-kl', type=float, default=1e-2,
+                    help='max kl value (default: 1e-2)')
+parser.add_argument('--damping', type=float, default=1e-1,
+                    help='damping (default: 1e-1)')
 parser.add_argument('--seed', type=int, default=777,
                     help='random seed for reproducibility')
 parser.add_argument('--env', type=str, default='LunarLanderContinuous-v2',
                     help='openai gym environment name\
                           (continuous action only)')
+parser.add_argument('--episodes-per-batch', type=int, default=20,
+                    help='the number of episodes per batch')
 parser.add_argument('--max-episode-steps', type=int, default=300,
                     help='max steps per episode')
-parser.add_argument('--episode-num', type=int, default=1500,
+parser.add_argument('--episode-num', type=int, default=2000,
                     help='total episode number')
 parser.add_argument('--model-path', type=str,
                     help='load the saved model and optimizer at the beginning')
@@ -60,7 +67,7 @@ torch.manual_seed(args.seed)
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 
-class TRPOActor(nn.Module):
+class Actor(nn.Module):
     """TRPO actor model with simple FC layers.
 
     Args:
@@ -76,17 +83,17 @@ class TRPOActor(nn.Module):
 
     def __init__(self, state_dim, action_dim):
         """Initialization."""
-        super(TRPOActor, self).__init__()
+        super(Actor, self).__init__()
 
         self.state_dim = state_dim
         self.action_dim = action_dim
         self.actor = nn.Sequential(
                         nn.Linear(self.state_dim, 24),
-                        nn.ReLU(),
+                        nn.Tanh(),
                         nn.Linear(24, 48),
-                        nn.ReLU(),
+                        nn.Tanh(),
                         nn.Linear(48, 24),
-                        nn.ReLU(),
+                        nn.Tanh(),
                         nn.Linear(24, self.action_dim),
                         nn.Tanh()
                      )
@@ -102,18 +109,15 @@ class TRPOActor(nn.Module):
 
         """
         state = torch.tensor(state).float().to(device)
-        action = self.actor(state)
 
-        # adjust the output range to [action_low, action_high]
-        scale_factor = (action_high - action_low) / 2
-        reloc_factor = (action_high - scale_factor)
-        action = action * scale_factor + reloc_factor
-        action = torch.clamp(action, action_low, action_high)
+        mu = self.actor(state)
+        logstd = torch.zeros_like(mu)
+        std = torch.exp(logstd)
 
-        return action
+        return mu, std, logstd
 
 
-class TRPOCritic(nn.Module):
+class Critic(nn.Module):
     """TRPO critic model with simple FC layers.
 
     Args:
@@ -129,39 +133,38 @@ class TRPOCritic(nn.Module):
 
     def __init__(self, state_dim, action_dim):
         """Initialization."""
-        super(TRPOCritic, self).__init__()
+        super(Critic, self).__init__()
 
         self.state_dim = state_dim
         self.action_dim = action_dim
+        self.critic = nn.Sequential(
+                        nn.Linear(self.state_dim, 24),
+                        nn.Tanh(),
+                        nn.Linear(24, 48),
+                        nn.Tanh(),
+                        nn.Linear(48, 24),
+                        nn.Tanh(),
+                        nn.Linear(24, 1),
+                     )
 
-        self.fc1 = nn.Linear(self.state_dim+self.action_dim, 24)
-        self.fc2 = nn.Linear(24, 48)
-        self.fc3 = nn.Linear(48, 24)
-        self.fc4 = nn.Linear(24, 1)
-
-    def forward(self, state, action):
+    def forward(self, state):
         """Forward method implementation.
 
         Args:
             state (numpy.ndarray): input vector on the state space
 
         Returns:
-            predicted state value
+            specific action
 
         """
         state = torch.tensor(state).float().to(device)
-
-        x = torch.cat((state, action), dim=-1)  # concat action
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = F.relu(self.fc3(x))
-        predicted_value = self.fc4(x)
+        predicted_value = self.critic(state)
 
         return predicted_value
 
 
 if __name__ == '__main__':
-    actor = TRPOActor(state_dim, action_dim).to(device)
-    critic = TRPOCritic(state_dim, action_dim).to(device)
+    actor = Actor(state_dim, action_dim).to(device)
+    critic = Critic(state_dim, action_dim).to(device)
     agent = TRPOAgent(env, actor, critic, args)
     agent.run()
