@@ -13,8 +13,8 @@ from collections import deque
 import gym
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
+import scipy.optimize
 
 import utils
 
@@ -76,6 +76,7 @@ class TRPOAgent(object):
         states, actions, rewards, dones = utils.decompose_memory(self.memory)
         values = self.critic(states)
 
+        # calculate returns and gae
         returns, advantages = utils.get_ret_and_gae(rewards, values, dones,
                                                     self.args.gamma,
                                                     self.args.lambd)
@@ -85,17 +86,20 @@ class TRPOAgent(object):
                      (advantages.std() + 1e-7)
 
         # train actor
-        actor_loss = utils.trpo_step(self.actor, states, advantages,
+        actor_loss = utils.trpo_step(self.actor, states, actions, advantages,
                                      self.args.max_kl, self.args.damping)
 
         # train critic
-        critic_loss = F.mse_loss(values, returns)
-        self.critic_optimizer.zero_grad()
-        critic_loss.backward()
-        self.critic_optimizer.step()
+        flat_params, _, opt_info = \
+            scipy.optimize.fmin_l_bfgs_b(utils.get_value_loss,
+                                         utils.get_flat_params_from(
+                                             self.critic).double().numpy(),
+                                         maxiter=25)
+        utils.set_flat_params_to(self.critic, torch.Tensor(flat_params))
 
         # for logging
-        total_loss = critic_loss + actor_loss
+        # TODO: check how to get the loss from critic.
+        total_loss = actor_loss  # + critic_loss
 
         return total_loss.data
 

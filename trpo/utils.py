@@ -8,6 +8,7 @@ This module has TRPO util functions.
 - Paper: http://arxiv.org/abs/1502.05477
 """
 
+import math
 import numpy as np
 import torch
 
@@ -48,6 +49,20 @@ def set_flat_params_to(model, flat_params):
         param.data.copy_(
             flat_params[prev_ind:prev_ind + flat_size].view(param.size()))
         prev_ind += flat_size
+
+
+# taken from https://github.com/ikostrikov/pytorch-trpo
+def get_flat_grad_from(net, grad_grad=False):
+    """Return flat grads of the model parameters."""
+    grads = []
+    for param in net.parameters():
+        if grad_grad:
+            grads.append(param.grad.grad.view(-1))
+        else:
+            grads.append(param.grad.view(-1))
+
+    flat_grad = torch.cat(grads)
+    return flat_grad
 
 
 # taken from https://github.com/ikostrikov/pytorch-trpo
@@ -121,8 +136,21 @@ def linesearch(model, f, x, fullstep, expected_improve_rate,
 
 
 # taken from https://github.com/ikostrikov/pytorch-trpo
-def trpo_step(model, states, advantages, max_kl, damping):
+def normal_log_density(x, mean, log_std, std):
+    """Calculate log density of nomal distribution."""
+    var = std.pow(2)
+    log_density = -(x - mean).pow(2) / \
+        (2 * var) - 0.5 * math.log(2 * math.pi) - log_std
+    return log_density.sum(1, keepdim=True)
+
+
+# taken from https://github.com/ikostrikov/pytorch-trpo
+def trpo_step(model, states, actions, advantages, max_kl, damping):
     """Calculate TRPO loss."""
+    means, log_stds, stds = model(states)
+    fixed_log_prob = normal_log_density(actions, means,
+                                        log_stds, stds).data.clone()
+
     def get_loss(volatile=False):
         if volatile:
             with torch.no_grad():
@@ -135,12 +163,14 @@ def trpo_step(model, states, advantages, max_kl, damping):
         return action_loss.mean()
 
     def get_kl():
-        means, log_stds, stds = model(states)
+        # TODO: check this calculation is correct.
+        mean1, log_std1, std1 = model(states)
 
-        mean0 = mean1.data
-        log_std0 = log_std1.data
-        std0 = std1.data
-        kl = log_std1 - log_std0 + (std0.pow(2) + (mean0 - mean1).pow(2)) / (2.0 * std1.pow(2)) - 0.5
+        mean0 = torch.Tensor(mean1.data)
+        log_std0 = torch.Tensor(log_std1.data)
+        std0 = torch.Tensor(std1.data)
+        kl = log_std1 - log_std0 + (std0.pow(2) + (mean0 - mean1).pow(2)) / \
+            (2.0 * std1.pow(2)) - 0.5
         return kl.sum(1, keepdim=True)
 
     loss = get_loss()
@@ -177,3 +207,21 @@ def trpo_step(model, states, advantages, max_kl, damping):
     set_flat_params_to(model, new_params)
 
     return loss
+
+
+# taken from https://github.com/ikostrikov/pytorch-trpo
+# TODO: this function should have only 1 arg.
+def get_value_loss(flat_params, model, states, targets):
+    """Return value loss."""
+    set_flat_params_to(model, torch.Tensor(flat_params))
+
+    for param in model.parameters():
+        if param.grad is not None:
+            param.grad.data.fill_(0)
+
+    values = model(states)
+    value_loss = (values - targets).pow(2).mean()
+    value_loss.backward()
+
+    return (value_loss.data.double().numpy(),
+            get_flat_grad_from(model).data.double().numpy())
