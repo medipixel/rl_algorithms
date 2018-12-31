@@ -19,7 +19,7 @@ import scipy.optimize
 import utils
 from models import Actor, Critic
 
-import wandb  # 'wandb off' in the shell makes this diabled
+# import wandb  # 'wandb off' in the shell makes this diabled
 
 
 # configurations
@@ -179,10 +179,10 @@ class Agent(object):
     def run(self):
         """Run the agent."""
         # logger
-        wandb.init()
-        wandb.config.update(args)
-        wandb.watch(self.actor, log='parameters')
-        wandb.watch(self.critic, log='parameters')
+#         wandb.init()
+#         wandb.config.update(args)
+#         wandb.watch(self.actor, log='parameters')
+#         wandb.watch(self.critic, log='parameters')
 
         scores = []
         for i_episode in range(args.episode_num):
@@ -210,7 +210,7 @@ class Agent(object):
 
                 print('[INFO] episode %d\ttotal score: %d\tloss: %f'
                       % (i_episode, avg_score, loss))
-                wandb.log({'score': avg_score, 'loss': loss})
+#                wandb.log({'score': avg_score, 'loss': loss})
 
         # termination
         self.env.close()
