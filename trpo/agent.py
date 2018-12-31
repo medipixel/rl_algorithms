@@ -159,10 +159,6 @@ class Agent(object):
         params = torch.load(path)
         self.actor.load_state_dict(params['actor_state_dict'])
         self.critic.load_state_dict(params['critic_state_dict'])
-        self.actor_optimizer.load_state_dict(
-                params['actor_optim_state_dict'])
-        self.critic_optimizer.load_state_dict(
-                params['critic_optim_state_dict'])
         print('[INFO] loaded the model and optimizer from', path)
 
     def save_params(self, n_episode):
@@ -170,16 +166,8 @@ class Agent(object):
         if not os.path.exists('./save'):
             os.mkdir('./save')
 
-        params = {
-                 'actor_state_dict':
-                 self.actor.state_dict(),
-                 'critic_state_dict':
-                 self.critic.state_dict(),
-                 'actor_optim_state_dict':
-                 self.actor_optimizer.state_dict(),
-                 'critic_optim_state_dict':
-                 self.critic_optimizer.state_dict()
-                 }
+        params = {'actor_state_dict': self.actor.state_dict(),
+                  'critic_state_dict': self.critic.state_dict()}
 
         repo = git.Repo(search_parent_directories=True)
         sha = repo.head.object.hexsha
