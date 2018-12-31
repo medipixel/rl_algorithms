@@ -9,59 +9,9 @@ with continuous action space in OpenAI Gym.
 - Paper: http://arxiv.org/abs/1502.05477
 """
 
-import argparse
-import gym
-
 import torch
 import torch.nn as nn
 
-from trpo_agent import TRPOAgent
-
-
-# configurations
-parser = argparse.ArgumentParser(description='TRPO with continuous\
-                                             action example by Pytorch')
-parser.add_argument('--gamma', type=float, default=0.98,
-                    help='discount factor for rewards')
-parser.add_argument('--lambd', type=float, default=0.92,
-                    help='discount factor for advantages')
-parser.add_argument('--max-kl', type=float, default=1e-2,
-                    help='max kl value (default: 1e-2)')
-parser.add_argument('--damping', type=float, default=1e-1,
-                    help='damping (default: 1e-1)')
-parser.add_argument('--seed', type=int, default=777,
-                    help='random seed for reproducibility')
-parser.add_argument('--env', type=str, default='LunarLanderContinuous-v2',
-                    help='openai gym environment name\
-                          (continuous action only)')
-parser.add_argument('--episodes-per-batch', type=int, default=20,
-                    help='the number of episodes per batch')
-parser.add_argument('--max-episode-steps', type=int, default=300,
-                    help='max steps per episode')
-parser.add_argument('--episode-num', type=int, default=2000,
-                    help='total episode number')
-parser.add_argument('--model-path', type=str,
-                    help='load the saved model and optimizer at the beginning')
-parser.add_argument('--render-after', type=int, default=0,
-                    help='start rendering after the input number of episode')
-parser.add_argument('--no-render', dest='render', action='store_false',
-                    help='turn off rendering')
-parser.set_defaults(render=True)
-parser.set_defaults(model_path=None)
-args = parser.parse_args()
-
-
-# initialization
-env = gym.make(args.env)
-env._max_episode_steps = args.max_episode_steps
-state_dim = env.observation_space.shape[0]
-action_dim = env.action_space.shape[0]
-action_low = float(env.action_space.low[0])
-action_high = float(env.action_space.high[0])
-
-# set random seed
-env.seed(args.seed)
-torch.manual_seed(args.seed)
 
 # device selection: cpu / gpu
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -114,7 +64,7 @@ class Actor(nn.Module):
         logstd = torch.zeros_like(mu)
         std = torch.exp(logstd)
 
-        return mu, std, logstd
+        return mu, logstd, std
 
 
 class Critic(nn.Module):
@@ -161,10 +111,3 @@ class Critic(nn.Module):
         predicted_value = self.critic(state)
 
         return predicted_value
-
-
-if __name__ == '__main__':
-    actor = Actor(state_dim, action_dim).to(device)
-    critic = Critic(state_dim, action_dim).to(device)
-    agent = TRPOAgent(env, actor, critic, args)
-    agent.run()

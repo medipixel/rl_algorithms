@@ -11,6 +11,7 @@ This module has TRPO util functions.
 import math
 import numpy as np
 import torch
+from torch.autograd import Variable
 
 
 # device selection: cpu / gpu
@@ -91,7 +92,7 @@ def get_ret_and_gae(rewards, values, dones, gamma, lambd):
 # taken from https://github.com/ikostrikov/pytorch-trpo
 def conjugate_gradients(Avp, b, nsteps, residual_tol=1e-10):
     """Demmel p 312."""
-    x = torch.zeros(b.size())
+    x = torch.zeros(b.size()).to(device)
     r = b.clone()
     p = b.clone()
     rdotr = torch.dot(r, r)
@@ -118,19 +119,19 @@ def linesearch(model, f, x, fullstep, expected_improve_rate,
     at the initial point.
     """
     fval = f(True).data
-    print("fval before", fval.item())
+    # print("fval before", fval.item())
     for (_n_backtracks, stepfrac) in enumerate(.5**np.arange(max_backtracks)):
-        xnew = x + stepfrac * fullstep
+        xnew = x + torch.tensor(stepfrac).to(device) * fullstep
         set_flat_params_to(model, xnew)
         newfval = f(True).data
         actual_improve = fval - newfval
         expected_improve = expected_improve_rate * stepfrac
         ratio = actual_improve / expected_improve
-        print("a/e/r", actual_improve.item(),
-              expected_improve.item(), ratio.item())
+        # print("a/e/r", actual_improve.item(),
+        #       expected_improve.item(), ratio.item())
 
         if ratio.item() > accept_ratio and actual_improve.item() > 0:
-            print("fval after", newfval.item())
+            # print("fval after", newfval.item())
             return True, xnew
     return False, x
 
@@ -166,9 +167,9 @@ def trpo_step(model, states, actions, advantages, max_kl, damping):
         # TODO: check this calculation is correct.
         mean1, log_std1, std1 = model(states)
 
-        mean0 = torch.Tensor(mean1.data)
-        log_std0 = torch.Tensor(log_std1.data)
-        std0 = torch.Tensor(std1.data)
+        mean0 = Variable(mean1.data)
+        log_std0 = Variable(log_std1.data)
+        std0 = Variable(std1.data)
         kl = log_std1 - log_std0 + (std0.pow(2) + (mean0 - mean1).pow(2)) / \
             (2.0 * std1.pow(2)) - 0.5
         return kl.sum(1, keepdim=True)
@@ -199,7 +200,7 @@ def trpo_step(model, states, actions, advantages, max_kl, damping):
     fullstep = stepdir / lm[0]
 
     neggdotstepdir = (-loss_grad * stepdir).sum(0, keepdim=True)
-    print(("lagrange multiplier:", lm[0], "grad_norm:", loss_grad.norm()))
+    # print(("lagrange multiplier:", lm[0], "grad_norm:", loss_grad.norm()))
 
     prev_params = get_flat_params_from(model)
     success, new_params = linesearch(model, get_loss, prev_params, fullstep,
@@ -210,18 +211,39 @@ def trpo_step(model, states, actions, advantages, max_kl, damping):
 
 
 # taken from https://github.com/ikostrikov/pytorch-trpo
-# TODO: this function should have only 1 arg.
-def get_value_loss(flat_params, model, states, targets):
-    """Return value loss."""
-    set_flat_params_to(model, torch.Tensor(flat_params))
+class ValueLoss(object):
+    """Value Loss calculator.
 
-    for param in model.parameters():
-        if param.grad is not None:
-            param.grad.data.fill_(0)
+    Attributes:
+        model (nn.Module): model to predict values
+        states (torch.Tensor): current states
+        targets (torch.Tensor): current returns
+        l2_reg (float): weight decay rate
 
-    values = model(states)
-    value_loss = (values - targets).pow(2).mean()
-    value_loss.backward()
+    """
 
-    return (value_loss.data.double().numpy(),
-            get_flat_grad_from(model).data.double().numpy())
+    def __init__(self, model, states, targets, l2_reg):
+        """Initialization."""
+        self.model = model
+        self.states = states
+        self.targets = targets
+        self.l2_reg = l2_reg
+
+    def __call__(self, flat_params):
+        """Return value loss."""
+        set_flat_params_to(self.model, torch.Tensor(flat_params))
+
+        for param in self.model.parameters():
+            if param.grad is not None:
+                param.grad.data.fill_(0)
+
+        values = self.model(self.states)
+        value_loss = (values - self.targets).pow(2).mean()
+        value_loss.backward()
+
+        # weight decay
+        for param in self.model.parameters():
+            value_loss += param.pow(2).sum() * self.l2_reg
+
+        return (value_loss.data.to('cpu').double().numpy(),
+                get_flat_grad_from(self.model).data.to('cpu').double().numpy())
