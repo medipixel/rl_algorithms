@@ -73,7 +73,7 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 
 class Agent(object):
-    """ActorCritic interacting with environment.
+    """TRPO Agent.
 
     Attributes:
         env (gym.Env): openAI Gym environment with discrete action space
