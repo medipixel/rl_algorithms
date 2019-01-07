@@ -44,14 +44,18 @@ class ActorCritic(nn.Module):
         self.actor = nn.Sequential(
                         nn.Linear(self.state_dim, 24),
                         nn.Tanh(),
-                        nn.Linear(24, self.action_dim),
+                        nn.Linear(24, 48),
+                        nn.Tanh(),
+                        nn.Linear(48, self.action_dim),
                         nn.Tanh()
                      )
 
         self.critic = nn.Sequential(
                         nn.Linear(self.state_dim, 24),
                         nn.Tanh(),
-                        nn.Linear(24, 1),
+                        nn.Linear(24, 48),
+                        nn.Tanh(),
+                        nn.Linear(48, 1),
                      )
 
     def forward(self, state):

@@ -20,21 +20,24 @@ def decompose_memory(memory):
     """Decompose states, actions, rewards, dones from the memory."""
     memory = np.array(memory)
     states = torch.from_numpy(np.vstack(memory[:, 0])).float().to(device)
-    actions = torch.from_numpy(np.vstack(memory[:, 1])).float().to(device)
-    rewards = torch.from_numpy(np.vstack(memory[:, 2])).float().to(device)
+    log_probs = torch.from_numpy(np.vstack(memory[:, 1])).float().to(device)
+    actions = torch.from_numpy(np.vstack(memory[:, 2])).float().to(device)
+    rewards = torch.from_numpy(np.vstack(memory[:, 3])).float().to(device)
     dones = torch.from_numpy(
-                np.vstack(memory[:, 3]).astype(np.uint8)).float().to(device)
+                np.vstack(memory[:, 4]).astype(np.uint8)).float().to(device)
 
-    return states, actions, rewards, dones
+    return states, log_probs, actions, rewards, dones
 
 
-def ppo_iter(mini_batch_size, states, actions, rewards, dones):
+def ppo_iter(epoch, mini_batch_size, states,
+             log_probs, actions, rewards, dones):
     """Yield mini-batches."""
     batch_size = states.size(0)
-    for _ in range(batch_size // mini_batch_size):
-        rand_ids = np.random.randint(0, batch_size, mini_batch_size)
-        yield states[rand_ids, :], actions[rand_ids, :], \
-            rewards[rand_ids, :], dones[rand_ids, :]
+    for _ in range(epoch):
+        for _ in range(batch_size // mini_batch_size):
+            rand_ids = np.random.randint(0, batch_size, mini_batch_size)
+            yield states[rand_ids, :], log_probs[rand_ids, :], \
+                actions[rand_ids, :], rewards[rand_ids, :], dones[rand_ids, :]
 
 
 # taken from https://github.com/ikostrikov/pytorch-trpo

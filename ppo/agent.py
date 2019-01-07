@@ -17,7 +17,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-import utils
+import util
 from model import ActorCritic
 
 import wandb  # 'wandb off' in the shell makes this diabled
@@ -39,13 +39,15 @@ parser.add_argument('--seed', type=int, default=777,
 parser.add_argument('--env', type=str, default='LunarLanderContinuous-v2',
                     help='openai gym environment name\
                           (continuous action only)')
-parser.add_argument('--batch-size', type=int, default=64,
+parser.add_argument('--epoch', type=int, default=4,
+                    help='epoch size for each horizon')
+parser.add_argument('--batch-size', type=int, default=128,
                     help='the size of minibatch')
 parser.add_argument('--max-episode-steps', type=int, default=300,
                     help='max steps per episode')
 parser.add_argument('--horizon', type=int, default=512,
                     help='number of transitions to run training')
-parser.add_argument('--episode-num', type=int, default=3000,
+parser.add_argument('--episode-num', type=int, default=5000,
                     help='total episode number')
 parser.add_argument('--model-path', type=str,
                     help='load the saved model and optimizer at the beginning')
@@ -79,8 +81,8 @@ class Agent(object):
     Attributes:
         env (gym.Env): openAI Gym environment with discrete action space
         model (nn.Module): policy model + value estimator
-        old_model (nn.Module): old model used to calculate the ratio
         optimizer (Optimizer): optimizer for training actor-critic
+        transition (list): list for storing a transition
 
     Args:
         env (gym.Env): openAI Gym environment with discrete action space
@@ -95,50 +97,57 @@ class Agent(object):
 
         self.env = env
         self.model = model
-        self.old_model = ActorCritic(state_dim, action_dim,
-                                     action_low, action_high).to(device)
-        self.old_model.load_state_dict(self.model.state_dict())
         self.optimizer = optim.Adam(self.model.parameters(), lr=3e-4)
+        self.memory = deque()
+        self.transition = []
+
         if args.model_path is not None and os.path.exists(args.model_path):
             self.load_params(args.model_path)
-        self.memory = deque()
 
     def select_action(self, state):
         """Select an action from the input space."""
-        selected_action, _, _ = self.model(state)
+        selected_action, _, dist = self.model(state)
+        self.transition += [state, dist.log_prob(selected_action).detach()]
 
         return selected_action
 
-    def step(self, state, action):
+    def step(self, action):
         """Take an action and return the response of the env."""
         action = action.detach().to('cpu').numpy()
         next_state, reward, done, _ = self.env.step(action)
-        self.memory.append([state, action, reward, done])
+
+        self.transition += [action, reward, done]
+        self.memory.append(self.transition)
+        self.transition = []
 
         return next_state, reward, done
 
     def train(self):
         """Train the model after every N episodes."""
-        states, actions, rewards, dones = utils.decompose_memory(self.memory)
+        states, log_probs, actions, rewards, dones = \
+            util.decompose_memory(self.memory)
         losses = []
-        for state, action, reward, done in utils.ppo_iter(args.batch_size,
-                                                          states, actions,
-                                                          rewards, dones):
+        for state, old_log_prob, action, reward, done in util.ppo_iter(
+                                                          args.epoch,
+                                                          args.batch_size,
+                                                          states, log_probs,
+                                                          actions, rewards,
+                                                          dones):
             _, value, new_dist = self.model(state)
-            _, _, old_dist = self.old_model(state)
             entropy = args.entropy * new_dist.entropy().mean()
 
             # calculate returns and gae
-            return_, advantage = utils.get_ret_and_gae(reward, value, done,
-                                                       args.gamma,
-                                                       args.lambd)
+            return_, advantage = util.get_ret_and_gae(reward, value, done,
+                                                      args.gamma,
+                                                      args.lambd)
 
-            # normalize the advantages
+            # normalize returns and  advantages
+            return_ = (return_ - return_.mean()) /\
+                      (return_.std() + 1e-7)
             advantage = (advantage - advantage.mean()) /\
                         (advantage.std() + 1e-7)
 
             # calculate ratios
-            old_log_prob = old_dist.log_prob(action)
             new_log_prob = new_dist.log_prob(action)
             ratio = (new_log_prob - old_log_prob).exp()
 
@@ -161,9 +170,6 @@ class Agent(object):
             self.optimizer.step()
 
             losses.append(total_loss.data)
-
-        # update self.old_model before the backward of self.model
-        self.old_model.load_state_dict(self.model.state_dict())
 
         return sum(losses) / len(losses)
 
@@ -198,6 +204,7 @@ class Agent(object):
         wandb.config.update(args)
         wandb.watch(self.model, log='parameters')
 
+        scores = []
         for i_episode in range(args.episode_num):
             state = self.env.reset()
             done = False
@@ -208,7 +215,7 @@ class Agent(object):
                     self.env.render()
 
                 action = self.select_action(state)
-                next_state, reward, done = self.step(state, action)
+                next_state, reward, done = self.step(action)
 
                 state = next_state
                 score += reward
@@ -217,12 +224,14 @@ class Agent(object):
                     loss = self.train()
                     self.memory.clear()
 
-                    print('[INFO] loss: %f' % (loss))
-                    wandb.log({'loss': loss})
+                    avg_score = sum(scores) / len(scores)
+                    scores = []
+                    print('[INFO] loss: %f, avg_score: %d' % (loss, avg_score))
+                    wandb.log({'loss': loss, 'avg_score': avg_score})
             else:
+                scores.append(score)
                 print('[INFO] episode %d\ttotal score: %d'
-                      % (i_episode, score))
-                wandb.log({'score': score})
+                      % (i_episode+1, score))
 
         # termination
         self.env.close()
