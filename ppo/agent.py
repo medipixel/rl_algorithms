@@ -41,13 +41,13 @@ parser.add_argument('--env', type=str, default='LunarLanderContinuous-v2',
                           (continuous action only)')
 parser.add_argument('--epoch', type=int, default=4,
                     help='epoch size for each horizon')
-parser.add_argument('--batch-size', type=int, default=128,
+parser.add_argument('--batch-size', type=int, default=64,
                     help='the size of minibatch')
 parser.add_argument('--max-episode-steps', type=int, default=300,
                     help='max steps per episode')
 parser.add_argument('--horizon', type=int, default=512,
                     help='number of transitions to run training')
-parser.add_argument('--episode-num', type=int, default=5000,
+parser.add_argument('--episode-num', type=int, default=30000,
                     help='total episode number')
 parser.add_argument('--model-path', type=str,
                     help='load the saved model and optimizer at the beginning')
@@ -141,9 +141,7 @@ class Agent(object):
                                                       args.gamma,
                                                       args.lambd)
 
-            # normalize returns and  advantages
-            return_ = (return_ - return_.mean()) /\
-                      (return_.std() + 1e-7)
+            # normalize advantages
             advantage = (advantage - advantage.mean()) /\
                         (advantage.std() + 1e-7)
 
