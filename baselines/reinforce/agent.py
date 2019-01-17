@@ -174,7 +174,7 @@ class Agent(object):
         # logger
         if self.args.log:
             wandb.init()
-            wandb.config.update(self.args)
+            wandb.config.update(hyper_params)
             wandb.watch(self.model, log='parameters')
 
         for i_episode in range(hyper_params['EPISODE_NUM']):

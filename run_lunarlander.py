@@ -14,7 +14,7 @@ import gym
 parser = argparse.ArgumentParser(description='Pytorch RL baselines')
 parser.add_argument('--seed', type=int, default=777,
                     help='random seed for reproducibility')
-parser.add_argument('--algo', type=str, default='reinforce',
+parser.add_argument('--algo', type=str, default='ac',
                     help='choose an algorithm')
 parser.add_argument('--test', dest='test', action='store_true',
                     help='test mode (no training)')
@@ -39,10 +39,10 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 policy_gradients = {'ac', 'reinforce', 'dpg', 'ddpg', 'trpo', 'ppo'}
 
 # import the agent
-if args.algo == 'ac':
-    from baselines.ac.agent import Agent
-elif args.algo == 'reinforce':
+if args.algo == 'reinforce':
     from baselines.reinforce.agent import Agent
+elif args.algo == 'ac':
+    from baselines.ac.agent import Agent
 elif args.algo == 'dpg':
     from baselines.dpg.agent import Agent
 elif args.algo == 'ddpg':
@@ -55,6 +55,7 @@ elif args.algo == 'ppo':
 
 def main():
     """Main."""
+    # choose an env
     if args.algo in policy_gradients:
         env = 'LunarLanderContinuous-v2'
 
@@ -67,6 +68,8 @@ def main():
 
     # create an agent
     agent = Agent(env, args, device)
+
+    # run
     if args.test:
         agent.test()
     else:
