@@ -43,6 +43,7 @@ class Agent(object):
         log_prob_sequence (list): log probabailities of an episode
         predicted_value_sequence (list): predicted values of an episode
         reward_sequence (list): rewards of an episode to calculate returns
+        device (str): device selection (cpu / gpu)
 
     """
 

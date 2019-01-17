@@ -17,13 +17,20 @@ class ActorCritic(nn.Module):
     """Reinforce continuous actor-critic model with simple FC layers.
 
     Args:
+        std (float): standard deviation of the output distribution
         state_dim (int): dimension of state space
         action_dim (int): dimension of action space
+        action_low (float): lower bound of the action value
+        action_high (float): upper bound of the action value
 
     Attributes:
+        actor_std (float): standard deviation of the output distribution
+        actor_mu (nn.Sequential): actor model for mu with FC layers
         state_dim (int): dimension of state space
         action_dim (int): dimension of action space
-        actor_mu (nn.Sequential): actor model for mu with FC layers
+        action_low (float): lower bound of the action value
+        action_high (float): upper bound of the action value
+        actor (nn.Sequential): actor model with FC layers
         critic (nn.Sequential): critic model with FC layers
 
     """
@@ -37,7 +44,7 @@ class ActorCritic(nn.Module):
         self.action_low = action_low
         self.action_high = action_high
 
-        self.std = std
+        self.actor_std = std
         self.actor_mu = nn.Sequential(
                             nn.Linear(self.state_dim, 24),
                             nn.ReLU(),
@@ -78,7 +85,7 @@ class ActorCritic(nn.Module):
 
         """
         norm_dist_mu = self.actor_mu(state)
-        norm_dist_std = self.std
+        norm_dist_std = self.actor_std
         predicted_value = self.critic(state)
 
         dist = Normal(norm_dist_mu, norm_dist_std)
