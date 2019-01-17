@@ -189,7 +189,7 @@ class Agent(object):
             else:
                 avg_loss = np.array(loss_episode).mean()
                 print('[INFO] episode %d\ttotal score: %d\tloss: %f'
-                      % (i_episode, score, avg_loss))
+                      % (i_episode+1, score, avg_loss))
 
                 if self.args.log:
                     wandb.log({'score': score, 'avg_loss': avg_loss})

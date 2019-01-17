@@ -32,14 +32,15 @@ class Agent(object):
 
     Attributes:
         env (gym.Env): openAI Gym environment with discrete action space
-        model (nn.Module): policy gradient model to select actions
         args (dict): arguments including hyperparameters and training settings
+        device (str): device selection (cpu / gpu)
 
     Args:
         env (gym.Env): openAI Gym environment with discrete action space
         model (nn.Module): policy gradient model to select actions
         args (dict): arguments including hyperparameters and training settings
         optimizer (Optimizer): optimizer for training
+        device (str): device selection (cpu / gpu)
 
     """
 
@@ -172,7 +173,7 @@ class Agent(object):
             else:
                 avg_loss = np.array(loss_episode).mean()
                 print('[INFO] episode %d\ttotal score: %d\tloss: %f'
-                      % (i_episode, score, avg_loss))
+                      % (i_episode+1, score, avg_loss))
 
                 if self.args.log:
                     wandb.log({'score': score, 'avg_loss': avg_loss})

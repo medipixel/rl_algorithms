@@ -196,7 +196,7 @@ class Agent(object):
             else:
                 loss = self.update_model()
                 print('[INFO] episode %d\ttotal score: %d\tloss: %f'
-                      % (i_episode, score, loss))
+                      % (i_episode+1, score, loss))
                 if self.args.log:
                     wandb.log({'score': score, 'loss': loss})
 
