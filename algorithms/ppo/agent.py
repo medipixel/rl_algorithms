@@ -27,9 +27,9 @@ hyper_params = {
         'EPSILON': 0.2,
         'W_VALUE': 1.0,
         'W_ENTROPY': 1e-3,
-        'HORIZON': 128,
-        'EPOCH': 1,
-        'BATCH_SIZE': 128,
+        'ROLLOUT_LENGTH': 256,
+        'EPOCH': 8,
+        'BATCH_SIZE': 32,
         'MAX_EPISODE_STEPS': 300,
         'EPISODE_NUM': 1500
 }
@@ -78,7 +78,7 @@ class Agent(object):
 
         # create optimizer
         self.actor_optimizer = optim.Adam(self.actor.parameters(),
-                                          lr=1e-4)
+                                          lr=3e-4)
         self.critic_optimizer = optim.Adam(self.critic.parameters(),
                                            lr=1e-3)
 
@@ -110,42 +110,39 @@ class Agent(object):
         states, log_probs, actions, rewards, dones = \
             ppo_utils.decompose_memory(self.memory)
 
+        # calculate returns and gae
+        values = self.critic(states)
+        returns, advantages = ppo_utils.get_gae(rewards, values, dones,
+                                                hyper_params['GAMMA'],
+                                                hyper_params['LAMBDA'])
+
         losses = []
-        for state, old_log_prob, action, reward, done in ppo_utils.ppo_iter(
+        for state, old_log_prob, action, return_, adv in ppo_utils.ppo_iter(
                                                     hyper_params['EPOCH'],
                                                     hyper_params['BATCH_SIZE'],
                                                     states, log_probs,
-                                                    actions, rewards,
-                                                    dones):
-            _, new_dist = self.actor(state)
+                                                    actions, returns,
+                                                    advantages):
             value = self.critic(state)
-
-            # calculate returns and gae
-            return_, advantage = ppo_utils.get_gae(reward, value, done,
-                                                   hyper_params['GAMMA'],
-                                                   hyper_params['LAMBDA'])
-
-            # normalize advantages
-            advantage = (advantage - advantage.mean()) /\
-                        (advantage.std() + 1e-7)
+            _, dist = self.actor(state)
 
             # calculate ratios
-            new_log_prob = new_dist.log_prob(action)
-            ratio = (new_log_prob - old_log_prob).exp()
+            log_prob = dist.log_prob(action)
+            ratio = (log_prob - old_log_prob).exp()
 
             # actor_loss
-            surr_loss = ratio * advantage
+            surr_loss = ratio * adv
             clipped_surr_loss = torch.clamp(
                                     ratio,
                                     1.0 - hyper_params['EPSILON'],
-                                    1.0 + hyper_params['EPSILON']) * advantage
+                                    1.0 + hyper_params['EPSILON']) * adv
             actor_loss = -torch.min(surr_loss, clipped_surr_loss).mean()
 
             # critic_loss
-            critic_loss = F.mse_loss(value, return_)
+            critic_loss = F.smooth_l1_loss(value, return_)
 
             # entropy
-            entropy = new_dist.entropy().mean()
+            entropy = dist.entropy().mean()
 
             # total_loss
             total_loss = \
@@ -229,7 +226,7 @@ class Agent(object):
                 state = next_state
                 score += reward
 
-                if len(self.memory) % hyper_params['HORIZON'] == 0:
+                if len(self.memory) % hyper_params['ROLLOUT_LENGTH'] == 0:
                     loss = self.update_model()
                     self.memory.clear()
 

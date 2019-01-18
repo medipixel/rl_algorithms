@@ -161,14 +161,15 @@ class Agent(object):
         curr_returns = rewards + (hyper_params['GAMMA'] * next_values * masks)
         curr_returns = curr_returns.to(self.device)
 
-        # train critic
+        # crittic loss
         values = self.critic_local(states, actions)
         critic_loss = F.mse_loss(values, curr_returns)
+
+        # train critic
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
         self.critic_optimizer.step()
 
-        # train actor: pg loss + BC loss
         # policy loss
         actions = self.actor_local(states)
         policy_loss = -self.critic_local(states, actions).mean()
@@ -176,13 +177,14 @@ class Agent(object):
         # bc loss
         pred_actions = self.actor_local(demo_states)
         qf_mask = \
-            torch.gt(self.critic_local(demo_states,
-                                       demo_actions),
-                     self.critic_local(demo_states,
-                                       pred_actions)).to(self.device)
+            torch.gt(
+                self.critic_local(demo_states, demo_actions),
+                self.critic_local(demo_states, pred_actions)).to(self.device)
         qf_mask = qf_mask.float()
         bc_loss = F.mse_loss(torch.mul(pred_actions, qf_mask),
                              torch.mul(demo_actions, qf_mask))
+
+        # train actor: pg loss + BC loss
         actor_loss = self.lambda1 * policy_loss + self.lambda2 * bc_loss
 
         self.actor_optimizer.zero_grad()

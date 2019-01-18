@@ -30,14 +30,15 @@ def decompose_memory(memory):
 
 
 def ppo_iter(epoch, mini_batch_size, states,
-             log_probs, actions, rewards, dones):
+             log_probs, actions, returns, advantages):
     """Yield mini-batches."""
     batch_size = states.size(0)
     for _ in range(epoch):
         for _ in range(batch_size // mini_batch_size):
             rand_ids = np.random.randint(0, batch_size, mini_batch_size)
             yield states[rand_ids, :], log_probs[rand_ids, :], \
-                actions[rand_ids, :], rewards[rand_ids, :], dones[rand_ids, :]
+                actions[rand_ids, :], returns[rand_ids, :], \
+                advantages[rand_ids, :]
 
 
 # taken from https://github.com/ikostrikov/pytorch-trpo
@@ -59,5 +60,9 @@ def get_gae(rewards, values, dones, gamma, lambd):
         prev_return = returns[i, 0]
         prev_value = values.data[i, 0]
         prev_advantage = advantages[i, 0]
+
+    # normalize advantages
+    advantages = (advantages - advantages.mean()) /\
+                 (advantages.std() + 1e-7)
 
     return returns, advantages
