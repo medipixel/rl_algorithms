@@ -18,9 +18,9 @@ import torch.optim as optim
 
 import wandb
 
-from baselines.ddpg.model import Actor, Critic
-from baselines.noise import OUNoise
-from baselines.replay_buffer import ReplayBuffer
+from algorithms.ddpg.model import Actor, Critic
+from algorithms.noise import OUNoise
+from algorithms.replay_buffer import ReplayBuffer
 
 
 # hyper parameters
@@ -34,7 +34,7 @@ hyper_params = {
         'EPISODE_NUM': 1500,
         'LAMBDA1': 1e-3,
         'LAMBDA2': 1.0,
-        'DEMO_PATH': "baselines/bc/demo_memory.pkl",
+        'DEMO_PATH': "data/lunarlander_continuous_demo.pkl",
 }
 
 
@@ -100,8 +100,8 @@ class Agent(object):
             hyper_params['LAMBDA2'] / hyper_params['DEMO_BATCH_SIZE']
 
         # load the optimizer and model parameters
-        if args.model_path is not None and os.path.exists(args.model_path):
-            self.load_params(args.model_path)
+        if args.load_from is not None and os.path.exists(args.load_from):
+            self.load_params(args.load_from)
 
         # noise instance to make randomness of action
         self.noise = OUNoise(action_dim, self.args.seed,

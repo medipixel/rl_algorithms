@@ -18,8 +18,7 @@ class ReplayBuffer:
     def __init__(self, buffer_size, batch_size, seed, device, demo=None):
         """Initialize a ReplayBuffer object."""
         self.device = device
-        # self.memory = deque(maxlen=buffer_size)  # internal memory (deque)
-        self.memory = demo if demo else deque(maxlen=buffer_size)
+        self.memory = deque(maxlen=buffer_size) if not demo else demo
         self.batch_size = batch_size
         self.seed = random.seed(seed)
 

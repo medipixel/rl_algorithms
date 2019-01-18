@@ -1,35 +1,36 @@
 # -*- coding: utf-8 -*-
-"""Deep Deterministic Policy Gradient Algorithm.
+"""Deterministic Policy Gradient Algorithm.
 
-This module demonstrates DDPG model on the environment
+This module demonstrates DPG on-policy model on the environment
 with continuous action space in OpenAI Gym.
 
 - Author: Curt Park
 - Contact: curt.park@medipixel.io
-- Paper: https://arxiv.org/pdf/1509.02971.pdf
+- Paper: http://proceedings.mlr.press/v32/silver14.pdf
 """
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 class Actor(nn.Module):
-    """DDPG actor model with simple FC layers.
+    """DPG actor model with simple FC layers.
 
     Args:
         state_dim (int): dimension of state space
         action_dim (int): dimension of action space
         action_low (float): lower bound of the action value
         action_high (float): upper bound of the action value
-        device (str): device selection (cpu / gpu)
+        device (torch.device): device selection (cpu / gpu)
 
     Attributes:
-        actor (nn.Sequential): actor model with FC layers
         state_dim (int): dimension of state space
         action_dim (int): dimension of action space
         action_low (float): lower bound of the action value
         action_high (float): upper bound of the action value
-        device (str): device selection (cpu / gpu)
+        actor (nn.Sequential): actor model with FC layers
+        device (torch.device): device selection (cpu / gpu)
 
     """
 
@@ -37,6 +38,7 @@ class Actor(nn.Module):
                  action_low, action_high, device):
         """Initialization."""
         super(Actor, self).__init__()
+
         self.device = device
 
         self.state_dim = state_dim
@@ -78,44 +80,40 @@ class Actor(nn.Module):
 
 
 class Critic(nn.Module):
-    """DDPG critic model with simple FC layers.
+    """DPG critic model with simple FC layers.
 
     Args:
         state_dim (int): dimension of state space
         action_dim (int): dimension of action space
-        device (torch.device): cpu or cuda
+        device (torch.device): device selection (cpu / gpu)
 
     Attributes:
         state_dim (int): dimension of state space
         action_dim (int): dimension of action space
         critic (nn.Sequential): critic model with FC layers
+        device (torch.device): device selection (cpu / gpu)
 
     """
 
     def __init__(self, state_dim, action_dim, device):
         """Initialization."""
         super(Critic, self).__init__()
+
         self.device = device
 
         self.state_dim = state_dim
         self.action_dim = action_dim
 
-        self.critic = nn.Sequential(
-                        nn.Linear(self.state_dim+self.action_dim, 24),
-                        nn.ReLU(),
-                        nn.Linear(24, 48),
-                        nn.ReLU(),
-                        nn.Linear(48, 24),
-                        nn.ReLU(),
-                        nn.Linear(24, 1),
-                     )
+        self.fc1 = nn.Linear(self.state_dim+self.action_dim, 24)
+        self.fc2 = nn.Linear(24, 48)
+        self.fc3 = nn.Linear(48, 24)
+        self.fc4 = nn.Linear(24, 1)
 
     def forward(self, state, action):
         """Forward method implementation.
 
         Args:
             state (numpy.ndarray): input vector on the state space
-            action (torch.Tensor): input tensor on the action space
 
         Returns:
             predicted state value
@@ -124,6 +122,9 @@ class Critic(nn.Module):
         state = torch.tensor(state).float().to(self.device)
 
         x = torch.cat((state, action), dim=-1)  # concat action
-        predicted_value = self.critic(x)
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = F.relu(self.fc3(x))
+        predicted_value = self.fc4(x)
 
         return predicted_value
