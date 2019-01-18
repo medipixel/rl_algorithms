@@ -11,7 +11,7 @@ This module has TRPO util functions.
 import math
 import numpy as np
 import torch
-from torch.autograd import Variable
+from torch.distributions.kl import kl_divergence
 
 
 # device selection: cpu / gpu
@@ -67,7 +67,7 @@ def get_flat_grad_from(net, grad_grad=False):
 
 
 # taken from https://github.com/ikostrikov/pytorch-trpo
-def get_ret_and_gae(rewards, values, dones, gamma, lambd):
+def get_gae(rewards, values, dones, gamma, lambd):
     """Calculate returns and GAEs."""
     masks = 1 - dones
     returns = torch.zeros_like(rewards)
@@ -119,7 +119,6 @@ def linesearch(model, f, x, fullstep, expected_improve_rate,
     at the initial point.
     """
     fval = f(True).data
-    # print("fval before", fval.item())
     for (_n_backtracks, stepfrac) in enumerate(.5**np.arange(max_backtracks)):
         xnew = x + torch.tensor(stepfrac).to(device) * fullstep
         set_flat_params_to(model, xnew)
@@ -127,11 +126,8 @@ def linesearch(model, f, x, fullstep, expected_improve_rate,
         actual_improve = fval - newfval
         expected_improve = expected_improve_rate * stepfrac
         ratio = actual_improve / expected_improve
-        # print("a/e/r", actual_improve.item(),
-        #       expected_improve.item(), ratio.item())
 
         if ratio.item() > accept_ratio and actual_improve.item() > 0:
-            # print("fval after", newfval.item())
             return True, xnew
     return False, x
 
@@ -146,66 +142,58 @@ def normal_log_density(x, mean, log_std, std):
 
 
 # taken from https://github.com/ikostrikov/pytorch-trpo
-def trpo_step(model, states, actions, advantages, max_kl, damping):
+def trpo_step(old_actor, actor, states, actions,
+              advantages, max_kl, damping):
     """Calculate TRPO loss."""
-    means, log_stds, stds = model(states)
-    fixed_log_prob = normal_log_density(actions, means,
-                                        log_stds, stds).data.clone()
+    _, old_dist = old_actor(states)
+    old_log_prob = old_dist.log_prob(actions)
 
     def get_loss(volatile=False):
         if volatile:
             with torch.no_grad():
-                means, log_stds, stds = model(states)
+                _, dist = actor(states)
         else:
-            means, log_stds, stds = model(states)
+            _, dist = actor(states)
 
-        log_prob = normal_log_density(actions, means, log_stds, stds)
-        action_loss = -advantages * torch.exp(log_prob - fixed_log_prob)
-        return action_loss.mean()
+        log_prob = dist.log_prob(actions)
+        loss = -advantages * torch.exp(log_prob - old_log_prob)
+
+        return loss.mean()
 
     def get_kl():
-        # TODO: check this calculation is correct.
-        mean1, log_std1, std1 = model(states)
+        _, dist = actor(states)
 
-        mean0 = Variable(mean1.data)
-        log_std0 = Variable(log_std1.data)
-        std0 = Variable(std1.data)
-        kl = log_std1 - log_std0 + (std0.pow(2) + (mean0 - mean1).pow(2)) / \
-            (2.0 * std1.pow(2)) - 0.5
-        return kl.sum(1, keepdim=True)
+        return kl_divergence(old_dist, dist).sum(1, keepdim=True)
 
     loss = get_loss()
-    grads = torch.autograd.grad(loss, model.parameters())
+    grads = torch.autograd.grad(loss, actor.parameters())
     loss_grad = torch.cat([grad.view(-1) for grad in grads]).data
 
     def Fvp(v):
         kl = get_kl()
         kl = kl.mean()
 
-        grads = torch.autograd.grad(kl, model.parameters(), create_graph=True)
+        grads = torch.autograd.grad(kl, actor.parameters(), create_graph=True)
         flat_grad_kl = torch.cat([grad.view(-1) for grad in grads])
 
         kl_v = (flat_grad_kl * v).sum()
-        grads = torch.autograd.grad(kl_v, model.parameters())
+        grads = torch.autograd.grad(kl_v, actor.parameters())
         flat_grad_grad_kl = torch.cat([grad.contiguous().view(-1)
                                        for grad in grads]).data
 
         return flat_grad_grad_kl + v * damping
 
     stepdir = conjugate_gradients(Fvp, -loss_grad, 10)
-
     shs = 0.5 * (stepdir * Fvp(stepdir)).sum(0, keepdim=True)
-
     lm = torch.sqrt(shs / max_kl)
     fullstep = stepdir / lm[0]
-
     neggdotstepdir = (-loss_grad * stepdir).sum(0, keepdim=True)
-    # print(("lagrange multiplier:", lm[0], "grad_norm:", loss_grad.norm()))
+    prev_params = get_flat_params_from(actor)
 
-    prev_params = get_flat_params_from(model)
-    success, new_params = linesearch(model, get_loss, prev_params, fullstep,
+    success, new_params = linesearch(actor, get_loss, prev_params, fullstep,
                                      neggdotstepdir / lm[0])
-    set_flat_params_to(model, new_params)
+
+    set_flat_params_to(actor, new_params)
 
     return loss
 

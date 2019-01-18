@@ -8,68 +8,29 @@
 
 import os
 import git
-import argparse
 from collections import deque
 
-import gym
 import torch
-import torch.nn as nn
 import scipy.optimize
 
-import utils
-from models import Actor, Critic
+from baselines.trpo.model import Actor, Critic
+import baselines.trpo.utils as trpo_utils
 
-# import wandb  # 'wandb off' in the shell makes this diabled
+import wandb
 
 
-# configurations
-parser = argparse.ArgumentParser(description='TRPO with continuous\
-                                             action example by Pytorch')
-parser.add_argument('--gamma', type=float, default=0.98,
-                    help='discount factor for rewards')
-parser.add_argument('--lambd', type=float, default=0.92,
-                    help='discount factor for advantages')
-parser.add_argument('--max-kl', type=float, default=1e-2,
-                    help='max kl value (default: 1e-2)')
-parser.add_argument('--damping', type=float, default=1e-1,
-                    help='damping (default: 1e-1)')
-parser.add_argument('--l2-reg', type=float, default=1e-3,
-                    help='l2 regularization regression (default: 1e-3)')
-parser.add_argument('--seed', type=int, default=777,
-                    help='random seed for reproducibility')
-parser.add_argument('--env', type=str, default='LunarLanderContinuous-v2',
-                    help='openai gym environment name\
-                          (continuous action only)')
-parser.add_argument('--episodes-per-batch', type=int, default=20,
-                    help='the number of episodes per batch')
-parser.add_argument('--max-episode-steps', type=int, default=300,
-                    help='max steps per episode')
-parser.add_argument('--episode-num', type=int, default=2000,
-                    help='total episode number')
-parser.add_argument('--model-path', type=str,
-                    help='load the saved model and optimizer at the beginning')
-parser.add_argument('--render-after', type=int, default=0,
-                    help='start rendering after the input number of episode')
-parser.add_argument('--no-render', dest='render', action='store_false',
-                    help='turn off rendering')
-parser.set_defaults(render=True)
-parser.set_defaults(model_path=None)
-args = parser.parse_args()
-
-# initialization
-env = gym.make(args.env)
-env._max_episode_steps = args.max_episode_steps
-state_dim = env.observation_space.shape[0]
-action_dim = env.action_space.shape[0]
-action_low = float(env.action_space.low[0])
-action_high = float(env.action_space.high[0])
-
-# set random seed
-env.seed(args.seed)
-torch.manual_seed(args.seed)
-
-# device selection: cpu / gpu
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+# hyper parameters
+hyper_params = {
+        'GAMMA': 0.95,
+        'LAMBDA': 0.9,
+        'MAX_KL': 1e-2,
+        'DAMPING': 1e-1,
+        'L2_REG': 1e-3,
+        'LBFGS_MAX_ITER': 200,
+        'BATCH_SIZE': 256,
+        'MAX_EPISODE_STEPS': 300,
+        'EPISODE_NUM': 1500
+}
 
 
 class Agent(object):
@@ -77,32 +38,47 @@ class Agent(object):
 
     Attributes:
         env (gym.Env): openAI Gym environment with discrete action space
+        args (dict): arguments including hyperparameters and training setting
+        memory (deque): memory for on-policy training
+        device (str): device selection (cpu / gpu)
         actor (nn.Module): policy gradient model to select actions
         critic (nn.Module): policy gradient model to predict values
 
     Args:
         env (gym.Env): openAI Gym environment with discrete action space
-        actor (nn.Module): policy gradient model to select actions
-        critic (nn.Module): policy gradient model to select actions
+        args (dict): arguments including hyperparameters and training settings
+        device (str): device selection (cpu / gpu)
 
     """
 
-    def __init__(self, env, actor, critic):
+    def __init__(self, env, args, device):
         """Initialization."""
-        assert(issubclass(type(env), gym.Env))
-        assert(issubclass(type(actor), nn.Module))
-        assert(issubclass(type(critic), nn.Module))
-
         self.env = env
-        self.actor = actor
-        self.critic = critic
-        if args.model_path is not None and os.path.exists(args.model_path):
-            self.load_params(args.model_path)
+        self.args = args
+        self.device = device
         self.memory = deque()
+        state_dim = self.env.observation_space.shape[0]
+        action_dim = self.env.action_space.shape[0]
+        action_low = float(self.env.action_space.low[0])
+        action_high = float(self.env.action_space.high[0])
+
+        # environment setup
+        self.env._max_episode_steps = hyper_params['MAX_EPISODE_STEPS']
+
+        # create models
+        self.actor = Actor(state_dim, action_dim,
+                           action_low, action_high, device).to(device)
+        self.critic = Critic(state_dim, action_dim, device).to(device)
+        self.old_actor = Actor(state_dim, action_dim, action_low,
+                               action_high, device).to(device)
+
+        # load model parameters
+        if args.load_from is not None and os.path.exists(args.load_from):
+            self.load_params(args.load_from)
 
     def select_action(self, state):
         """Select an action from the input space."""
-        selected_action, _, _ = self.actor(state)
+        selected_action, dist = self.actor(state)
 
         return selected_action
 
@@ -110,40 +86,47 @@ class Agent(object):
         """Take an action and return the response of the env."""
         action = action.detach().to('cpu').numpy()
         next_state, reward, done, _ = self.env.step(action)
+
         self.memory.append([state, action, reward, done])
 
         return next_state, reward, done
 
-    def train(self):
+    def update_model(self):
         """Train the model after every N episodes."""
-        states, actions, rewards, dones = utils.decompose_memory(self.memory)
-        values = self.critic(states)
+        self.old_actor.load_state_dict(self.actor.state_dict())
+
+        states, actions, rewards, dones =\
+            trpo_utils.decompose_memory(self.memory)
 
         # calculate returns and gae
-        returns, advantages = utils.get_ret_and_gae(rewards, values, dones,
-                                                    args.gamma,
-                                                    args.lambd)
-
-        # normalize the advantages
-        advantages = (advantages - advantages.mean()) /\
-                     (advantages.std() + 1e-7)
-
-        # train actor
-        actor_loss = utils.trpo_step(self.actor, states, actions, advantages,
-                                     args.max_kl, args.damping)
+        values = self.critic(states)
+        returns, advantages = trpo_utils.get_gae(rewards, values, dones,
+                                                 hyper_params['GAMMA'],
+                                                 hyper_params['LAMBDA'])
 
         # train critic
         targets = returns.detach()
-        get_value_loss = utils.ValueLoss(self.critic, states,
-                                         targets, args.l2_reg)
+        get_value_loss = trpo_utils.ValueLoss(self.critic,
+                                              states,
+                                              targets,
+                                              hyper_params['L2_REG'])
         flat_params, _, _ = \
             scipy.optimize.fmin_l_bfgs_b(
                     get_value_loss,
-                    utils.get_flat_params_from(
+                    trpo_utils.get_flat_params_from(
                      self.critic).to('cpu').double().numpy(),
-                    maxiter=25)
-        utils.set_flat_params_to(self.critic, torch.Tensor(flat_params))
+                    maxiter=hyper_params['LBFGS_MAX_ITER'])
+        trpo_utils.set_flat_params_to(self.critic,
+                                      torch.Tensor(flat_params))
         critic_loss = (self.critic(states) - targets).pow(2).mean()
+
+        # train actor
+        advantages = (advantages - advantages.mean()) /\
+                     (advantages.std() + 1e-7)
+        actor_loss = trpo_utils.trpo_step(self.old_actor, self.actor,
+                                          states, actions, advantages,
+                                          hyper_params['MAX_KL'],
+                                          hyper_params['DAMPING'])
 
         # for logging
         total_loss = actor_loss + critic_loss
@@ -176,22 +159,22 @@ class Agent(object):
         torch.save(params, path)
         print('[INFO] saved the model and optimizer to', path)
 
-    def run(self):
-        """Run the agent."""
+    def train(self):
+        """Train the agent."""
         # logger
-#         wandb.init()
-#         wandb.config.update(args)
-#         wandb.watch(self.actor, log='parameters')
-#         wandb.watch(self.critic, log='parameters')
+        if self.args.log:
+            wandb.init()
+            wandb.config.update(hyper_params)
+            wandb.watch([self.actor, self.critic], log='parameters')
 
-        scores = []
-        for i_episode in range(args.episode_num):
+        loss = 0
+        for i_episode in range(1, hyper_params['EPISODE_NUM']+1):
             state = self.env.reset()
             done = False
             score = 0
 
             while not done:
-                if args.render and i_episode >= args.render_after:
+                if self.args.render and i_episode >= self.args.render_after:
                     self.env.render()
 
                 action = self.select_action(state)
@@ -199,26 +182,42 @@ class Agent(object):
 
                 state = next_state
                 score += reward
+
+                if len(self.memory) % hyper_params['BATCH_SIZE'] == 0:
+                    loss = self.update_model()
+                    self.memory.clear()
+
             else:
-                scores.append(score)
+                print('[INFO] episode %d\ttotal score: %d\trecent loss: %f'
+                      % (i_episode+1, score, loss))
 
-            # train every self.args.epicodes_per_batch
-            if i_episode % args.episodes_per_batch == 0:
-                loss = self.train()
-                avg_score = sum(scores) / len(scores)
-                scores.clear()
-
-                print('[INFO] episode %d\ttotal score: %d\tloss: %f'
-                      % (i_episode, avg_score, loss))
-#                wandb.log({'score': avg_score, 'loss': loss})
+                if self.args.log:
+                    wandb.log({'recent loss': loss, 'score': score})
 
         # termination
         self.env.close()
-        self.save_params(args.episode_num)
+        self.save_params(hyper_params['EPISODE_NUM'])
 
+    def test(self):
+        """Test the agent."""
+        for i_episode in range(hyper_params['EPISODE_NUM']):
+            state = self.env.reset()
+            done = False
+            score = 0
 
-if __name__ == '__main__':
-    actor = Actor(state_dim, action_dim).to(device)
-    critic = Critic(state_dim, action_dim).to(device)
-    agent = Agent(env, actor, critic)
-    agent.run()
+            while not done:
+                if self.args.render and i_episode >= self.args.render_after:
+                    self.env.render()
+
+                action = self.select_action(state)
+                next_state, reward, done = self.step(state, action)
+
+                state = next_state
+                score += reward
+
+            else:
+                print('[INFO] episode %d\ttotal score: %d'
+                      % (i_episode, score))
+
+        # termination
+        self.env.close()

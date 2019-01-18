@@ -37,23 +37,19 @@ class Agent(object):
 
     Attributes:
         env (gym.Env): openAI Gym environment with continuous action space
+        args (dict): arguments including hyperparameters and training settings
+        memory (ReplayBuffer): replay memory
+        noise (OUNoise): random noise for exploration
+        device (str): device selection (cpu / gpu)
         actor_local (nn.Module): actor model to select actions
         actor_target (nn.Module): target actor model to select actions
         critic_local (nn.Module): critic model to predict state values
         critic_target (nn.Module): target critic model to predict state values
         actor_optimizer (Optimizer): optimizer for training actor
         critic_optimizer (Optimizer): optimizer for training critic
-        args (dict): arguments including hyperparameters and training settings
-        noise (OUNoise): random noise for exploration
-        memory (ReplayBuffer): replay memory
-        device (str): device selection (cpu / gpu)
 
     Args:
         env (gym.Env): openAI Gym environment with discrete action space
-        actor_local (nn.Module): actor model to select actions
-        actor_target (nn.Module): target actor model to select actions
-        critic_local (nn.Module): critic model to predict state values
-        critic_target (nn.Module): target critic model to predict state values
         args (dict): arguments including hyperparameters and training settings
         device (str): device selection (cpu / gpu)
 
@@ -93,8 +89,8 @@ class Agent(object):
                                            lr=1e-3)
 
         # load the optimizer and model parameters
-        if args.model_path is not None and os.path.exists(args.model_path):
-            self.load_params(args.model_path)
+        if args.load_from is not None and os.path.exists(args.load_from):
+            self.load_params(args.load_from)
 
         # noise instance to make randomness of action
         self.noise = OUNoise(action_dim, self.args.seed,
@@ -220,7 +216,7 @@ class Agent(object):
             wandb.watch([self.actor_local, self.critic_local],
                         log='parameters')
 
-        for i_episode in range(hyper_params['EPISODE_NUM']):
+        for i_episode in range(1, hyper_params['EPISODE_NUM']+1):
             state = self.env.reset()
             done = False
             score = 0
@@ -243,7 +239,7 @@ class Agent(object):
             else:
                 avg_loss = np.array(loss_episode).mean()
                 print('[INFO] episode %d\ttotal score: %d\tloss: %f'
-                      % (i_episode+1, score, avg_loss))
+                      % (i_episode, score, avg_loss))
 
                 if self.args.log:
                     wandb.log({'score': score, 'avg_loss': avg_loss})

@@ -84,11 +84,12 @@ class Critic(nn.Module):
     Args:
         state_dim (int): dimension of state space
         action_dim (int): dimension of action space
+        device (str): device selection (cpu / gpu)
 
     Attributes:
         state_dim (int): dimension of state space
         action_dim (int): dimension of action space
-        critic (nn.Sequential): critic model with FC layers
+        device (str): device selection (cpu / gpu)
 
     """
 
