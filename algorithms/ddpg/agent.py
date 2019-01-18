@@ -16,9 +16,9 @@ import torch.optim as optim
 
 import wandb
 
-from baselines.ddpg.model import Actor, Critic
-from baselines.noise import OUNoise
-from baselines.replay_buffer import ReplayBuffer
+from algorithms.ddpg.model import Actor, Critic
+from algorithms.noise import OUNoise
+from algorithms.replay_buffer import ReplayBuffer
 
 
 # hyper parameters

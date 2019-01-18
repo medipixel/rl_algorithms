@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
-"""DPG agent for episodic tasks in OpenAI Gym.
+"""Actor-Critic agent for episodic tasks in OpenAI Gym.
 
 - Author: Curt Park
 - Contact: curt.park@medipixel.io
-- Paper: http://proceedings.mlr.press/v32/silver14.pdf
 """
 
 import os
@@ -16,12 +15,13 @@ import torch.optim as optim
 
 import wandb
 
-from baselines.dpg.model import Actor, Critic
+from algorithms.ac.model import ActorCritic
 
 
 # hyper parameters
 hyper_params = {
         'GAMMA': 0.99,
+        'STD': 1.0,
         'MAX_EPISODE_STEPS': 500,
         'EPISODE_NUM': 1500
 }
@@ -37,85 +37,81 @@ class Agent(object):
 
     Attributes:
         env (gym.Env): openAI Gym environment with discrete action space
-        actor (nn.Module): actor model to select actions
-        critic (nn.Module): critic model to predict values
+        model (nn.Module): policy gradient model to select actions
         args (dict): arguments including hyperparameters and training settings
-        actor_optimizer (Optimizer): actor optimizer for training
-        critic_optimizer (Optimizer): critic optimizer for training
+        optimizer (Optimizer): optimizer for training
         device (torch.device): device selection (cpu / gpu)
 
     """
 
     def __init__(self, env, args, device):
         """Initialization."""
-        # environment setup
+        self.args = args
+        self.device = device
         self.env = env
+
+        # environment setup
         self.env._max_episode_steps = hyper_params['MAX_EPISODE_STEPS']
 
         # create a model
-        self.device = device
         state_dim = self.env.observation_space.shape[0]
         action_dim = self.env.action_space.shape[0]
         action_low = float(self.env.action_space.low[0])
         action_high = float(self.env.action_space.high[0])
-        self.actor = Actor(state_dim, action_dim, action_low,
-                           action_high, self.device).to(self.device)
-        self.critic = Critic(state_dim, action_dim,
-                             self.device).to(self.device)
+        self.model = ActorCritic(hyper_params['STD'], state_dim,
+                                 action_dim, action_low,
+                                 action_high).to(self.device)
 
         # create optimizer
-        self.actor_optimizer = optim.Adam(self.actor.parameters())
-        self.critic_optimizer = optim.Adam(self.critic.parameters())
+        self.optimizer = optim.Adam(self.model.parameters())
 
         # load stored parameters
         if args.load_from is not None and os.path.exists(args.load_from):
             self.load_params(args.load_from)
 
-        self.args = args
-
     def select_action(self, state):
         """Select an action from the input space."""
-        selected_action = self.actor(state)
+        state = torch.from_numpy(state).float().to(self.device)
+        selected_action, predicted_value, dist = self.model(state)
 
-        return selected_action
+        return (selected_action.detach().to('cpu').numpy(),
+                dist.log_prob(selected_action).sum(),
+                predicted_value)
 
     def step(self, action):
         """Take an action and return the response of the env."""
-        action = action.detach().to('cpu').numpy()
         next_state, reward, done, _ = self.env.step(action)
 
         return next_state, reward, done
 
-    def update_model(self, experience):
+    def update_model(self, done, log_prob, reward, next_state, curr_value):
         """Train the model after each episode."""
-        state, action, reward, next_state, done = experience
+        next_state = torch.tensor(next_state).float().to(self.device)
 
         # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
         #       = r                       otherwise
-        mask = 1 - done
-        value = self.critic(state, action)
-        next_action = self.actor(next_state)
-        next_value = self.critic(next_state, next_action).detach()
-        curr_return = reward + (hyper_params['GAMMA'] * next_value * mask)
-        curr_return = curr_return.to(self.device)
+        if not done:
+            next_value = self.model.critic(next_state).detach()
+            curr_return = reward + hyper_params['GAMMA'] * next_value
+        else:
+            curr_return = torch.tensor(reward)
 
-        # train critic
-        critic_loss = F.mse_loss(value, curr_return)
-        self.critic_optimizer.zero_grad()
-        critic_loss.backward()
-        self.critic_optimizer.step()
+        curr_return = curr_return.float().to(self.device)
 
-        # train actor
-        action = self.actor(state)
-        actor_loss = -self.critic(state, action).mean()
-        self.actor_optimizer.zero_grad()
-        actor_loss.backward()
-        self.actor_optimizer.step()
+        # delta = G_t - v(s_t)
+        delta = curr_return - curr_value.detach()
 
-        # for logging
-        total_loss = critic_loss + actor_loss
+        # calculate loss at the current step
+        policy_loss = -delta * log_prob  # delta is not backpropagated
+        value_loss = F.mse_loss(curr_value, curr_return)
+        loss = policy_loss + value_loss
 
-        return total_loss.data
+        # train
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+        return loss.data
 
     def load_params(self, path):
         """Load model and optimizer parameters."""
@@ -124,12 +120,8 @@ class Agent(object):
             return
 
         params = torch.load(path)
-        self.actor.load_state_dict(params['actor_state_dict'])
-        self.critic.load_state_dict(params['critic_state_dict'])
-        self.actor_optimizer.load_state_dict(
-                params['actor_optim_state_dict'])
-        self.critic_optimizer.load_state_dict(
-                params['critic_optim_state_dict'])
+        self.model.load_state_dict(params['model_state_dict'])
+        self.optimizer.load_state_dict(params['optim_state_dict'])
         print('[INFO] loaded the model and optimizer from', path)
 
     def save_params(self, n_episode):
@@ -138,19 +130,13 @@ class Agent(object):
             os.mkdir('./save')
 
         params = {
-                 'actor_state_dict':
-                 self.actor.state_dict(),
-                 'critic_state_dict':
-                 self.critic.state_dict(),
-                 'actor_optim_state_dict':
-                 self.actor_optimizer.state_dict(),
-                 'critic_optim_state_dict':
-                 self.critic_optimizer.state_dict()
+                 'model_state_dict': self.model.state_dict(),
+                 'optim_state_dict': self.optimizer.state_dict()
                  }
 
         repo = git.Repo(search_parent_directories=True)
         sha = repo.head.object.hexsha
-        path = os.path.join('./save/dpg_continuous_' +
+        path = os.path.join('./save/actor_critic_' +
                             sha[:7] +
                             '_ep_' +
                             str(n_episode)+'.pt')
@@ -163,8 +149,7 @@ class Agent(object):
         if self.args.log:
             wandb.init()
             wandb.config.update(hyper_params)
-            wandb.watch(self.actor, log='parameters')
-            wandb.watch(self.critic, log='parameters')
+            wandb.watch(self.model, log='parameters')
 
         for i_episode in range(1, hyper_params['EPISODE_NUM']+1):
             state = self.env.reset()
@@ -176,15 +161,14 @@ class Agent(object):
                 if self.args.render and i_episode >= self.args.render_after:
                     self.env.render()
 
-                action = self.select_action(state)
+                action, log_prob, predicted_value = self.select_action(state)
                 next_state, reward, done = self.step(action)
-                loss = self.update_model((state, action, reward,
-                                          next_state, done))
+                loss = self.update_model(done, log_prob, reward,
+                                         next_state, predicted_value)
+                loss_episode.append(loss)
 
                 state = next_state
                 score += reward
-
-                loss_episode.append(loss)  # for logging
 
             else:
                 avg_loss = np.array(loss_episode).mean()
@@ -211,7 +195,7 @@ class Agent(object):
                 if self.args.render and i_episode >= self.args.render_after:
                     self.env.render()
 
-                action = self.select_action(state)
+                action, log_prob, predicted_value = self.select_action(state)
                 next_state, reward, done = self.step(action)
 
                 state = next_state

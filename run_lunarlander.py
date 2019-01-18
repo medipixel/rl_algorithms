@@ -42,19 +42,19 @@ policy_gradients = {'ac', 'reinforce', 'dpg', 'ddpg', 'trpo', 'ppo', 'bc'}
 
 # import the agent
 if args.algo == 'reinforce':
-    from baselines.reinforce.agent import Agent
+    from algorithms.reinforce.agent import Agent
 elif args.algo == 'ac':
-    from baselines.ac.agent import Agent
+    from algorithms.ac.agent import Agent
 elif args.algo == 'dpg':
-    from baselines.dpg.agent import Agent
+    from algorithms.dpg.agent import Agent
 elif args.algo == 'ddpg':
-    from baselines.ddpg.agent import Agent
+    from algorithms.ddpg.agent import Agent
 elif args.algo == 'trpo':
-    from baselines.trpo.agent import Agent
+    from algorithms.trpo.agent import Agent
 elif args.algo == 'ppo':
-    from baselines.ppo.agent import Agent
+    from algorithms.ppo.agent import Agent
 elif args.algo == 'bc':
-    from baselines.bc.agent import Agent
+    from algorithms.bc.agent import Agent
 
 
 def main():

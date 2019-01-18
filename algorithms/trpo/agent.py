@@ -14,8 +14,8 @@ from collections import deque
 import torch
 import scipy.optimize
 
-from baselines.trpo.model import Actor, Critic
-import baselines.trpo.utils as trpo_utils
+from algorithms.trpo.model import Actor, Critic
+import algorithms.trpo.utils as trpo_utils
 
 import wandb
 

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Actor-Critic agent for episodic tasks in OpenAI Gym.
+"""Reinforce agent for episodic tasks in OpenAI Gym.
 
 - Author: Curt Park
 - Contact: curt.park@medipixel.io
@@ -7,7 +7,7 @@
 
 import os
 import git
-import numpy as np
+from collections import deque
 
 import torch
 import torch.nn.functional as F
@@ -15,7 +15,7 @@ import torch.optim as optim
 
 import wandb
 
-from baselines.ac.model import ActorCritic
+from algorithms.reinforce.model import ActorCritic
 
 
 # hyper parameters
@@ -28,7 +28,7 @@ hyper_params = {
 
 
 class Agent(object):
-    """ActorCritic interacting with environment.
+    """ReinforceAgent interacting with environment.
 
     Args:
         env (gym.Env): openAI Gym environment with discrete action space
@@ -40,15 +40,21 @@ class Agent(object):
         model (nn.Module): policy gradient model to select actions
         args (dict): arguments including hyperparameters and training settings
         optimizer (Optimizer): optimizer for training
+        log_prob_sequence (list): log probabailities of an episode
+        predicted_value_sequence (list): predicted values of an episode
+        reward_sequence (list): rewards of an episode to calculate returns
         device (torch.device): device selection (cpu / gpu)
 
     """
 
     def __init__(self, env, args, device):
         """Initialization."""
+        self.env = env
         self.args = args
         self.device = device
-        self.env = env
+        self.log_prob_sequence = []
+        self.predicted_value_sequence = []
+        self.reward_sequence = []
 
         # environment setup
         self.env._max_episode_steps = hyper_params['MAX_EPISODE_STEPS']
@@ -74,44 +80,65 @@ class Agent(object):
         state = torch.from_numpy(state).float().to(self.device)
         selected_action, predicted_value, dist = self.model(state)
 
-        return (selected_action.detach().to('cpu').numpy(),
-                dist.log_prob(selected_action).sum(),
-                predicted_value)
+        self.log_prob_sequence.append(dist.log_prob(selected_action).sum())
+        self.predicted_value_sequence.append(predicted_value)
+
+        return selected_action.detach().to('cpu').numpy()
 
     def step(self, action):
         """Take an action and return the response of the env."""
         next_state, reward, done, _ = self.env.step(action)
 
+        # store rewards to calculate return values
+        self.reward_sequence.append(reward)
+
         return next_state, reward, done
 
-    def update_model(self, done, log_prob, reward, next_state, curr_value):
+    def update_model(self):
         """Train the model after each episode."""
-        next_state = torch.tensor(next_state).float().to(self.device)
+        return_value = 0  # initial return value
+        return_sequence = deque()
 
-        # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
-        #       = r                       otherwise
-        if not done:
-            next_value = self.model.critic(next_state).detach()
-            curr_return = reward + hyper_params['GAMMA'] * next_value
-        else:
-            curr_return = torch.tensor(reward)
+        # calculate return value at each step
+        for i in range(len(self.reward_sequence)-1, -1, -1):
+            return_value = self.reward_sequence[i] +\
+                           hyper_params['GAMMA'] *\
+                           return_value
+            return_sequence.appendleft(return_value)
 
-        curr_return = curr_return.float().to(self.device)
+        return_sequence = torch.tensor(return_sequence).to(self.device)
+        # standardize returns for better stability
+        return_sequence =\
+            (return_sequence - return_sequence.mean()) /\
+            (return_sequence.std() + 1e-7)
 
-        # delta = G_t - v(s_t)
-        delta = curr_return - curr_value.detach()
+        # calculate loss at each step
+        loss_sequence = []
+        for log_prob,\
+            return_value,\
+            predicted_value in zip(self.log_prob_sequence,
+                                   return_sequence,
+                                   self.predicted_value_sequence):
+            delta = return_value - predicted_value.detach()
 
-        # calculate loss at the current step
-        policy_loss = -delta * log_prob  # delta is not backpropagated
-        value_loss = F.mse_loss(curr_value, curr_return)
-        loss = policy_loss + value_loss
+            policy_loss = -delta*log_prob
+            value_loss = F.smooth_l1_loss(predicted_value, return_value)
+
+            loss = (policy_loss + value_loss)
+            loss_sequence.append(loss)
 
         # train
         self.optimizer.zero_grad()
-        loss.backward()
+        total_loss = torch.stack(loss_sequence).sum()
+        total_loss.backward()
         self.optimizer.step()
 
-        return loss.data
+        # clear
+        self.log_prob_sequence.clear()
+        self.predicted_value_sequence.clear()
+        self.reward_sequence.clear()
+
+        return total_loss.data
 
     def load_params(self, path):
         """Load model and optimizer parameters."""
@@ -136,7 +163,7 @@ class Agent(object):
 
         repo = git.Repo(search_parent_directories=True)
         sha = repo.head.object.hexsha
-        path = os.path.join('./save/actor_critic_' +
+        path = os.path.join('./save/reinforce_' +
                             sha[:7] +
                             '_ep_' +
                             str(n_episode)+'.pt')
@@ -144,7 +171,7 @@ class Agent(object):
         print('[INFO] saved the model and optimizer to', path)
 
     def train(self):
-        """Train the agent."""
+        """Run the agent."""
         # logger
         if self.args.log:
             wandb.init()
@@ -155,28 +182,23 @@ class Agent(object):
             state = self.env.reset()
             done = False
             score = 0
-            loss_episode = list()
 
             while not done:
                 if self.args.render and i_episode >= self.args.render_after:
                     self.env.render()
 
-                action, log_prob, predicted_value = self.select_action(state)
+                action = self.select_action(state)
                 next_state, reward, done = self.step(action)
-                loss = self.update_model(done, log_prob, reward,
-                                         next_state, predicted_value)
-                loss_episode.append(loss)
 
                 state = next_state
                 score += reward
 
             else:
-                avg_loss = np.array(loss_episode).mean()
+                loss = self.update_model()
                 print('[INFO] episode %d\ttotal score: %d\tloss: %f'
-                      % (i_episode, score, avg_loss))
-
+                      % (i_episode, score, loss))
                 if self.args.log:
-                    wandb.log({'score': score, 'avg_loss': avg_loss})
+                    wandb.log({'score': score, 'loss': loss})
 
                 if i_episode % self.args.save_period == 0:
                     self.save_params(i_episode)
@@ -195,7 +217,7 @@ class Agent(object):
                 if self.args.render and i_episode >= self.args.render_after:
                     self.env.render()
 
-                action, log_prob, predicted_value = self.select_action(state)
+                action = self.select_action(state)
                 next_state, reward, done = self.step(action)
 
                 state = next_state
