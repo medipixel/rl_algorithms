@@ -30,7 +30,7 @@ class ActorCritic(nn.Module):
         action_dim (int): dimension of action space
         action_low (float): lower bound of the action value
         action_high (float): upper bound of the action value
-        actor (nn.Sequential): actor model with FC layers
+        actor_mu (nn.Sequential): actor model for mu with FC layers
         critic (nn.Sequential): critic model with FC layers
 
     """

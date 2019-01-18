@@ -17,10 +17,14 @@ class ActorCritic(nn.Module):
     """Actor-Critic continuous action model with simple FC layers.
 
     Args:
+        std (float): standard deviation of the output distribution
         state_dim (int): dimension of state space
         action_dim (int): dimension of action space
+        action_low (float): lower bound of the action value
+        action_high (float): upper bound of the action value
 
     Attributes:
+        std (float): standard deviation of the output distribution
         state_dim (int): dimension of state space
         action_dim (int): dimension of action space
         actor_mu (nn.Sequential): actor model for mu with FC layers

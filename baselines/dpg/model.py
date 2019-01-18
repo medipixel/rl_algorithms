@@ -11,7 +11,6 @@ with continuous action space in OpenAI Gym.
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
 class Actor(nn.Module):
@@ -22,7 +21,7 @@ class Actor(nn.Module):
         action_dim (int): dimension of action space
         action_low (float): lower bound of the action value
         action_high (float): upper bound of the action value
-        device (str): device selection (cpu / gpu)
+        device (torch.device): device selection (cpu / gpu)
 
     Attributes:
         state_dim (int): dimension of state space
@@ -30,7 +29,7 @@ class Actor(nn.Module):
         action_low (float): lower bound of the action value
         action_high (float): upper bound of the action value
         actor (nn.Sequential): actor model with FC layers
-        device (str): device selection (cpu / gpu)
+        device (torch.device): device selection (cpu / gpu)
 
     """
 
@@ -85,13 +84,13 @@ class Critic(nn.Module):
     Args:
         state_dim (int): dimension of state space
         action_dim (int): dimension of action space
-        device (str): device selection (cpu / gpu)
+        device (torch.device): device selection (cpu / gpu)
 
     Attributes:
         state_dim (int): dimension of state space
         action_dim (int): dimension of action space
         critic (nn.Sequential): critic model with FC layers
-        device (str): device selection (cpu / gpu)
+        device (torch.device): device selection (cpu / gpu)
 
     """
 
@@ -104,10 +103,15 @@ class Critic(nn.Module):
         self.state_dim = state_dim
         self.action_dim = action_dim
 
-        self.fc1 = nn.Linear(self.state_dim+self.action_dim, 24)
-        self.fc2 = nn.Linear(24, 48)
-        self.fc3 = nn.Linear(48, 24)
-        self.fc4 = nn.Linear(24, 1)
+        self.critic = nn.Sequential(
+                        nn.Linear(self.state_dim+self.action_dim, 24),
+                        nn.ReLU(),
+                        nn.Linear(24, 48),
+                        nn.ReLU(),
+                        nn.Linear(48, 24),
+                        nn.ReLU(),
+                        nn.Linear(24, 1),
+                     )
 
     def forward(self, state, action):
         """Forward method implementation.
@@ -122,9 +126,6 @@ class Critic(nn.Module):
         state = torch.tensor(state).float().to(self.device)
 
         x = torch.cat((state, action), dim=-1)  # concat action
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = F.relu(self.fc3(x))
-        predicted_value = self.fc4(x)
+        predicted_value = self.critic(x)
 
         return predicted_value

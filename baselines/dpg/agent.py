@@ -30,19 +30,19 @@ hyper_params = {
 class Agent(object):
     """ActorCritic interacting with environment.
 
-    Attributes:
+    Args:
         env (gym.Env): openAI Gym environment with discrete action space
         args (dict): arguments including hyperparameters and training settings
-        device (str): device selection (cpu / gpu)
+        device (torch.device): device selection (cpu / gpu)
 
-    Args:
+    Attributes:
         env (gym.Env): openAI Gym environment with discrete action space
         actor (nn.Module): actor model to select actions
         critic (nn.Module): critic model to predict values
         args (dict): arguments including hyperparameters and training settings
         actor_optimizer (Optimizer): actor optimizer for training
         critic_optimizer (Optimizer): critic optimizer for training
-        device (str): device selection (cpu / gpu)
+        device (torch.device): device selection (cpu / gpu)
 
     """
 

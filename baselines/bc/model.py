@@ -14,7 +14,7 @@ import torch.nn as nn
 
 
 class Actor(nn.Module):
-    """DDPG actor model with simple FC layers.
+    """Behavior Cloning DDPG actor model with simple FC layers.
 
     Args:
         state_dim (int): dimension of state space
@@ -78,7 +78,7 @@ class Actor(nn.Module):
 
 
 class Critic(nn.Module):
-    """DDPG critic model with simple FC layers.
+    """Behavior Cloning DDPG critic model with simple FC layers.
 
     Args:
         state_dim (int): dimension of state space

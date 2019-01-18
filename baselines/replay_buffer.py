@@ -54,10 +54,7 @@ class ReplayBuffer:
         return (states, actions, rewards, next_states, dones)
 
     def replace(self, memory):
-        """
-        Replace memory to already exist memory
-        (i.e. demonstration memory)
-        """
+        """Replace memory to already exist memory."""
         self.memory = memory
 
     def __len__(self):
