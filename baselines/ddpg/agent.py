@@ -17,15 +17,16 @@ import torch.optim as optim
 import wandb
 
 from baselines.ddpg.model import Actor, Critic
-from baselines.ddpg.utils import ReplayBuffer, OUNoise
+from baselines.noise import OUNoise
+from baselines.replay_buffer import ReplayBuffer
 
 
 # hyper parameters
 hyper_params = {
         'GAMMA': 0.99,
         'TAU': 1e-3,
-        'BUFFER_SIZE': int(1e6),
-        'BATCH_SIZE': 64,
+        'BUFFER_SIZE': int(1e5),
+        'BATCH_SIZE': 128,
         'MAX_EPISODE_STEPS': 300,
         'EPISODE_NUM': 1500
 }
@@ -60,23 +61,25 @@ class Agent(object):
 
     def __init__(self, env, args, device):
         """Initialization."""
-        # environment setup
         self.env = env
-        self.env._max_episode_steps = hyper_params['MAX_EPISODE_STEPS']
-
-        # create models
+        self.args = args
         self.device = device
         state_dim = self.env.observation_space.shape[0]
         action_dim = self.env.action_space.shape[0]
         action_low = float(self.env.action_space.low[0])
         action_high = float(self.env.action_space.high[0])
-        self.actor_local = Actor(state_dim, action_dim,
-                                 action_low, action_high,
-                                 self.device).to(device)
-        self.actor_target = Actor(state_dim, action_dim,
-                                  action_low, action_high,
-                                  self.device).to(device)
+
+        # environment setup
+        self.env._max_episode_steps = hyper_params['MAX_EPISODE_STEPS']
+
+        # create actor
+        self.actor_local = Actor(state_dim, action_dim, action_low,
+                                 action_high, self.device).to(device)
+        self.actor_target = Actor(state_dim, action_dim, action_low,
+                                  action_high, self.device).to(device)
         self.actor_target.load_state_dict(self.actor_local.state_dict())
+
+        # create critic
         self.critic_local = Critic(state_dim, action_dim,
                                    self.device).to(device)
         self.critic_target = Critic(state_dim, action_dim,
@@ -93,12 +96,9 @@ class Agent(object):
         if args.model_path is not None and os.path.exists(args.model_path):
             self.load_params(args.model_path)
 
-        # arguments
-        self.args = args
-
         # noise instance to make randomness of action
-        action_dim = self.env.action_space.shape[0]
-        self.noise = OUNoise(action_dim, self.args.seed)
+        self.noise = OUNoise(action_dim, self.args.seed,
+                             theta=0., sigma=0.)
 
         # replay memory
         self.memory = ReplayBuffer(action_dim,
