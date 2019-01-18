@@ -244,8 +244,8 @@ class Agent(object):
         if self.args.log:
             wandb.init()
             wandb.config.update(hyper_params)
-            wandb.watch([self.actor_local, self.critic_local],
-                        log='parameters')
+            wandb.watch([self.actor_local, self.critic_local1,
+                         self.critic_local2], log='parameters')
 
         step = 0
         for i_episode in range(1, hyper_params['EPISODE_NUM']+1):
