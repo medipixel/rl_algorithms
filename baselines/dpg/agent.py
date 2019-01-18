@@ -10,48 +10,67 @@ import os
 import git
 import numpy as np
 
-import gym
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-# import wandb  # 'wandb off' in the shell makes this diabled
+import wandb
+
+from baselines.dpg.model import Actor, Critic
 
 
-# device selection: cpu / gpu
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+# hyper parameters
+hyper_params = {
+        'GAMMA': 0.99,
+        'MAX_EPISODE_STEPS': 500,
+        'EPISODE_NUM': 1500
+}
 
 
-class DPGAgent(object):
+class Agent(object):
     """ActorCritic interacting with environment.
 
     Attributes:
         env (gym.Env): openAI Gym environment with discrete action space
-        model (nn.Module): policy gradient model to select actions
         args (dict): arguments including hyperparameters and training settings
+        device (str): device selection (cpu / gpu)
 
     Args:
         env (gym.Env): openAI Gym environment with discrete action space
-        model (nn.Module): policy gradient model to select actions
+        actor (nn.Module): actor model to select actions
+        critic (nn.Module): critic model to predict values
         args (dict): arguments including hyperparameters and training settings
-        optimizer (Optimizer): optimizer for training
+        actor_optimizer (Optimizer): actor optimizer for training
+        critic_optimizer (Optimizer): critic optimizer for training
+        device (str): device selection (cpu / gpu)
 
     """
 
-    def __init__(self, env, actor, critic, args):
+    def __init__(self, env, args, device):
         """Initialization."""
-        assert(issubclass(type(env), gym.Env))
-        assert(issubclass(type(actor), nn.Module))
-        assert(issubclass(type(critic), nn.Module))
-
+        # environment setup
         self.env = env
-        self.actor = actor
-        self.critic = critic
-        self.actor_optimizer = optim.Adam(actor.parameters())
-        self.critic_optimizer = optim.Adam(critic.parameters())
+        self.env._max_episode_steps = hyper_params['MAX_EPISODE_STEPS']
+
+        # create a model
+        self.device = device
+        state_dim = self.env.observation_space.shape[0]
+        action_dim = self.env.action_space.shape[0]
+        action_low = float(self.env.action_space.low[0])
+        action_high = float(self.env.action_space.high[0])
+        self.actor = Actor(state_dim, action_dim, action_low,
+                           action_high, self.device).to(self.device)
+        self.critic = Critic(state_dim, action_dim,
+                             self.device).to(self.device)
+
+        # create optimizer
+        self.actor_optimizer = optim.Adam(self.actor.parameters())
+        self.critic_optimizer = optim.Adam(self.critic.parameters())
+
+        # load stored parameters
         if args.model_path is not None and os.path.exists(args.model_path):
             self.load_params(args.model_path)
+
         self.args = args
 
     def select_action(self, state):
@@ -67,17 +86,18 @@ class DPGAgent(object):
 
         return next_state, reward, done
 
-    def train(self, experience):
+    def update_model(self, experience):
         """Train the model after each episode."""
         state, action, reward, next_state, done = experience
 
         # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
         #       = r                       otherwise
+        mask = 1 - done
         value = self.critic(state, action)
         next_action = self.actor(next_state)
         next_value = self.critic(next_state, next_action).detach()
-        curr_return = reward + (self.args.gamma * next_value * (1 - done))
-        curr_return = curr_return.to(device)
+        curr_return = reward + (hyper_params['GAMMA'] * next_value * mask)
+        curr_return = curr_return.to(self.device)
 
         # train critic
         critic_loss = F.mse_loss(value, curr_return)
@@ -137,15 +157,16 @@ class DPGAgent(object):
         torch.save(params, path)
         print('[INFO] saved the model and optimizer to', path)
 
-    def run(self):
-        """Run the agent."""
+    def train(self):
+        """Train the agent."""
         # logger
-#        wandb.init()
-#        wandb.config.update(self.args)
-#        wandb.watch(self.actor, log='parameters')
-#        wandb.watch(self.critic, log='parameters')
+        if self.args.log:
+            wandb.init()
+            wandb.config.update(hyper_params)
+            wandb.watch(self.actor, log='parameters')
+            wandb.watch(self.critic, log='parameters')
 
-        for i_episode in range(self.args.episode_num):
+        for i_episode in range(hyper_params['EPISODE_NUM']):
             state = self.env.reset()
             done = False
             score = 0
@@ -157,7 +178,8 @@ class DPGAgent(object):
 
                 action = self.select_action(state)
                 next_state, reward, done = self.step(action)
-                loss = self.train((state, action, reward, next_state, done))
+                loss = self.update_model((state, action, reward,
+                                          next_state, done))
 
                 state = next_state
                 score += reward
@@ -167,9 +189,35 @@ class DPGAgent(object):
             else:
                 avg_loss = np.array(loss_episode).mean()
                 print('[INFO] episode %d\ttotal score: %d\tloss: %f'
-                      % (i_episode, score, avg_loss))
-#                wandb.log({'score': score, 'avg_loss': avg_loss})
+                      % (i_episode+1, score, avg_loss))
+
+                if self.args.log:
+                    wandb.log({'score': score, 'avg_loss': avg_loss})
 
         # termination
         self.env.close()
-        self.save_params(self.args.episode_num)
+        self.save_params(hyper_params['EPISODE_NUM'])
+
+    def test(self):
+        """Test the agent."""
+        for i_episode in range(hyper_params['EPISODE_NUM']):
+            state = self.env.reset()
+            done = False
+            score = 0
+
+            while not done:
+                if self.args.render and i_episode >= self.args.render_after:
+                    self.env.render()
+
+                action = self.select_action(state)
+                next_state, reward, done = self.step(action)
+
+                state = next_state
+                score += reward
+
+            else:
+                print('[INFO] episode %d\ttotal score: %d'
+                      % (i_episode, score))
+
+        # termination
+        self.env.close()

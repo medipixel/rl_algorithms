@@ -8,25 +8,31 @@
 
 import os
 import git
-import random
-import copy
 import numpy as np
-from collections import namedtuple, deque
 
-import gym
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-# import wandb  # 'wandb off' in the shell makes this diabled
+import wandb
+
+from baselines.ddpg.model import Actor, Critic
+from baselines.noise import OUNoise
+from baselines.replay_buffer import ReplayBuffer
 
 
-# device selection: cpu / gpu
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+# hyper parameters
+hyper_params = {
+        'GAMMA': 0.99,
+        'TAU': 1e-3,
+        'BUFFER_SIZE': int(1e5),
+        'BATCH_SIZE': 128,
+        'MAX_EPISODE_STEPS': 300,
+        'EPISODE_NUM': 1500
+}
 
 
-class DDPGAgent(object):
+class Agent(object):
     """ActorCritic interacting with environment.
 
     Attributes:
@@ -40,6 +46,7 @@ class DDPGAgent(object):
         args (dict): arguments including hyperparameters and training settings
         noise (OUNoise): random noise for exploration
         memory (ReplayBuffer): replay memory
+        device (str): device selection (cpu / gpu)
 
     Args:
         env (gym.Env): openAI Gym environment with discrete action space
@@ -48,50 +55,62 @@ class DDPGAgent(object):
         critic_local (nn.Module): critic model to predict state values
         critic_target (nn.Module): target critic model to predict state values
         args (dict): arguments including hyperparameters and training settings
+        device (str): device selection (cpu / gpu)
 
     """
 
-    def __init__(self, env, actor_local, actor_target,
-                 critic_local, critic_target, args):
+    def __init__(self, env, args, device):
         """Initialization."""
-        assert(issubclass(type(env), gym.Env))
-        assert(issubclass(type(actor_local), nn.Module))
-        assert(issubclass(type(actor_target), nn.Module))
-        assert(issubclass(type(critic_local), nn.Module))
-        assert(issubclass(type(critic_target), nn.Module))
-
         self.env = env
+        self.args = args
+        self.device = device
+        state_dim = self.env.observation_space.shape[0]
+        action_dim = self.env.action_space.shape[0]
+        action_low = float(self.env.action_space.low[0])
+        action_high = float(self.env.action_space.high[0])
 
-        # models and optimizers
-        self.actor_local = actor_local
-        self.actor_target = actor_target
-        self.critic_local = critic_local
-        self.critic_target = critic_target
-        self.actor_optimizer = optim.Adam(actor_local.parameters(), lr=1e-4)
-        self.critic_optimizer = optim.Adam(critic_local.parameters(), lr=1e-3)
+        # environment setup
+        self.env._max_episode_steps = hyper_params['MAX_EPISODE_STEPS']
+
+        # create actor
+        self.actor_local = Actor(state_dim, action_dim, action_low,
+                                 action_high, self.device).to(device)
+        self.actor_target = Actor(state_dim, action_dim, action_low,
+                                  action_high, self.device).to(device)
+        self.actor_target.load_state_dict(self.actor_local.state_dict())
+
+        # create critic
+        self.critic_local = Critic(state_dim, action_dim,
+                                   self.device).to(device)
+        self.critic_target = Critic(state_dim, action_dim,
+                                    self.device).to(device)
+        self.critic_target.load_state_dict(self.critic_local.state_dict())
+
+        # create optimizers
+        self.actor_optimizer = optim.Adam(self.actor_local.parameters(),
+                                          lr=1e-4)
+        self.critic_optimizer = optim.Adam(self.critic_local.parameters(),
+                                           lr=1e-3)
 
         # load the optimizer and model parameters
         if args.model_path is not None and os.path.exists(args.model_path):
             self.load_params(args.model_path)
 
-        # arguments
-        self.args = args
-
         # noise instance to make randomness of action
-        action_dim = self.env.action_space.shape[0]
-        self.noise = OUNoise(action_dim,
-                             self.args.seed)
+        self.noise = OUNoise(action_dim, self.args.seed,
+                             theta=0., sigma=0.)
 
         # replay memory
         self.memory = ReplayBuffer(action_dim,
-                                   self.args.buffer_size,
-                                   self.args.batch_size,
-                                   self.args.seed)
+                                   hyper_params['BUFFER_SIZE'],
+                                   hyper_params['BATCH_SIZE'],
+                                   self.args.seed, self.device)
 
     def select_action(self, state):
         """Select an action from the input space."""
         selected_action = self.actor_local(state)
-        selected_action += torch.tensor(self.noise.sample()).float().to(device)
+        selected_action += torch.tensor(self.noise.sample()
+                                        ).float().to(self.device)
 
         action_low = float(self.env.action_space.low[0])
         action_high = float(self.env.action_space.high[0])
@@ -107,16 +126,17 @@ class DDPGAgent(object):
 
         return next_state, reward, done
 
-    def train(self, experiences):
+    def update_model(self, experiences):
         """Train the model after each episode."""
         states, actions, rewards, next_states, dones = experiences
 
         # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
         #       = r                       otherwise
+        masks = 1 - dones
         next_actions = self.actor_target(next_states)
         next_values = self.critic_target(next_states, next_actions)
-        curr_returns = rewards + (self.args.gamma * next_values * (1 - dones))
-        curr_returns = curr_returns.to(device)
+        curr_returns = rewards + (hyper_params['GAMMA'] * next_values * masks)
+        curr_returns = curr_returns.to(self.device)
 
         # train critic
         values = self.critic_local(states, actions)
@@ -144,8 +164,8 @@ class DDPGAgent(object):
     def soft_update(self, local, target):
         """Soft-update: target = tau*local + (1-tau)*target."""
         for t_param, l_param in zip(target.parameters(), local.parameters()):
-            t_param.data.copy_(self.args.tau*l_param.data +
-                               (1.0-self.args.tau)*t_param.data)
+            t_param.data.copy_(hyper_params['TAU']*l_param.data +
+                               (1.0-hyper_params['TAU'])*t_param.data)
 
     def load_params(self, path):
         """Load model and optimizer parameters."""
@@ -191,14 +211,16 @@ class DDPGAgent(object):
         torch.save(params, path)
         print('[INFO] saved the model and optimizer to', path)
 
-    def run(self):
-        """Run the agent."""
+    def train(self):
+        """Train the agent."""
         # logger
-#        wandb.init()
-#        wandb.config.update(self.args)
-#        wandb.watch([self.actor_local, self.critic_local], log='parameters')
+        if self.args.log:
+            wandb.init()
+            wandb.config.update(hyper_params)
+            wandb.watch([self.actor_local, self.critic_local],
+                        log='parameters')
 
-        for i_episode in range(self.args.episode_num):
+        for i_episode in range(hyper_params['EPISODE_NUM']):
             state = self.env.reset()
             done = False
             score = 0
@@ -210,9 +232,9 @@ class DDPGAgent(object):
 
                 action = self.select_action(state)
                 next_state, reward, done = self.step(state, action)
-                if len(self.memory) >= self.args.batch_size:
+                if len(self.memory) >= hyper_params['BATCH_SIZE']:
                     experiences = self.memory.sample()
-                    loss = self.train(experiences)
+                    loss = self.update_model(experiences)
                     loss_episode.append(loss)  # for logging
 
                 state = next_state
@@ -221,93 +243,35 @@ class DDPGAgent(object):
             else:
                 avg_loss = np.array(loss_episode).mean()
                 print('[INFO] episode %d\ttotal score: %d\tloss: %f'
-                      % (i_episode, score, avg_loss))
-#                wandb.log({'score': score, 'avg_loss': avg_loss})
+                      % (i_episode+1, score, avg_loss))
+
+                if self.args.log:
+                    wandb.log({'score': score, 'avg_loss': avg_loss})
 
         # termination
         self.env.close()
-        self.save_params(self.args.episode_num)
+        self.save_params(hyper_params['EPISODE_NUM'])
 
+    def test(self):
+        """Test the agent."""
+        for i_episode in range(hyper_params['EPISODE_NUM']):
+            state = self.env.reset()
+            done = False
+            score = 0
 
-class OUNoise:
-    """Ornstein-Uhlenbeck process.
+            while not done:
+                if self.args.render and i_episode >= self.args.render_after:
+                    self.env.render()
 
-    Taken from Udacity deep-reinforcement-learning github repository:
-    https://github.com/udacity/deep-reinforcement-learning/blob/master/
-    ddpg-pendulum/ddpg_agent.py
-    """
+                action = self.select_action(state)
+                next_state, reward, done = self.step(state, action)
 
-    def __init__(self, size, seed, mu=0., theta=0.15, sigma=0.2):
-        """Initialize parameters and noise process."""
-        self.mu = mu * np.ones(size)
-        self.theta = theta
-        self.sigma = sigma
-        self.seed = random.seed(seed)
-        self.reset()
+                state = next_state
+                score += reward
 
-    def reset(self):
-        """Reset the internal state (= noise) to mean (mu)."""
-        self.state = copy.copy(self.mu)
+            else:
+                print('[INFO] episode %d\ttotal score: %d'
+                      % (i_episode, score))
 
-    def sample(self):
-        """Update internal state and return it as a noise sample."""
-        x = self.state
-        dx = self.theta * (self.mu - x) +\
-            self.sigma * np.array([random.random() for i in range(len(x))])
-        self.state = x + dx
-        return self.state
-
-
-class ReplayBuffer:
-    """Fixed-size buffer to store experience tuples.
-
-    Taken from Udacity deep-reinforcement-learning github repository:
-    https://github.com/udacity/deep-reinforcement-learning/blob/master/
-    ddpg-pendulum/ddpg_agent.py
-    """
-
-    def __init__(self, action_size, buffer_size, batch_size, seed):
-        """Initialize a ReplayBuffer object."""
-        self.action_size = action_size
-        self.memory = deque(maxlen=buffer_size)  # internal memory (deque)
-        self.batch_size = batch_size
-        self.experience = namedtuple("Experience",
-                                     field_names=["state", "action", "reward",
-                                                  "next_state", "done"])
-        self.seed = random.seed(seed)
-
-    def add(self, state, action, reward, next_state, done):
-        """Add a new experience to memory."""
-        e = self.experience(state, action, reward, next_state, done)
-        self.memory.append(e)
-
-    def sample(self):
-        """Randomly sample a batch of experiences from memory."""
-        experiences = random.sample(self.memory, k=self.batch_size)
-
-        states, actions, rewards, next_states, dones = [], [], [], [], []
-
-        for e in experiences:
-            states.append(e.state)
-            actions.append(e.action)
-            rewards.append(e.reward)
-            next_states.append(e.next_state)
-            dones.append(e.done)
-
-        states =\
-            torch.from_numpy(np.vstack(states)).float().to(device)
-        actions =\
-            torch.from_numpy(np.vstack(actions)).float().to(device)
-        rewards =\
-            torch.from_numpy(np.vstack(rewards)).float().to(device)
-        next_states =\
-            torch.from_numpy(np.vstack(next_states)).float().to(device)
-        dones =\
-            torch.from_numpy(
-                np.vstack(dones).astype(np.uint8)).float().to(device)
-
-        return (states, actions, rewards, next_states, dones)
-
-    def __len__(self):
-        """Return the current size of internal memory."""
-        return len(self.memory)
+        # termination
+        self.env.close()
