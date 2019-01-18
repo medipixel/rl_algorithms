@@ -15,10 +15,11 @@ class ReplayBuffer:
     ddpg-pendulum/ddpg_agent.py
     """
 
-    def __init__(self, buffer_size, batch_size, seed, device):
+    def __init__(self, buffer_size, batch_size, seed, device, demo=None):
         """Initialize a ReplayBuffer object."""
         self.device = device
-        self.memory = deque(maxlen=buffer_size)  # internal memory (deque)
+        # self.memory = deque(maxlen=buffer_size)  # internal memory (deque)
+        self.memory = demo if demo else deque(maxlen=buffer_size)
         self.batch_size = batch_size
         self.seed = random.seed(seed)
 
@@ -52,10 +53,6 @@ class ReplayBuffer:
                 np.vstack(dones).astype(np.uint8)).float().to(self.device)
 
         return (states, actions, rewards, next_states, dones)
-
-    def replace(self, memory):
-        """Replace memory to already exist memory."""
-        self.memory = memory
 
     def __len__(self):
         """Return the current size of internal memory."""

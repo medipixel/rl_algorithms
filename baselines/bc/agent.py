@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
-"""DDPG agent for episodic tasks in OpenAI Gym.
+"""DDPG with Behavior Cloning agent for episodic tasks in OpenAI Gym.
 
-- Author: Curt Park
-- Contact: curt.park@medipixel.io
-- Paper: https://arxiv.org/pdf/1509.02971.pdf
+- Author: Kh Kim
+- Contact: kh.kim@medipixel.io
+- Paper: https://arxiv.org/pdf/1709.10089.pdf
 """
+
 
 import os
 import git
@@ -33,7 +34,7 @@ hyper_params = {
         'EPISODE_NUM': 1500,
         'LAMBDA1': 1e-3,
         'LAMBDA2': 1.0,
-        'DEMO_MEMORY_PATH': "baselines/bc/demo_memory.pkl",
+        'DEMO_PATH': "baselines/bc/demo_memory.pkl",
 }
 
 
@@ -112,13 +113,12 @@ class Agent(object):
                                    self.args.seed, self.device)
 
         # load demo replay memory
-        with open(hyper_params['DEMO_MEMORY_PATH'], 'rb') as f:
-            demo_buffer = pickle.load(f)
+        with open(hyper_params['DEMO_PATH'], 'rb') as f:
+            demo = pickle.load(f)
 
-        self.demo_memory = ReplayBuffer(len(demo_buffer),
+        self.demo_memory = ReplayBuffer(len(demo),
                                         hyper_params['DEMO_BATCH_SIZE'],
-                                        self.args.seed, self.device)
-        self.demo_memory.replace(demo_buffer)
+                                        self.args.seed, self.device, demo)
 
     def select_action(self, state):
         """Select an action from the input space."""
@@ -142,14 +142,16 @@ class Agent(object):
 
     def update_model(self, experiences, demo):
         """Train the model after each episode."""
-        estates, eactions, erewards, enext_states, edones = experiences
-        dstates, dactions, drewards, dnext_states, ddones = demo
+        exp_states, exp_actions, exp_rewards,\
+            exp_next_states, exp_dones = experiences
+        demo_states, demo_actions, demo_rewards,\
+            demo_next_states, demo_dones = demo
 
-        states = torch.cat((estates, dstates), dim=0)
-        actions = torch.cat((eactions, dactions), dim=0)
-        rewards = torch.cat((erewards, drewards), dim=0)
-        next_states = torch.cat((enext_states, dnext_states), dim=0)
-        dones = torch.cat((edones, ddones), dim=0)
+        states = torch.cat((exp_states, demo_states), dim=0)
+        actions = torch.cat((exp_actions, demo_actions), dim=0)
+        rewards = torch.cat((exp_rewards, demo_rewards), dim=0)
+        next_states = torch.cat((exp_next_states, demo_next_states), dim=0)
+        dones = torch.cat((exp_dones, demo_dones), dim=0)
 
         # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
         #       = r                       otherwise
@@ -167,19 +169,21 @@ class Agent(object):
         self.critic_optimizer.step()
 
         # train actor: pg loss + BC loss
-        # pg loss
+        # policy loss
         actions = self.actor_local(states)
-        pg_loss = -self.critic_local(states, actions).mean()
+        policy_loss = -self.critic_local(states, actions).mean()
+
         # bc loss
-        actions = self.actor_local(dstates)
-        # q-filter mask
+        pred_actions = self.actor_local(demo_states)
         qf_mask = \
-            torch.gt(self.critic_local(dstates, dactions),
-                     self.critic_local(dstates, actions)).to(self.device)
+            torch.gt(self.critic_local(demo_states,
+                                       demo_actions),
+                     self.critic_local(demo_states,
+                                       pred_actions)).to(self.device)
         qf_mask = qf_mask.float()
-        bc_loss = F.mse_loss(torch.mul(actions, qf_mask),
-                             torch.mul(dactions, qf_mask))
-        actor_loss = self.lambda1 * pg_loss + self.lambda2 * bc_loss
+        bc_loss = F.mse_loss(torch.mul(pred_actions, qf_mask),
+                             torch.mul(demo_actions, qf_mask))
+        actor_loss = self.lambda1 * policy_loss + self.lambda2 * bc_loss
 
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
@@ -239,7 +243,7 @@ class Agent(object):
 
         repo = git.Repo(search_parent_directories=True)
         sha = repo.head.object.hexsha
-        path = os.path.join('./save/ddpg_' + sha[:7] + '_ep_' +
+        path = os.path.join('./save/bc_' + sha[:7] + '_ep_' +
                             str(n_episode)+'.pt')
         torch.save(params, path)
         print('[INFO] saved the model and optimizer to', path)
@@ -265,6 +269,7 @@ class Agent(object):
 
                 action = self.select_action(state)
                 next_state, reward, done = self.step(state, action)
+
                 if len(self.memory) >= hyper_params['BATCH_SIZE']:
                     experiences = self.memory.sample()
                     demos = self.demo_memory.sample()
