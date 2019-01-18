@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-"""Deep Deterministic Policy Gradient Algorithm.
+"""TD3.
 
-This module demonstrates DDPG model on the environment
+This module defines TD3 model on the environment
 with continuous action space in OpenAI Gym.
 
 - Author: Curt Park
 - Contact: curt.park@medipixel.io
-- Paper: https://arxiv.org/pdf/1509.02971.pdf
+- Paper: https://arxiv.org/pdf/1802.09477.pdf
 """
 
 import torch
