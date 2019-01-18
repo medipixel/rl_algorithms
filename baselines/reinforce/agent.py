@@ -200,9 +200,11 @@ class Agent(object):
                 if self.args.log:
                     wandb.log({'score': score, 'loss': loss})
 
+                if i_episode % self.args.save_period == 0:
+                    self.save_params(i_episode)
+
         # termination
         self.env.close()
-        self.save_params(hyper_params['EPISODE_NUM'])
 
     def test(self):
         """Test the agent."""

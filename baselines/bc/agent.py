@@ -95,7 +95,8 @@ class Agent(object):
 
         # set hyper parameters
         self.lambda1 = hyper_params['LAMBDA1']
-        self.lambda2 = hyper_params['LAMBDA2'] / hyper_params['DEMO_BATCH_SIZE']
+        self.lambda2 = \
+            hyper_params['LAMBDA2'] / hyper_params['DEMO_BATCH_SIZE']
 
         # load the optimizer and model parameters
         if args.model_path is not None and os.path.exists(args.model_path):
@@ -122,7 +123,8 @@ class Agent(object):
     def select_action(self, state):
         """Select an action from the input space."""
         selected_action = self.actor_local(state)
-        selected_action += torch.tensor(self.noise.sample()).float().to(self.device)
+        selected_action += \
+            torch.tensor(self.noise.sample()).float().to(self.device)
 
         action_low = float(self.env.action_space.low[0])
         action_high = float(self.env.action_space.high[0])
@@ -169,11 +171,14 @@ class Agent(object):
         actions = self.actor_local(states)
         pg_loss = -self.critic_local(states, actions).mean()
         # bc loss
-        expected_action = self.actor_local(dstates)
+        actions = self.actor_local(dstates)
         # q-filter mask
-        qf_mask = torch.gt(self.critic_local(dstates, dactions),
-                           self.critic_local(dstates, expected_action)).to(self.device).float()
-        bc_loss = F.mse_loss(torch.mul(expected_action, qf_mask), torch.mul(dactions, qf_mask))
+        qf_mask = \
+            torch.gt(self.critic_local(dstates, dactions),
+                     self.critic_local(dstates, actions)).to(self.device)
+        qf_mask = qf_mask.float()
+        bc_loss = F.mse_loss(torch.mul(actions, qf_mask),
+                             torch.mul(dactions, qf_mask))
         actor_loss = self.lambda1 * pg_loss + self.lambda2 * bc_loss
 
         self.actor_optimizer.zero_grad()
