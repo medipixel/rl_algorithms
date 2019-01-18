@@ -41,7 +41,7 @@ def ppo_iter(epoch, mini_batch_size, states,
 
 
 # taken from https://github.com/ikostrikov/pytorch-trpo
-def get_ret_and_gae(rewards, values, dones, gamma, lambd):
+def get_gae(rewards, values, dones, gamma, lambd):
     """Calculate returns and GAEs."""
     masks = 1 - dones
     returns = torch.zeros_like(rewards)
