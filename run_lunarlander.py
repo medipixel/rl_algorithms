@@ -14,7 +14,7 @@ import gym
 parser = argparse.ArgumentParser(description='Pytorch RL baselines')
 parser.add_argument('--seed', type=int, default=777,
                     help='random seed for reproducibility')
-parser.add_argument('--algo', type=str, default='trpo',
+parser.add_argument('--algo', type=str, default='ddpg',
                     help='choose an algorithm')
 parser.add_argument('--test', dest='test', action='store_true',
                     help='test mode (no training)')
@@ -38,7 +38,8 @@ args = parser.parse_args()
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 # algorithms
-policy_gradients = {'ac', 'reinforce', 'dpg', 'ddpg', 'trpo', 'ppo', 'bc'}
+policy_gradients = {'ac', 'reinforce', 'dpg', 'ddpg',
+                    'trpo', 'ppo', 'bc', 'td3'}
 
 # import the agent
 if args.algo == 'reinforce':
@@ -55,6 +56,8 @@ elif args.algo == 'ppo':
     from algorithms.ppo.agent import Agent
 elif args.algo == 'bc':
     from algorithms.bc.agent import Agent
+elif args.algo == 'td3':
+    from algorithms.td3.agent import Agent
 
 
 def main():
