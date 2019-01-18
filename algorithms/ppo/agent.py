@@ -8,105 +8,88 @@
 
 import os
 import git
-import argparse
 from collections import deque
 
-import gym
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-import util
-from model import ActorCritic
+from algorithms.ppo.model import Actor, Critic
+import algorithms.ppo.utils as ppo_utils
 
-import wandb  # 'wandb off' in the shell makes this diabled
+import wandb
 
 
-# configurations
-parser = argparse.ArgumentParser(description='TRPO with continuous\
-                                             action example by Pytorch')
-parser.add_argument('--gamma', type=float, default=0.99,
-                    help='discount factor for rewards')
-parser.add_argument('--lambd', type=float, default=0.95,
-                    help='discount factor for advantages')
-parser.add_argument('--epsilon', type=float, default=0.2,
-                    help='clipping parameter')
-parser.add_argument('--entropy', type=float, default=1e-3,
-                    help='entropy bonus')
-parser.add_argument('--seed', type=int, default=777,
-                    help='random seed for reproducibility')
-parser.add_argument('--env', type=str, default='LunarLanderContinuous-v2',
-                    help='openai gym environment name\
-                          (continuous action only)')
-parser.add_argument('--epoch', type=int, default=4,
-                    help='epoch size for each horizon')
-parser.add_argument('--batch-size', type=int, default=64,
-                    help='the size of minibatch')
-parser.add_argument('--max-episode-steps', type=int, default=300,
-                    help='max steps per episode')
-parser.add_argument('--horizon', type=int, default=512,
-                    help='number of transitions to run training')
-parser.add_argument('--episode-num', type=int, default=30000,
-                    help='total episode number')
-parser.add_argument('--model-path', type=str,
-                    help='load the saved model and optimizer at the beginning')
-parser.add_argument('--render-after', type=int, default=0,
-                    help='start rendering after the input number of episode')
-parser.add_argument('--no-render', dest='render', action='store_false',
-                    help='turn off rendering')
-parser.set_defaults(render=True)
-parser.set_defaults(model_path=None)
-args = parser.parse_args()
-
-# initialization
-env = gym.make(args.env)
-env._max_episode_steps = args.max_episode_steps
-state_dim = env.observation_space.shape[0]
-action_dim = env.action_space.shape[0]
-action_low = float(env.action_space.low[0])
-action_high = float(env.action_space.high[0])
-
-# set random seed
-env.seed(args.seed)
-torch.manual_seed(args.seed)
-
-# device selection: cpu / gpu
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+# hyper parameters
+hyper_params = {
+        'GAMMA': 0.99,
+        'LAMBDA': 0.95,
+        'EPSILON': 0.2,
+        'W_VALUE': 1.0,
+        'W_ENTROPY': 1e-3,
+        'ROLLOUT_LENGTH': 256,
+        'EPOCH': 8,
+        'BATCH_SIZE': 32,
+        'MAX_EPISODE_STEPS': 300,
+        'EPISODE_NUM': 1500
+}
 
 
 class Agent(object):
     """PPO Agent.
 
-    Attributes:
-        env (gym.Env): openAI Gym environment with discrete action space
-        model (nn.Module): policy model + value estimator
-        optimizer (Optimizer): optimizer for training actor-critic
-        transition (list): list for storing a transition
-
     Args:
         env (gym.Env): openAI Gym environment with discrete action space
-        model (nn.Module): policy model + value estimator
+        args (dict): arguments including hyperparameters and training settings
+        device (torch.device): device selection (cpu / gpu)
+
+    Attributes:
+        env (gym.Env): openAI Gym environment with discrete action space
+        args (dict): arguments including hyperparameters and training setting
+        device (torch.device): device selection (cpu / gpu)
+        memory (deque): memory for on-policy training
+        transition (list): list for storing a transition
+        actor (nn.Module): policy gradient model to select actions
+        critic (nn.Module): policy gradient model to predict values
+        actor_optimizer (Optimizer): optimizer for training actor
+        critic_optimizer (Optimizer): optimizer for training critic
 
     """
 
-    def __init__(self, env, model):
+    def __init__(self, env, args, device):
         """Initialization."""
-        assert(issubclass(type(env), gym.Env))
-        assert(issubclass(type(model), nn.Module))
-
         self.env = env
-        self.model = model
-        self.optimizer = optim.Adam(self.model.parameters(), lr=3e-4)
+        self.args = args
+        self.device = device
         self.memory = deque()
         self.transition = []
+        state_dim = self.env.observation_space.shape[0]
+        action_dim = self.env.action_space.shape[0]
+        action_low = float(self.env.action_space.low[0])
+        action_high = float(self.env.action_space.high[0])
 
-        if args.model_path is not None and os.path.exists(args.model_path):
-            self.load_params(args.model_path)
+        # environment setup
+        self.env._max_episode_steps = hyper_params['MAX_EPISODE_STEPS']
+
+        # create models
+        self.actor = Actor(state_dim, action_dim,
+                           action_low, action_high, device).to(device)
+        self.critic = Critic(state_dim, action_dim, self.device).to(device)
+
+        # create optimizer
+        self.actor_optimizer = optim.Adam(self.actor.parameters(),
+                                          lr=3e-4)
+        self.critic_optimizer = optim.Adam(self.critic.parameters(),
+                                           lr=1e-3)
+
+        # load model parameters
+        if self.args.load_from is not None and \
+           os.path.exists(self.args.load_from):
+                self.load_params(self.args.load_from)
 
     def select_action(self, state):
         """Select an action from the input space."""
-        selected_action, _, dist = self.model(state)
+        selected_action, dist = self.actor(state)
         self.transition += [state, dist.log_prob(selected_action).detach()]
 
         return selected_action
@@ -122,50 +105,60 @@ class Agent(object):
 
         return next_state, reward, done
 
-    def train(self):
+    def update_model(self):
         """Train the model after every N episodes."""
         states, log_probs, actions, rewards, dones = \
-            util.decompose_memory(self.memory)
+            ppo_utils.decompose_memory(self.memory)
+
+        # calculate returns and gae
+        values = self.critic(states)
+        returns, advantages = ppo_utils.get_gae(rewards, values, dones,
+                                                hyper_params['GAMMA'],
+                                                hyper_params['LAMBDA'])
+
         losses = []
-        for state, old_log_prob, action, reward, done in util.ppo_iter(
-                                                          args.epoch,
-                                                          args.batch_size,
-                                                          states, log_probs,
-                                                          actions, rewards,
-                                                          dones):
-            _, value, new_dist = self.model(state)
-            entropy = args.entropy * new_dist.entropy().mean()
-
-            # calculate returns and gae
-            return_, advantage = util.get_ret_and_gae(reward, value, done,
-                                                      args.gamma,
-                                                      args.lambd)
-
-            # normalize advantages
-            advantage = (advantage - advantage.mean()) /\
-                        (advantage.std() + 1e-7)
+        for state, old_log_prob, action, return_, adv in ppo_utils.ppo_iter(
+                                                    hyper_params['EPOCH'],
+                                                    hyper_params['BATCH_SIZE'],
+                                                    states, log_probs,
+                                                    actions, returns,
+                                                    advantages):
+            value = self.critic(state)
+            _, dist = self.actor(state)
 
             # calculate ratios
-            new_log_prob = new_dist.log_prob(action)
-            ratio = (new_log_prob - old_log_prob).exp()
+            log_prob = dist.log_prob(action)
+            ratio = (log_prob - old_log_prob).exp()
 
             # actor_loss
-            surr_loss = ratio * advantage
-            clipped_surr_loss = torch.clamp(ratio,
-                                            1.0 - args.epsilon,
-                                            1.0 + args.epsilon) * advantage
+            surr_loss = ratio * adv
+            clipped_surr_loss = torch.clamp(
+                                    ratio,
+                                    1.0 - hyper_params['EPSILON'],
+                                    1.0 + hyper_params['EPSILON']) * adv
             actor_loss = -torch.min(surr_loss, clipped_surr_loss).mean()
 
             # critic_loss
-            critic_loss = F.mse_loss(value, return_)
+            critic_loss = F.smooth_l1_loss(value, return_)
+
+            # entropy
+            entropy = dist.entropy().mean()
 
             # total_loss
-            total_loss = critic_loss + actor_loss - args.entropy * entropy
+            total_loss = \
+                actor_loss + \
+                hyper_params['W_VALUE'] * critic_loss - \
+                hyper_params['W_ENTROPY'] * entropy
 
-            # backward and step
-            self.optimizer.zero_grad()
+            # train critic
+            self.critic_optimizer.zero_grad()
+            total_loss.backward(retain_graph=True)
+            self.critic_optimizer.step()
+
+            # train actor
+            self.actor_optimizer.zero_grad()
             total_loss.backward()
-            self.optimizer.step()
+            self.actor_optimizer.step()
 
             losses.append(total_loss.data)
 
@@ -178,7 +171,12 @@ class Agent(object):
             return
 
         params = torch.load(path)
-        self.model.load_state_dict(params['model_state_dict'])
+        self.actor.load_state_dict(params['actor_state_dict'])
+        self.critic.load_state_dict(params['critic_state_dict'])
+        self.actor_optimizer.load_state_dict(
+                params['actor_optim_state_dict'])
+        self.critic_optimizer.load_state_dict(
+                params['critic_optim_state_dict'])
         print('[INFO] loaded the model and optimizer from', path)
 
     def save_params(self, n_episode):
@@ -186,7 +184,16 @@ class Agent(object):
         if not os.path.exists('./save'):
             os.mkdir('./save')
 
-        params = {'model_state_dict': self.model.state_dict()}
+        params = {
+                 'actor_state_dict':
+                 self.actor.state_dict(),
+                 'critic_state_dict':
+                 self.critic.state_dict(),
+                 'actor_optim_state_dict':
+                 self.actor_optimizer.state_dict(),
+                 'critic_optim_state_dict':
+                 self.critic_optimizer.state_dict()
+                 }
 
         repo = git.Repo(search_parent_directories=True)
         sha = repo.head.object.hexsha
@@ -195,21 +202,22 @@ class Agent(object):
         torch.save(params, path)
         print('[INFO] saved the model and optimizer to', path)
 
-    def run(self):
-        """Run the agent."""
+    def train(self):
+        """Train the agent."""
         # logger
-        wandb.init()
-        wandb.config.update(args)
-        wandb.watch(self.model, log='parameters')
+        if self.args.log:
+            wandb.init()
+            wandb.config.update(hyper_params)
+            wandb.watch([self.actor, self.critic], log='parameters')
 
-        scores = []
-        for i_episode in range(args.episode_num):
+        loss = 0
+        for i_episode in range(1, hyper_params['EPISODE_NUM']+1):
             state = self.env.reset()
             done = False
             score = 0
 
             while not done:
-                if args.render and i_episode >= args.render_after:
+                if self.args.render and i_episode >= self.args.render_after:
                     self.env.render()
 
                 action = self.select_action(state)
@@ -218,26 +226,43 @@ class Agent(object):
                 state = next_state
                 score += reward
 
-                if len(self.memory) % args.horizon == 0:
-                    loss = self.train()
+                if len(self.memory) % hyper_params['ROLLOUT_LENGTH'] == 0:
+                    loss = self.update_model()
                     self.memory.clear()
 
-                    avg_score = sum(scores) / len(scores)
-                    scores = []
-                    print('[INFO] loss: %f, avg_score: %d' % (loss, avg_score))
-                    wandb.log({'loss': loss, 'avg_score': avg_score})
             else:
-                scores.append(score)
-                print('[INFO] episode %d\ttotal score: %d'
-                      % (i_episode+1, score))
+                print('[INFO] episode %d\ttotal score: %d\trecent loss: %f'
+                      % (i_episode, score, loss))
+
+                if self.args.log:
+                    wandb.log({'recent loss': loss, 'score': score})
+
+                if i_episode % self.args.save_period == 0:
+                    self.save_params(i_episode)
 
         # termination
         self.env.close()
-        self.save_params(args.episode_num)
 
+    def test(self):
+        """Test the agent."""
+        for i_episode in range(1, hyper_params['EPISODE_NUM']+1):
+            state = self.env.reset()
+            done = False
+            score = 0
 
-if __name__ == '__main__':
-    model = ActorCritic(state_dim, action_dim,
-                        action_low, action_high).to(device)
-    agent = Agent(env, model)
-    agent.run()
+            while not done:
+                if self.args.render and i_episode >= self.args.render_after:
+                    self.env.render()
+
+                action = self.select_action(state)
+                next_state, reward, done = self.step(action)
+
+                state = next_state
+                score += reward
+
+            else:
+                print('[INFO] episode %d\ttotal score: %d'
+                      % (i_episode, score))
+
+        # termination
+        self.env.close()
