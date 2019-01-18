@@ -68,8 +68,8 @@ class Agent(object):
         self.critic_optimizer = optim.Adam(self.critic.parameters())
 
         # load stored parameters
-        if args.model_path is not None and os.path.exists(args.model_path):
-            self.load_params(args.model_path)
+        if args.load_from is not None and os.path.exists(args.load_from):
+            self.load_params(args.load_from)
 
         self.args = args
 
@@ -166,7 +166,7 @@ class Agent(object):
             wandb.watch(self.actor, log='parameters')
             wandb.watch(self.critic, log='parameters')
 
-        for i_episode in range(hyper_params['EPISODE_NUM']):
+        for i_episode in range(1, hyper_params['EPISODE_NUM']+1):
             state = self.env.reset()
             done = False
             score = 0
@@ -189,7 +189,7 @@ class Agent(object):
             else:
                 avg_loss = np.array(loss_episode).mean()
                 print('[INFO] episode %d\ttotal score: %d\tloss: %f'
-                      % (i_episode+1, score, avg_loss))
+                      % (i_episode, score, avg_loss))
 
                 if self.args.log:
                     wandb.log({'score': score, 'avg_loss': avg_loss})

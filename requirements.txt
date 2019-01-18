@@ -2,7 +2,7 @@
 # https://github.com/damnever/pigar
 
 # baselines/ac/agent.py: 9
-# baselines/bc/agent.py: 10
+# baselines/bc/agent.py: 11
 # baselines/ddpg/agent.py: 10
 # baselines/dpg/agent.py: 10
 # baselines/ppo/agent.py: 10
@@ -12,11 +12,10 @@ GitPython == 2.1.11
 
 # baselines/ppo/agent.py: 14
 # baselines/trpo/agent.py: 14
-# run_lunarlander.py: 10
 gym == 0.10.9
 
 # baselines/ac/agent.py: 10
-# baselines/bc/agent.py: 12
+# baselines/bc/agent.py: 13
 # baselines/ddpg/agent.py: 11
 # baselines/dpg/agent.py: 11
 # baselines/noise.py: 6
@@ -30,10 +29,10 @@ scipy == 1.1.0
 
 # baselines/ac/agent.py: 12,13,14
 # baselines/ac/model.py: 11,12,13
-# baselines/bc/agent.py: 14,15,16
+# baselines/bc/agent.py: 15,16,17
 # baselines/bc/model.py: 12,13
 # baselines/ddpg/agent.py: 13,14,15
-# baselines/ddpg/model.py: 12,13,14
+# baselines/ddpg/model.py: 12,13
 # baselines/dpg/agent.py: 13,14,15
 # baselines/dpg/model.py: 12,13,14
 # baselines/ppo/agent.py: 15,16,17,18
@@ -43,15 +42,14 @@ scipy == 1.1.0
 # baselines/reinforce/model.py: 11,12,13
 # baselines/replay_buffer.py: 7
 # baselines/trpo/agent.py: 15,16
-# baselines/trpo/model.py: 12,13
+# baselines/trpo/model.py: 12,13,14
 # baselines/trpo/utils.py: 13,14
-# run_lunarlander.py: 9
-torch == 0.4.1
+torch == 0.4.1.post2
 
 # baselines/ac/agent.py: 16
-# baselines/bc/agent.py: 18
+# baselines/bc/agent.py: 19
 # baselines/ddpg/agent.py: 17
 # baselines/dpg/agent.py: 17
 # baselines/ppo/agent.py: 23
 # baselines/reinforce/agent.py: 16
-wandb == 0.6.32
+wandb == 0.6.29

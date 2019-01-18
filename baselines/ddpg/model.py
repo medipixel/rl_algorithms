@@ -21,7 +21,7 @@ class Actor(nn.Module):
         action_dim (int): dimension of action space
         action_low (float): lower bound of the action value
         action_high (float): upper bound of the action value
-        device (str): device selection (cpu / gpu)
+        device (torch.device): cpu or cuda
 
     Attributes:
         actor (nn.Sequential): actor model with FC layers
@@ -29,7 +29,7 @@ class Actor(nn.Module):
         action_dim (int): dimension of action space
         action_low (float): lower bound of the action value
         action_high (float): upper bound of the action value
-        device (str): device selection (cpu / gpu)
+        device (torch.device): cpu or cuda
 
     """
 

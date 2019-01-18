@@ -100,8 +100,8 @@ class Agent(object):
             hyper_params['LAMBDA2'] / hyper_params['DEMO_BATCH_SIZE']
 
         # load the optimizer and model parameters
-        if args.model_path is not None and os.path.exists(args.model_path):
-            self.load_params(args.model_path)
+        if args.load_from is not None and os.path.exists(args.load_from):
+            self.load_params(args.load_from)
 
         # noise instance to make randomness of action
         self.noise = OUNoise(action_dim, self.args.seed,

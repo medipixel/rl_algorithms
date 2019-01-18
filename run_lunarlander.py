@@ -14,11 +14,11 @@ import gym
 parser = argparse.ArgumentParser(description='Pytorch RL baselines')
 parser.add_argument('--seed', type=int, default=777,
                     help='random seed for reproducibility')
-parser.add_argument('--algo', type=str, default='bc',
+parser.add_argument('--algo', type=str, default='trpo',
                     help='choose an algorithm')
 parser.add_argument('--test', dest='test', action='store_true',
                     help='test mode (no training)')
-parser.add_argument('--model-path', type=str,
+parser.add_argument('--load-from', type=str,
                     help='load the saved model and optimizer at the beginning')
 parser.add_argument('--off-render', dest='render', action='store_false',
                     help='turn off rendering')
@@ -29,7 +29,7 @@ parser.add_argument('--log', dest='log', action='store_true',
 parser.add_argument('--save-period', type=int, default=50,
                     help='save model period')
 parser.set_defaults(test=False)
-parser.set_defaults(model_path=None)
+parser.set_defaults(load_from=None)
 parser.set_defaults(render=True)
 parser.set_defaults(log=False)
 args = parser.parse_args()
