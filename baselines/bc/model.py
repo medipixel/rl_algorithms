@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-"""Deterministic Policy Gradient Algorithm.
+"""DDPG with Behavior Cloning Algorithm.
 
-This module demonstrates DPG on-policy model on the environment
+This module demonstrates DDPG with Behavior Cloning model on the environment
 with continuous action space in OpenAI Gym.
 
-- Author: Curt Park
-- Contact: curt.park@medipixel.io
-- Paper: http://proceedings.mlr.press/v32/silver14.pdf
+- Author: Kh Kim
+- Contact: kh.kim@medipixel.io
+- Paper: https://arxiv.org/pdf/1709.10089.pdf
 """
 
 import torch
@@ -14,7 +14,7 @@ import torch.nn as nn
 
 
 class Actor(nn.Module):
-    """DPG actor model with simple FC layers.
+    """Behavior Cloning DDPG actor model with simple FC layers.
 
     Args:
         state_dim (int): dimension of state space
@@ -24,11 +24,11 @@ class Actor(nn.Module):
         device (torch.device): device selection (cpu / gpu)
 
     Attributes:
+        actor (nn.Sequential): actor model with FC layers
         state_dim (int): dimension of state space
         action_dim (int): dimension of action space
         action_low (float): lower bound of the action value
         action_high (float): upper bound of the action value
-        actor (nn.Sequential): actor model with FC layers
         device (torch.device): device selection (cpu / gpu)
 
     """
@@ -37,7 +37,6 @@ class Actor(nn.Module):
                  action_low, action_high, device):
         """Initialization."""
         super(Actor, self).__init__()
-
         self.device = device
 
         self.state_dim = state_dim
@@ -79,7 +78,7 @@ class Actor(nn.Module):
 
 
 class Critic(nn.Module):
-    """DPG critic model with simple FC layers.
+    """Behavior Cloning DDPG critic model with simple FC layers.
 
     Args:
         state_dim (int): dimension of state space
@@ -97,7 +96,6 @@ class Critic(nn.Module):
     def __init__(self, state_dim, action_dim, device):
         """Initialization."""
         super(Critic, self).__init__()
-
         self.device = device
 
         self.state_dim = state_dim
@@ -118,6 +116,7 @@ class Critic(nn.Module):
 
         Args:
             state (numpy.ndarray): input vector on the state space
+            action (torch.Tensor): input tensor on the action space
 
         Returns:
             predicted state value

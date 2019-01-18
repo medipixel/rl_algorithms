@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
-"""DDPG agent for episodic tasks in OpenAI Gym.
+"""DDPG with Behavior Cloning agent for episodic tasks in OpenAI Gym.
 
-- Author: Curt Park
-- Contact: curt.park@medipixel.io
-- Paper: https://arxiv.org/pdf/1509.02971.pdf
+- Author: Kh Kim
+- Contact: kh.kim@medipixel.io
+- Paper: https://arxiv.org/pdf/1709.10089.pdf
 """
+
 
 import os
 import git
+import pickle
 import numpy as np
 
 import torch
@@ -26,9 +28,13 @@ hyper_params = {
         'GAMMA': 0.99,
         'TAU': 1e-3,
         'BUFFER_SIZE': int(1e5),
-        'BATCH_SIZE': 128,
+        'BATCH_SIZE': 1024,
+        'DEMO_BATCH_SIZE': 128,
         'MAX_EPISODE_STEPS': 300,
-        'EPISODE_NUM': 1500
+        'EPISODE_NUM': 1500,
+        'LAMBDA1': 1e-3,
+        'LAMBDA2': 1.0,
+        'DEMO_PATH': "baselines/bc/demo_memory.pkl",
 }
 
 
@@ -38,7 +44,7 @@ class Agent(object):
     Args:
         env (gym.Env): openAI Gym environment with discrete action space
         args (dict): arguments including hyperparameters and training settings
-        device (str): device selection (cpu / gpu)
+        device (torch.device): device selection (cpu / gpu)
 
     Attributes:
         env (gym.Env): openAI Gym environment with continuous action space
@@ -51,7 +57,7 @@ class Agent(object):
         args (dict): arguments including hyperparameters and training settings
         noise (OUNoise): random noise for exploration
         memory (ReplayBuffer): replay memory
-        device (str): device selection (cpu / gpu)
+        device (torch.device): device selection (cpu / gpu)
 
     """
 
@@ -88,6 +94,11 @@ class Agent(object):
         self.critic_optimizer = optim.Adam(self.critic_local.parameters(),
                                            lr=1e-3)
 
+        # set hyper parameters
+        self.lambda1 = hyper_params['LAMBDA1']
+        self.lambda2 = \
+            hyper_params['LAMBDA2'] / hyper_params['DEMO_BATCH_SIZE']
+
         # load the optimizer and model parameters
         if args.model_path is not None and os.path.exists(args.model_path):
             self.load_params(args.model_path)
@@ -97,16 +108,23 @@ class Agent(object):
                              theta=0., sigma=0.)
 
         # replay memory
-        self.memory = ReplayBuffer(action_dim,
-                                   hyper_params['BUFFER_SIZE'],
+        self.memory = ReplayBuffer(hyper_params['BUFFER_SIZE'],
                                    hyper_params['BATCH_SIZE'],
                                    self.args.seed, self.device)
+
+        # load demo replay memory
+        with open(hyper_params['DEMO_PATH'], 'rb') as f:
+            demo = pickle.load(f)
+
+        self.demo_memory = ReplayBuffer(len(demo),
+                                        hyper_params['DEMO_BATCH_SIZE'],
+                                        self.args.seed, self.device, demo)
 
     def select_action(self, state):
         """Select an action from the input space."""
         selected_action = self.actor_local(state)
-        selected_action += torch.tensor(self.noise.sample()
-                                        ).float().to(self.device)
+        selected_action += \
+            torch.tensor(self.noise.sample()).float().to(self.device)
 
         action_low = float(self.env.action_space.low[0])
         action_high = float(self.env.action_space.high[0])
@@ -122,9 +140,18 @@ class Agent(object):
 
         return next_state, reward, done
 
-    def update_model(self, experiences):
+    def update_model(self, experiences, demo):
         """Train the model after each episode."""
-        states, actions, rewards, next_states, dones = experiences
+        exp_states, exp_actions, exp_rewards,\
+            exp_next_states, exp_dones = experiences
+        demo_states, demo_actions, demo_rewards,\
+            demo_next_states, demo_dones = demo
+
+        states = torch.cat((exp_states, demo_states), dim=0)
+        actions = torch.cat((exp_actions, demo_actions), dim=0)
+        rewards = torch.cat((exp_rewards, demo_rewards), dim=0)
+        next_states = torch.cat((exp_next_states, demo_next_states), dim=0)
+        dones = torch.cat((exp_dones, demo_dones), dim=0)
 
         # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
         #       = r                       otherwise
@@ -141,9 +168,23 @@ class Agent(object):
         critic_loss.backward()
         self.critic_optimizer.step()
 
-        # train actor
+        # train actor: pg loss + BC loss
+        # policy loss
         actions = self.actor_local(states)
-        actor_loss = -self.critic_local(states, actions).mean()
+        policy_loss = -self.critic_local(states, actions).mean()
+
+        # bc loss
+        pred_actions = self.actor_local(demo_states)
+        qf_mask = \
+            torch.gt(self.critic_local(demo_states,
+                                       demo_actions),
+                     self.critic_local(demo_states,
+                                       pred_actions)).to(self.device)
+        qf_mask = qf_mask.float()
+        bc_loss = F.mse_loss(torch.mul(pred_actions, qf_mask),
+                             torch.mul(demo_actions, qf_mask))
+        actor_loss = self.lambda1 * policy_loss + self.lambda2 * bc_loss
+
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
         self.actor_optimizer.step()
@@ -202,7 +243,7 @@ class Agent(object):
 
         repo = git.Repo(search_parent_directories=True)
         sha = repo.head.object.hexsha
-        path = os.path.join('./save/ddpg_' + sha[:7] + '_ep_' +
+        path = os.path.join('./save/bc_' + sha[:7] + '_ep_' +
                             str(n_episode)+'.pt')
         torch.save(params, path)
         print('[INFO] saved the model and optimizer to', path)
@@ -228,24 +269,27 @@ class Agent(object):
 
                 action = self.select_action(state)
                 next_state, reward, done = self.step(state, action)
+
                 if len(self.memory) >= hyper_params['BATCH_SIZE']:
                     experiences = self.memory.sample()
-                    loss = self.update_model(experiences)
+                    demos = self.demo_memory.sample()
+                    loss = self.update_model(experiences, demos)
                     loss_episode.append(loss)  # for logging
 
                 state = next_state
                 score += reward
 
             else:
-                avg_loss = np.array(loss_episode).mean()
-                print('[INFO] episode %d\ttotal score: %d\tloss: %f'
-                      % (i_episode+1, score, avg_loss))
+                if len(loss_episode) > 0:
+                    avg_loss = np.array(loss_episode).mean()
+                    print('[INFO] episode %d\ttotal score: %d\tloss: %f'
+                          % (i_episode+1, score, avg_loss))
 
-                if self.args.log:
-                    wandb.log({'score': score, 'avg_loss': avg_loss})
+                    if self.args.log:
+                        wandb.log({'score': score, 'avg_loss': avg_loss})
 
-                if i_episode % self.args.save_period == 0:
-                    self.save_params(i_episode)
+                    if i_episode % self.args.save_period == 0:
+                        self.save_params(i_episode)
 
         # termination
         self.env.close()

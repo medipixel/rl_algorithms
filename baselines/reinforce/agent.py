@@ -30,12 +30,12 @@ hyper_params = {
 class Agent(object):
     """ReinforceAgent interacting with environment.
 
-    Attributes:
+    Args:
         env (gym.Env): openAI Gym environment with discrete action space
         args (dict): arguments including hyperparameters and training settings
-        device (str): device selection (cpu / gpu)
+        device (torch.device): device selection (cpu / gpu)
 
-    Args:
+    Attributes:
         env (gym.Env): openAI Gym environment with discrete action space
         model (nn.Module): policy gradient model to select actions
         args (dict): arguments including hyperparameters and training settings
@@ -43,7 +43,7 @@ class Agent(object):
         log_prob_sequence (list): log probabailities of an episode
         predicted_value_sequence (list): predicted values of an episode
         reward_sequence (list): rewards of an episode to calculate returns
-        device (str): device selection (cpu / gpu)
+        device (torch.device): device selection (cpu / gpu)
 
     """
 
@@ -200,9 +200,11 @@ class Agent(object):
                 if self.args.log:
                     wandb.log({'score': score, 'loss': loss})
 
+                if i_episode % self.args.save_period == 0:
+                    self.save_params(i_episode)
+
         # termination
         self.env.close()
-        self.save_params(hyper_params['EPISODE_NUM'])
 
     def test(self):
         """Test the agent."""

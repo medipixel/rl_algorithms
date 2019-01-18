@@ -11,7 +11,6 @@ with continuous action space in OpenAI Gym.
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
 class Actor(nn.Module):
@@ -84,6 +83,7 @@ class Critic(nn.Module):
     Args:
         state_dim (int): dimension of state space
         action_dim (int): dimension of action space
+        device (torch.device): cpu or cuda
 
     Attributes:
         state_dim (int): dimension of state space
@@ -100,16 +100,22 @@ class Critic(nn.Module):
         self.state_dim = state_dim
         self.action_dim = action_dim
 
-        self.fc1 = nn.Linear(self.state_dim+self.action_dim, 24)
-        self.fc2 = nn.Linear(24, 48)
-        self.fc3 = nn.Linear(48, 24)
-        self.fc4 = nn.Linear(24, 1)
+        self.critic = nn.Sequential(
+                        nn.Linear(self.state_dim+self.action_dim, 24),
+                        nn.ReLU(),
+                        nn.Linear(24, 48),
+                        nn.ReLU(),
+                        nn.Linear(48, 24),
+                        nn.ReLU(),
+                        nn.Linear(24, 1),
+                     )
 
     def forward(self, state, action):
         """Forward method implementation.
 
         Args:
             state (numpy.ndarray): input vector on the state space
+            action (torch.Tensor): input tensor on the action space
 
         Returns:
             predicted state value
@@ -118,9 +124,6 @@ class Critic(nn.Module):
         state = torch.tensor(state).float().to(self.device)
 
         x = torch.cat((state, action), dim=-1)  # concat action
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = F.relu(self.fc3(x))
-        predicted_value = self.fc4(x)
+        predicted_value = self.critic(x)
 
         return predicted_value
