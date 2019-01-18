@@ -14,7 +14,7 @@ import gym
 parser = argparse.ArgumentParser(description='Pytorch RL baselines')
 parser.add_argument('--seed', type=int, default=777,
                     help='random seed for reproducibility')
-parser.add_argument('--algo', type=str, default='ddpg',
+parser.add_argument('--algo', type=str, default='bc',
                     help='choose an algorithm')
 parser.add_argument('--test', dest='test', action='store_true',
                     help='test mode (no training)')
@@ -26,6 +26,8 @@ parser.add_argument('--render-after', type=int, default=0,
                     help='start rendering after the input number of episode')
 parser.add_argument('--log', dest='log', action='store_true',
                     help='turn on logging')
+parser.add_argument('--save-period', type=int, default=50,
+                    help='save model period')
 parser.set_defaults(test=False)
 parser.set_defaults(model_path=None)
 parser.set_defaults(render=True)
@@ -36,7 +38,7 @@ args = parser.parse_args()
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 # algorithms
-policy_gradients = {'ac', 'reinforce', 'dpg', 'ddpg', 'trpo', 'ppo'}
+policy_gradients = {'ac', 'reinforce', 'dpg', 'ddpg', 'trpo', 'ppo', 'bc'}
 
 # import the agent
 if args.algo == 'reinforce':
@@ -51,6 +53,8 @@ elif args.algo == 'trpo':
     from baselines.trpo.agent import Agent
 elif args.algo == 'ppo':
     from baselines.ppo.agent import Agent
+elif args.algo == 'bc':
+    from baselines.bc.agent import Agent
 
 
 def main():

@@ -15,21 +15,16 @@ class ReplayBuffer:
     ddpg-pendulum/ddpg_agent.py
     """
 
-    def __init__(self, action_size, buffer_size, batch_size, seed, device):
+    def __init__(self, buffer_size, batch_size, seed, device):
         """Initialize a ReplayBuffer object."""
         self.device = device
-        self.action_size = action_size
         self.memory = deque(maxlen=buffer_size)  # internal memory (deque)
         self.batch_size = batch_size
-        self.experience = namedtuple("Experience",
-                                     field_names=["state", "action", "reward",
-                                                  "next_state", "done"])
         self.seed = random.seed(seed)
 
     def add(self, state, action, reward, next_state, done):
         """Add a new experience to memory."""
-        e = self.experience(state, action, reward, next_state, done)
-        self.memory.append(e)
+        self.memory.append((state, action, reward, next_state, done))
 
     def sample(self):
         """Randomly sample a batch of experiences from memory."""
@@ -38,11 +33,11 @@ class ReplayBuffer:
         states, actions, rewards, next_states, dones = [], [], [], [], []
 
         for e in experiences:
-            states.append(e.state)
-            actions.append(e.action)
-            rewards.append(e.reward)
-            next_states.append(e.next_state)
-            dones.append(e.done)
+            states.append(np.expand_dims(e[0], axis=0))
+            actions.append(e[1])
+            rewards.append(e[2])
+            next_states.append(np.expand_dims(e[3], axis=0))
+            dones.append(e[4])
 
         states =\
             torch.from_numpy(np.vstack(states)).float().to(self.device)
@@ -57,6 +52,10 @@ class ReplayBuffer:
                 np.vstack(dones).astype(np.uint8)).float().to(self.device)
 
         return (states, actions, rewards, next_states, dones)
+
+    def replace(self, memory):
+        """Replace memory to already exist memory (i.e. demonstration memory)"""
+        self.memory = memory
 
     def __len__(self):
         """Return the current size of internal memory."""

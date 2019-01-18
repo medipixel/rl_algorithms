@@ -8,6 +8,7 @@
 
 import os
 import git
+import pickle
 import numpy as np
 
 import torch
@@ -26,9 +27,13 @@ hyper_params = {
         'GAMMA': 0.99,
         'TAU': 1e-3,
         'BUFFER_SIZE': int(1e5),
-        'BATCH_SIZE': 128,
+        'BATCH_SIZE': 1024,
+        'DEMO_BATCH_SIZE': 128,
         'MAX_EPISODE_STEPS': 300,
-        'EPISODE_NUM': 1500
+        'EPISODE_NUM': 1500,
+        'LAMBDA1': 1e-3,
+        'LAMBDA2': 1.0,
+        'DEMO_MEMORY_PATH': "baselines/bc/demo_memory.pkl",
 }
 
 
@@ -38,7 +43,7 @@ class Agent(object):
     Args:
         env (gym.Env): openAI Gym environment with discrete action space
         args (dict): arguments including hyperparameters and training settings
-        device (str): device selection (cpu / gpu)
+        device (torch.device): device selection (cpu / gpu)
 
     Attributes:
         env (gym.Env): openAI Gym environment with continuous action space
@@ -51,7 +56,7 @@ class Agent(object):
         args (dict): arguments including hyperparameters and training settings
         noise (OUNoise): random noise for exploration
         memory (ReplayBuffer): replay memory
-        device (str): device selection (cpu / gpu)
+        device (torch.device): device selection (cpu / gpu)
 
     """
 
@@ -88,6 +93,10 @@ class Agent(object):
         self.critic_optimizer = optim.Adam(self.critic_local.parameters(),
                                            lr=1e-3)
 
+        # set hyper parameters
+        self.lambda1 = hyper_params['LAMBDA1']
+        self.lambda2 = hyper_params['LAMBDA2'] / hyper_params['DEMO_BATCH_SIZE']
+
         # load the optimizer and model parameters
         if args.model_path is not None and os.path.exists(args.model_path):
             self.load_params(args.model_path)
@@ -97,16 +106,23 @@ class Agent(object):
                              theta=0., sigma=0.)
 
         # replay memory
-        self.memory = ReplayBuffer(action_dim,
-                                   hyper_params['BUFFER_SIZE'],
+        self.memory = ReplayBuffer(hyper_params['BUFFER_SIZE'],
                                    hyper_params['BATCH_SIZE'],
                                    self.args.seed, self.device)
+
+        # load demo replay memory
+        with open(hyper_params['DEMO_MEMORY_PATH'], 'rb') as f:
+            demo_buffer = pickle.load(f)
+
+        self.demo_memory = ReplayBuffer(len(demo_buffer),
+                                        hyper_params['DEMO_BATCH_SIZE'],
+                                        self.args.seed, self.device)
+        self.demo_memory.replace(demo_buffer)
 
     def select_action(self, state):
         """Select an action from the input space."""
         selected_action = self.actor_local(state)
-        selected_action += torch.tensor(self.noise.sample()
-                                        ).float().to(self.device)
+        selected_action += torch.tensor(self.noise.sample()).float().to(self.device)
 
         action_low = float(self.env.action_space.low[0])
         action_high = float(self.env.action_space.high[0])
@@ -122,9 +138,16 @@ class Agent(object):
 
         return next_state, reward, done
 
-    def update_model(self, experiences):
+    def update_model(self, experiences, demo):
         """Train the model after each episode."""
-        states, actions, rewards, next_states, dones = experiences
+        estates, eactions, erewards, enext_states, edones = experiences
+        dstates, dactions, drewards, dnext_states, ddones = demo
+
+        states = torch.cat((estates, dstates), dim=0)
+        actions = torch.cat((eactions, dactions), dim=0)
+        rewards = torch.cat((erewards, drewards), dim=0)
+        next_states = torch.cat((enext_states, dnext_states), dim=0)
+        dones = torch.cat((edones, ddones), dim=0)
 
         # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
         #       = r                       otherwise
@@ -141,9 +164,18 @@ class Agent(object):
         critic_loss.backward()
         self.critic_optimizer.step()
 
-        # train actor
+        # train actor: pg loss + BC loss
+        # pg loss
         actions = self.actor_local(states)
-        actor_loss = -self.critic_local(states, actions).mean()
+        pg_loss = -self.critic_local(states, actions).mean()
+        # bc loss
+        expected_action = self.actor_local(dstates)
+        # q-filter mask
+        qf_mask = torch.gt(self.critic_local(dstates, dactions),
+                           self.critic_local(dstates, expected_action)).to(self.device).float()
+        bc_loss = F.mse_loss(torch.mul(expected_action, qf_mask), torch.mul(dactions, qf_mask))
+        actor_loss = self.lambda1 * pg_loss + self.lambda2 * bc_loss
+
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
         self.actor_optimizer.step()
@@ -230,23 +262,27 @@ class Agent(object):
                 next_state, reward, done = self.step(state, action)
                 if len(self.memory) >= hyper_params['BATCH_SIZE']:
                     experiences = self.memory.sample()
-                    loss = self.update_model(experiences)
+                    demos = self.demo_memory.sample()
+                    loss = self.update_model(experiences, demos)
                     loss_episode.append(loss)  # for logging
 
                 state = next_state
                 score += reward
 
             else:
-                avg_loss = np.array(loss_episode).mean()
-                print('[INFO] episode %d\ttotal score: %d\tloss: %f'
-                      % (i_episode+1, score, avg_loss))
+                if len(loss_episode) > 0:
+                    avg_loss = np.array(loss_episode).mean()
+                    print('[INFO] episode %d\ttotal score: %d\tloss: %f'
+                          % (i_episode+1, score, avg_loss))
 
-                if self.args.log:
-                    wandb.log({'score': score, 'avg_loss': avg_loss})
+                    if self.args.log:
+                        wandb.log({'score': score, 'avg_loss': avg_loss})
+
+                    if i_episode % self.args.save_period == 0:
+                        self.save_params(i_episode)
 
         # termination
         self.env.close()
-        self.save_params(hyper_params['EPISODE_NUM'])
 
     def test(self):
         """Test the agent."""
