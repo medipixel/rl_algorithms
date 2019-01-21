@@ -259,7 +259,7 @@ class Agent(object):
             wandb.watch([self.actor_local, self.critic_local],
                         log='parameters')
 
-        for i_episode in range(hyper_params['EPISODE_NUM']):
+        for i_episode in range(1, hyper_params['EPISODE_NUM']+1):
             state = self.env.reset()
             done = False
             score = 0
@@ -285,7 +285,7 @@ class Agent(object):
                 if len(loss_episode) > 0:
                     avg_loss = np.array(loss_episode).mean()
                     print('[INFO] episode %d\ttotal score: %d\tloss: %f'
-                          % (i_episode+1, score, avg_loss))
+                          % (i_episode, score, avg_loss))
 
                     if self.args.log:
                         wandb.log({'score': score, 'avg_loss': avg_loss})
