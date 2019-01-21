@@ -9,13 +9,13 @@ This module has TRPO util functions.
 """
 
 import math
+
 import numpy as np
 import torch
 from torch.distributions.kl import kl_divergence
 
-
 # device selection: cpu / gpu
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 def decompose_memory(memory):
@@ -24,8 +24,9 @@ def decompose_memory(memory):
     states = torch.from_numpy(np.vstack(memory[:, 0])).float().to(device)
     actions = torch.from_numpy(np.vstack(memory[:, 1])).float().to(device)
     rewards = torch.from_numpy(np.vstack(memory[:, 2])).float().to(device)
-    dones = torch.from_numpy(
-                np.vstack(memory[:, 3]).astype(np.uint8)).float().to(device)
+    dones = (
+        torch.from_numpy(np.vstack(memory[:, 3]).astype(np.uint8)).float().to(device)
+    )
 
     return states, actions, rewards, dones
 
@@ -48,7 +49,8 @@ def set_flat_params_to(model, flat_params):
     for param in model.parameters():
         flat_size = int(np.prod(list(param.size())))
         param.data.copy_(
-            flat_params[prev_ind:prev_ind + flat_size].view(param.size()))
+            flat_params[prev_ind : prev_ind + flat_size].view(param.size())
+        )
         prev_ind += flat_size
 
 
@@ -111,15 +113,16 @@ def conjugate_gradients(Avp, b, nsteps, residual_tol=1e-10):
 
 
 # taken from https://github.com/ikostrikov/pytorch-trpo
-def linesearch(model, f, x, fullstep, expected_improve_rate,
-               max_backtracks=10, accept_ratio=.1):
+def linesearch(
+    model, f, x, fullstep, expected_improve_rate, max_backtracks=10, accept_ratio=0.1
+):
     """Backtracking linesearch.
 
     where expected_improve_rate is the slope the slope dy/dx
     at the initial point.
     """
     fval = f(True).data
-    for (_n_backtracks, stepfrac) in enumerate(.5**np.arange(max_backtracks)):
+    for (_n_backtracks, stepfrac) in enumerate(0.5 ** np.arange(max_backtracks)):
         xnew = x + torch.tensor(stepfrac).to(device) * fullstep
         set_flat_params_to(model, xnew)
         newfval = f(True).data
@@ -136,14 +139,12 @@ def linesearch(model, f, x, fullstep, expected_improve_rate,
 def normal_log_density(x, mean, log_std, std):
     """Calculate log density of nomal distribution."""
     var = std.pow(2)
-    log_density = -(x - mean).pow(2) / \
-        (2 * var) - 0.5 * math.log(2 * math.pi) - log_std
+    log_density = -(x - mean).pow(2) / (2 * var) - 0.5 * math.log(2 * math.pi) - log_std
     return log_density.sum(1, keepdim=True)
 
 
 # taken from https://github.com/ikostrikov/pytorch-trpo
-def trpo_step(old_actor, actor, states, actions,
-              advantages, max_kl, damping):
+def trpo_step(old_actor, actor, states, actions, advantages, max_kl, damping):
     """Calculate TRPO loss."""
     _, old_dist = old_actor(states)
     old_log_prob = old_dist.log_prob(actions)
@@ -178,8 +179,9 @@ def trpo_step(old_actor, actor, states, actions,
 
         kl_v = (flat_grad_kl * v).sum()
         grads = torch.autograd.grad(kl_v, actor.parameters())
-        flat_grad_grad_kl = torch.cat([grad.contiguous().view(-1)
-                                       for grad in grads]).data
+        flat_grad_grad_kl = torch.cat(
+            [grad.contiguous().view(-1) for grad in grads]
+        ).data
 
         return flat_grad_grad_kl + v * damping
 
@@ -190,8 +192,9 @@ def trpo_step(old_actor, actor, states, actions,
     neggdotstepdir = (-loss_grad * stepdir).sum(0, keepdim=True)
     prev_params = get_flat_params_from(actor)
 
-    success, new_params = linesearch(actor, get_loss, prev_params, fullstep,
-                                     neggdotstepdir / lm[0])
+    success, new_params = linesearch(
+        actor, get_loss, prev_params, fullstep, neggdotstepdir / lm[0]
+    )
 
     set_flat_params_to(actor, new_params)
 
@@ -233,5 +236,7 @@ class ValueLoss(object):
         for param in self.model.parameters():
             value_loss += param.pow(2).sum() * self.l2_reg
 
-        return (value_loss.data.to('cpu').double().numpy(),
-                get_flat_grad_from(self.model).data.to('cpu').double().numpy())
+        return (
+            value_loss.data.to("cpu").double().numpy(),
+            get_flat_grad_from(self.model).data.to("cpu").double().numpy(),
+        )

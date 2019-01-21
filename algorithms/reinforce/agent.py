@@ -6,24 +6,22 @@
 """
 
 import os
-import git
 from collections import deque
 
+import git
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
-
 import wandb
 
 from algorithms.reinforce.model import ActorCritic
 
-
 # hyper parameters
 hyper_params = {
-        'GAMMA': 0.99,
-        'STD': 1.0,
-        'MAX_EPISODE_STEPS': 500,
-        'EPISODE_NUM': 1500
+    "GAMMA": 0.99,
+    "STD": 1.0,
+    "MAX_EPISODE_STEPS": 500,
+    "EPISODE_NUM": 1500,
 }
 
 
@@ -57,16 +55,16 @@ class Agent(object):
         self.reward_sequence = []
 
         # environment setup
-        self.env._max_episode_steps = hyper_params['MAX_EPISODE_STEPS']
+        self.env._max_episode_steps = hyper_params["MAX_EPISODE_STEPS"]
 
         # create a model
         state_dim = self.env.observation_space.shape[0]
         action_dim = self.env.action_space.shape[0]
         action_low = float(self.env.action_space.low[0])
         action_high = float(self.env.action_space.high[0])
-        self.model = ActorCritic(hyper_params['STD'], state_dim,
-                                 action_dim, action_low,
-                                 action_high).to(self.device)
+        self.model = ActorCritic(
+            hyper_params["STD"], state_dim, action_dim, action_low, action_high
+        ).to(self.device)
 
         # create optimizer
         self.optimizer = optim.Adam(self.model.parameters())
@@ -83,7 +81,7 @@ class Agent(object):
         self.log_prob_sequence.append(dist.log_prob(selected_action).sum())
         self.predicted_value_sequence.append(predicted_value)
 
-        return selected_action.detach().to('cpu').numpy()
+        return selected_action.detach().to("cpu").numpy()
 
     def step(self, action):
         """Take an action and return the response of the env."""
@@ -100,31 +98,29 @@ class Agent(object):
         return_sequence = deque()
 
         # calculate return value at each step
-        for i in range(len(self.reward_sequence)-1, -1, -1):
-            return_value = self.reward_sequence[i] +\
-                           hyper_params['GAMMA'] *\
-                           return_value
+        for i in range(len(self.reward_sequence) - 1, -1, -1):
+            return_value = (
+                self.reward_sequence[i] + hyper_params["GAMMA"] * return_value
+            )
             return_sequence.appendleft(return_value)
 
         return_sequence = torch.tensor(return_sequence).to(self.device)
         # standardize returns for better stability
-        return_sequence =\
-            (return_sequence - return_sequence.mean()) /\
-            (return_sequence.std() + 1e-7)
+        return_sequence = (return_sequence - return_sequence.mean()) / (
+            return_sequence.std() + 1e-7
+        )
 
         # calculate loss at each step
         loss_sequence = []
-        for log_prob,\
-            return_value,\
-            predicted_value in zip(self.log_prob_sequence,
-                                   return_sequence,
-                                   self.predicted_value_sequence):
+        for log_prob, return_value, predicted_value in zip(
+            self.log_prob_sequence, return_sequence, self.predicted_value_sequence
+        ):
             delta = return_value - predicted_value.detach()
 
-            policy_loss = -delta*log_prob
+            policy_loss = -delta * log_prob
             value_loss = F.smooth_l1_loss(predicted_value, return_value)
 
-            loss = (policy_loss + value_loss)
+            loss = policy_loss + value_loss
             loss_sequence.append(loss)
 
         # train
@@ -143,32 +139,31 @@ class Agent(object):
     def load_params(self, path):
         """Load model and optimizer parameters."""
         if not os.path.exists(path):
-            print('[ERROR] the input path does not exist. ->', path)
+            print("[ERROR] the input path does not exist. ->", path)
             return
 
         params = torch.load(path)
-        self.model.load_state_dict(params['model_state_dict'])
-        self.optimizer.load_state_dict(params['optim_state_dict'])
-        print('[INFO] loaded the model and optimizer from', path)
+        self.model.load_state_dict(params["model_state_dict"])
+        self.optimizer.load_state_dict(params["optim_state_dict"])
+        print("[INFO] loaded the model and optimizer from", path)
 
     def save_params(self, n_episode):
         """Save model and optimizer parameters."""
-        if not os.path.exists('./save'):
-            os.mkdir('./save')
+        if not os.path.exists("./save"):
+            os.mkdir("./save")
 
         params = {
-                 'model_state_dict': self.model.state_dict(),
-                 'optim_state_dict': self.optimizer.state_dict()
-                 }
+            "model_state_dict": self.model.state_dict(),
+            "optim_state_dict": self.optimizer.state_dict(),
+        }
 
         repo = git.Repo(search_parent_directories=True)
         sha = repo.head.object.hexsha
-        path = os.path.join('./save/reinforce_' +
-                            sha[:7] +
-                            '_ep_' +
-                            str(n_episode)+'.pt')
+        path = os.path.join(
+            "./save/reinforce_" + sha[:7] + "_ep_" + str(n_episode) + ".pt"
+        )
         torch.save(params, path)
-        print('[INFO] saved the model and optimizer to', path)
+        print("[INFO] saved the model and optimizer to", path)
 
     def train(self):
         """Run the agent."""
@@ -176,9 +171,9 @@ class Agent(object):
         if self.args.log:
             wandb.init()
             wandb.config.update(hyper_params)
-            wandb.watch(self.model, log='parameters')
+            wandb.watch(self.model, log="parameters")
 
-        for i_episode in range(1, hyper_params['EPISODE_NUM']+1):
+        for i_episode in range(1, hyper_params["EPISODE_NUM"] + 1):
             state = self.env.reset()
             done = False
             score = 0
@@ -195,10 +190,12 @@ class Agent(object):
 
             else:
                 loss = self.update_model()
-                print('[INFO] episode %d\ttotal score: %d\tloss: %f'
-                      % (i_episode, score, loss))
+                print(
+                    "[INFO] episode %d\ttotal score: %d\tloss: %f"
+                    % (i_episode, score, loss)
+                )
                 if self.args.log:
-                    wandb.log({'score': score, 'loss': loss})
+                    wandb.log({"score": score, "loss": loss})
 
                 if i_episode % self.args.save_period == 0:
                     self.save_params(i_episode)
@@ -208,7 +205,7 @@ class Agent(object):
 
     def test(self):
         """Test the agent."""
-        for i_episode in range(hyper_params['EPISODE_NUM']):
+        for i_episode in range(hyper_params["EPISODE_NUM"]):
             state = self.env.reset()
             done = False
             score = 0
@@ -224,8 +221,7 @@ class Agent(object):
                 score += reward
 
             else:
-                print('[INFO] episode %d\ttotal score: %d'
-                      % (i_episode, score))
+                print("[INFO] episode %d\ttotal score: %d" % (i_episode, score))
 
         # termination
         self.env.close()

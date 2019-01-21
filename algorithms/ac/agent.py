@@ -6,24 +6,22 @@
 """
 
 import os
+
 import git
 import numpy as np
-
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
-
 import wandb
 
 from algorithms.ac.model import ActorCritic
 
-
 # hyper parameters
 hyper_params = {
-        'GAMMA': 0.99,
-        'STD': 1.0,
-        'MAX_EPISODE_STEPS': 500,
-        'EPISODE_NUM': 1500
+    "GAMMA": 0.99,
+    "STD": 1.0,
+    "MAX_EPISODE_STEPS": 500,
+    "EPISODE_NUM": 1500,
 }
 
 
@@ -51,16 +49,16 @@ class Agent(object):
         self.env = env
 
         # environment setup
-        self.env._max_episode_steps = hyper_params['MAX_EPISODE_STEPS']
+        self.env._max_episode_steps = hyper_params["MAX_EPISODE_STEPS"]
 
         # create a model
         state_dim = self.env.observation_space.shape[0]
         action_dim = self.env.action_space.shape[0]
         action_low = float(self.env.action_space.low[0])
         action_high = float(self.env.action_space.high[0])
-        self.model = ActorCritic(hyper_params['STD'], state_dim,
-                                 action_dim, action_low,
-                                 action_high).to(self.device)
+        self.model = ActorCritic(
+            hyper_params["STD"], state_dim, action_dim, action_low, action_high
+        ).to(self.device)
 
         # create optimizer
         self.optimizer = optim.Adam(self.model.parameters())
@@ -74,9 +72,11 @@ class Agent(object):
         state = torch.from_numpy(state).float().to(self.device)
         selected_action, predicted_value, dist = self.model(state)
 
-        return (selected_action.detach().to('cpu').numpy(),
-                dist.log_prob(selected_action).sum(),
-                predicted_value)
+        return (
+            selected_action.detach().to("cpu").numpy(),
+            dist.log_prob(selected_action).sum(),
+            predicted_value,
+        )
 
     def step(self, action):
         """Take an action and return the response of the env."""
@@ -92,7 +92,7 @@ class Agent(object):
         #       = r                       otherwise
         if not done:
             next_value = self.model.critic(next_state).detach()
-            curr_return = reward + hyper_params['GAMMA'] * next_value
+            curr_return = reward + hyper_params["GAMMA"] * next_value
         else:
             curr_return = torch.tensor(reward)
 
@@ -116,32 +116,31 @@ class Agent(object):
     def load_params(self, path):
         """Load model and optimizer parameters."""
         if not os.path.exists(path):
-            print('[ERROR] the input path does not exist. ->', path)
+            print("[ERROR] the input path does not exist. ->", path)
             return
 
         params = torch.load(path)
-        self.model.load_state_dict(params['model_state_dict'])
-        self.optimizer.load_state_dict(params['optim_state_dict'])
-        print('[INFO] loaded the model and optimizer from', path)
+        self.model.load_state_dict(params["model_state_dict"])
+        self.optimizer.load_state_dict(params["optim_state_dict"])
+        print("[INFO] loaded the model and optimizer from", path)
 
     def save_params(self, n_episode):
         """Save model and optimizer parameters."""
-        if not os.path.exists('./save'):
-            os.mkdir('./save')
+        if not os.path.exists("./save"):
+            os.mkdir("./save")
 
         params = {
-                 'model_state_dict': self.model.state_dict(),
-                 'optim_state_dict': self.optimizer.state_dict()
-                 }
+            "model_state_dict": self.model.state_dict(),
+            "optim_state_dict": self.optimizer.state_dict(),
+        }
 
         repo = git.Repo(search_parent_directories=True)
         sha = repo.head.object.hexsha
-        path = os.path.join('./save/actor_critic_' +
-                            sha[:7] +
-                            '_ep_' +
-                            str(n_episode)+'.pt')
+        path = os.path.join(
+            "./save/actor_critic_" + sha[:7] + "_ep_" + str(n_episode) + ".pt"
+        )
         torch.save(params, path)
-        print('[INFO] saved the model and optimizer to', path)
+        print("[INFO] saved the model and optimizer to", path)
 
     def train(self):
         """Train the agent."""
@@ -149,9 +148,9 @@ class Agent(object):
         if self.args.log:
             wandb.init()
             wandb.config.update(hyper_params)
-            wandb.watch(self.model, log='parameters')
+            wandb.watch(self.model, log="parameters")
 
-        for i_episode in range(1, hyper_params['EPISODE_NUM']+1):
+        for i_episode in range(1, hyper_params["EPISODE_NUM"] + 1):
             state = self.env.reset()
             done = False
             score = 0
@@ -163,8 +162,9 @@ class Agent(object):
 
                 action, log_prob, predicted_value = self.select_action(state)
                 next_state, reward, done = self.step(action)
-                loss = self.update_model(done, log_prob, reward,
-                                         next_state, predicted_value)
+                loss = self.update_model(
+                    done, log_prob, reward, next_state, predicted_value
+                )
                 loss_episode.append(loss)
 
                 state = next_state
@@ -172,11 +172,13 @@ class Agent(object):
 
             else:
                 avg_loss = np.array(loss_episode).mean()
-                print('[INFO] episode %d\ttotal score: %d\tloss: %f'
-                      % (i_episode, score, avg_loss))
+                print(
+                    "[INFO] episode %d\ttotal score: %d\tloss: %f"
+                    % (i_episode, score, avg_loss)
+                )
 
                 if self.args.log:
-                    wandb.log({'score': score, 'avg_loss': avg_loss})
+                    wandb.log({"score": score, "avg_loss": avg_loss})
 
                 if i_episode % self.args.save_period == 0:
                     self.save_params(i_episode)
@@ -186,7 +188,7 @@ class Agent(object):
 
     def test(self):
         """Test the agent."""
-        for i_episode in range(hyper_params['EPISODE_NUM']):
+        for i_episode in range(hyper_params["EPISODE_NUM"]):
             state = self.env.reset()
             done = False
             score = 0
@@ -202,8 +204,7 @@ class Agent(object):
                 score += reward
 
             else:
-                print('[INFO] episode %d\ttotal score: %d'
-                      % (i_episode, score))
+                print("[INFO] episode %d\ttotal score: %d" % (i_episode, score))
 
         # termination
         self.env.close()

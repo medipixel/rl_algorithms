@@ -6,28 +6,33 @@
 """
 
 import argparse
-import torch
-import gym
 
+import gym
+import torch
 
 # configurations
-parser = argparse.ArgumentParser(description='Pytorch RL baselines')
-parser.add_argument('--seed', type=int, default=777,
-                    help='random seed for reproducibility')
-parser.add_argument('--algo', type=str, default='ddpg',
-                    help='choose an algorithm')
-parser.add_argument('--test', dest='test', action='store_true',
-                    help='test mode (no training)')
-parser.add_argument('--load-from', type=str,
-                    help='load the saved model and optimizer at the beginning')
-parser.add_argument('--off-render', dest='render', action='store_false',
-                    help='turn off rendering')
-parser.add_argument('--render-after', type=int, default=0,
-                    help='start rendering after the input number of episode')
-parser.add_argument('--log', dest='log', action='store_true',
-                    help='turn on logging')
-parser.add_argument('--save-period', type=int, default=50,
-                    help='save model period')
+parser = argparse.ArgumentParser(description="Pytorch RL baselines")
+parser.add_argument(
+    "--seed", type=int, default=777, help="random seed for reproducibility"
+)
+parser.add_argument("--algo", type=str, default="ddpg", help="choose an algorithm")
+parser.add_argument(
+    "--test", dest="test", action="store_true", help="test mode (no training)"
+)
+parser.add_argument(
+    "--load-from", type=str, help="load the saved model and optimizer at the beginning"
+)
+parser.add_argument(
+    "--off-render", dest="render", action="store_false", help="turn off rendering"
+)
+parser.add_argument(
+    "--render-after",
+    type=int,
+    default=0,
+    help="start rendering after the input number of episode",
+)
+parser.add_argument("--log", dest="log", action="store_true", help="turn on logging")
+parser.add_argument("--save-period", type=int, default=50, help="save model period")
 parser.set_defaults(test=False)
 parser.set_defaults(load_from=None)
 parser.set_defaults(render=True)
@@ -35,28 +40,27 @@ parser.set_defaults(log=False)
 args = parser.parse_args()
 
 # device selection: cpu / gpu
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # algorithms
-policy_gradients = {'ac', 'reinforce', 'dpg', 'ddpg',
-                    'trpo', 'ppo', 'bc', 'td3'}
+policy_gradients = {"ac", "reinforce", "dpg", "ddpg", "trpo", "ppo", "bc", "td3"}
 
 # import the agent
-if args.algo == 'reinforce':
+if args.algo == "reinforce":
     from algorithms.reinforce.agent import Agent
-elif args.algo == 'ac':
+elif args.algo == "ac":
     from algorithms.ac.agent import Agent
-elif args.algo == 'dpg':
+elif args.algo == "dpg":
     from algorithms.dpg.agent import Agent
-elif args.algo == 'ddpg':
+elif args.algo == "ddpg":
     from algorithms.ddpg.agent import Agent
-elif args.algo == 'trpo':
+elif args.algo == "trpo":
     from algorithms.trpo.agent import Agent
-elif args.algo == 'ppo':
+elif args.algo == "ppo":
     from algorithms.ppo.agent import Agent
-elif args.algo == 'bc':
+elif args.algo == "bc":
     from algorithms.bc.agent import Agent
-elif args.algo == 'td3':
+elif args.algo == "td3":
     from algorithms.td3.agent import Agent
 
 
@@ -64,7 +68,7 @@ def main():
     """Main."""
     # choose an env
     if args.algo in policy_gradients:
-        env = 'LunarLanderContinuous-v2'
+        env = "LunarLanderContinuous-v2"
 
     # env initialization
     env = gym.make(env)
@@ -83,5 +87,5 @@ def main():
         agent.train()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

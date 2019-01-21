@@ -33,8 +33,7 @@ class Actor(nn.Module):
 
     """
 
-    def __init__(self, state_dim, action_dim,
-                 action_low, action_high, device):
+    def __init__(self, state_dim, action_dim, action_low, action_high, device):
         """Initialization."""
         super(Actor, self).__init__()
         self.device = device
@@ -45,15 +44,15 @@ class Actor(nn.Module):
         self.action_high = action_high
 
         self.actor = nn.Sequential(
-                        nn.Linear(self.state_dim, 24),
-                        nn.ReLU(),
-                        nn.Linear(24, 48),
-                        nn.ReLU(),
-                        nn.Linear(48, 24),
-                        nn.ReLU(),
-                        nn.Linear(24, self.action_dim),
-                        nn.Tanh()
-                     )
+            nn.Linear(self.state_dim, 24),
+            nn.ReLU(),
+            nn.Linear(24, 48),
+            nn.ReLU(),
+            nn.Linear(48, 24),
+            nn.ReLU(),
+            nn.Linear(24, self.action_dim),
+            nn.Tanh(),
+        )
 
     def forward(self, state):
         """Forward method implementation.
@@ -70,7 +69,7 @@ class Actor(nn.Module):
 
         # adjust the output range to [action_low, action_high]
         scale_factor = (self.action_high - self.action_low) / 2
-        reloc_factor = (self.action_high - scale_factor)
+        reloc_factor = self.action_high - scale_factor
         action = action * scale_factor + reloc_factor
         action = torch.clamp(action, self.action_low, self.action_high)
 
@@ -102,14 +101,14 @@ class Critic(nn.Module):
         self.action_dim = action_dim
 
         self.critic = nn.Sequential(
-                        nn.Linear(self.state_dim+self.action_dim, 24),
-                        nn.ReLU(),
-                        nn.Linear(24, 48),
-                        nn.ReLU(),
-                        nn.Linear(48, 24),
-                        nn.ReLU(),
-                        nn.Linear(24, 1),
-                     )
+            nn.Linear(self.state_dim + self.action_dim, 24),
+            nn.ReLU(),
+            nn.Linear(24, 48),
+            nn.ReLU(),
+            nn.Linear(48, 24),
+            nn.ReLU(),
+            nn.Linear(24, 1),
+        )
 
     def forward(self, state, action):
         """Forward method implementation.

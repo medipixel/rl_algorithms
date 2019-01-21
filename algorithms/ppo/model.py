@@ -34,8 +34,7 @@ class Actor(nn.Module):
 
     """
 
-    def __init__(self, state_dim, action_dim,
-                 action_low, action_high, device):
+    def __init__(self, state_dim, action_dim, action_low, action_high, device):
         """Initialization."""
         super(Actor, self).__init__()
 
@@ -46,15 +45,15 @@ class Actor(nn.Module):
         self.device = device
 
         self.actor = nn.Sequential(
-                        nn.Linear(self.state_dim, 24),
-                        nn.Tanh(),
-                        nn.Linear(24, 48),
-                        nn.Tanh(),
-                        nn.Linear(48, 24),
-                        nn.Tanh(),
-                        nn.Linear(24, self.action_dim),
-                        nn.Tanh()
-                     )
+            nn.Linear(self.state_dim, 24),
+            nn.Tanh(),
+            nn.Linear(24, 48),
+            nn.Tanh(),
+            nn.Linear(48, 24),
+            nn.Tanh(),
+            nn.Linear(24, self.action_dim),
+            nn.Tanh(),
+        )
 
     def forward(self, state):
         """Forward method implementation.
@@ -73,9 +72,7 @@ class Actor(nn.Module):
         std = torch.exp(logstd)
 
         dist = Normal(mu, std)
-        selected_action = torch.clamp(dist.rsample(),
-                                      self.action_low,
-                                      self.action_high)
+        selected_action = torch.clamp(dist.rsample(), self.action_low, self.action_high)
 
         return selected_action, dist
 
@@ -105,14 +102,14 @@ class Critic(nn.Module):
         self.action_dim = action_dim
 
         self.critic = nn.Sequential(
-                        nn.Linear(self.state_dim, 24),
-                        nn.Tanh(),
-                        nn.Linear(24, 48),
-                        nn.Tanh(),
-                        nn.Linear(48, 24),
-                        nn.Tanh(),
-                        nn.Linear(24, 1),
-                     )
+            nn.Linear(self.state_dim, 24),
+            nn.Tanh(),
+            nn.Linear(24, 48),
+            nn.Tanh(),
+            nn.Linear(48, 24),
+            nn.Tanh(),
+            nn.Linear(24, 1),
+        )
 
     def forward(self, state):
         """Forward method implementation.
