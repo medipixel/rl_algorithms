@@ -8,33 +8,31 @@
 
 
 import os
-import git
 import pickle
-import numpy as np
 
+import git
+import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
-
 import wandb
 
 from algorithms.ddpg.model import Actor, Critic
 from algorithms.noise import OUNoise
 from algorithms.replay_buffer import ReplayBuffer
 
-
 # hyper parameters
 hyper_params = {
-        'GAMMA': 0.99,
-        'TAU': 1e-3,
-        'BUFFER_SIZE': int(1e5),
-        'BATCH_SIZE': 1024,
-        'DEMO_BATCH_SIZE': 128,
-        'MAX_EPISODE_STEPS': 300,
-        'EPISODE_NUM': 1500,
-        'LAMBDA1': 1e-3,
-        'LAMBDA2': 1.0,
-        'DEMO_PATH': "data/lunarlander_continuous_demo.pkl",
+    "GAMMA": 0.99,
+    "TAU": 1e-3,
+    "BUFFER_SIZE": int(1e5),
+    "BATCH_SIZE": 1024,
+    "DEMO_BATCH_SIZE": 128,
+    "MAX_EPISODE_STEPS": 300,
+    "EPISODE_NUM": 1500,
+    "LAMBDA1": 1e-3,
+    "LAMBDA2": 1.0,
+    "DEMO_PATH": "data/lunarlander_continuous_demo.pkl",
 }
 
 
@@ -72,59 +70,61 @@ class Agent(object):
         action_high = float(self.env.action_space.high[0])
 
         # environment setup
-        self.env._max_episode_steps = hyper_params['MAX_EPISODE_STEPS']
+        self.env._max_episode_steps = hyper_params["MAX_EPISODE_STEPS"]
 
         # create actor
-        self.actor_local = Actor(state_dim, action_dim, action_low,
-                                 action_high, self.device).to(device)
-        self.actor_target = Actor(state_dim, action_dim, action_low,
-                                  action_high, self.device).to(device)
+        self.actor_local = Actor(
+            state_dim, action_dim, action_low, action_high, self.device
+        ).to(device)
+        self.actor_target = Actor(
+            state_dim, action_dim, action_low, action_high, self.device
+        ).to(device)
         self.actor_target.load_state_dict(self.actor_local.state_dict())
 
         # create critic
-        self.critic_local = Critic(state_dim, action_dim,
-                                   self.device).to(device)
-        self.critic_target = Critic(state_dim, action_dim,
-                                    self.device).to(device)
+        self.critic_local = Critic(state_dim, action_dim, self.device).to(device)
+        self.critic_target = Critic(state_dim, action_dim, self.device).to(device)
         self.critic_target.load_state_dict(self.critic_local.state_dict())
 
         # create optimizers
-        self.actor_optimizer = optim.Adam(self.actor_local.parameters(),
-                                          lr=1e-4)
-        self.critic_optimizer = optim.Adam(self.critic_local.parameters(),
-                                           lr=1e-3)
+        self.actor_optimizer = optim.Adam(self.actor_local.parameters(), lr=1e-4)
+        self.critic_optimizer = optim.Adam(self.critic_local.parameters(), lr=1e-3)
 
         # set hyper parameters
-        self.lambda1 = hyper_params['LAMBDA1']
-        self.lambda2 = \
-            hyper_params['LAMBDA2'] / hyper_params['DEMO_BATCH_SIZE']
+        self.lambda1 = hyper_params["LAMBDA1"]
+        self.lambda2 = hyper_params["LAMBDA2"] / hyper_params["DEMO_BATCH_SIZE"]
 
         # load the optimizer and model parameters
         if args.load_from is not None and os.path.exists(args.load_from):
             self.load_params(args.load_from)
 
         # noise instance to make randomness of action
-        self.noise = OUNoise(action_dim, self.args.seed,
-                             theta=0., sigma=0.)
+        self.noise = OUNoise(action_dim, self.args.seed, theta=0.0, sigma=0.0)
 
         # replay memory
-        self.memory = ReplayBuffer(hyper_params['BUFFER_SIZE'],
-                                   hyper_params['BATCH_SIZE'],
-                                   self.args.seed, self.device)
+        self.memory = ReplayBuffer(
+            hyper_params["BUFFER_SIZE"],
+            hyper_params["BATCH_SIZE"],
+            self.args.seed,
+            self.device,
+        )
 
         # load demo replay memory
-        with open(hyper_params['DEMO_PATH'], 'rb') as f:
+        with open(hyper_params["DEMO_PATH"], "rb") as f:
             demo = pickle.load(f)
 
-        self.demo_memory = ReplayBuffer(len(demo),
-                                        hyper_params['DEMO_BATCH_SIZE'],
-                                        self.args.seed, self.device, demo)
+        self.demo_memory = ReplayBuffer(
+            len(demo),
+            hyper_params["DEMO_BATCH_SIZE"],
+            self.args.seed,
+            self.device,
+            demo,
+        )
 
     def select_action(self, state):
         """Select an action from the input space."""
         selected_action = self.actor_local(state)
-        selected_action += \
-            torch.tensor(self.noise.sample()).float().to(self.device)
+        selected_action += torch.tensor(self.noise.sample()).float().to(self.device)
 
         action_low = float(self.env.action_space.low[0])
         action_high = float(self.env.action_space.high[0])
@@ -134,7 +134,7 @@ class Agent(object):
 
     def step(self, state, action):
         """Take an action and return the response of the env."""
-        action = action.detach().to('cpu').numpy()
+        action = action.detach().to("cpu").numpy()
         next_state, reward, done, _ = self.env.step(action)
         self.memory.add(state, action, reward, next_state, done)
 
@@ -142,10 +142,8 @@ class Agent(object):
 
     def update_model(self, experiences, demo):
         """Train the model after each episode."""
-        exp_states, exp_actions, exp_rewards,\
-            exp_next_states, exp_dones = experiences
-        demo_states, demo_actions, demo_rewards,\
-            demo_next_states, demo_dones = demo
+        exp_states, exp_actions, exp_rewards, exp_next_states, exp_dones = experiences
+        demo_states, demo_actions, demo_rewards, demo_next_states, demo_dones = demo
 
         states = torch.cat((exp_states, demo_states), dim=0)
         actions = torch.cat((exp_actions, demo_actions), dim=0)
@@ -158,7 +156,7 @@ class Agent(object):
         masks = 1 - dones
         next_actions = self.actor_target(next_states)
         next_values = self.critic_target(next_states, next_actions)
-        curr_returns = rewards + (hyper_params['GAMMA'] * next_values * masks)
+        curr_returns = rewards + (hyper_params["GAMMA"] * next_values * masks)
         curr_returns = curr_returns.to(self.device)
 
         # crittic loss
@@ -176,13 +174,14 @@ class Agent(object):
 
         # bc loss
         pred_actions = self.actor_local(demo_states)
-        qf_mask = \
-            torch.gt(
-                self.critic_local(demo_states, demo_actions),
-                self.critic_local(demo_states, pred_actions)).to(self.device)
+        qf_mask = torch.gt(
+            self.critic_local(demo_states, demo_actions),
+            self.critic_local(demo_states, pred_actions),
+        ).to(self.device)
         qf_mask = qf_mask.float()
-        bc_loss = F.mse_loss(torch.mul(pred_actions, qf_mask),
-                             torch.mul(demo_actions, qf_mask))
+        bc_loss = F.mse_loss(
+            torch.mul(pred_actions, qf_mask), torch.mul(demo_actions, qf_mask)
+        )
 
         # train actor: pg loss + BC loss
         actor_loss = self.lambda1 * policy_loss + self.lambda2 * bc_loss
@@ -203,52 +202,45 @@ class Agent(object):
     def soft_update(self, local, target):
         """Soft-update: target = tau*local + (1-tau)*target."""
         for t_param, l_param in zip(target.parameters(), local.parameters()):
-            t_param.data.copy_(hyper_params['TAU']*l_param.data +
-                               (1.0-hyper_params['TAU'])*t_param.data)
+            t_param.data.copy_(
+                hyper_params["TAU"] * l_param.data
+                + (1.0 - hyper_params["TAU"]) * t_param.data
+            )
 
     def load_params(self, path):
         """Load model and optimizer parameters."""
         if not os.path.exists(path):
-            print('[ERROR] the input path does not exist. ->', path)
+            print("[ERROR] the input path does not exist. ->", path)
             return
 
         params = torch.load(path)
-        self.actor_local.load_state_dict(params['actor_local_state_dict'])
-        self.actor_target.load_state_dict(params['actor_target_state_dict'])
-        self.critic_local.load_state_dict(params['critic_local_state_dict'])
-        self.critic_target.load_state_dict(params['critic_target_state_dict'])
-        self.actor_optimizer.load_state_dict(
-                params['actor_optim_state_dict'])
-        self.critic_optimizer.load_state_dict(
-                params['critic_optim_state_dict'])
-        print('[INFO] loaded the model and optimizer from', path)
+        self.actor_local.load_state_dict(params["actor_local_state_dict"])
+        self.actor_target.load_state_dict(params["actor_target_state_dict"])
+        self.critic_local.load_state_dict(params["critic_local_state_dict"])
+        self.critic_target.load_state_dict(params["critic_target_state_dict"])
+        self.actor_optimizer.load_state_dict(params["actor_optim_state_dict"])
+        self.critic_optimizer.load_state_dict(params["critic_optim_state_dict"])
+        print("[INFO] loaded the model and optimizer from", path)
 
     def save_params(self, n_episode):
         """Save model and optimizer parameters."""
-        if not os.path.exists('./save'):
-            os.mkdir('./save')
+        if not os.path.exists("./save"):
+            os.mkdir("./save")
 
         params = {
-                 'actor_local_state_dict':
-                 self.actor_local.state_dict(),
-                 'actor_target_state_dict':
-                 self.actor_target.state_dict(),
-                 'critic_local_state_dict':
-                 self.critic_local.state_dict(),
-                 'critic_target_state_dict':
-                 self.critic_target.state_dict(),
-                 'actor_optim_state_dict':
-                 self.actor_optimizer.state_dict(),
-                 'critic_optim_state_dict':
-                 self.critic_optimizer.state_dict()
-                 }
+            "actor_local_state_dict": self.actor_local.state_dict(),
+            "actor_target_state_dict": self.actor_target.state_dict(),
+            "critic_local_state_dict": self.critic_local.state_dict(),
+            "critic_target_state_dict": self.critic_target.state_dict(),
+            "actor_optim_state_dict": self.actor_optimizer.state_dict(),
+            "critic_optim_state_dict": self.critic_optimizer.state_dict(),
+        }
 
         repo = git.Repo(search_parent_directories=True)
         sha = repo.head.object.hexsha
-        path = os.path.join('./save/bc_' + sha[:7] + '_ep_' +
-                            str(n_episode)+'.pt')
+        path = os.path.join("./save/bc_" + sha[:7] + "_ep_" + str(n_episode) + ".pt")
         torch.save(params, path)
-        print('[INFO] saved the model and optimizer to', path)
+        print("[INFO] saved the model and optimizer to", path)
 
     def train(self):
         """Train the agent."""
@@ -256,10 +248,9 @@ class Agent(object):
         if self.args.log:
             wandb.init()
             wandb.config.update(hyper_params)
-            wandb.watch([self.actor_local, self.critic_local],
-                        log='parameters')
+            wandb.watch([self.actor_local, self.critic_local], log="parameters")
 
-        for i_episode in range(1, hyper_params['EPISODE_NUM']+1):
+        for i_episode in range(1, hyper_params["EPISODE_NUM"] + 1):
             state = self.env.reset()
             done = False
             score = 0
@@ -272,7 +263,7 @@ class Agent(object):
                 action = self.select_action(state)
                 next_state, reward, done = self.step(state, action)
 
-                if len(self.memory) >= hyper_params['BATCH_SIZE']:
+                if len(self.memory) >= hyper_params["BATCH_SIZE"]:
                     experiences = self.memory.sample()
                     demos = self.demo_memory.sample()
                     loss = self.update_model(experiences, demos)
@@ -284,11 +275,13 @@ class Agent(object):
             else:
                 if len(loss_episode) > 0:
                     avg_loss = np.array(loss_episode).mean()
-                    print('[INFO] episode %d\ttotal score: %d\tloss: %f'
-                          % (i_episode, score, avg_loss))
+                    print(
+                        "[INFO] episode %d\ttotal score: %d\tloss: %f"
+                        % (i_episode, score, avg_loss)
+                    )
 
                     if self.args.log:
-                        wandb.log({'score': score, 'avg_loss': avg_loss})
+                        wandb.log({"score": score, "avg_loss": avg_loss})
 
                     if i_episode % self.args.save_period == 0:
                         self.save_params(i_episode)
@@ -298,7 +291,7 @@ class Agent(object):
 
     def test(self):
         """Test the agent."""
-        for i_episode in range(hyper_params['EPISODE_NUM']):
+        for i_episode in range(hyper_params["EPISODE_NUM"]):
             state = self.env.reset()
             done = False
             score = 0
@@ -314,8 +307,7 @@ class Agent(object):
                 score += reward
 
             else:
-                print('[INFO] episode %d\ttotal score: %d'
-                      % (i_episode, score))
+                print("[INFO] episode %d\ttotal score: %d" % (i_episode, score))
 
         # termination
         self.env.close()

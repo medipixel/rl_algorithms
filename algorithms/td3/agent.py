@@ -7,31 +7,29 @@
 """
 
 import os
+
 import git
 import numpy as np
-
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
-
 import wandb
 
-from algorithms.td3.model import Actor, Critic
 from algorithms.noise import GaussianNoise
 from algorithms.replay_buffer import ReplayBuffer
-
+from algorithms.td3.model import Actor, Critic
 
 # hyper parameters
 hyper_params = {
-        'GAMMA': 0.99,
-        'TAU': 1e-3,
-        'NOISE_STD': 1.0,
-        'NOISE_CLIP': 0.5,
-        'DELAYED_UPDATE': 2,
-        'BUFFER_SIZE': int(1e5),
-        'BATCH_SIZE': 128,
-        'MAX_EPISODE_STEPS': 300,
-        'EPISODE_NUM': 1500
+    "GAMMA": 0.99,
+    "TAU": 1e-3,
+    "NOISE_STD": 1.0,
+    "NOISE_CLIP": 0.5,
+    "DELAYED_UPDATE": 2,
+    "BUFFER_SIZE": int(1e5),
+    "BATCH_SIZE": 128,
+    "MAX_EPISODE_STEPS": 300,
+    "EPISODE_NUM": 1500,
 }
 
 
@@ -71,60 +69,58 @@ class Agent(object):
         action_dim = self.env.action_space.shape[0]
 
         # environment setup
-        self.env._max_episode_steps = hyper_params['MAX_EPISODE_STEPS']
+        self.env._max_episode_steps = hyper_params["MAX_EPISODE_STEPS"]
 
         # create actor
-        self.actor_local = Actor(state_dim, action_dim, self.action_low,
-                                 self.action_high, self.device).to(device)
-        self.actor_target = Actor(state_dim, action_dim, self.action_low,
-                                  self.action_high, self.device).to(device)
+        self.actor_local = Actor(
+            state_dim, action_dim, self.action_low, self.action_high, self.device
+        ).to(device)
+        self.actor_target = Actor(
+            state_dim, action_dim, self.action_low, self.action_high, self.device
+        ).to(device)
         self.actor_target.load_state_dict(self.actor_local.state_dict())
 
         # create critic
-        self.critic_local1 = Critic(state_dim, action_dim,
-                                    self.device).to(device)
-        self.critic_local2 = Critic(state_dim, action_dim,
-                                    self.device).to(device)
-        self.critic_target1 = Critic(state_dim, action_dim,
-                                     self.device).to(device)
-        self.critic_target2 = Critic(state_dim, action_dim,
-                                     self.device).to(device)
+        self.critic_local1 = Critic(state_dim, action_dim, self.device).to(device)
+        self.critic_local2 = Critic(state_dim, action_dim, self.device).to(device)
+        self.critic_target1 = Critic(state_dim, action_dim, self.device).to(device)
+        self.critic_target2 = Critic(state_dim, action_dim, self.device).to(device)
         self.critic_target1.load_state_dict(self.critic_local1.state_dict())
         self.critic_target2.load_state_dict(self.critic_local2.state_dict())
 
         # create optimizers
-        self.actor_optimizer = optim.Adam(self.actor_local.parameters(),
-                                          lr=1e-4)
-        self.critic_optimizer1 = optim.Adam(self.critic_local1.parameters(),
-                                            lr=1e-3)
-        self.critic_optimizer2 = optim.Adam(self.critic_local2.parameters(),
-                                            lr=1e-3)
+        self.actor_optimizer = optim.Adam(self.actor_local.parameters(), lr=1e-4)
+        self.critic_optimizer1 = optim.Adam(self.critic_local1.parameters(), lr=1e-3)
+        self.critic_optimizer2 = optim.Adam(self.critic_local2.parameters(), lr=1e-3)
 
         # load the optimizer and model parameters
         if args.load_from is not None and os.path.exists(args.load_from):
             self.load_params(args.load_from)
 
         # noise instance to make randomness of action
-        self.noise = GaussianNoise(action_dim,
-                                   self.action_low, self.action_high)
+        self.noise = GaussianNoise(action_dim, self.action_low, self.action_high)
 
         # replay memory
-        self.memory = ReplayBuffer(hyper_params['BUFFER_SIZE'],
-                                   hyper_params['BATCH_SIZE'],
-                                   self.args.seed, self.device)
+        self.memory = ReplayBuffer(
+            hyper_params["BUFFER_SIZE"],
+            hyper_params["BATCH_SIZE"],
+            self.args.seed,
+            self.device,
+        )
 
     def select_action(self, state, t):
         """Select an action from the input space."""
         selected_action = self.actor_local(state)
         action_size = selected_action.size()
-        selected_action += torch.tensor(self.noise.sample(action_size, t)
-                                        ).float().to(self.device)
+        selected_action += (
+            torch.tensor(self.noise.sample(action_size, t)).float().to(self.device)
+        )
 
         return torch.clamp(selected_action, self.action_low, self.action_high)
 
     def step(self, state, action):
         """Take an action and return the response of the env."""
-        action = action.detach().to('cpu').numpy()
+        action = action.detach().to("cpu").numpy()
         next_state, reward, done, _ = self.env.step(action)
         self.memory.add(state, action, reward, next_state, done)
 
@@ -137,11 +133,12 @@ class Agent(object):
 
         # get actions with noise
         next_actions = self.actor_target(next_states)
-        noise = torch.normal(torch.zeros(next_actions.size()),
-                             hyper_params['NOISE_STD']).to(self.device)
-        noise = torch.clamp(noise,
-                            -hyper_params['NOISE_CLIP'],
-                            hyper_params['NOISE_CLIP'])
+        noise = torch.normal(
+            torch.zeros(next_actions.size()), hyper_params["NOISE_STD"]
+        ).to(self.device)
+        noise = torch.clamp(
+            noise, -hyper_params["NOISE_CLIP"], hyper_params["NOISE_CLIP"]
+        )
         next_actions += noise
 
         # min (Q_1', Q_2')
@@ -151,7 +148,7 @@ class Agent(object):
 
         # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
         #       = r                       otherwise
-        curr_returns = rewards + (hyper_params['GAMMA'] * next_values * masks)
+        curr_returns = rewards + (hyper_params["GAMMA"] * next_values * masks)
         curr_returns = curr_returns.to(self.device).detach()
 
         # critic loss
@@ -172,7 +169,7 @@ class Agent(object):
         # for logging
         total_loss = critic_loss1 + critic_loss2
 
-        if step % hyper_params['DELAYED_UPDATE'] == 0:
+        if step % hyper_params["DELAYED_UPDATE"] == 0:
             # train actor
             actions = self.actor_local(states)
             actor_loss = -self.critic_local1(states, actions).mean()
@@ -193,50 +190,51 @@ class Agent(object):
     def soft_update(self, local, target):
         """Soft-update: target = tau*local + (1-tau)*target."""
         for t_param, l_param in zip(target.parameters(), local.parameters()):
-            t_param.data.copy_(hyper_params['TAU']*l_param.data +
-                               (1.0-hyper_params['TAU'])*t_param.data)
+            t_param.data.copy_(
+                hyper_params["TAU"] * l_param.data
+                + (1.0 - hyper_params["TAU"]) * t_param.data
+            )
 
     def load_params(self, path):
         """Load model and optimizer parameters."""
         if not os.path.exists(path):
-            print('[ERROR] the input path does not exist. ->', path)
+            print("[ERROR] the input path does not exist. ->", path)
             return
 
         params = torch.load(path)
-        self.critic_local1.load_state_dict(params['critic_local1'])
-        self.critic_local2.load_state_dict(params['critic_local2'])
-        self.critic_target1.load_state_dict(params['critic_target1'])
-        self.critic_target2.load_state_dict(params['critic_target2'])
-        self.critic_optimizer1.load_state_dict(params['critic_optim1'])
-        self.critic_optimizer2.load_state_dict(params['critic_optim2'])
-        self.actor_local.load_state_dict(params['actor_local'])
-        self.actor_target.load_state_dict(params['actor_target'])
-        self.actor_optimizer.load_state_dict(params['actor_optim'])
-        print('[INFO] loaded the model and optimizer from', path)
+        self.critic_local1.load_state_dict(params["critic_local1"])
+        self.critic_local2.load_state_dict(params["critic_local2"])
+        self.critic_target1.load_state_dict(params["critic_target1"])
+        self.critic_target2.load_state_dict(params["critic_target2"])
+        self.critic_optimizer1.load_state_dict(params["critic_optim1"])
+        self.critic_optimizer2.load_state_dict(params["critic_optim2"])
+        self.actor_local.load_state_dict(params["actor_local"])
+        self.actor_target.load_state_dict(params["actor_target"])
+        self.actor_optimizer.load_state_dict(params["actor_optim"])
+        print("[INFO] loaded the model and optimizer from", path)
 
     def save_params(self, n_episode):
         """Save model and optimizer parameters."""
-        if not os.path.exists('./save'):
-            os.mkdir('./save')
+        if not os.path.exists("./save"):
+            os.mkdir("./save")
 
         params = {
-                'actor_local': self.actor_local.state_dict(),
-                'actor_target': self.actor_target.state_dict(),
-                'actor_optim': self.actor_optimizer.state_dict(),
-                'critic_local1': self.critic_local1.state_dict(),
-                'critic_local2': self.critic_local2.state_dict(),
-                'critic_target1': self.critic_target1.state_dict(),
-                'critic_target2': self.critic_target2.state_dict(),
-                'critic_optim1': self.critic_optimizer1.state_dict(),
-                'critic_optim2': self.critic_optimizer2.state_dict()
-                }
+            "actor_local": self.actor_local.state_dict(),
+            "actor_target": self.actor_target.state_dict(),
+            "actor_optim": self.actor_optimizer.state_dict(),
+            "critic_local1": self.critic_local1.state_dict(),
+            "critic_local2": self.critic_local2.state_dict(),
+            "critic_target1": self.critic_target1.state_dict(),
+            "critic_target2": self.critic_target2.state_dict(),
+            "critic_optim1": self.critic_optimizer1.state_dict(),
+            "critic_optim2": self.critic_optimizer2.state_dict(),
+        }
 
         repo = git.Repo(search_parent_directories=True)
         sha = repo.head.object.hexsha
-        path = os.path.join('./save/td3_' + sha[:7] + '_ep_' +
-                            str(n_episode)+'.pt')
+        path = os.path.join("./save/td3_" + sha[:7] + "_ep_" + str(n_episode) + ".pt")
         torch.save(params, path)
-        print('[INFO] saved the model and optimizer to', path)
+        print("[INFO] saved the model and optimizer to", path)
 
     def train(self):
         """Train the agent."""
@@ -244,11 +242,13 @@ class Agent(object):
         if self.args.log:
             wandb.init()
             wandb.config.update(hyper_params)
-            wandb.watch([self.actor_local, self.critic_local1,
-                         self.critic_local2], log='parameters')
+            wandb.watch(
+                [self.actor_local, self.critic_local1, self.critic_local2],
+                log="parameters",
+            )
 
         step = 0
-        for i_episode in range(1, hyper_params['EPISODE_NUM']+1):
+        for i_episode in range(1, hyper_params["EPISODE_NUM"] + 1):
             state = self.env.reset()
             done = False
             score = 0
@@ -261,7 +261,7 @@ class Agent(object):
                 action = self.select_action(state, step)
                 next_state, reward, done = self.step(state, action)
 
-                if len(self.memory) >= hyper_params['BATCH_SIZE']:
+                if len(self.memory) >= hyper_params["BATCH_SIZE"]:
                     experiences = self.memory.sample()
                     loss = self.update_model(experiences, step)
                     loss_episode.append(loss)  # for logging
@@ -273,11 +273,13 @@ class Agent(object):
             else:
                 if len(loss_episode) > 0:
                     avg_loss = np.array(loss_episode).mean()
-                    print('[INFO] episode %d\ttotal score: %d\tloss: %f'
-                          % (i_episode, score, avg_loss))
+                    print(
+                        "[INFO] episode %d\ttotal score: %d\tloss: %f"
+                        % (i_episode, score, avg_loss)
+                    )
 
                     if self.args.log:
-                        wandb.log({'score': score, 'avg_loss': avg_loss})
+                        wandb.log({"score": score, "avg_loss": avg_loss})
 
                     if i_episode % self.args.save_period == 0:
                         self.save_params(i_episode)
@@ -288,7 +290,7 @@ class Agent(object):
     def test(self):
         """Test the agent."""
         step = 0
-        for i_episode in range(hyper_params['EPISODE_NUM']):
+        for i_episode in range(hyper_params["EPISODE_NUM"]):
             state = self.env.reset()
             done = False
             score = 0
@@ -304,8 +306,7 @@ class Agent(object):
                 score += reward
 
             else:
-                print('[INFO] episode %d\ttotal score: %d'
-                      % (i_episode, score))
+                print("[INFO] episode %d\ttotal score: %d" % (i_episode, score))
 
         # termination
         self.env.close()

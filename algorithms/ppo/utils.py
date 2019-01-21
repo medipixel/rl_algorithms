@@ -11,9 +11,8 @@ This module has PPO util functions.
 import numpy as np
 import torch
 
-
 # device selection: cpu / gpu
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 def decompose_memory(memory):
@@ -23,22 +22,22 @@ def decompose_memory(memory):
     log_probs = torch.from_numpy(np.vstack(memory[:, 1])).float().to(device)
     actions = torch.from_numpy(np.vstack(memory[:, 2])).float().to(device)
     rewards = torch.from_numpy(np.vstack(memory[:, 3])).float().to(device)
-    dones = torch.from_numpy(
-                np.vstack(memory[:, 4]).astype(np.uint8)).float().to(device)
+    dones = (
+        torch.from_numpy(np.vstack(memory[:, 4]).astype(np.uint8)).float().to(device)
+    )
 
     return states, log_probs, actions, rewards, dones
 
 
-def ppo_iter(epoch, mini_batch_size, states,
-             log_probs, actions, returns, advantages):
+def ppo_iter(epoch, mini_batch_size, states, log_probs, actions, returns, advantages):
     """Yield mini-batches."""
     batch_size = states.size(0)
     for _ in range(epoch):
         for _ in range(batch_size // mini_batch_size):
             rand_ids = np.random.randint(0, batch_size, mini_batch_size)
-            yield states[rand_ids, :], log_probs[rand_ids, :], \
-                actions[rand_ids, :], returns[rand_ids, :], \
-                advantages[rand_ids, :]
+            yield states[rand_ids, :], log_probs[rand_ids, :], actions[
+                rand_ids, :
+            ], returns[rand_ids, :], advantages[rand_ids, :]
 
 
 # taken from https://github.com/ikostrikov/pytorch-trpo
@@ -62,7 +61,6 @@ def get_gae(rewards, values, dones, gamma, lambd):
         prev_advantage = advantages[i, 0]
 
     # normalize advantages
-    advantages = (advantages - advantages.mean()) /\
-                 (advantages.std() + 1e-7)
+    advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-7)
 
     return returns, advantages

@@ -3,6 +3,7 @@
 
 import random
 from collections import deque
+
 import numpy as np
 import torch
 
@@ -39,17 +40,13 @@ class ReplayBuffer:
             next_states.append(np.expand_dims(e[3], axis=0))
             dones.append(e[4])
 
-        states =\
-            torch.from_numpy(np.vstack(states)).float().to(self.device)
-        actions =\
-            torch.from_numpy(np.vstack(actions)).float().to(self.device)
-        rewards =\
-            torch.from_numpy(np.vstack(rewards)).float().to(self.device)
-        next_states =\
-            torch.from_numpy(np.vstack(next_states)).float().to(self.device)
-        dones =\
-            torch.from_numpy(
-                np.vstack(dones).astype(np.uint8)).float().to(self.device)
+        states = torch.from_numpy(np.vstack(states)).float().to(self.device)
+        actions = torch.from_numpy(np.vstack(actions)).float().to(self.device)
+        rewards = torch.from_numpy(np.vstack(rewards)).float().to(self.device)
+        next_states = torch.from_numpy(np.vstack(next_states)).float().to(self.device)
+        dones = (
+            torch.from_numpy(np.vstack(dones).astype(np.uint8)).float().to(self.device)
+        )
 
         return (states, actions, rewards, next_states, dones)
 

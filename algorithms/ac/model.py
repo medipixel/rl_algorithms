@@ -43,25 +43,25 @@ class ActorCritic(nn.Module):
 
         self.std = std
         self.actor_mu = nn.Sequential(
-                            nn.Linear(self.state_dim, 24),
-                            nn.ReLU(),
-                            nn.Linear(24, 48),
-                            nn.ReLU(),
-                            nn.Linear(48, 24),
-                            nn.ReLU(),
-                            nn.Linear(24, self.action_dim),
-                            nn.Tanh()
-                         )
+            nn.Linear(self.state_dim, 24),
+            nn.ReLU(),
+            nn.Linear(24, 48),
+            nn.ReLU(),
+            nn.Linear(48, 24),
+            nn.ReLU(),
+            nn.Linear(24, self.action_dim),
+            nn.Tanh(),
+        )
 
         self.critic = nn.Sequential(
-                        nn.Linear(self.state_dim, 24),
-                        nn.ReLU(),
-                        nn.Linear(24, 48),
-                        nn.ReLU(),
-                        nn.Linear(48, 24),
-                        nn.ReLU(),
-                        nn.Linear(24, 1)
-                )
+            nn.Linear(self.state_dim, 24),
+            nn.ReLU(),
+            nn.Linear(24, 48),
+            nn.ReLU(),
+            nn.Linear(48, 24),
+            nn.ReLU(),
+            nn.Linear(24, 1),
+        )
 
     def forward(self, state):
         """Forward method implementation.
@@ -86,7 +86,6 @@ class ActorCritic(nn.Module):
         predicted_value = self.critic(state)
 
         dist = Normal(norm_dist_mu, norm_dist_std)
-        selected_action = torch.clamp(dist.rsample(),
-                                      self.action_low, self.action_high)
+        selected_action = torch.clamp(dist.rsample(), self.action_low, self.action_high)
 
         return selected_action, predicted_value, dist

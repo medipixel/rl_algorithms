@@ -3,6 +3,7 @@
 
 import copy
 import random
+
 import numpy as np
 
 
@@ -14,7 +15,7 @@ class OUNoise:
     ddpg-pendulum/ddpg_agent.py
     """
 
-    def __init__(self, size, seed, mu=0., theta=0.15, sigma=0.2):
+    def __init__(self, size, seed, mu=0.0, theta=0.15, sigma=0.2):
         """Initialize parameters and noise process."""
         self.mu = mu * np.ones(size)
         self.theta = theta
@@ -29,8 +30,9 @@ class OUNoise:
     def sample(self):
         """Update internal state and return it as a noise sample."""
         x = self.state
-        dx = self.theta * (self.mu - x) +\
-            self.sigma * np.array([random.random() for i in range(len(x))])
+        dx = self.theta * (self.mu - x) + self.sigma * np.array(
+            [random.random() for i in range(len(x))]
+        )
         self.state = x + dx
         return self.state
 
@@ -41,8 +43,14 @@ class GaussianNoise(object):
     Taken from https://github.com/vitchyr/rlkit
     """
 
-    def __init__(self, action_low, action_high, min_sigma=1.0,
-                 max_sigma=1.0, decay_period=1000000):
+    def __init__(
+        self,
+        action_low,
+        action_high,
+        min_sigma=1.0,
+        max_sigma=1.0,
+        decay_period=1000000,
+    ):
         """Initialization."""
         self.low = action_low
         self.high = action_high
@@ -52,7 +60,7 @@ class GaussianNoise(object):
 
     def sample(self, action_size, t=0):
         """Get an action with gaussian noise."""
-        sigma = \
-            self.max_sigma - (self.max_sigma - self.min_sigma) * \
-            min(1.0, t / self.decay_period)
+        sigma = self.max_sigma - (self.max_sigma - self.min_sigma) * min(
+            1.0, t / self.decay_period
+        )
         return np.random.normal(size=action_size) * sigma
