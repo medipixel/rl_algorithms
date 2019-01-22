@@ -10,16 +10,15 @@ import os
 from abc import ABC, abstractmethod
 
 import git
+import gym
 import torch
-
-from torch_env import TorchEnv
 
 
 class AbstractAgent(ABC):
     """Abstract Agent used for all agents.
 
     Args:
-        env (TorchEnv): openAI Gym environment with discrete action space
+        env (gym.Env): openAI Gym environment with discrete action space
         args (argparse.Namespace): arguments including hyperparameters and training settings
 
     Attributes:
@@ -32,14 +31,14 @@ class AbstractAgent(ABC):
 
     """
 
-    def __init__(self, env: TorchEnv, args: argparse.Namespace):
+    def __init__(self, env: gym.Env, args: argparse.Namespace):
         """Initialization."""
         self.args = args
         self.env = env
-        self.state_dim = self.env.state_dim
-        self.action_dim = self.env.action_dim
-        self.action_low = self.env.action_low
-        self.action_high = self.env.action_high
+        self.state_dim = env.observation_space.shape[0]
+        self.action_dim = env.observation_space.shape[0]
+        self.action_low = float(env.action_space.low[0])
+        self.action_high = float(env.action_space.high[0])
 
     @abstractmethod
     def select_action(self):

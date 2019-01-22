@@ -40,8 +40,6 @@ class ReplayBuffer:
         done: torch.Tensor,
     ):
         """Add a new experience to memory."""
-        action = action.detach().to("cpu").numpy()
-
         self.memory.append((state, action, reward, next_state, done))
 
     def sample(

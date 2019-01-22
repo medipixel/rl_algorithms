@@ -9,6 +9,7 @@ import argparse
 import os
 from typing import Tuple
 
+import gym
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -17,7 +18,6 @@ import wandb
 
 from algorithms.abstract_agent import AbstractAgent
 from algorithms.ac.model import ActorCritic
-from torch_env import TorchEnv
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -35,7 +35,7 @@ class Agent(AbstractAgent):
     """ActorCritic interacting with environment.
 
     Args:
-        env (TorchEnv): openAI Gym environment with discrete action space
+        env (gym.Env): openAI Gym environment with discrete action space
         args (argparse.Namespace): arguments including hyperparameters and training settings
 
     Attributes:
@@ -44,12 +44,12 @@ class Agent(AbstractAgent):
 
     """
 
-    def __init__(self, env: TorchEnv, args: argparse.Namespace):
+    def __init__(self, env: gym.Env, args: argparse.Namespace):
         """Initialization."""
         AbstractAgent.__init__(self, env, args)
 
         # environment setup
-        self.env.set_max_episode_steps(int(hyper_params["MAX_EPISODE_STEPS"]))
+        self.env._max_episode_steps = hyper_params["MAX_EPISODE_STEPS"]
 
         # create a model
         self.model = ActorCritic(
@@ -66,8 +66,9 @@ class Agent(AbstractAgent):
         if args.load_from is not None and os.path.exists(args.load_from):
             self.load_params(args.load_from)
 
-    def select_action(self, state: torch.Tensor) -> torch.Tensor:
+    def select_action(self, state: np.ndarray) -> torch.Tensor:
         """Select an action from the input space."""
+        state = torch.FloatTensor(state).to(device)
         selected_action, predicted_value, dist = self.model(state)
 
         self.log_prob = dist.log_prob(selected_action).sum()
@@ -75,11 +76,10 @@ class Agent(AbstractAgent):
 
         return selected_action
 
-    def step(
-        self, action: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def step(self, action: torch.Tensor) -> Tuple[np.ndarray, np.float64, bool]:
         """Take an action and return the response of the env."""
-        next_state, reward, done = self.env.step(action)
+        action = action.detach().cpu().numpy()
+        next_state, reward, done, _ = self.env.step(action)
 
         return (next_state, reward, done)
 
@@ -87,6 +87,7 @@ class Agent(AbstractAgent):
         self, experience: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]
     ) -> float:
         reward, next_state, done = experience
+        next_state = torch.FloatTensor(next_state).to(device)
 
         """Train the model after each episode."""
         # G_t   = r + gamma * v(s_{t+1})  if state != Terminal

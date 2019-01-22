@@ -7,9 +7,8 @@
 
 import argparse
 
+import gym
 import torch
-
-from torch_env import TorchEnv
 
 # configurations
 parser = argparse.ArgumentParser(description="Pytorch RL baselines")
@@ -62,7 +61,7 @@ elif args.algo == "td3":
 def main():
     """Main."""
     # env initialization
-    env = TorchEnv("LunarLanderContinuous-v2")
+    env = gym.make("LunarLanderContinuous-v2")
 
     # set a random seed
     env.seed(args.seed)

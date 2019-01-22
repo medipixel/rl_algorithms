@@ -12,6 +12,7 @@ import os
 import pickle
 from typing import Tuple
 
+import gym
 import numpy as np
 import torch
 import torch.nn as nn
@@ -23,7 +24,6 @@ from algorithms.abstract_agent import AbstractAgent
 from algorithms.ddpg.model import Actor, Critic
 from algorithms.noise import OUNoise
 from algorithms.replay_buffer import ReplayBuffer
-from torch_env import TorchEnv
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -38,15 +38,15 @@ hyper_params = {
     "EPISODE_NUM": 1500,
     "LAMBDA1": 1e-3,
     "LAMBDA2": 1.0,
-    "DEMO_PATH": "data/lunarlander_continuous_demo.pkl",
 }
+DEMO_PATH = "data/lunarlander_continuous_demo.pkl"
 
 
 class Agent(AbstractAgent):
     """ActorCritic interacting with environment.
 
     Args:
-        env (TorchEnv): openAI Gym environment with discrete action space
+        env (gym.Env): openAI Gym environment with discrete action space
         args (argparse.Namespace): arguments including hyperparameters and training settings
 
     Attributes:
@@ -61,12 +61,12 @@ class Agent(AbstractAgent):
 
     """
 
-    def __init__(self, env: TorchEnv, args: argparse.Namespace):
+    def __init__(self, env: gym.Env, args: argparse.Namespace):
         """Initialization."""
         AbstractAgent.__init__(self, env, args)
 
         # environment setup
-        self.env.set_max_episode_steps(int(hyper_params["MAX_EPISODE_STEPS"]))
+        self.env._max_episode_steps = hyper_params["MAX_EPISODE_STEPS"]
 
         # create actor
         self.actor = Actor(
@@ -106,15 +106,16 @@ class Agent(AbstractAgent):
         )
 
         # load demo replay memory
-        with open(hyper_params["DEMO_PATH"], "rb") as f:
+        with open(DEMO_PATH, "rb") as f:
             demo = pickle.load(f)
 
         self.demo_memory = ReplayBuffer(
             len(demo), hyper_params["DEMO_BATCH_SIZE"], self.args.seed, device, demo
         )
 
-    def select_action(self, state: torch.Tensor) -> torch.Tensor:
+    def select_action(self, state: np.ndarray) -> torch.Tensor:
         """Select an action from the input space."""
+        state = torch.FloatTensor(state).to(device)
         selected_action = self.actor(state)
         selected_action += torch.tensor(self.noise.sample()).float().to(device)
 
@@ -125,10 +126,11 @@ class Agent(AbstractAgent):
         return selected_action
 
     def step(
-        self, state: torch.Tensor, action: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        self, state: np.ndarray, action: torch.Tensor
+    ) -> Tuple[np.ndarray, np.float64, bool]:
         """Take an action and return the response of the env."""
-        next_state, reward, done = self.env.step(action)
+        action = action.detach().cpu().numpy()
+        next_state, reward, done, _ = self.env.step(action)
         self.memory.add(state, action, reward, next_state, done)
 
         return next_state, reward, done
@@ -144,7 +146,7 @@ class Agent(AbstractAgent):
         exp_states, exp_actions, exp_rewards, exp_next_states, exp_dones = experiences
         demo_states, demo_actions, demo_rewards, demo_next_states, demo_dones = demo
 
-        # TODO: Need to check incorrect dimensions
+        # TODO: RuntimeError! Need to check incorrect dimensions
         states = torch.cat((exp_states, demo_states), dim=0)
         actions = torch.cat((exp_actions, demo_actions), dim=0)
         rewards = torch.cat((exp_rewards, demo_rewards), dim=0)
@@ -204,7 +206,7 @@ class Agent(AbstractAgent):
         for t_param, l_param in zip(target.parameters(), local.parameters()):
             t_param.data.copy_(
                 hyper_params["TAU"] * l_param.data
-                + (1.0 - hyper_params["TAU"]) * t_param.data
+                + (1.0 - float(hyper_params["TAU"])) * t_param.data
             )
 
     def load_params(self, path: str):
