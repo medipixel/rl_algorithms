@@ -5,16 +5,22 @@
 - Contact: curt.park@medipixel.io
 """
 
+import argparse
 import os
+from typing import Tuple
 
-import git
 import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
 import wandb
 
+from algorithms.abstract_agent import AbstractAgent
 from algorithms.ac.model import ActorCritic
+from torch_env import TorchEnv
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 
 # hyper parameters
 hyper_params = {
@@ -25,85 +31,77 @@ hyper_params = {
 }
 
 
-class Agent(object):
+class Agent(AbstractAgent):
     """ActorCritic interacting with environment.
 
     Args:
-        env (gym.Env): openAI Gym environment with discrete action space
-        args (dict): arguments including hyperparameters and training settings
-        device (torch.device): device selection (cpu / gpu)
+        env (TorchEnv): openAI Gym environment with discrete action space
+        args (argparse.Namespace): arguments including hyperparameters and training settings
 
     Attributes:
-        env (gym.Env): openAI Gym environment with discrete action space
         model (nn.Module): policy gradient model to select actions
-        args (dict): arguments including hyperparameters and training settings
         optimizer (Optimizer): optimizer for training
-        device (torch.device): device selection (cpu / gpu)
 
     """
 
-    def __init__(self, env, args, device):
+    def __init__(self, env: TorchEnv, args: argparse.Namespace):
         """Initialization."""
-        self.args = args
-        self.device = device
-        self.env = env
+        AbstractAgent.__init__(self, env, args)
 
         # environment setup
-        self.env._max_episode_steps = hyper_params["MAX_EPISODE_STEPS"]
+        self.env.set_max_episode_steps(int(hyper_params["MAX_EPISODE_STEPS"]))
 
         # create a model
-        state_dim = self.env.observation_space.shape[0]
-        action_dim = self.env.action_space.shape[0]
-        action_low = float(self.env.action_space.low[0])
-        action_high = float(self.env.action_space.high[0])
         self.model = ActorCritic(
-            hyper_params["STD"], state_dim, action_dim, action_low, action_high
-        ).to(self.device)
+            hyper_params["STD"],
+            self.state_dim,
+            self.action_dim,
+            self.action_low,
+            self.action_high,
+        ).to(device)
 
         # create optimizer
         self.optimizer = optim.Adam(self.model.parameters())
 
-        # load stored parameters
         if args.load_from is not None and os.path.exists(args.load_from):
             self.load_params(args.load_from)
 
-    def select_action(self, state):
+    def select_action(self, state: torch.Tensor) -> torch.Tensor:
         """Select an action from the input space."""
-        state = torch.from_numpy(state).float().to(self.device)
         selected_action, predicted_value, dist = self.model(state)
 
-        return (
-            selected_action.detach().to("cpu").numpy(),
-            dist.log_prob(selected_action).sum(),
-            predicted_value,
-        )
+        self.log_prob = dist.log_prob(selected_action).sum()
+        self.predicted_value = predicted_value
 
-    def step(self, action):
+        return selected_action
+
+    def step(
+        self, action: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Take an action and return the response of the env."""
-        next_state, reward, done, _ = self.env.step(action)
+        next_state, reward, done = self.env.step(action)
 
-        return next_state, reward, done
+        return (next_state, reward, done)
 
-    def update_model(self, done, log_prob, reward, next_state, curr_value):
+    def update_model(
+        self, experience: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]
+    ) -> float:
+        reward, next_state, done = experience
+
         """Train the model after each episode."""
-        next_state = torch.tensor(next_state).float().to(self.device)
-
         # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
         #       = r                       otherwise
-        if not done:
-            next_value = self.model.critic(next_state).detach()
-            curr_return = reward + hyper_params["GAMMA"] * next_value
-        else:
-            curr_return = torch.tensor(reward)
-
-        curr_return = curr_return.float().to(self.device)
+        mask = 1 - done
+        next_value = self.model.critic(next_state).detach()
+        curr_return = reward + hyper_params["GAMMA"] * next_value * mask
+        curr_return = curr_return.float().to(device)
 
         # delta = G_t - v(s_t)
-        delta = curr_return - curr_value.detach()
+        delta = curr_return - self.predicted_value.detach()
 
         # calculate loss at the current step
-        policy_loss = -delta * log_prob  # delta is not backpropagated
-        value_loss = F.mse_loss(curr_value, curr_return)
+        policy_loss = -delta * self.log_prob  # delta is not backpropagated
+        value_loss = F.mse_loss(self.predicted_value, curr_return)
         loss = policy_loss + value_loss
 
         # train
@@ -113,34 +111,25 @@ class Agent(object):
 
         return loss.data
 
-    def load_params(self, path):
+    def load_params(self, path: str):
         """Load model and optimizer parameters."""
         if not os.path.exists(path):
-            print("[ERROR] the input path does not exist. ->", path)
+            print("[INFO] The input path does not exist. ->", path)
             return
 
         params = torch.load(path)
         self.model.load_state_dict(params["model_state_dict"])
         self.optimizer.load_state_dict(params["optim_state_dict"])
-        print("[INFO] loaded the model and optimizer from", path)
+        print("[INFO] Loaded the model and optimizer from", path)
 
-    def save_params(self, n_episode):
+    def save_params(self, n_episode: int):
         """Save model and optimizer parameters."""
-        if not os.path.exists("./save"):
-            os.mkdir("./save")
-
         params = {
             "model_state_dict": self.model.state_dict(),
             "optim_state_dict": self.optimizer.state_dict(),
         }
 
-        repo = git.Repo(search_parent_directories=True)
-        sha = repo.head.object.hexsha
-        path = os.path.join(
-            "./save/actor_critic_" + sha[:7] + "_ep_" + str(n_episode) + ".pt"
-        )
-        torch.save(params, path)
-        print("[INFO] saved the model and optimizer to", path)
+        AbstractAgent.save_params(self, "ac", params, n_episode)
 
     def train(self):
         """Train the agent."""
@@ -160,11 +149,10 @@ class Agent(object):
                 if self.args.render and i_episode >= self.args.render_after:
                     self.env.render()
 
-                action, log_prob, predicted_value = self.select_action(state)
+                action = self.select_action(state)
                 next_state, reward, done = self.step(action)
-                loss = self.update_model(
-                    done, log_prob, reward, next_state, predicted_value
-                )
+
+                loss = self.update_model((reward, next_state, done))
                 loss_episode.append(loss)
 
                 state = next_state
@@ -197,7 +185,7 @@ class Agent(object):
                 if self.args.render and i_episode >= self.args.render_after:
                     self.env.render()
 
-                action, log_prob, predicted_value = self.select_action(state)
+                action = self.select_action(state)
                 next_state, reward, done = self.step(action)
 
                 state = next_state

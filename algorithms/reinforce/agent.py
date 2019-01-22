@@ -5,16 +5,22 @@
 - Contact: curt.park@medipixel.io
 """
 
+import argparse
 import os
 from collections import deque
+from typing import Deque, Tuple
 
-import git
+import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
 import wandb
 
+from algorithms.abstract_agent import AbstractAgent
 from algorithms.reinforce.model import ActorCritic
+from torch_env import TorchEnv
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # hyper parameters
 hyper_params = {
@@ -25,46 +31,41 @@ hyper_params = {
 }
 
 
-class Agent(object):
+class Agent(AbstractAgent):
     """ReinforceAgent interacting with environment.
 
     Args:
-        env (gym.Env): openAI Gym environment with discrete action space
-        args (dict): arguments including hyperparameters and training settings
-        device (torch.device): device selection (cpu / gpu)
+        env (TorchEnv): openAI Gym environment with discrete action space
+        args (argparse.Namespace): arguments including hyperparameters and training settings
 
     Attributes:
-        env (gym.Env): openAI Gym environment with discrete action space
         model (nn.Module): policy gradient model to select actions
-        args (dict): arguments including hyperparameters and training settings
         optimizer (Optimizer): optimizer for training
         log_prob_sequence (list): log probabailities of an episode
         predicted_value_sequence (list): predicted values of an episode
         reward_sequence (list): rewards of an episode to calculate returns
-        device (torch.device): device selection (cpu / gpu)
 
     """
 
-    def __init__(self, env, args, device):
+    def __init__(self, env: TorchEnv, args: argparse.Namespace):
         """Initialization."""
-        self.env = env
-        self.args = args
-        self.device = device
-        self.log_prob_sequence = []
-        self.predicted_value_sequence = []
-        self.reward_sequence = []
+        AbstractAgent.__init__(self, env, args)
+
+        self.log_prob_sequence: list = []
+        self.predicted_value_sequence: list = []
+        self.reward_sequence: list = []
 
         # environment setup
-        self.env._max_episode_steps = hyper_params["MAX_EPISODE_STEPS"]
+        self.env.set_max_episode_steps(int(hyper_params["MAX_EPISODE_STEPS"]))
 
         # create a model
-        state_dim = self.env.observation_space.shape[0]
-        action_dim = self.env.action_space.shape[0]
-        action_low = float(self.env.action_space.low[0])
-        action_high = float(self.env.action_space.high[0])
         self.model = ActorCritic(
-            hyper_params["STD"], state_dim, action_dim, action_low, action_high
-        ).to(self.device)
+            hyper_params["STD"],
+            self.state_dim,
+            self.action_dim,
+            self.action_low,
+            self.action_high,
+        ).to(device)
 
         # create optimizer
         self.optimizer = optim.Adam(self.model.parameters())
@@ -73,29 +74,30 @@ class Agent(object):
         if args.load_from is not None and os.path.exists(args.load_from):
             self.load_params(args.load_from)
 
-    def select_action(self, state):
+    def select_action(self, state: torch.Tensor) -> np.ndarray:
         """Select an action from the input space."""
-        state = torch.from_numpy(state).float().to(self.device)
         selected_action, predicted_value, dist = self.model(state)
 
         self.log_prob_sequence.append(dist.log_prob(selected_action).sum())
         self.predicted_value_sequence.append(predicted_value)
 
-        return selected_action.detach().to("cpu").numpy()
+        return selected_action
 
-    def step(self, action):
+    def step(
+        self, action: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Take an action and return the response of the env."""
-        next_state, reward, done, _ = self.env.step(action)
+        next_state, reward, done = self.env.step(action)
 
         # store rewards to calculate return values
         self.reward_sequence.append(reward)
 
         return next_state, reward, done
 
-    def update_model(self):
+    def update_model(self) -> float:
         """Train the model after each episode."""
         return_value = 0  # initial return value
-        return_sequence = deque()
+        return_sequence: Deque = deque()
 
         # calculate return value at each step
         for i in range(len(self.reward_sequence) - 1, -1, -1):
@@ -104,16 +106,18 @@ class Agent(object):
             )
             return_sequence.appendleft(return_value)
 
-        return_sequence = torch.tensor(return_sequence).to(self.device)
         # standardize returns for better stability
-        return_sequence = (return_sequence - return_sequence.mean()) / (
-            return_sequence.std() + 1e-7
-        )
+        return_sequence_tensor = torch.tensor(return_sequence).to(device)
+        return_sequence_tensor = (
+            return_sequence_tensor - return_sequence_tensor.mean()
+        ) / (return_sequence_tensor.std() + 1e-7)
 
         # calculate loss at each step
         loss_sequence = []
         for log_prob, return_value, predicted_value in zip(
-            self.log_prob_sequence, return_sequence, self.predicted_value_sequence
+            self.log_prob_sequence,
+            return_sequence_tensor,
+            self.predicted_value_sequence,
         ):
             delta = return_value - predicted_value.detach()
 
@@ -136,7 +140,7 @@ class Agent(object):
 
         return total_loss.data
 
-    def load_params(self, path):
+    def load_params(self, path: str):
         """Load model and optimizer parameters."""
         if not os.path.exists(path):
             print("[ERROR] the input path does not exist. ->", path)
@@ -147,23 +151,14 @@ class Agent(object):
         self.optimizer.load_state_dict(params["optim_state_dict"])
         print("[INFO] loaded the model and optimizer from", path)
 
-    def save_params(self, n_episode):
+    def save_params(self, n_episode: int):
         """Save model and optimizer parameters."""
-        if not os.path.exists("./save"):
-            os.mkdir("./save")
-
         params = {
             "model_state_dict": self.model.state_dict(),
             "optim_state_dict": self.optimizer.state_dict(),
         }
 
-        repo = git.Repo(search_parent_directories=True)
-        sha = repo.head.object.hexsha
-        path = os.path.join(
-            "./save/reinforce_" + sha[:7] + "_ep_" + str(n_episode) + ".pt"
-        )
-        torch.save(params, path)
-        print("[INFO] saved the model and optimizer to", path)
+        AbstractAgent.save_params(self, "reinforce", params, n_episode)
 
     def train(self):
         """Run the agent."""

@@ -15,19 +15,27 @@ class OUNoise:
     ddpg-pendulum/ddpg_agent.py
     """
 
-    def __init__(self, size, seed, mu=0.0, theta=0.15, sigma=0.2):
+    def __init__(
+        self,
+        size: int,
+        seed: int,
+        mu: float = 0.0,
+        theta: float = 0.15,
+        sigma: float = 0.2,
+    ):
         """Initialize parameters and noise process."""
         self.mu = mu * np.ones(size)
         self.theta = theta
         self.sigma = sigma
-        self.seed = random.seed(seed)
         self.reset()
+
+        random.seed(seed)
 
     def reset(self):
         """Reset the internal state (= noise) to mean (mu)."""
         self.state = copy.copy(self.mu)
 
-    def sample(self):
+    def sample(self) -> float:
         """Update internal state and return it as a noise sample."""
         x = self.state
         dx = self.theta * (self.mu - x) + self.sigma * np.array(
@@ -45,11 +53,11 @@ class GaussianNoise(object):
 
     def __init__(
         self,
-        action_low,
-        action_high,
-        min_sigma=1.0,
-        max_sigma=1.0,
-        decay_period=1000000,
+        action_low: float,
+        action_high: float,
+        min_sigma: float = 1.0,
+        max_sigma: float = 1.0,
+        decay_period: int = 1000000,
     ):
         """Initialization."""
         self.low = action_low
@@ -58,7 +66,7 @@ class GaussianNoise(object):
         self.min_sigma = min_sigma
         self.decay_period = decay_period
 
-    def sample(self, action_size, t=0):
+    def sample(self, action_size: int, t: int = 0) -> float:
         """Get an action with gaussian noise."""
         sigma = self.max_sigma - (self.max_sigma - self.min_sigma) * min(
             1.0, t / self.decay_period

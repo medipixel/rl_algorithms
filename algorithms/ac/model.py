@@ -8,6 +8,9 @@ with continuous action space in OpenAI Gym.
 - Contact: curt.park@medipixel.io
 """
 
+
+from typing import Tuple
+
 import torch
 import torch.nn as nn
 from torch.distributions import Normal
@@ -32,7 +35,14 @@ class ActorCritic(nn.Module):
 
     """
 
-    def __init__(self, std, state_dim, action_dim, action_low, action_high):
+    def __init__(
+        self,
+        std: float,
+        state_dim: int,
+        action_dim: int,
+        action_low: float,
+        action_high: float,
+    ):
         """Initialization."""
         super(ActorCritic, self).__init__()
 
@@ -63,7 +73,9 @@ class ActorCritic(nn.Module):
             nn.Linear(24, 1),
         )
 
-    def forward(self, state):
+    def forward(
+        self, state: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Forward method implementation.
 
         The original paper suggests to employ an approximator
@@ -83,9 +95,9 @@ class ActorCritic(nn.Module):
         """
         norm_dist_mu = self.actor_mu(state)
         norm_dist_std = self.std
-        predicted_value = self.critic(state)
-
         dist = Normal(norm_dist_mu, norm_dist_std)
         selected_action = torch.clamp(dist.rsample(), self.action_low, self.action_high)
 
-        return selected_action, predicted_value, dist
+        predicted_value = self.critic(state)
+
+        return (selected_action, predicted_value, dist)
