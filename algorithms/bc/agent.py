@@ -160,7 +160,7 @@ class Agent(AbstractAgent):
         next_actions = self.actor_target(next_states)
         next_values = self.critic_target(next_states, next_actions)
         curr_returns = rewards + (hyper_params["GAMMA"] * next_values * masks)
-        curr_returns = curr_returns.to(self.device)
+        curr_returns = curr_returns.to(device)
 
         # crittic loss
         values = self.critic(states, actions)
@@ -180,7 +180,7 @@ class Agent(AbstractAgent):
         qf_mask = torch.gt(
             self.critic(demo_states, demo_actions),
             self.critic(demo_states, pred_actions),
-        ).to(self.device)
+        ).to(device)
         qf_mask = qf_mask.float()
         bc_loss = F.mse_loss(
             torch.mul(pred_actions, qf_mask), torch.mul(demo_actions, qf_mask)
