@@ -22,7 +22,6 @@ class Actor(nn.Module):
         action_dim (int): dimension of action space
         action_low (float): lower bound of the action value
         action_high (float): upper bound of the action value
-        device (torch.device): device selection (cpu / gpu)
 
     Attributes:
         actor (nn.Sequential): actor model with FC layers
@@ -30,14 +29,14 @@ class Actor(nn.Module):
         action_dim (int): dimension of action space
         action_low (float): lower bound of the action value
         action_high (float): upper bound of the action value
-        device (torch.device): device selection (cpu / gpu)
 
     """
 
-    def __init__(self, state_dim, action_dim, action_low, action_high, device):
+    def __init__(
+        self, state_dim: int, action_dim: int, action_low: float, action_high: float
+    ):
         """Initialization."""
         super(Actor, self).__init__()
-        self.device = device
 
         self.state_dim = state_dim
         self.action_dim = action_dim
@@ -55,18 +54,16 @@ class Actor(nn.Module):
             nn.Tanh(),
         )
 
-    def forward(self, state):
+    def forward(self, state: torch.Tensor) -> torch.Tensor:
         """Forward method implementation.
 
         Args:
-            state (numpy.ndarray): input vector on the state space
+            state (torch.Tensor): input vector on the state space
 
         Returns:
             specific action
 
         """
-        state = torch.tensor(state).float().to(self.device)
-
         mu = self.actor(state)
         logstd = torch.zeros_like(mu)
         std = torch.exp(logstd)
@@ -83,20 +80,17 @@ class Critic(nn.Module):
     Args:
         state_dim (int): dimension of state space
         action_dim (int): dimension of action space
-        device (torch.device): device selection (cpu / gpu)
 
     Attributes:
         state_dim (int): dimension of state space
         action_dim (int): dimension of action space
         critic (nn.Sequential): critic model with FC layers
-        device (torch.device): device selection (cpu / gpu)
 
     """
 
-    def __init__(self, state_dim, action_dim, device):
+    def __init__(self, state_dim: int, action_dim: int):
         """Initialization."""
         super(Critic, self).__init__()
-        self.device = device
 
         self.state_dim = state_dim
         self.action_dim = action_dim
@@ -111,17 +105,16 @@ class Critic(nn.Module):
             nn.Linear(24, 1),
         )
 
-    def forward(self, state):
+    def forward(self, state: torch.Tensor) -> torch.Tensor:
         """Forward method implementation.
 
         Args:
-            state (numpy.ndarray): input vector on the state space
+            state (torch.Tensor): input vector on the state space
 
         Returns:
-            specific action
+            predicted value for the input state
 
         """
-        state = torch.tensor(state).float().to(self.device)
         predicted_value = self.critic(state)
 
         return predicted_value
