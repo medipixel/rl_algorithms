@@ -1,22 +1,32 @@
 # -*- coding: utf-8 -*-
 """TRPO agent for episodic tasks in OpenAI Gym.
 
+The overall implementation is very inspired by
+https://github.com/ikostrikov/pytorch-trpo
+
 - Author: Curt Park
 - Contact: curt.park@medipixel.io
 - Paper: http://arxiv.org/abs/1502.05477
 
 """
 
+import argparse
 import os
 from collections import deque
+from typing import Deque, Tuple
 
-import git
+import gym
+import numpy as np
 import scipy.optimize
 import torch
 import wandb
 
 import algorithms.trpo.utils as trpo_utils
+from algorithms.abstract_agent import AbstractAgent
+from algorithms.gae import GAE
 from algorithms.trpo.model import Actor, Critic
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # hyper parameters
 hyper_params = {
@@ -32,67 +42,62 @@ hyper_params = {
 }
 
 
-class Agent(object):
+class Agent(AbstractAgent):
     """TRPO Agent.
 
     Args:
         env (gym.Env): openAI Gym environment with discrete action space
-        args (dict): arguments including hyperparameters and training settings
-        device (torch.device): device selection (cpu / gpu)
+        args (argparse.Namespace): arguments including hyperparameters and training settings
 
     Attributes:
-        env (gym.Env): openAI Gym environment with discrete action space
-        args (dict): arguments including hyperparameters and training setting
         memory (deque): memory for on-policy training
-        device (torch.device): device selection (cpu / gpu)
+        gae (GAE): calculator for generalized advantage estimation
         actor (nn.Module): policy gradient model to select actions
         critic (nn.Module): policy gradient model to predict values
 
     """
 
-    def __init__(self, env, args, device):
+    def __init__(self, env: gym.Env, args: argparse.Namespace):
         """Initialization."""
-        self.env = env
-        self.args = args
-        self.device = device
-        self.memory = deque()
-        state_dim = self.env.observation_space.shape[0]
-        action_dim = self.env.action_space.shape[0]
-        action_low = float(self.env.action_space.low[0])
-        action_high = float(self.env.action_space.high[0])
+        AbstractAgent.__init__(self, env, args)
+
+        self.memory: Deque = deque()
+        self.get_gae = GAE()
 
         # environment setup
         self.env._max_episode_steps = hyper_params["MAX_EPISODE_STEPS"]
 
         # create models
-        self.actor = Actor(state_dim, action_dim, action_low, action_high, device).to(
-            device
-        )
-        self.critic = Critic(state_dim, action_dim, device).to(device)
-        self.old_actor = Actor(
-            state_dim, action_dim, action_low, action_high, device
+        self.actor = Actor(
+            self.state_dim, self.action_dim, self.action_low, self.action_high
         ).to(device)
+        self.old_actor = Actor(
+            self.state_dim, self.action_dim, self.action_low, self.action_high
+        ).to(device)
+        self.critic = Critic(self.state_dim, self.action_dim).to(device)
 
         # load model parameters
         if args.load_from is not None and os.path.exists(args.load_from):
             self.load_params(args.load_from)
 
-    def select_action(self, state):
+    def select_action(self, state: np.ndarray) -> torch.Tensor:
         """Select an action from the input space."""
+        state = torch.FloatTensor(state).to(device)
         selected_action, dist = self.actor(state)
 
         return selected_action
 
-    def step(self, state, action):
-        """Take an action and return the response of the env."""
-        action = action.detach().to("cpu").numpy()
+    def step(
+        self, state: np.ndarray, action: torch.Tensor
+    ) -> Tuple[np.ndarray, np.float64, bool]:
+        action = action.detach().cpu().numpy()
         next_state, reward, done, _ = self.env.step(action)
 
         self.memory.append([state, action, reward, done])
 
         return next_state, reward, done
 
-    def update_model(self):
+    def update_model(self) -> torch.Tensor:
         """Train the model after every N episodes."""
         self.old_actor.load_state_dict(self.actor.state_dict())
 
@@ -100,7 +105,7 @@ class Agent(object):
 
         # calculate returns and gae
         values = self.critic(states)
-        returns, advantages = trpo_utils.get_gae(
+        returns, advantages = self.get_gae(
             rewards, values, dones, hyper_params["GAMMA"], hyper_params["LAMBDA"]
         )
 
@@ -111,7 +116,7 @@ class Agent(object):
         )
         flat_params, _, _ = scipy.optimize.fmin_l_bfgs_b(
             get_value_loss,
-            trpo_utils.get_flat_params_from(self.critic).to("cpu").double().numpy(),
+            trpo_utils.get_flat_params_from(self.critic).cpu().double().numpy(),
             maxiter=hyper_params["LBFGS_MAX_ITER"],
         )
         trpo_utils.set_flat_params_to(self.critic, torch.Tensor(flat_params))
@@ -147,19 +152,12 @@ class Agent(object):
 
     def save_params(self, n_episode):
         """Save model and optimizer parameters."""
-        if not os.path.exists("./save"):
-            os.mkdir("./save")
-
         params = {
             "actor_state_dict": self.actor.state_dict(),
             "critic_state_dict": self.critic.state_dict(),
         }
 
-        repo = git.Repo(search_parent_directories=True)
-        sha = repo.head.object.hexsha
-        path = os.path.join("./save/trpo_" + sha[:7] + "_ep_" + str(n_episode) + ".pt")
-        torch.save(params, path)
-        print("[INFO] saved the model and optimizer to", path)
+        AbstractAgent.save_params(self, "trpo", params, n_episode)
 
     def train(self):
         """Train the agent."""

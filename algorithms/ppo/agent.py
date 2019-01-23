@@ -6,17 +6,24 @@
 - Paper: https://arxiv.org/abs/1707.06347
 """
 
+import argparse
 import os
 from collections import deque
+from typing import Deque, Tuple
 
-import git
+import gym
+import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
 import wandb
 
 import algorithms.ppo.utils as ppo_utils
+from algorithms.abstract_agent import AbstractAgent
+from algorithms.gae import GAE
 from algorithms.ppo.model import Actor, Critic
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # hyper parameters
 hyper_params = {
@@ -33,20 +40,17 @@ hyper_params = {
 }
 
 
-class Agent(object):
+class Agent(AbstractAgent):
     """PPO Agent.
 
     Args:
         env (gym.Env): openAI Gym environment with discrete action space
-        args (dict): arguments including hyperparameters and training settings
-        device (torch.device): device selection (cpu / gpu)
+        args (argparse.Namespace): arguments including hyperparameters and training settings
 
     Attributes:
-        env (gym.Env): openAI Gym environment with discrete action space
-        args (dict): arguments including hyperparameters and training setting
-        device (torch.device): device selection (cpu / gpu)
         memory (deque): memory for on-policy training
         transition (list): list for storing a transition
+        gae (GAE): calculator for generalized advantage estimation
         actor (nn.Module): policy gradient model to select actions
         critic (nn.Module): policy gradient model to predict values
         actor_optimizer (Optimizer): optimizer for training actor
@@ -54,26 +58,22 @@ class Agent(object):
 
     """
 
-    def __init__(self, env, args, device):
+    def __init__(self, env: gym.Env, args: argparse.Namespace):
         """Initialization."""
-        self.env = env
-        self.args = args
-        self.device = device
-        self.memory = deque()
-        self.transition = []
-        state_dim = self.env.observation_space.shape[0]
-        action_dim = self.env.action_space.shape[0]
-        action_low = float(self.env.action_space.low[0])
-        action_high = float(self.env.action_space.high[0])
+        AbstractAgent.__init__(self, env, args)
+
+        self.memory: Deque = deque()
+        self.get_gae = GAE()
+        self.transition: list = []
 
         # environment setup
         self.env._max_episode_steps = hyper_params["MAX_EPISODE_STEPS"]
 
         # create models
-        self.actor = Actor(state_dim, action_dim, action_low, action_high, device).to(
-            device
-        )
-        self.critic = Critic(state_dim, action_dim, self.device).to(device)
+        self.actor = Actor(
+            self.state_dim, self.action_dim, self.action_low, self.action_high
+        ).to(device)
+        self.critic = Critic(self.state_dim, self.action_dim).to(device)
 
         # create optimizer
         self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=3e-4)
@@ -83,16 +83,20 @@ class Agent(object):
         if self.args.load_from is not None and os.path.exists(self.args.load_from):
             self.load_params(self.args.load_from)
 
-    def select_action(self, state):
+    def select_action(self, state: np.ndarray) -> torch.Tensor:
         """Select an action from the input space."""
-        selected_action, dist = self.actor(state)
-        self.transition += [state, dist.log_prob(selected_action).detach()]
+        state_ft = torch.FloatTensor(state).to(device)
+        selected_action, dist = self.actor(state_ft)
+
+        self.transition += [
+            state,
+            dist.log_prob(selected_action).detach().cpu().numpy(),
+        ]
 
         return selected_action
 
-    def step(self, action):
-        """Take an action and return the response of the env."""
-        action = action.detach().to("cpu").numpy()
+    def step(self, action: torch.Tensor) -> Tuple[np.ndarray, np.float64, bool]:
+        action = action.detach().cpu().numpy()
         next_state, reward, done, _ = self.env.step(action)
 
         self.transition += [action, reward, done]
@@ -101,7 +105,7 @@ class Agent(object):
 
         return next_state, reward, done
 
-    def update_model(self):
+    def update_model(self) -> torch.Tensor:
         """Train the model after every N episodes."""
         states, log_probs, actions, rewards, dones = ppo_utils.decompose_memory(
             self.memory
@@ -109,7 +113,7 @@ class Agent(object):
 
         # calculate returns and gae
         values = self.critic(states)
-        returns, advantages = ppo_utils.get_gae(
+        returns, advantages = self.get_gae(
             rewards, values, dones, hyper_params["GAMMA"], hyper_params["LAMBDA"]
         )
 
@@ -167,7 +171,7 @@ class Agent(object):
 
         return sum(losses) / len(losses)
 
-    def load_params(self, path):
+    def load_params(self, path: str):
         """Load model and optimizer parameters."""
         if not os.path.exists(path):
             print("[ERROR] the input path does not exist. ->", path)
@@ -180,11 +184,8 @@ class Agent(object):
         self.critic_optimizer.load_state_dict(params["critic_optim_state_dict"])
         print("[INFO] loaded the model and optimizer from", path)
 
-    def save_params(self, n_episode):
+    def save_params(self, n_episode: int):
         """Save model and optimizer parameters."""
-        if not os.path.exists("./save"):
-            os.mkdir("./save")
-
         params = {
             "actor_state_dict": self.actor.state_dict(),
             "critic_state_dict": self.critic.state_dict(),
@@ -192,11 +193,7 @@ class Agent(object):
             "critic_optim_state_dict": self.critic_optimizer.state_dict(),
         }
 
-        repo = git.Repo(search_parent_directories=True)
-        sha = repo.head.object.hexsha
-        path = os.path.join("./save/ppo_" + sha[:7] + "_ep_" + str(n_episode) + ".pt")
-        torch.save(params, path)
-        print("[INFO] saved the model and optimizer to", path)
+        AbstractAgent.save_params(self, "ppo", params, n_episode)
 
     def train(self):
         """Train the agent."""

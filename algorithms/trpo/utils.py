@@ -8,31 +8,35 @@ This module has TRPO util functions.
 - Paper: http://arxiv.org/abs/1502.05477
 """
 
-import math
+from typing import Callable, Deque
 
 import numpy as np
 import torch
+import torch.nn as nn
 from torch.distributions.kl import kl_divergence
 
 # device selection: cpu / gpu
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-def decompose_memory(memory):
+def decompose_memory(memory: Deque):
     """Decompose states, actions, rewards, dones from the memory."""
-    memory = np.array(memory)
-    states = torch.from_numpy(np.vstack(memory[:, 0])).float().to(device)
-    actions = torch.from_numpy(np.vstack(memory[:, 1])).float().to(device)
-    rewards = torch.from_numpy(np.vstack(memory[:, 2])).float().to(device)
+    print(memory[0])
+    input()
+    memory_np: np.ndarray = np.array(memory)
+
+    states = torch.from_numpy(np.vstack(memory_np[:, 0])).float().to(device)
+    actions = torch.from_numpy(np.vstack(memory_np[:, 1])).float().to(device)
+    rewards = torch.from_numpy(np.vstack(memory_np[:, 2])).float().to(device)
     dones = (
-        torch.from_numpy(np.vstack(memory[:, 3]).astype(np.uint8)).float().to(device)
+        torch.from_numpy(np.vstack(memory_np[:, 3]).astype(np.uint8)).float().to(device)
     )
 
     return states, actions, rewards, dones
 
 
-# taken from https://github.com/ikostrikov/pytorch-trpo
-def get_flat_params_from(model):
+# taken and modified from https://github.com/ikostrikov/pytorch-trpo
+def get_flat_params_from(model: nn.Module) -> torch.Tensor:
     """Return flat_params from the model parameters."""
     params = []
     for param in model.parameters():
@@ -42,8 +46,8 @@ def get_flat_params_from(model):
     return flat_params
 
 
-# taken from https://github.com/ikostrikov/pytorch-trpo
-def set_flat_params_to(model, flat_params):
+# taken and modified from https://github.com/ikostrikov/pytorch-trpo
+def set_flat_params_to(model: nn.Module, flat_params: torch.Tensor):
     """Set the model parameters as flat_params."""
     prev_ind = 0
     for param in model.parameters():
@@ -54,8 +58,8 @@ def set_flat_params_to(model, flat_params):
         prev_ind += flat_size
 
 
-# taken from https://github.com/ikostrikov/pytorch-trpo
-def get_flat_grad_from(net, grad_grad=False):
+# taken and modified from https://github.com/ikostrikov/pytorch-trpo
+def get_flat_grad_from(net: nn.Module, grad_grad: bool = False):
     """Return flat grads of the model parameters."""
     grads = []
     for param in net.parameters():
@@ -68,31 +72,10 @@ def get_flat_grad_from(net, grad_grad=False):
     return flat_grad
 
 
-# taken from https://github.com/ikostrikov/pytorch-trpo
-def get_gae(rewards, values, dones, gamma, lambd):
-    """Calculate returns and GAEs."""
-    masks = 1 - dones
-    returns = torch.zeros_like(rewards)
-    deltas = torch.zeros_like(rewards)
-    advantages = torch.zeros_like(rewards)
-
-    prev_return = 0
-    prev_value = 0
-    prev_advantage = 0
-    for i in reversed(range(rewards.size(0))):
-        returns[i] = rewards[i] + gamma * prev_return * masks[i]
-        deltas[i] = rewards[i] + gamma * prev_value * masks[i] - values.data[i]
-        advantages[i] = deltas[i] + gamma * lambd * prev_advantage * masks[i]
-
-        prev_return = returns[i, 0]
-        prev_value = values.data[i, 0]
-        prev_advantage = advantages[i, 0]
-
-    return returns, advantages
-
-
-# taken from https://github.com/ikostrikov/pytorch-trpo
-def conjugate_gradients(Avp, b, nsteps, residual_tol=1e-10):
+# taken and modified from https://github.com/ikostrikov/pytorch-trpo
+def conjugate_gradients(
+    Avp: Callable, b: torch.Tensor, nsteps: int, residual_tol: float = 1e-10
+) -> torch.Tensor:
     """Demmel p 312."""
     x = torch.zeros(b.size()).to(device)
     r = b.clone()
@@ -112,9 +95,15 @@ def conjugate_gradients(Avp, b, nsteps, residual_tol=1e-10):
     return x
 
 
-# taken from https://github.com/ikostrikov/pytorch-trpo
+# taken and modified from https://github.com/ikostrikov/pytorch-trpo
 def linesearch(
-    model, f, x, fullstep, expected_improve_rate, max_backtracks=10, accept_ratio=0.1
+    model: nn.Module,
+    f: Callable,
+    x: torch.Tensor,
+    fullstep: torch.Tensor,
+    expected_improve_rate: torch.Tensor,
+    max_backtracks: int = 10,
+    accept_ratio: float = 0.1,
 ):
     """Backtracking linesearch.
 
@@ -135,21 +124,21 @@ def linesearch(
     return False, x
 
 
-# taken from https://github.com/ikostrikov/pytorch-trpo
-def normal_log_density(x, mean, log_std, std):
-    """Calculate log density of nomal distribution."""
-    var = std.pow(2)
-    log_density = -(x - mean).pow(2) / (2 * var) - 0.5 * math.log(2 * math.pi) - log_std
-    return log_density.sum(1, keepdim=True)
-
-
-# taken from https://github.com/ikostrikov/pytorch-trpo
-def trpo_step(old_actor, actor, states, actions, advantages, max_kl, damping):
+# taken and modified from https://github.com/ikostrikov/pytorch-trpo
+def trpo_step(
+    old_actor: nn.Module,
+    actor: nn.Module,
+    states: torch.tensor,
+    actions: torch.Tensor,
+    advantages: torch.Tensor,
+    max_kl: float,
+    damping: float,
+):
     """Calculate TRPO loss."""
     _, old_dist = old_actor(states)
     old_log_prob = old_dist.log_prob(actions)
 
-    def get_loss(volatile=False):
+    def get_loss(volatile: bool = False):
         if volatile:
             with torch.no_grad():
                 _, dist = actor(states)
@@ -170,7 +159,7 @@ def trpo_step(old_actor, actor, states, actions, advantages, max_kl, damping):
     grads = torch.autograd.grad(loss, actor.parameters())
     loss_grad = torch.cat([grad.view(-1) for grad in grads]).data
 
-    def Fvp(v):
+    def Fvp(v: torch.Tensor):
         kl = get_kl()
         kl = kl.mean()
 
@@ -201,7 +190,7 @@ def trpo_step(old_actor, actor, states, actions, advantages, max_kl, damping):
     return loss
 
 
-# taken from https://github.com/ikostrikov/pytorch-trpo
+# taken and modified from https://github.com/ikostrikov/pytorch-trpo
 class ValueLoss(object):
     """Value Loss calculator.
 
@@ -213,14 +202,20 @@ class ValueLoss(object):
 
     """
 
-    def __init__(self, model, states, targets, l2_reg):
+    def __init__(
+        self,
+        model: nn.Module,
+        states: torch.Tensor,
+        targets: torch.Tensor,
+        l2_reg: float,
+    ):
         """Initialization."""
         self.model = model
         self.states = states
         self.targets = targets
         self.l2_reg = l2_reg
 
-    def __call__(self, flat_params):
+    def __call__(self, flat_params: torch.Tensor):
         """Return value loss."""
         set_flat_params_to(self.model, torch.Tensor(flat_params))
 
@@ -237,6 +232,6 @@ class ValueLoss(object):
             value_loss += param.pow(2).sum() * self.l2_reg
 
         return (
-            value_loss.data.to("cpu").double().numpy(),
-            get_flat_grad_from(self.model).data.to("cpu").double().numpy(),
+            value_loss.data.cpu().double().numpy(),
+            get_flat_grad_from(self.model).data.cpu().double().numpy(),
         )
