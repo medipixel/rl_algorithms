@@ -29,12 +29,12 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 hyper_params = {
     "GAMMA": 0.99,
     "LAMBDA": 0.95,
-    "EPSILON": 0.2,
-    "W_VALUE": 1.0,
+    "EPSILON": 0.01,
+    "W_VALUE": 3.0,
     "W_ENTROPY": 1e-3,
-    "ROLLOUT_LENGTH": 256,
-    "EPOCH": 8,
-    "BATCH_SIZE": 32,
+    "ROLLOUT_LENGTH": 128,
+    "EPOCH": 4,
+    "BATCH_SIZE": 16,
     "MAX_EPISODE_STEPS": 300,
     "EPISODE_NUM": 1500,
 }
@@ -145,7 +145,7 @@ class Agent(AbstractAgent):
             actor_loss = -torch.min(surr_loss, clipped_surr_loss).mean()
 
             # critic_loss
-            critic_loss = F.smooth_l1_loss(value, return_)
+            critic_loss = F.mse_loss(value, return_)
 
             # entropy
             entropy = dist.entropy().mean()
