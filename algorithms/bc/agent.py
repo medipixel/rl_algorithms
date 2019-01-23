@@ -140,11 +140,13 @@ class Agent(AbstractAgent):
         experiences: Tuple[
             torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor
         ],
-        demo: ReplayBuffer,
+        demos: Tuple[
+            torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor
+        ],
     ) -> float:
         """Train the model after each episode."""
         exp_states, exp_actions, exp_rewards, exp_next_states, exp_dones = experiences
-        demo_states, demo_actions, demo_rewards, demo_next_states, demo_dones = demo
+        demo_states, demo_actions, demo_rewards, demo_next_states, demo_dones = demos
 
         # TODO: RuntimeError! Need to check incorrect dimensions
         states = torch.cat((exp_states, demo_states), dim=0)

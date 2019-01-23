@@ -36,7 +36,7 @@ class AbstractAgent(ABC):
         self.args = args
         self.env = env
         self.state_dim = env.observation_space.shape[0]
-        self.action_dim = env.observation_space.shape[0]
+        self.action_dim = env.action_space.shape[0]
         self.action_low = float(env.action_space.low[0])
         self.action_high = float(env.action_space.high[0])
 
