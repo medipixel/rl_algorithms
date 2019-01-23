@@ -113,6 +113,7 @@ class Agent(AbstractAgent):
         """Take an action and return the response of the env."""
         action = action.detach().cpu().numpy()
         next_state, reward, done, _ = self.env.step(action)
+
         self.memory.add(state, action, reward, next_state, done)
 
         return next_state, reward, done
@@ -122,7 +123,7 @@ class Agent(AbstractAgent):
         experiences: Tuple[
             torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor
         ],
-    ) -> float:
+    ) -> torch.Tensor:
         """Train the model after each episode."""
         states, actions, rewards, next_states, dones = experiences
 

@@ -85,7 +85,7 @@ class ActorCritic(nn.Module):
         LunarLanderContinuous-v2 environment.
 
         Args:
-            state (numpy.ndarray): input vector on the state space
+            state (torch.Tensor): input vector on the state space
 
         Returns:
             normal distribution parameters as the output of actor model and

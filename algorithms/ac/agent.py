@@ -85,7 +85,7 @@ class Agent(AbstractAgent):
 
     def update_model(
         self, experience: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]
-    ) -> float:
+    ) -> torch.Tensor:
         reward, next_state, done = experience
         next_state = torch.FloatTensor(next_state).to(device)
 

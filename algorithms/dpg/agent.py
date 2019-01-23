@@ -78,7 +78,7 @@ class Agent(AbstractAgent):
 
     def update_model(
         self, experience: Tuple[np.ndarray, torch.Tensor, np.float64, np.ndarray, bool]
-    ) -> float:
+    ) -> torch.Tensor:
         """Train the model after each episode."""
         state, action, reward, next_state, done = experience
         state = torch.FloatTensor(state).to(device)
