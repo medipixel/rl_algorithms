@@ -6,56 +6,53 @@
 - Paper: http://proceedings.mlr.press/v32/silver14.pdf
 """
 
+import argparse
 import os
+from typing import Tuple
 
-import git
+import gym
 import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
 import wandb
 
+from algorithms.abstract_agent import AbstractAgent
 from algorithms.dpg.model import Actor, Critic
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # hyper parameters
 hyper_params = {"GAMMA": 0.99, "MAX_EPISODE_STEPS": 500, "EPISODE_NUM": 1500}
 
 
-class Agent(object):
+class Agent(AbstractAgent):
     """ActorCritic interacting with environment.
 
     Args:
         env (gym.Env): openAI Gym environment with discrete action space
-        args (dict): arguments including hyperparameters and training settings
-        device (torch.device): device selection (cpu / gpu)
+        args (argparse.Namespace): arguments including hyperparameters and training settings
 
     Attributes:
-        env (gym.Env): openAI Gym environment with discrete action space
         actor (nn.Module): actor model to select actions
         critic (nn.Module): critic model to predict values
-        args (dict): arguments including hyperparameters and training settings
         actor_optimizer (Optimizer): actor optimizer for training
         critic_optimizer (Optimizer): critic optimizer for training
-        device (torch.device): device selection (cpu / gpu)
 
     """
 
-    def __init__(self, env, args, device):
+    def __init__(self, env: gym.Env, args: argparse.Namespace):
         """Initialization."""
+        AbstractAgent.__init__(self, env, args)
+
         # environment setup
-        self.env = env
         self.env._max_episode_steps = hyper_params["MAX_EPISODE_STEPS"]
 
         # create a model
-        self.device = device
-        state_dim = self.env.observation_space.shape[0]
-        action_dim = self.env.action_space.shape[0]
-        action_low = float(self.env.action_space.low[0])
-        action_high = float(self.env.action_space.high[0])
         self.actor = Actor(
-            state_dim, action_dim, action_low, action_high, self.device
-        ).to(self.device)
-        self.critic = Critic(state_dim, action_dim, self.device).to(self.device)
+            self.state_dim, self.action_dim, self.action_low, self.action_high
+        ).to(device)
+        self.critic = Critic(self.state_dim, self.action_dim).to(device)
 
         # create optimizer
         self.actor_optimizer = optim.Adam(self.actor.parameters())
@@ -65,24 +62,27 @@ class Agent(object):
         if args.load_from is not None and os.path.exists(args.load_from):
             self.load_params(args.load_from)
 
-        self.args = args
-
-    def select_action(self, state):
+    def select_action(self, state: np.ndarray) -> torch.Tensor:
         """Select an action from the input space."""
+        state = torch.FloatTensor(state).to(device)
         selected_action = self.actor(state)
 
         return selected_action
 
-    def step(self, action):
+    def step(self, action: torch.Tensor) -> Tuple[np.ndarray, np.float64, bool]:
         """Take an action and return the response of the env."""
-        action = action.detach().to("cpu").numpy()
+        action = action.detach().cpu().numpy()
         next_state, reward, done, _ = self.env.step(action)
 
         return next_state, reward, done
 
-    def update_model(self, experience):
+    def update_model(
+        self, experience: Tuple[np.ndarray, torch.Tensor, np.float64, np.ndarray, bool]
+    ) -> float:
         """Train the model after each episode."""
         state, action, reward, next_state, done = experience
+        state = torch.FloatTensor(state).to(device)
+        next_state = torch.FloatTensor(next_state).to(device)
 
         # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
         #       = r                       otherwise
@@ -90,8 +90,8 @@ class Agent(object):
         value = self.critic(state, action)
         next_action = self.actor(next_state)
         next_value = self.critic(next_state, next_action).detach()
-        curr_return = reward + (hyper_params["GAMMA"] * next_value * mask)
-        curr_return = curr_return.to(self.device)
+        curr_return = reward + hyper_params["GAMMA"] * next_value * mask
+        curr_return = curr_return.to(device)
 
         # train critic
         critic_loss = F.mse_loss(value, curr_return)
@@ -111,7 +111,7 @@ class Agent(object):
 
         return total_loss.data
 
-    def load_params(self, path):
+    def load_params(self, path: str):
         """Load model and optimizer parameters."""
         if not os.path.exists(path):
             print("[ERROR] the input path does not exist. ->", path)
@@ -124,11 +124,8 @@ class Agent(object):
         self.critic_optimizer.load_state_dict(params["critic_optim_state_dict"])
         print("[INFO] loaded the model and optimizer from", path)
 
-    def save_params(self, n_episode):
+    def save_params(self, n_episode: int):
         """Save model and optimizer parameters."""
-        if not os.path.exists("./save"):
-            os.mkdir("./save")
-
         params = {
             "actor_state_dict": self.actor.state_dict(),
             "critic_state_dict": self.critic.state_dict(),
@@ -136,13 +133,7 @@ class Agent(object):
             "critic_optim_state_dict": self.critic_optimizer.state_dict(),
         }
 
-        repo = git.Repo(search_parent_directories=True)
-        sha = repo.head.object.hexsha
-        path = os.path.join(
-            "./save/dpg_continuous_" + sha[:7] + "_ep_" + str(n_episode) + ".pt"
-        )
-        torch.save(params, path)
-        print("[INFO] saved the model and optimizer to", path)
+        AbstractAgent.save_params(self, "dpg", params, n_episode)
 
     def train(self):
         """Train the agent."""
@@ -150,8 +141,7 @@ class Agent(object):
         if self.args.log:
             wandb.init()
             wandb.config.update(hyper_params)
-            wandb.watch(self.actor, log="parameters")
-            wandb.watch(self.critic, log="parameters")
+            wandb.watch([self.actor, self.critic], log="parameters")
 
         for i_episode in range(1, hyper_params["EPISODE_NUM"] + 1):
             state = self.env.reset()
@@ -165,6 +155,7 @@ class Agent(object):
 
                 action = self.select_action(state)
                 next_state, reward, done = self.step(action)
+
                 loss = self.update_model((state, action, reward, next_state, done))
 
                 state = next_state

@@ -32,18 +32,12 @@ parser.add_argument(
     help="start rendering after the input number of episode",
 )
 parser.add_argument("--log", dest="log", action="store_true", help="turn on logging")
-parser.add_argument("--save-period", type=int, default=50, help="save model period")
+parser.add_argument("--save-period", type=int, default=100, help="save model period")
 parser.set_defaults(test=False)
 parser.set_defaults(load_from=None)
 parser.set_defaults(render=True)
 parser.set_defaults(log=False)
 args = parser.parse_args()
-
-# device selection: cpu / gpu
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-# algorithms
-policy_gradients = {"ac", "reinforce", "dpg", "ddpg", "trpo", "ppo", "bc", "td3"}
 
 # import the agent
 if args.algo == "reinforce":
@@ -66,19 +60,15 @@ elif args.algo == "td3":
 
 def main():
     """Main."""
-    # choose an env
-    if args.algo in policy_gradients:
-        env = "LunarLanderContinuous-v2"
-
     # env initialization
-    env = gym.make(env)
+    env = gym.make("LunarLanderContinuous-v2")
 
     # set a random seed
     env.seed(args.seed)
     torch.manual_seed(args.seed)
 
     # create an agent
-    agent = Agent(env, args, device)
+    agent = Agent(env, args)
 
     # run
     if args.test:

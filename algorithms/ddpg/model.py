@@ -21,7 +21,6 @@ class Actor(nn.Module):
         action_dim (int): dimension of action space
         action_low (float): lower bound of the action value
         action_high (float): upper bound of the action value
-        device (torch.device): cpu or cuda
 
     Attributes:
         actor (nn.Sequential): actor model with FC layers
@@ -29,14 +28,14 @@ class Actor(nn.Module):
         action_dim (int): dimension of action space
         action_low (float): lower bound of the action value
         action_high (float): upper bound of the action value
-        device (torch.device): cpu or cuda
 
     """
 
-    def __init__(self, state_dim, action_dim, action_low, action_high, device):
+    def __init__(
+        self, state_dim: int, action_dim: int, action_low: float, action_high: float
+    ):
         """Initialization."""
         super(Actor, self).__init__()
-        self.device = device
 
         self.state_dim = state_dim
         self.action_dim = action_dim
@@ -54,7 +53,7 @@ class Actor(nn.Module):
             nn.Tanh(),
         )
 
-    def forward(self, state):
+    def forward(self, state: torch.Tensor) -> torch.Tensor:
         """Forward method implementation.
 
         Args:
@@ -64,7 +63,6 @@ class Actor(nn.Module):
             specific action
 
         """
-        state = torch.tensor(state).float().to(self.device)
         action = self.actor(state)
 
         # adjust the output range to [action_low, action_high]
@@ -82,7 +80,6 @@ class Critic(nn.Module):
     Args:
         state_dim (int): dimension of state space
         action_dim (int): dimension of action space
-        device (torch.device): cpu or cuda
 
     Attributes:
         state_dim (int): dimension of state space
@@ -91,10 +88,9 @@ class Critic(nn.Module):
 
     """
 
-    def __init__(self, state_dim, action_dim, device):
+    def __init__(self, state_dim: int, action_dim: int):
         """Initialization."""
         super(Critic, self).__init__()
-        self.device = device
 
         self.state_dim = state_dim
         self.action_dim = action_dim
@@ -109,7 +105,7 @@ class Critic(nn.Module):
             nn.Linear(24, 1),
         )
 
-    def forward(self, state, action):
+    def forward(self, state: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
         """Forward method implementation.
 
         Args:
@@ -120,8 +116,6 @@ class Critic(nn.Module):
             predicted state value
 
         """
-        state = torch.tensor(state).float().to(self.device)
-
         x = torch.cat((state, action), dim=-1)  # concat action
         predicted_value = self.critic(x)
 
