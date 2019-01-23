@@ -80,7 +80,6 @@ class Critic(nn.Module):
     Args:
         state_dim (int): dimension of state space
         action_dim (int): dimension of action space
-        device (torch.device): cpu or cuda
 
     Attributes:
         state_dim (int): dimension of state space
