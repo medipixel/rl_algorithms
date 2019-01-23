@@ -58,7 +58,7 @@ class Actor(nn.Module):
         """Forward method implementation.
 
         Args:
-            state (numpy.ndarray): input vector on the state space
+            state (torch.Tensor): input vector on the state space
 
         Returns:
             specific action
@@ -105,7 +105,7 @@ class Critic(nn.Module):
         """Forward method implementation.
 
         Args:
-            state (numpy.ndarray): input vector on the state space
+            state (torch.Tensor): input vector on the state space
 
         Returns:
             predicted state value

@@ -6,18 +6,24 @@
 - Paper: https://arxiv.org/pdf/1802.09477.pdf
 """
 
+import argparse
 import os
+from typing import Tuple
 
-import git
+import gym
 import numpy as np
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import wandb
 
+from algorithms.abstract_agent import AbstractAgent
 from algorithms.noise import GaussianNoise
 from algorithms.replay_buffer import ReplayBuffer
 from algorithms.td3.model import Actor, Critic
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # hyper parameters
 hyper_params = {
@@ -33,100 +39,104 @@ hyper_params = {
 }
 
 
-class Agent(object):
+class Agent(AbstractAgent):
     """ActorCritic interacting with environment.
 
     Args:
         env (gym.Env): openAI Gym environment with discrete action space
-        args (dict): arguments including hyperparameters and training settings
-        device (torch.device): device selection (cpu / gpu)
+        args (argparse.Namespace): arguments including hyperparameters and training settings
 
     Attrtibutes:
-        env (gym.Env): openAI Gym environment with continuous action space
-        args (dict): arguments including hyperparameters and training settings
         memory (ReplayBuffer): replay memory
         noise (OUNoise): random noise for exploration
-        action_low (float): lower bound of action values
-        action_high (float): upper bound of action values
-        device (str): device selection (cpu / gpu)
-        actor_local (nn.Module): actor model to select actions
-        actor_target (nn.Module): target actor model to select actions
-        critic_local (nn.Module): critic model to predict state values
+        actor (nn.Module): actor model to select actions
+        critic_1 (nn.Module): critic model to predict state values
+        critic_2 (nn.Module): critic model to predict state values
         critic_target (nn.Module): target critic model to predict state values
+        actor_target (nn.Module): target actor model to select actions
+        critic_optimizer_1 (Optimizer): optimizer for training critic_1
+        critic_optimizer_2 (Optimizer): optimizer for training critic_2
         actor_optimizer (Optimizer): optimizer for training actor
-        critic_optimizer (Optimizer): optimizer for training critic
 
     """
 
-    def __init__(self, env, args, device):
+    def __init__(self, env: gym.Env, args: argparse.Namespace):
         """Initialization."""
+        AbstractAgent.__init__(self, env, args)
+
         self.env = env
         self.args = args
-        self.device = device
-        self.action_low = float(self.env.action_space.low[0])
-        self.action_high = float(self.env.action_space.high[0])
-        state_dim = self.env.observation_space.shape[0]
-        action_dim = self.env.action_space.shape[0]
 
         # environment setup
         self.env._max_episode_steps = hyper_params["MAX_EPISODE_STEPS"]
 
         # create actor
-        self.actor_local = Actor(
-            state_dim, action_dim, self.action_low, self.action_high, self.device
+        self.actor = Actor(
+            self.state_dim, self.action_dim, self.action_low, self.action_high
         ).to(device)
         self.actor_target = Actor(
-            state_dim, action_dim, self.action_low, self.action_high, self.device
+            self.state_dim, self.action_dim, self.action_low, self.action_high
         ).to(device)
-        self.actor_target.load_state_dict(self.actor_local.state_dict())
+        self.actor_target.load_state_dict(self.actor.state_dict())
 
         # create critic
-        self.critic_local1 = Critic(state_dim, action_dim, self.device).to(device)
-        self.critic_local2 = Critic(state_dim, action_dim, self.device).to(device)
-        self.critic_target1 = Critic(state_dim, action_dim, self.device).to(device)
-        self.critic_target2 = Critic(state_dim, action_dim, self.device).to(device)
-        self.critic_target1.load_state_dict(self.critic_local1.state_dict())
-        self.critic_target2.load_state_dict(self.critic_local2.state_dict())
+        self.critic_1 = Critic(self.state_dim, self.action_dim).to(device)
+        self.critic_2 = Critic(self.state_dim, self.action_dim).to(device)
+        self.critic_target1 = Critic(self.state_dim, self.action_dim).to(device)
+        self.critic_target2 = Critic(self.state_dim, self.action_dim).to(device)
+        self.critic_target1.load_state_dict(self.critic_1.state_dict())
+        self.critic_target2.load_state_dict(self.critic_2.state_dict())
 
         # create optimizers
-        self.actor_optimizer = optim.Adam(self.actor_local.parameters(), lr=1e-4)
-        self.critic_optimizer1 = optim.Adam(self.critic_local1.parameters(), lr=1e-3)
-        self.critic_optimizer2 = optim.Adam(self.critic_local2.parameters(), lr=1e-3)
+        self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=1e-4)
+        self.critic_optimizer1 = optim.Adam(self.critic_1.parameters(), lr=1e-3)
+        self.critic_optimizer2 = optim.Adam(self.critic_2.parameters(), lr=1e-3)
 
         # load the optimizer and model parameters
         if args.load_from is not None and os.path.exists(args.load_from):
             self.load_params(args.load_from)
 
         # noise instance to make randomness of action
-        self.noise = GaussianNoise(action_dim, self.action_low, self.action_high)
+        self.noise = GaussianNoise(self.action_dim, self.action_low, self.action_high)
 
         # replay memory
         self.memory = ReplayBuffer(
             hyper_params["BUFFER_SIZE"],
             hyper_params["BATCH_SIZE"],
             self.args.seed,
-            self.device,
+            device,
         )
 
-    def select_action(self, state, t):
+    def select_action(self, state: np.ndarray, t: int) -> torch.Tensor:
         """Select an action from the input space."""
-        selected_action = self.actor_local(state)
+        state = torch.FloatTensor(state).to(device)
+        selected_action = self.actor(state)
+
         action_size = selected_action.size()
         selected_action += (
-            torch.tensor(self.noise.sample(action_size, t)).float().to(self.device)
+            torch.tensor(self.noise.sample(action_size, t)).float().to(device)
         )
 
         return torch.clamp(selected_action, self.action_low, self.action_high)
 
-    def step(self, state, action):
+    def step(
+        self, state: np.ndarray, action: torch.Tensor
+    ) -> Tuple[np.ndarray, np.float64, bool]:
         """Take an action and return the response of the env."""
-        action = action.detach().to("cpu").numpy()
+        action = action.detach().cpu().numpy()
         next_state, reward, done, _ = self.env.step(action)
+
         self.memory.add(state, action, reward, next_state, done)
 
         return next_state, reward, done
 
-    def update_model(self, experiences, step):
+    def update_model(
+        self,
+        experiences: Tuple[
+            torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor
+        ],
+        step: int,
+    ) -> torch.Tensor:
         """Train the model after each episode."""
         states, actions, rewards, next_states, dones = experiences
         masks = 1 - dones
@@ -135,7 +145,7 @@ class Agent(object):
         next_actions = self.actor_target(next_states)
         noise = torch.normal(
             torch.zeros(next_actions.size()), hyper_params["NOISE_STD"]
-        ).to(self.device)
+        ).to(device)
         noise = torch.clamp(
             noise, -hyper_params["NOISE_CLIP"], hyper_params["NOISE_CLIP"]
         )
@@ -148,12 +158,12 @@ class Agent(object):
 
         # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
         #       = r                       otherwise
-        curr_returns = rewards + (hyper_params["GAMMA"] * next_values * masks)
-        curr_returns = curr_returns.to(self.device).detach()
+        curr_returns = rewards + hyper_params["GAMMA"] * next_values * masks
+        curr_returns = curr_returns.to(device).detach()
 
         # critic loss
-        values1 = self.critic_local1(states, actions)
-        values2 = self.critic_local2(states, actions)
+        values1 = self.critic_1(states, actions)
+        values2 = self.critic_2(states, actions)
         critic_loss1 = F.mse_loss(values1, curr_returns)
         critic_loss2 = F.mse_loss(values2, curr_returns)
 
@@ -171,23 +181,23 @@ class Agent(object):
 
         if step % hyper_params["DELAYED_UPDATE"] == 0:
             # train actor
-            actions = self.actor_local(states)
-            actor_loss = -self.critic_local1(states, actions).mean()
+            actions = self.actor(states)
+            actor_loss = -self.critic_1(states, actions).mean()
             self.actor_optimizer.zero_grad()
             actor_loss.backward()
             self.actor_optimizer.step()
 
             # update target networks
-            self.soft_update(self.critic_local1, self.critic_target1)
-            self.soft_update(self.critic_local2, self.critic_target2)
-            self.soft_update(self.actor_local, self.actor_target)
+            self.soft_update(self.critic_1, self.critic_target1)
+            self.soft_update(self.critic_2, self.critic_target2)
+            self.soft_update(self.actor, self.actor_target)
 
             # for logging
             total_loss += actor_loss
 
         return total_loss.data
 
-    def soft_update(self, local, target):
+    def soft_update(self, local: nn.Module, target: nn.Module):
         """Soft-update: target = tau*local + (1-tau)*target."""
         for t_param, l_param in zip(target.parameters(), local.parameters()):
             t_param.data.copy_(
@@ -195,46 +205,39 @@ class Agent(object):
                 + (1.0 - hyper_params["TAU"]) * t_param.data
             )
 
-    def load_params(self, path):
+    def load_params(self, path: str):
         """Load model and optimizer parameters."""
         if not os.path.exists(path):
             print("[ERROR] the input path does not exist. ->", path)
             return
 
         params = torch.load(path)
-        self.critic_local1.load_state_dict(params["critic_local1"])
-        self.critic_local2.load_state_dict(params["critic_local2"])
+        self.critic_1.load_state_dict(params["critic_1"])
+        self.critic_2.load_state_dict(params["critic_2"])
         self.critic_target1.load_state_dict(params["critic_target1"])
         self.critic_target2.load_state_dict(params["critic_target2"])
         self.critic_optimizer1.load_state_dict(params["critic_optim1"])
         self.critic_optimizer2.load_state_dict(params["critic_optim2"])
-        self.actor_local.load_state_dict(params["actor_local"])
+        self.actor.load_state_dict(params["actor"])
         self.actor_target.load_state_dict(params["actor_target"])
         self.actor_optimizer.load_state_dict(params["actor_optim"])
         print("[INFO] loaded the model and optimizer from", path)
 
-    def save_params(self, n_episode):
+    def save_params(self, n_episode: int):
         """Save model and optimizer parameters."""
-        if not os.path.exists("./save"):
-            os.mkdir("./save")
-
         params = {
-            "actor_local": self.actor_local.state_dict(),
+            "actor": self.actor.state_dict(),
             "actor_target": self.actor_target.state_dict(),
             "actor_optim": self.actor_optimizer.state_dict(),
-            "critic_local1": self.critic_local1.state_dict(),
-            "critic_local2": self.critic_local2.state_dict(),
+            "critic_1": self.critic_1.state_dict(),
+            "critic_2": self.critic_2.state_dict(),
             "critic_target1": self.critic_target1.state_dict(),
             "critic_target2": self.critic_target2.state_dict(),
             "critic_optim1": self.critic_optimizer1.state_dict(),
             "critic_optim2": self.critic_optimizer2.state_dict(),
         }
 
-        repo = git.Repo(search_parent_directories=True)
-        sha = repo.head.object.hexsha
-        path = os.path.join("./save/td3_" + sha[:7] + "_ep_" + str(n_episode) + ".pt")
-        torch.save(params, path)
-        print("[INFO] saved the model and optimizer to", path)
+        AbstractAgent.save_params(self, "td3", params, n_episode)
 
     def train(self):
         """Train the agent."""
@@ -242,10 +245,7 @@ class Agent(object):
         if self.args.log:
             wandb.init()
             wandb.config.update(hyper_params)
-            wandb.watch(
-                [self.actor_local, self.critic_local1, self.critic_local2],
-                log="parameters",
-            )
+            wandb.watch([self.actor, self.critic_1, self.critic_2], log="parameters")
 
         step = 0
         for i_episode in range(1, hyper_params["EPISODE_NUM"] + 1):

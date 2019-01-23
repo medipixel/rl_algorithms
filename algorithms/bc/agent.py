@@ -143,7 +143,7 @@ class Agent(AbstractAgent):
         demos: Tuple[
             torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor
         ],
-    ) -> float:
+    ) -> torch.Tensor:
         """Train the model after each episode."""
         exp_states, exp_actions, exp_rewards, exp_next_states, exp_dones = experiences
         demo_states, demo_actions, demo_rewards, demo_next_states, demo_dones = demos

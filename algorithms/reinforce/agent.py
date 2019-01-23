@@ -94,7 +94,7 @@ class Agent(AbstractAgent):
 
         return next_state, reward, done
 
-    def update_model(self) -> float:
+    def update_model(self) -> torch.Tensor:
         """Train the model after each episode."""
         return_value = 0  # initial return value
         return_sequence: Deque = deque()
