@@ -148,7 +148,6 @@ class Agent(AbstractAgent):
         exp_states, exp_actions, exp_rewards, exp_next_states, exp_dones = experiences
         demo_states, demo_actions, demo_rewards, demo_next_states, demo_dones = demos
 
-        # TODO: RuntimeError! Need to check incorrect dimensions
         states = torch.cat((exp_states, demo_states), dim=0)
         actions = torch.cat((exp_actions, demo_actions), dim=0)
         rewards = torch.cat((exp_rewards, demo_rewards), dim=0)
