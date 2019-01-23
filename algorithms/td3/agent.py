@@ -52,10 +52,11 @@ class Agent(AbstractAgent):
         actor (nn.Module): actor model to select actions
         critic_1 (nn.Module): critic model to predict state values
         critic_2 (nn.Module): critic model to predict state values
-        actor_target (nn.Module): target actor model to select actions
         critic_target (nn.Module): target critic model to predict state values
+        actor_target (nn.Module): target actor model to select actions
+        critic_optimizer_1 (Optimizer): optimizer for training critic_1
+        critic_optimizer_2 (Optimizer): optimizer for training critic_2
         actor_optimizer (Optimizer): optimizer for training actor
-        critic_optimizer (Optimizer): optimizer for training critic
 
     """
 
