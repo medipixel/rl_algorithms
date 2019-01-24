@@ -89,7 +89,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
     def _sample_proportional(self, batch_size: int) -> list:
         """Sample indices based on proportional."""
         indices = []
-        p_total = self.sum_tree.sum(0, len(self.memory))
+        p_total = self.sum_tree.sum(0, len(self.memory) - 1)
         segment = p_total / batch_size
         for i in range(batch_size):
             a = segment * i
@@ -128,6 +128,8 @@ class PrioritizedReplayBuffer(ReplayBuffer):
 
         for idx, priority in zip(indices, priorities):
             assert priority > 0
+            # if not 0 <= idx < len(self.memory):
+            #     print("idx", idx)
             assert 0 <= idx < len(self.memory)
             self.sum_tree[idx] = priority ** self.alpha
             self.min_tree[idx] = priority ** self.alpha
@@ -234,6 +236,7 @@ class SumSegmentTree(SegmentTree):
         assert 0 <= upperbound <= self.sum() + 1e-5
 
         idx = 1
+
         while idx < self.capacity:  # while non-leaf
             left = 2 * idx
             right = left + 1

@@ -45,10 +45,6 @@ hyper_params = {
 class Agent(AbstractAgent):
     """TRPO Agent.
 
-    Args:
-        env (gym.Env): openAI Gym environment with discrete action space
-        args (argparse.Namespace): arguments including hyperparameters and training settings
-
     Attributes:
         memory (deque): memory for on-policy training
         gae (GAE): calculator for generalized advantage estimation
@@ -58,7 +54,13 @@ class Agent(AbstractAgent):
     """
 
     def __init__(self, env: gym.Env, args: argparse.Namespace):
-        """Initialization."""
+        """Initialization.
+
+        Args:
+            env (gym.Env): openAI Gym environment with discrete action space
+            args (argparse.Namespace): arguments including hyperparameters and training settings
+
+        """
         AbstractAgent.__init__(self, env, args)
 
         self.memory: Deque = deque()

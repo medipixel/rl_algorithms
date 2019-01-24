@@ -29,10 +29,6 @@ hyper_params = {"GAMMA": 0.99, "MAX_EPISODE_STEPS": 500, "EPISODE_NUM": 1500}
 class Agent(AbstractAgent):
     """ActorCritic interacting with environment.
 
-    Args:
-        env (gym.Env): openAI Gym environment with discrete action space
-        args (argparse.Namespace): arguments including hyperparameters and training settings
-
     Attributes:
         actor (nn.Module): actor model to select actions
         critic (nn.Module): critic model to predict values
@@ -42,7 +38,13 @@ class Agent(AbstractAgent):
     """
 
     def __init__(self, env: gym.Env, args: argparse.Namespace):
-        """Initialization."""
+        """Initialization.
+
+        Args:
+            env (gym.Env): openAI Gym environment with discrete action space
+            args (argparse.Namespace): arguments including hyperparameters and training settings
+
+        """
         AbstractAgent.__init__(self, env, args)
 
         # environment setup
@@ -133,7 +135,7 @@ class Agent(AbstractAgent):
             "critic_optim_state_dict": self.critic_optimizer.state_dict(),
         }
 
-        AbstractAgent.save_params(self, "dpg", params, n_episode)
+        AbstractAgent.save_params(self, self.args.algo, params, n_episode)
 
     def train(self):
         """Train the agent."""

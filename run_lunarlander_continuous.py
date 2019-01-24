@@ -56,8 +56,10 @@ elif args.algo == "bc":
     from algorithms.bc.agent import Agent
 elif args.algo == "td3":
     from algorithms.td3.agent import Agent
-elif args.algo == "per_ddpg":
-    from algorithms.ddpg.per_agent import Agent
+elif args.algo == "ddpg-per":
+    from algorithms.per.ddpg_agent import Agent
+elif args.algo == "td3-per":
+    from algorithms.per.td3_agent import Agent
 
 
 def main():
