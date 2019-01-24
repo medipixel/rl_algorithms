@@ -8,7 +8,7 @@
 
 import argparse
 import os
-from typing import Tuple
+from typing import List, Tuple
 
 import gym
 import numpy as np
@@ -21,7 +21,7 @@ import wandb
 from algorithms.abstract_agent import AbstractAgent
 from algorithms.ddpg.model import Actor, Critic
 from algorithms.noise import OUNoise
-from algorithms.replay_buffer import PrioritizedReplayBuffer
+from algorithms.per import PrioritizedReplayBuffer
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -95,7 +95,6 @@ class Agent(AbstractAgent):
             hyper_params["BUFFER_SIZE"],
             hyper_params["BATCH_SIZE"],
             self.args.seed,
-            device,
             alpha=hyper_params["PER_ALPHA"],
         )
 
@@ -125,7 +124,13 @@ class Agent(AbstractAgent):
     def update_model(
         self,
         experiences: Tuple[
-            torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor
+            torch.Tensor,
+            torch.Tensor,
+            torch.Tensor,
+            torch.Tensor,
+            torch.Tensor,
+            torch.Tensor,
+            List[int],
         ],
     ) -> torch.Tensor:
         """Train the model after each episode."""
@@ -165,7 +170,7 @@ class Agent(AbstractAgent):
         new_priorties = torch.abs(values - curr_returns) * weights
         # print(new_priorties.size())
         new_priorties = new_priorties.data.cpu().numpy() + hyper_params["PER_EPS"]
-        # print(np.shape(new_priorties))
+
         self.memory.update_priorities(indexes, new_priorties)
 
         # for logging

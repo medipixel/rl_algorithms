@@ -99,10 +99,7 @@ class Agent(AbstractAgent):
 
         # replay memory
         self.memory = ReplayBuffer(
-            hyper_params["BUFFER_SIZE"],
-            hyper_params["BATCH_SIZE"],
-            self.args.seed,
-            device,
+            hyper_params["BUFFER_SIZE"], hyper_params["BATCH_SIZE"], self.args.seed
         )
 
         # load demo replay memory
@@ -110,7 +107,7 @@ class Agent(AbstractAgent):
             demo = pickle.load(f)
 
         self.demo_memory = ReplayBuffer(
-            len(demo), hyper_params["DEMO_BATCH_SIZE"], self.args.seed, device, demo
+            len(demo), hyper_params["DEMO_BATCH_SIZE"], self.args.seed, demo
         )
 
     def select_action(self, state: np.ndarray) -> torch.Tensor:
