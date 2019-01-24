@@ -34,10 +34,6 @@ hyper_params = {
 class Agent(AbstractAgent):
     """ReinforceAgent interacting with environment.
 
-    Args:
-        env (gym.Env): openAI Gym environment with discrete action space
-        args (argparse.Namespace): arguments including hyperparameters and training settings
-
     Attributes:
         model (nn.Module): policy gradient model to select actions
         optimizer (Optimizer): optimizer for training
@@ -48,7 +44,13 @@ class Agent(AbstractAgent):
     """
 
     def __init__(self, env: gym.Env, args: argparse.Namespace):
-        """Initialization."""
+        """Initialization.
+
+        Args:
+            env (gym.Env): openAI Gym environment with discrete action space
+            args (argparse.Namespace): arguments including hyperparameters and training settings
+
+        """
         AbstractAgent.__init__(self, env, args)
 
         self.log_prob_sequence: list = []
@@ -158,7 +160,7 @@ class Agent(AbstractAgent):
             "optim_state_dict": self.optimizer.state_dict(),
         }
 
-        AbstractAgent.save_params(self, "reinforce", params, n_episode)
+        AbstractAgent.save_params(self, self.args.algo, params, n_episode)
 
     def train(self):
         """Run the agent."""

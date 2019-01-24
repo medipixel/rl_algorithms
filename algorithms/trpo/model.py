@@ -17,12 +17,6 @@ from torch.distributions import Normal
 class Actor(nn.Module):
     """TRPO actor model with simple FC layers.
 
-    Args:
-        state_dim (int): dimension of state space
-        action_dim (int): dimension of action space
-        action_low (float): lower bound of the action value
-        action_high (float): upper bound of the action value
-
     Attributes:
         actor (nn.Sequential): actor model with FC layers
         state_dim (int): dimension of state space
@@ -35,7 +29,15 @@ class Actor(nn.Module):
     def __init__(
         self, state_dim: int, action_dim: int, action_low: float, action_high: float
     ):
-        """Initialization."""
+        """Initialization.
+
+        Args:
+            state_dim (int): dimension of state space
+            action_dim (int): dimension of action space
+            action_low (float): lower bound of the action value
+            action_high (float): upper bound of the action value
+
+        """
         super(Actor, self).__init__()
 
         self.state_dim = state_dim
@@ -77,10 +79,6 @@ class Actor(nn.Module):
 class Critic(nn.Module):
     """TRPO critic model with simple FC layers.
 
-    Args:
-        state_dim (int): dimension of state space
-        action_dim (int): dimension of action space
-
     Attributes:
         state_dim (int): dimension of state space
         action_dim (int): dimension of action space
@@ -89,7 +87,13 @@ class Critic(nn.Module):
     """
 
     def __init__(self, state_dim: int, action_dim: int):
-        """Initialization."""
+        """Initialization.
+
+        Args:
+            state_dim (int): dimension of state space
+            action_dim (int): dimension of action space
+
+        """
         super(Critic, self).__init__()
 
         self.state_dim = state_dim

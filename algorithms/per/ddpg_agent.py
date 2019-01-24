@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
-"""TD3 agent for episodic tasks in OpenAI Gym.
+"""DDPG agent for episodic tasks using PER in OpenAI Gym.
 
-- Author: Curt Park
-- Contact: curt.park@medipixel.io
-- Paper: https://arxiv.org/pdf/1802.09477.pdf
+- Author: Kh Kim
+- Contact: kh.kim@medipixel.io
+- Paper: https://arxiv.org/pdf/1509.02971.pdf
 """
 
 import argparse
 import os
-from typing import Tuple
+from typing import List, Tuple
 
 import gym
 import numpy as np
@@ -19,9 +19,9 @@ import torch.optim as optim
 import wandb
 
 from algorithms.abstract_agent import AbstractAgent
-from algorithms.noise import GaussianNoise
-from algorithms.replay_buffer import ReplayBuffer
-from algorithms.td3.model import Actor, Critic
+from algorithms.ddpg.model import Actor, Critic
+from algorithms.noise import OUNoise
+from algorithms.priortized_replay_buffer import PrioritizedReplayBuffer
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -29,30 +29,29 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 hyper_params = {
     "GAMMA": 0.99,
     "TAU": 1e-3,
-    "NOISE_STD": 1.0,
-    "NOISE_CLIP": 0.5,
-    "DELAYED_UPDATE": 2,
     "BUFFER_SIZE": int(1e5),
     "BATCH_SIZE": 128,
     "MAX_EPISODE_STEPS": 300,
     "EPISODE_NUM": 1500,
+    "PER_ALPHA": 0.5,
+    "PER_BETA": 0.4,
+    "PER_EPS": 1e-6,
 }
 
 
 class Agent(AbstractAgent):
     """ActorCritic interacting with environment.
 
-    Attrtibutes:
+    Attributes:
         memory (ReplayBuffer): replay memory
         noise (OUNoise): random noise for exploration
         actor (nn.Module): actor model to select actions
-        critic_1 (nn.Module): critic model to predict state values
-        critic_2 (nn.Module): critic model to predict state values
-        critic_target (nn.Module): target critic model to predict state values
         actor_target (nn.Module): target actor model to select actions
-        critic_optimizer_1 (Optimizer): optimizer for training critic_1
-        critic_optimizer_2 (Optimizer): optimizer for training critic_2
+        critic (nn.Module): critic model to predict state values
+        critic_target (nn.Module): target critic model to predict state values
         actor_optimizer (Optimizer): optimizer for training actor
+        critic_optimizer (Optimizer): optimizer for training critic
+        beta (float): beta parameter for prioritized replay buffer
 
     """
 
@@ -65,9 +64,6 @@ class Agent(AbstractAgent):
 
         """
         AbstractAgent.__init__(self, env, args)
-
-        self.env = env
-        self.args = args
 
         # environment setup
         self.env._max_episode_steps = hyper_params["MAX_EPISODE_STEPS"]
@@ -82,44 +78,41 @@ class Agent(AbstractAgent):
         self.actor_target.load_state_dict(self.actor.state_dict())
 
         # create critic
-        self.critic_1 = Critic(self.state_dim, self.action_dim).to(device)
-        self.critic_2 = Critic(self.state_dim, self.action_dim).to(device)
-        self.critic_target1 = Critic(self.state_dim, self.action_dim).to(device)
-        self.critic_target2 = Critic(self.state_dim, self.action_dim).to(device)
-        self.critic_target1.load_state_dict(self.critic_1.state_dict())
-        self.critic_target2.load_state_dict(self.critic_2.state_dict())
+        self.critic = Critic(self.state_dim, self.action_dim).to(device)
+        self.critic_target = Critic(self.state_dim, self.action_dim).to(device)
+        self.critic_target.load_state_dict(self.critic.state_dict())
 
         # create optimizers
         self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=1e-4)
-        self.critic_optimizer1 = optim.Adam(self.critic_1.parameters(), lr=1e-3)
-        self.critic_optimizer2 = optim.Adam(self.critic_2.parameters(), lr=1e-3)
+        self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=1e-3)
 
         # load the optimizer and model parameters
         if args.load_from is not None and os.path.exists(args.load_from):
             self.load_params(args.load_from)
 
         # noise instance to make randomness of action
-        self.noise = GaussianNoise(self.action_dim, self.action_low, self.action_high)
+        self.noise = OUNoise(self.action_dim, self.args.seed, theta=0.0, sigma=0.0)
 
         # replay memory
-        self.memory = ReplayBuffer(
+        self.beta = hyper_params["PER_BETA"]
+        self.memory = PrioritizedReplayBuffer(
             hyper_params["BUFFER_SIZE"],
             hyper_params["BATCH_SIZE"],
             self.args.seed,
-            device,
+            alpha=hyper_params["PER_ALPHA"],
         )
 
-    def select_action(self, state: np.ndarray, t: int) -> torch.Tensor:
+    def select_action(self, state: np.ndarray) -> torch.Tensor:
         """Select an action from the input space."""
         state = torch.FloatTensor(state).to(device)
         selected_action = self.actor(state)
+        selected_action += torch.tensor(self.noise.sample()).float().to(device)
 
-        action_size = selected_action.size()
-        selected_action += (
-            torch.tensor(self.noise.sample(action_size, t)).float().to(device)
+        selected_action = torch.clamp(
+            selected_action, self.action_low, self.action_high
         )
 
-        return torch.clamp(selected_action, self.action_low, self.action_high)
+        return selected_action
 
     def step(
         self, state: np.ndarray, action: torch.Tensor
@@ -135,67 +128,52 @@ class Agent(AbstractAgent):
     def update_model(
         self,
         experiences: Tuple[
-            torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor
+            torch.Tensor,
+            torch.Tensor,
+            torch.Tensor,
+            torch.Tensor,
+            torch.Tensor,
+            torch.Tensor,
+            List[int],
         ],
-        step: int,
     ) -> torch.Tensor:
         """Train the model after each episode."""
-        states, actions, rewards, next_states, dones = experiences
-        masks = 1 - dones
 
-        # get actions with noise
-        next_actions = self.actor_target(next_states)
-        noise = torch.normal(
-            torch.zeros(next_actions.size()), hyper_params["NOISE_STD"]
-        ).to(device)
-        noise = torch.clamp(
-            noise, -hyper_params["NOISE_CLIP"], hyper_params["NOISE_CLIP"]
-        )
-        next_actions += noise
-
-        # min (Q_1', Q_2')
-        next_values1 = self.critic_target1(next_states, next_actions)
-        next_values2 = self.critic_target2(next_states, next_actions)
-        next_values = torch.min(next_values1, next_values2)
+        states, actions, rewards, next_states, dones, weights, indexes = experiences
 
         # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
         #       = r                       otherwise
+        masks = 1 - dones
+        next_actions = self.actor_target(next_states)
+        next_values = self.critic_target(next_states, next_actions)
         curr_returns = rewards + hyper_params["GAMMA"] * next_values * masks
-        curr_returns = curr_returns.to(device).detach()
-
-        # critic loss
-        values1 = self.critic_1(states, actions)
-        values2 = self.critic_2(states, actions)
-        critic_loss1 = F.mse_loss(values1, curr_returns)
-        critic_loss2 = F.mse_loss(values2, curr_returns)
+        curr_returns = curr_returns.to(device)
 
         # train critic
-        self.critic_optimizer1.zero_grad()
-        critic_loss1.backward()
-        self.critic_optimizer1.step()
+        values = self.critic(states, actions)
+        critic_loss = F.mse_loss(values, curr_returns) * torch.mean(weights)
+        self.critic_optimizer.zero_grad()
+        critic_loss.backward()
+        self.critic_optimizer.step()
 
-        self.critic_optimizer2.zero_grad()
-        critic_loss2.backward()
-        self.critic_optimizer2.step()
+        # train actor
+        actions = self.actor(states)
+        actor_loss = -self.critic(states, actions).mean()
+        self.actor_optimizer.zero_grad()
+        actor_loss.backward()
+        self.actor_optimizer.step()
+
+        # update target networks
+        self.soft_update(self.actor, self.actor_target)
+        self.soft_update(self.critic, self.critic_target)
+
+        # update priorities in PER
+        new_priorties = torch.abs(values - curr_returns) * weights
+        new_priorties = new_priorties.data.cpu().numpy() + hyper_params["PER_EPS"]
+        self.memory.update_priorities(indexes, new_priorties)
 
         # for logging
-        total_loss = critic_loss1 + critic_loss2
-
-        if step % hyper_params["DELAYED_UPDATE"] == 0:
-            # train actor
-            actions = self.actor(states)
-            actor_loss = -self.critic_1(states, actions).mean()
-            self.actor_optimizer.zero_grad()
-            actor_loss.backward()
-            self.actor_optimizer.step()
-
-            # update target networks
-            self.soft_update(self.critic_1, self.critic_target1)
-            self.soft_update(self.critic_2, self.critic_target2)
-            self.soft_update(self.actor, self.actor_target)
-
-            # for logging
-            total_loss += actor_loss
+        total_loss = critic_loss + actor_loss
 
         return total_loss.data
 
@@ -214,29 +192,23 @@ class Agent(AbstractAgent):
             return
 
         params = torch.load(path)
-        self.critic_1.load_state_dict(params["critic_1"])
-        self.critic_2.load_state_dict(params["critic_2"])
-        self.critic_target1.load_state_dict(params["critic_target1"])
-        self.critic_target2.load_state_dict(params["critic_target2"])
-        self.critic_optimizer1.load_state_dict(params["critic_optim1"])
-        self.critic_optimizer2.load_state_dict(params["critic_optim2"])
-        self.actor.load_state_dict(params["actor"])
-        self.actor_target.load_state_dict(params["actor_target"])
-        self.actor_optimizer.load_state_dict(params["actor_optim"])
+        self.actor.load_state_dict(params["actor_state_dict"])
+        self.actor_target.load_state_dict(params["actor_target_state_dict"])
+        self.critic.load_state_dict(params["critic_state_dict"])
+        self.critic_target.load_state_dict(params["critic_target_state_dict"])
+        self.actor_optimizer.load_state_dict(params["actor_optim_state_dict"])
+        self.critic_optimizer.load_state_dict(params["critic_optim_state_dict"])
         print("[INFO] loaded the model and optimizer from", path)
 
     def save_params(self, n_episode: int):
         """Save model and optimizer parameters."""
         params = {
-            "actor": self.actor.state_dict(),
-            "actor_target": self.actor_target.state_dict(),
-            "actor_optim": self.actor_optimizer.state_dict(),
-            "critic_1": self.critic_1.state_dict(),
-            "critic_2": self.critic_2.state_dict(),
-            "critic_target1": self.critic_target1.state_dict(),
-            "critic_target2": self.critic_target2.state_dict(),
-            "critic_optim1": self.critic_optimizer1.state_dict(),
-            "critic_optim2": self.critic_optimizer2.state_dict(),
+            "actor_state_dict": self.actor.state_dict(),
+            "actor_target_state_dict": self.actor_target.state_dict(),
+            "critic_state_dict": self.critic.state_dict(),
+            "critic_target_state_dict": self.critic_target.state_dict(),
+            "actor_optim_state_dict": self.actor_optimizer.state_dict(),
+            "critic_optim_state_dict": self.critic_optimizer.state_dict(),
         }
 
         AbstractAgent.save_params(self, self.args.algo, params, n_episode)
@@ -247,9 +219,8 @@ class Agent(AbstractAgent):
         if self.args.log:
             wandb.init()
             wandb.config.update(hyper_params)
-            wandb.watch([self.actor, self.critic_1, self.critic_2], log="parameters")
+            wandb.watch([self.actor, self.critic], log="parameters")
 
-        step = 0
         for i_episode in range(1, hyper_params["EPISODE_NUM"] + 1):
             state = self.env.reset()
             done = False
@@ -260,17 +231,22 @@ class Agent(AbstractAgent):
                 if self.args.render and i_episode >= self.args.render_after:
                     self.env.render()
 
-                action = self.select_action(state, step)
+                action = self.select_action(state)
                 next_state, reward, done = self.step(state, action)
 
+                # increase beta
+                fraction = min(
+                    float(i_episode) / hyper_params["MAX_EPISODE_STEPS"], 1.0
+                )
+                self.beta = self.beta + fraction * (1.0 - self.beta)
+
                 if len(self.memory) >= hyper_params["BATCH_SIZE"]:
-                    experiences = self.memory.sample()
-                    loss = self.update_model(experiences, step)
+                    experiences = self.memory.sample(self.beta)
+                    loss = self.update_model(experiences)
                     loss_episode.append(loss)  # for logging
 
                 state = next_state
                 score += reward
-                step += 1
 
             else:
                 if len(loss_episode) > 0:
@@ -291,7 +267,6 @@ class Agent(AbstractAgent):
 
     def test(self):
         """Test the agent."""
-        step = 0
         for i_episode in range(hyper_params["EPISODE_NUM"]):
             state = self.env.reset()
             done = False
@@ -301,7 +276,7 @@ class Agent(AbstractAgent):
                 if self.args.render and i_episode >= self.args.render_after:
                     self.env.render()
 
-                action = self.select_action(state, step)
+                action = self.select_action(state)
                 next_state, reward, done = self.step(state, action)
 
                 state = next_state

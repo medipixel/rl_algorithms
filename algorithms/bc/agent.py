@@ -45,10 +45,6 @@ DEMO_PATH = "data/lunarlander_continuous_demo.pkl"
 class Agent(AbstractAgent):
     """ActorCritic interacting with environment.
 
-    Args:
-        env (gym.Env): openAI Gym environment with discrete action space
-        args (argparse.Namespace): arguments including hyperparameters and training settings
-
     Attributes:
         actor (nn.Module): actor model to select actions
         actor_target (nn.Module): target actor model to select actions
@@ -62,7 +58,13 @@ class Agent(AbstractAgent):
     """
 
     def __init__(self, env: gym.Env, args: argparse.Namespace):
-        """Initialization."""
+        """Initialization.
+
+        Args:
+            env (gym.Env): openAI Gym environment with discrete action space
+            args (argparse.Namespace): arguments including hyperparameters and training settings
+
+        """
         AbstractAgent.__init__(self, env, args)
 
         # environment setup
@@ -99,10 +101,7 @@ class Agent(AbstractAgent):
 
         # replay memory
         self.memory = ReplayBuffer(
-            hyper_params["BUFFER_SIZE"],
-            hyper_params["BATCH_SIZE"],
-            self.args.seed,
-            device,
+            hyper_params["BUFFER_SIZE"], hyper_params["BATCH_SIZE"], self.args.seed
         )
 
         # load demo replay memory
@@ -110,7 +109,7 @@ class Agent(AbstractAgent):
             demo = pickle.load(f)
 
         self.demo_memory = ReplayBuffer(
-            len(demo), hyper_params["DEMO_BATCH_SIZE"], self.args.seed, device, demo
+            len(demo), hyper_params["DEMO_BATCH_SIZE"], self.args.seed, demo
         )
 
     def select_action(self, state: np.ndarray) -> torch.Tensor:
@@ -236,7 +235,7 @@ class Agent(AbstractAgent):
             "critic_optim_state_dict": self.critic_optimizer.state_dict(),
         }
 
-        AbstractAgent.save_params(self, "bc", params, n_episode)
+        AbstractAgent.save_params(self, self.args.algo, params, n_episode)
 
     def train(self):
         """Train the agent."""

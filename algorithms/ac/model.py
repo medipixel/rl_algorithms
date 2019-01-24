@@ -19,13 +19,6 @@ from torch.distributions import Normal
 class ActorCritic(nn.Module):
     """Actor-Critic continuous action model with simple FC layers.
 
-    Args:
-        std (float): standard deviation of the output distribution
-        state_dim (int): dimension of state space
-        action_dim (int): dimension of action space
-        action_low (float): lower bound of the action value
-        action_high (float): upper bound of the action value
-
     Attributes:
         std (float): standard deviation of the output distribution
         state_dim (int): dimension of state space
@@ -43,7 +36,16 @@ class ActorCritic(nn.Module):
         action_low: float,
         action_high: float,
     ):
-        """Initialization."""
+        """Initialization.
+
+        Args:
+            std (float): standard deviation of the output distribution
+            state_dim (int): dimension of state space
+            action_dim (int): dimension of action space
+            action_low (float): lower bound of the action value
+            action_high (float): upper bound of the action value
+
+        """
         super(ActorCritic, self).__init__()
 
         self.state_dim = state_dim
