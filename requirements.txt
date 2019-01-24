@@ -1,7 +1,7 @@
 gym
 numpy
 scipy
-torch
+torch == 0.4.1
 GitPython
 typing
 wandb

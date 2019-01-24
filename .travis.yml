@@ -1,19 +1,20 @@
-dist: xenial
-
 language: python
 
 python:
     - "3.6"
 
-# env:
-#     - pip install -r requirements.txt
+service:
+    - docker
 
-sudo: false
+before_install:
+    - docker pull medipixel/reinforcement_learning_examples
+    - docker run -d -p 127.0.0.1:80:4567 medipixel/reinforcement_learning_examples /bin/bash
+    - docker ps -a
 
 install:
     - make dev
     - make dep
 
 script:
-    # run static analysis and styls check
+    # run static analysis and format check
     - make test
