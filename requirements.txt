@@ -4,3 +4,4 @@ scipy
 torch
 GitPython
 typing
+wandb
