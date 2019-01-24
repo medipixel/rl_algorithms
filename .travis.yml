@@ -1,20 +1,17 @@
 language: python
-
 python:
     - "3.6"
 
 service:
     - docker
 
-before_install:
-    - docker pull medipixel/reinforcement_learning_examples:0.1
-    - docker run -d -p 127.0.0.1:80:4567 medipixel/reinforcement_learning_examples:0.1 /bin/bash
-    - docker ps -a
-
 install:
-    - make dev
-    - make dep
+    - docker build . -t rl-examples-test
+
+# install:
+#     - make dev
+#     - make dep
 
 script:
     # run static analysis and format check
-    - make test
+    - docker run rl-examples-test make test
