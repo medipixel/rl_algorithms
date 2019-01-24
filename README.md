@@ -12,3 +12,4 @@ RL key algorithms that run on LunarLander.
 6. Proximal Policy Optimization Algorithms
 7. Behaviour Cloning
 8. TD3
+9. PER (DDPG)

@@ -170,7 +170,6 @@ class Agent(AbstractAgent):
         # update priorities in PER
         new_priorties = torch.abs(values - curr_returns) * weights
         new_priorties = new_priorties.data.cpu().numpy() + hyper_params["PER_EPS"]
-
         self.memory.update_priorities(indexes, new_priorties)
 
         # for logging
