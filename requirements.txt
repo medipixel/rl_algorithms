@@ -1,6 +1,6 @@
-gym==0.10.9
-numpy==1.15.4
-scipy==1.1.0
-torch==0.4.1.post2
-GitPython==2.1.11
-typing==3.6.6
+gym
+numpy
+scipy
+torch
+GitPython
+typing
