@@ -10,6 +10,7 @@ sudo: false
 
 install:
     - make dev
+    - make dep
 
 script:
     # run static analysis and styls check
