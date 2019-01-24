@@ -5,8 +5,9 @@ python:
 service:
     - docker
 
-install:
-    - docker build . -t rl-examples-test
+before_install:
+    - docker run -it medipixel/reinforcement_learning_examples
+    - docker ps -a
 
 # install:
 #     - make dev
@@ -14,4 +15,8 @@ install:
 
 script:
     # run static analysis and format check
-    - docker run rl-examples-test make test
+    - make test
+
+cache:
+  directories:
+    ~/docker-images
