@@ -7,8 +7,8 @@ service:
     - docker
 
 before_install:
-    - docker pull medipixel/reinforcement_learning_examples
-    - docker run -d -p 127.0.0.1:80:4567 medipixel/reinforcement_learning_examples /bin/bash
+    - docker pull medipixel/reinforcement_learning_examples:0.1
+    - docker run -d -p 127.0.0.1:80:4567 medipixel/reinforcement_learning_examples:0.1 /bin/bash
     - docker ps -a
 
 install:
