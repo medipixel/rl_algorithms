@@ -23,12 +23,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 # hyper parameters
-hyper_params = {
-    "GAMMA": 0.99,
-    "STD": 1.0,
-    "MAX_EPISODE_STEPS": 500,
-    "EPISODE_NUM": 1500,
-}
+hyper_params = {"GAMMA": 0.99, "STD": 1.0, "MAX_EPISODE_STEPS": 500}
 
 
 class Agent(AbstractAgent):
@@ -49,6 +44,9 @@ class Agent(AbstractAgent):
 
         """
         AbstractAgent.__init__(self, env, args)
+
+        self.log_prob = torch.zeros((1,))
+        self.predicted_value = torch.zeros((1,))
 
         # environment setup
         self.env._max_episode_steps = hyper_params["MAX_EPISODE_STEPS"]
@@ -91,7 +89,6 @@ class Agent(AbstractAgent):
         reward, next_state, done = experience
         next_state = torch.FloatTensor(next_state).to(device)
 
-        """Train the model after each episode."""
         # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
         #       = r                       otherwise
         mask = 1 - done
@@ -142,7 +139,7 @@ class Agent(AbstractAgent):
             wandb.config.update(hyper_params)
             wandb.watch(self.model, log="parameters")
 
-        for i_episode in range(1, hyper_params["EPISODE_NUM"] + 1):
+        for i_episode in range(1, self.args.episode_num + 1):
             state = self.env.reset()
             done = False
             score = 0
@@ -161,41 +158,17 @@ class Agent(AbstractAgent):
                 state = next_state
                 score += reward
 
-            else:
-                avg_loss = np.array(loss_episode).mean()
-                print(
-                    "[INFO] episode %d\ttotal score: %d\tloss: %f"
-                    % (i_episode, score, avg_loss)
-                )
+            avg_loss = np.array(loss_episode).mean()
+            print(
+                "[INFO] episode %d\ttotal score: %d\tloss: %f"
+                % (i_episode, score, avg_loss)
+            )
 
-                if self.args.log:
-                    wandb.log({"score": score, "avg_loss": avg_loss})
+            if self.args.log:
+                wandb.log({"score": score, "avg_loss": avg_loss})
 
-                if i_episode % self.args.save_period == 0:
-                    self.save_params(i_episode)
-
-        # termination
-        self.env.close()
-
-    def test(self):
-        """Test the agent."""
-        for i_episode in range(hyper_params["EPISODE_NUM"]):
-            state = self.env.reset()
-            done = False
-            score = 0
-
-            while not done:
-                if self.args.render and i_episode >= self.args.render_after:
-                    self.env.render()
-
-                action = self.select_action(state)
-                next_state, reward, done = self.step(action)
-
-                state = next_state
-                score += reward
-
-            else:
-                print("[INFO] episode %d\ttotal score: %d" % (i_episode, score))
+            if i_episode % self.args.save_period == 0:
+                self.save_params(i_episode)
 
         # termination
         self.env.close()

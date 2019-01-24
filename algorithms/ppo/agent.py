@@ -29,14 +29,13 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 hyper_params = {
     "GAMMA": 0.99,
     "LAMBDA": 0.95,
-    "EPSILON": 0.01,
+    "EPSILON": 0.001,  # should be a small value for consistent, stable learning
     "W_VALUE": 3.0,
-    "W_ENTROPY": 1e-3,
+    "W_ENTROPY": 0.0,  # maxmizing entropy may occur severe fluctuation
     "ROLLOUT_LENGTH": 128,
     "EPOCH": 4,
     "BATCH_SIZE": 16,
     "MAX_EPISODE_STEPS": 300,
-    "EPISODE_NUM": 1500,
 }
 
 
@@ -206,7 +205,7 @@ class Agent(AbstractAgent):
             wandb.watch([self.actor, self.critic], log="parameters")
 
         loss = 0
-        for i_episode in range(1, hyper_params["EPISODE_NUM"] + 1):
+        for i_episode in range(1, self.args.episode_num + 1):
             state = self.env.reset()
             done = False
             score = 0
@@ -225,40 +224,16 @@ class Agent(AbstractAgent):
                     loss = self.update_model()
                     self.memory.clear()
 
-            else:
-                print(
-                    "[INFO] episode %d\ttotal score: %d\trecent loss: %f"
-                    % (i_episode, score, loss)
-                )
+            print(
+                "[INFO] episode %d\ttotal score: %d\trecent loss: %f"
+                % (i_episode, score, loss)
+            )
 
-                if self.args.log:
-                    wandb.log({"recent loss": loss, "score": score})
+            if self.args.log:
+                wandb.log({"recent loss": loss, "score": score})
 
-                if i_episode % self.args.save_period == 0:
-                    self.save_params(i_episode)
-
-        # termination
-        self.env.close()
-
-    def test(self):
-        """Test the agent."""
-        for i_episode in range(1, hyper_params["EPISODE_NUM"] + 1):
-            state = self.env.reset()
-            done = False
-            score = 0
-
-            while not done:
-                if self.args.render and i_episode >= self.args.render_after:
-                    self.env.render()
-
-                action = self.select_action(state)
-                next_state, reward, done = self.step(action)
-
-                state = next_state
-                score += reward
-
-            else:
-                print("[INFO] episode %d\ttotal score: %d" % (i_episode, score))
+            if i_episode % self.args.save_period == 0:
+                self.save_params(i_episode)
 
         # termination
         self.env.close()

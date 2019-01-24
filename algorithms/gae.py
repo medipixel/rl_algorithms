@@ -10,7 +10,7 @@
 import torch
 
 
-class GAE(object):
+class GAE:
     """Return returns and advantages.
 
     Example:

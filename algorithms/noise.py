@@ -24,6 +24,7 @@ class OUNoise:
         sigma: float = 0.2,
     ):
         """Initialize parameters and noise process."""
+        self.state = np.float64(0.0)
         self.mu = mu * np.ones(size)
         self.theta = theta
         self.sigma = sigma
@@ -45,7 +46,7 @@ class OUNoise:
         return self.state
 
 
-class GaussianNoise(object):
+class GaussianNoise:
     """Gaussian Noise.
 
     Taken from https://github.com/vitchyr/rlkit

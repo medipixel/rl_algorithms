@@ -1,5 +1,5 @@
 test:
-	pytest --flake8 --mypy # --pylint --cov=algorithms
+	pytest --pylint --flake8 --mypy # --cov=algorithms
 
 format:
 	black .

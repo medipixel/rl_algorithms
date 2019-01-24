@@ -17,7 +17,6 @@ from typing import Deque, Tuple
 
 import gym
 import numpy as np
-import scipy.optimize
 import torch
 import wandb
 
@@ -38,7 +37,6 @@ hyper_params = {
     "LBFGS_MAX_ITER": 200,
     "BATCH_SIZE": 256,
     "MAX_EPISODE_STEPS": 300,
-    "EPISODE_NUM": 1500,
 }
 
 
@@ -50,6 +48,7 @@ class Agent(AbstractAgent):
         gae (GAE): calculator for generalized advantage estimation
         actor (nn.Module): policy gradient model to select actions
         critic (nn.Module): policy gradient model to predict values
+        curr_state (np.ndarray): temporary storage of the current state
 
     """
 
@@ -59,10 +58,11 @@ class Agent(AbstractAgent):
         Args:
             env (gym.Env): openAI Gym environment with discrete action space
             args (argparse.Namespace): arguments including hyperparameters and training settings
-
         """
+
         AbstractAgent.__init__(self, env, args)
 
+        self.curr_state = np.zeros((self.state_dim,))
         self.memory: Deque = deque()
         self.get_gae = GAE()
 
@@ -84,18 +84,18 @@ class Agent(AbstractAgent):
 
     def select_action(self, state: np.ndarray) -> torch.Tensor:
         """Select an action from the input space."""
+        self.curr_state = state
+
         state = torch.FloatTensor(state).to(device)
-        selected_action, dist = self.actor(state)
+        selected_action, _ = self.actor(state)
 
         return selected_action
 
-    def step(
-        self, state: np.ndarray, action: torch.Tensor
-    ) -> Tuple[np.ndarray, np.float64, bool]:
+    def step(self, action: torch.Tensor) -> Tuple[np.ndarray, np.float64, bool]:
         action = action.detach().cpu().numpy()
         next_state, reward, done, _ = self.env.step(action)
 
-        self.memory.append([state, action, reward, done])
+        self.memory.append([self.curr_state, action, reward, done])
 
         return next_state, reward, done
 
@@ -108,25 +108,20 @@ class Agent(AbstractAgent):
         # calculate returns and gae
         values = self.critic(states)
         returns, advantages = self.get_gae(
-            rewards, values, dones, hyper_params["GAMMA"], hyper_params["LAMBDA"]
+            rewards, values, dones, hyper_params["GAMMA"], hyper_params["LAMBDA"], False
         )
 
         # train critic
-        targets = returns.detach()
-        get_value_loss = trpo_utils.ValueLoss(
-            self.critic, states, targets, hyper_params["L2_REG"]
+        critic_loss = trpo_utils.critic_step(
+            self.critic,
+            states,
+            returns.detach(),
+            hyper_params["L2_REG"],
+            hyper_params["LBFGS_MAX_ITER"],
         )
-        flat_params, _, _ = scipy.optimize.fmin_l_bfgs_b(
-            get_value_loss,
-            trpo_utils.get_flat_params_from(self.critic).cpu().double().numpy(),
-            maxiter=hyper_params["LBFGS_MAX_ITER"],
-        )
-        trpo_utils.set_flat_params_to(self.critic, torch.Tensor(flat_params))
-        critic_loss = (self.critic(states) - targets).pow(2).mean()
 
         # train actor
-        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-7)
-        actor_loss = trpo_utils.trpo_step(
+        actor_loss = trpo_utils.actor_step(
             self.old_actor,
             self.actor,
             states,
@@ -170,7 +165,7 @@ class Agent(AbstractAgent):
             wandb.watch([self.actor, self.critic], log="parameters")
 
         loss = 0
-        for i_episode in range(1, hyper_params["EPISODE_NUM"] + 1):
+        for i_episode in range(1, self.args.episode_num + 1):
             state = self.env.reset()
             done = False
             score = 0
@@ -180,7 +175,7 @@ class Agent(AbstractAgent):
                     self.env.render()
 
                 action = self.select_action(state)
-                next_state, reward, done = self.step(state, action)
+                next_state, reward, done = self.step(action)
 
                 state = next_state
                 score += reward
@@ -189,41 +184,17 @@ class Agent(AbstractAgent):
                     loss = self.update_model()
                     self.memory.clear()
 
-            else:
-                print(
-                    "[INFO] episode %d\ttotal score: %d\trecent loss: %f"
-                    % (i_episode, score, loss)
-                )
+            print(
+                "[INFO] episode %d\ttotal score: %d\trecent loss: %f"
+                % (i_episode, score, loss)
+            )
 
-                if self.args.log:
-                    wandb.log({"recent loss": loss, "score": score})
+            if self.args.log:
+                wandb.log({"recent loss": loss, "score": score})
 
-                if i_episode % self.args.save_period == 0:
-                    self.save_params(i_episode)
+            if i_episode % self.args.save_period == 0:
+                self.save_params(i_episode)
 
         # termination
         self.env.close()
         self.save_params(hyper_params["EPISODE_NUM"])
-
-    def test(self):
-        """Test the agent."""
-        for i_episode in range(hyper_params["EPISODE_NUM"]):
-            state = self.env.reset()
-            done = False
-            score = 0
-
-            while not done:
-                if self.args.render and i_episode >= self.args.render_after:
-                    self.env.render()
-
-                action = self.select_action(state)
-                next_state, reward, done = self.step(state, action)
-
-                state = next_state
-                score += reward
-
-            else:
-                print("[INFO] episode %d\ttotal score: %d" % (i_episode, score))
-
-        # termination
-        self.env.close()
