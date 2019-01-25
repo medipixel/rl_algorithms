@@ -53,12 +53,16 @@ elif args.algo == "trpo":
     from algorithms.trpo.agent import Agent
 elif args.algo == "ppo":
     from algorithms.ppo.agent import Agent
-elif args.algo == "bc":
-    from algorithms.bc.agent import Agent
 elif args.algo == "td3":
     from algorithms.td3.agent import Agent
-elif args.algo == "ddpg-per":
+# with bc
+elif args.algo == "bc-ddpg":
+    from algorithms.bc.ddpg_agent import Agent
+# with per
+elif args.algo == "per-ddpg":
     from algorithms.per.ddpg_agent import Agent
+elif args.algo == "per-td3":
+    from algorithms.per.td3_agent import Agent
 
 
 def main():
