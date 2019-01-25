@@ -5,16 +5,16 @@ black
 isort
 
 # testing
-pytest >= 4.0.0
-pytest-pylint
-pytest-flake8
-pytest-mypy
-pytest-cov
 pylint
 mypy
 flake8
 flake8-bugbear
 flake8-docstrings
+pytest >= 4.0.0
+pytest-pylint
+pytest-flake8
+pytest-mypy
+pytest-cov
 
 # generating requirements
 pipreqs

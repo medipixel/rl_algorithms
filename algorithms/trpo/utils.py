@@ -11,6 +11,7 @@ This module has TRPO util functions.
 from typing import Callable, Deque
 
 import numpy as np
+import scipy.optimize
 import torch
 import torch.nn as nn
 from torch.distributions.kl import kl_divergence
@@ -21,8 +22,6 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 def decompose_memory(memory: Deque):
     """Decompose states, actions, rewards, dones from the memory."""
-    print(memory[0])
-    input()
     memory_np: np.ndarray = np.array(memory)
 
     states = torch.from_numpy(np.vstack(memory_np[:, 0])).float().to(device)
@@ -112,7 +111,7 @@ def linesearch(
     """
     fval = f(True).data
     for (_n_backtracks, stepfrac) in enumerate(0.5 ** np.arange(max_backtracks)):
-        xnew = x + torch.tensor(stepfrac).to(device) * fullstep
+        xnew = x + torch.Tensor([stepfrac]).to(device) * fullstep
         set_flat_params_to(model, xnew)
         newfval = f(True).data
         actual_improve = fval - newfval
@@ -124,17 +123,38 @@ def linesearch(
     return False, x
 
 
+def critic_step(
+    critic: nn.Module,
+    states: torch.Tensor,
+    targets: torch.Tensor,
+    l2_reg: torch.Tensor,
+    lbfgs_max_iter: int,
+) -> torch.Tensor:
+    """Train critic and return the loss."""
+    get_value_loss = ValueLoss(critic, states, targets, l2_reg)
+    flat_params, _, _ = scipy.optimize.fmin_l_bfgs_b(
+        get_value_loss,
+        get_flat_params_from(critic).cpu().double().numpy(),
+        maxiter=lbfgs_max_iter,
+    )
+    set_flat_params_to(critic, torch.Tensor(flat_params))
+
+    loss = (critic(states) - targets).pow(2).mean()
+
+    return loss
+
+
 # taken and modified from https://github.com/ikostrikov/pytorch-trpo
-def trpo_step(
+def actor_step(
     old_actor: nn.Module,
     actor: nn.Module,
-    states: torch.tensor,
+    states: torch.Tensor,
     actions: torch.Tensor,
     advantages: torch.Tensor,
     max_kl: float,
     damping: float,
-):
-    """Calculate TRPO loss."""
+) -> torch.Tensor:
+    """Train actor and return the loss."""
     _, old_dist = old_actor(states)
     old_log_prob = old_dist.log_prob(actions)
 
@@ -181,7 +201,7 @@ def trpo_step(
     neggdotstepdir = (-loss_grad * stepdir).sum(0, keepdim=True)
     prev_params = get_flat_params_from(actor)
 
-    success, new_params = linesearch(
+    _, new_params = linesearch(
         actor, get_loss, prev_params, fullstep, neggdotstepdir / lm[0]
     )
 
@@ -191,7 +211,7 @@ def trpo_step(
 
 
 # taken and modified from https://github.com/ikostrikov/pytorch-trpo
-class ValueLoss(object):
+class ValueLoss:
     """Value Loss calculator.
 
     Attributes:

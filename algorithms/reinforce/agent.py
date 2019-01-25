@@ -23,12 +23,7 @@ from algorithms.reinforce.model import ActorCritic
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # hyper parameters
-hyper_params = {
-    "GAMMA": 0.99,
-    "STD": 1.0,
-    "MAX_EPISODE_STEPS": 500,
-    "EPISODE_NUM": 1500,
-}
+hyper_params = {"GAMMA": 0.99, "STD": 1.0, "MAX_EPISODE_STEPS": 500}
 
 
 class Agent(AbstractAgent):
@@ -109,7 +104,7 @@ class Agent(AbstractAgent):
             return_sequence.appendleft(return_value)
 
         # standardize returns for better stability
-        return_sequence_tensor = torch.tensor(return_sequence).to(device)
+        return_sequence_tensor = torch.Tensor(return_sequence).to(device)
         return_sequence_tensor = (
             return_sequence_tensor - return_sequence_tensor.mean()
         ) / (return_sequence_tensor.std() + 1e-7)
@@ -170,7 +165,7 @@ class Agent(AbstractAgent):
             wandb.config.update(hyper_params)
             wandb.watch(self.model, log="parameters")
 
-        for i_episode in range(1, hyper_params["EPISODE_NUM"] + 1):
+        for i_episode in range(1, self.args.episode_num + 1):
             state = self.env.reset()
             done = False
             score = 0
@@ -185,40 +180,17 @@ class Agent(AbstractAgent):
                 state = next_state
                 score += reward
 
-            else:
-                loss = self.update_model()
-                print(
-                    "[INFO] episode %d\ttotal score: %d\tloss: %f"
-                    % (i_episode, score, loss)
-                )
-                if self.args.log:
-                    wandb.log({"score": score, "loss": loss})
+            loss = self.update_model()
+            print(
+                "[INFO] episode %d\ttotal score: %d\tloss: %f"
+                % (i_episode, score, loss)
+            )
 
-                if i_episode % self.args.save_period == 0:
-                    self.save_params(i_episode)
+            if self.args.log:
+                wandb.log({"score": score, "loss": loss})
 
-        # termination
-        self.env.close()
-
-    def test(self):
-        """Test the agent."""
-        for i_episode in range(hyper_params["EPISODE_NUM"]):
-            state = self.env.reset()
-            done = False
-            score = 0
-
-            while not done:
-                if self.args.render and i_episode >= self.args.render_after:
-                    self.env.render()
-
-                action = self.select_action(state)
-                next_state, reward, done = self.step(action)
-
-                state = next_state
-                score += reward
-
-            else:
-                print("[INFO] episode %d\ttotal score: %d" % (i_episode, score))
+            if i_episode % self.args.save_period == 0:
+                self.save_params(i_episode)
 
         # termination
         self.env.close()

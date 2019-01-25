@@ -33,6 +33,7 @@ parser.add_argument(
 )
 parser.add_argument("--log", dest="log", action="store_true", help="turn on logging")
 parser.add_argument("--save-period", type=int, default=100, help="save model period")
+parser.add_argument("--episode-num", type=int, default=1500, help="total episode num")
 parser.set_defaults(test=False)
 parser.set_defaults(load_from=None)
 parser.set_defaults(render=True)
@@ -58,8 +59,6 @@ elif args.algo == "td3":
     from algorithms.td3.agent import Agent
 elif args.algo == "ddpg-per":
     from algorithms.per.ddpg_agent import Agent
-elif args.algo == "td3-per":
-    from algorithms.per.td3_agent import Agent
 
 
 def main():

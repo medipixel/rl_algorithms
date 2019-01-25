@@ -137,7 +137,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             self.init_priority = max(self.init_priority, priority)
 
 
-class SegmentTree(object):
+class SegmentTree:
     """ Create SegmentTree.
 
     Taken from OpenAI baselines github repository:

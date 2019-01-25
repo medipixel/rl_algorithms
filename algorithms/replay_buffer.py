@@ -11,7 +11,7 @@ import torch
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-class ReplayBuffer(object):
+class ReplayBuffer:
     """Fixed-size buffer to store experience tuples.
 
     Taken from Udacity deep-reinforcement-learning github repository:

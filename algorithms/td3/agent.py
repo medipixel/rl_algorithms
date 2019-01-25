@@ -13,11 +13,11 @@ from typing import Tuple
 import gym
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import wandb
 
+import algorithms.utils as common_utils
 from algorithms.abstract_agent import AbstractAgent
 from algorithms.noise import GaussianNoise
 from algorithms.replay_buffer import ReplayBuffer
@@ -35,7 +35,6 @@ hyper_params = {
     "BUFFER_SIZE": int(1e5),
     "BATCH_SIZE": 128,
     "MAX_EPISODE_STEPS": 300,
-    "EPISODE_NUM": 1500,
 }
 
 
@@ -53,6 +52,8 @@ class Agent(AbstractAgent):
         critic_optimizer_1 (Optimizer): optimizer for training critic_1
         critic_optimizer_2 (Optimizer): optimizer for training critic_2
         actor_optimizer (Optimizer): optimizer for training actor
+        curr_state (np.ndarray): temporary storage of the current state
+        n_step (int): iteration number of the current episode
 
     """
 
@@ -66,8 +67,8 @@ class Agent(AbstractAgent):
         """
         AbstractAgent.__init__(self, env, args)
 
-        self.env = env
-        self.args = args
+        self.curr_state = np.zeros((self.state_dim,))
+        self.n_step = 0
 
         # environment setup
         self.env._max_episode_steps = hyper_params["MAX_EPISODE_STEPS"]
@@ -103,32 +104,29 @@ class Agent(AbstractAgent):
 
         # replay memory
         self.memory = ReplayBuffer(
-            hyper_params["BUFFER_SIZE"],
-            hyper_params["BATCH_SIZE"],
-            self.args.seed,
-            device,
+            hyper_params["BUFFER_SIZE"], hyper_params["BATCH_SIZE"], self.args.seed
         )
 
-    def select_action(self, state: np.ndarray, t: int) -> torch.Tensor:
+    def select_action(self, state: np.ndarray) -> torch.Tensor:
         """Select an action from the input space."""
+        self.curr_state = state
+
         state = torch.FloatTensor(state).to(device)
         selected_action = self.actor(state)
 
         action_size = selected_action.size()
-        selected_action += (
-            torch.tensor(self.noise.sample(action_size, t)).float().to(device)
-        )
+        selected_action += torch.FloatTensor(
+            self.noise.sample(action_size, self.n_step)
+        ).to(device)
 
         return torch.clamp(selected_action, self.action_low, self.action_high)
 
-    def step(
-        self, state: np.ndarray, action: torch.Tensor
-    ) -> Tuple[np.ndarray, np.float64, bool]:
+    def step(self, action: torch.Tensor) -> Tuple[np.ndarray, np.float64, bool]:
         """Take an action and return the response of the env."""
         action = action.detach().cpu().numpy()
         next_state, reward, done, _ = self.env.step(action)
 
-        self.memory.add(state, action, reward, next_state, done)
+        self.memory.add(self.curr_state, action, reward, next_state, done)
 
         return next_state, reward, done
 
@@ -137,7 +135,6 @@ class Agent(AbstractAgent):
         experiences: Tuple[
             torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor
         ],
-        step: int,
     ) -> torch.Tensor:
         """Train the model after each episode."""
         states, actions, rewards, next_states, dones = experiences
@@ -181,7 +178,7 @@ class Agent(AbstractAgent):
         # for logging
         total_loss = critic_loss1 + critic_loss2
 
-        if step % hyper_params["DELAYED_UPDATE"] == 0:
+        if self.n_step % hyper_params["DELAYED_UPDATE"] == 0:
             # train actor
             actions = self.actor(states)
             actor_loss = -self.critic_1(states, actions).mean()
@@ -190,22 +187,18 @@ class Agent(AbstractAgent):
             self.actor_optimizer.step()
 
             # update target networks
-            self.soft_update(self.critic_1, self.critic_target1)
-            self.soft_update(self.critic_2, self.critic_target2)
-            self.soft_update(self.actor, self.actor_target)
+            common_utils.soft_update(
+                self.critic_1, self.critic_target1, hyper_params["TAU"]
+            )
+            common_utils.soft_update(
+                self.critic_2, self.critic_target2, hyper_params["TAU"]
+            )
+            common_utils.soft_update(self.actor, self.actor_target, hyper_params["TAU"])
 
             # for logging
             total_loss += actor_loss
 
         return total_loss.data
-
-    def soft_update(self, local: nn.Module, target: nn.Module):
-        """Soft-update: target = tau*local + (1-tau)*target."""
-        for t_param, l_param in zip(target.parameters(), local.parameters()):
-            t_param.data.copy_(
-                hyper_params["TAU"] * l_param.data
-                + (1.0 - hyper_params["TAU"]) * t_param.data
-            )
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
@@ -249,8 +242,8 @@ class Agent(AbstractAgent):
             wandb.config.update(hyper_params)
             wandb.watch([self.actor, self.critic_1, self.critic_2], log="parameters")
 
-        step = 0
-        for i_episode in range(1, hyper_params["EPISODE_NUM"] + 1):
+        self.n_step = 0
+        for i_episode in range(1, self.args.episode_num + 1):
             state = self.env.reset()
             done = False
             score = 0
@@ -260,55 +253,30 @@ class Agent(AbstractAgent):
                 if self.args.render and i_episode >= self.args.render_after:
                     self.env.render()
 
-                action = self.select_action(state, step)
-                next_state, reward, done = self.step(state, action)
+                action = self.select_action(state)
+                next_state, reward, done = self.step(action)
 
                 if len(self.memory) >= hyper_params["BATCH_SIZE"]:
                     experiences = self.memory.sample()
-                    loss = self.update_model(experiences, step)
+                    loss = self.update_model(experiences)
                     loss_episode.append(loss)  # for logging
 
                 state = next_state
                 score += reward
-                step += 1
+                self.n_step += 1
 
-            else:
-                if len(loss_episode) > 0:
-                    avg_loss = np.array(loss_episode).mean()
-                    print(
-                        "[INFO] episode %d\ttotal score: %d\tloss: %f"
-                        % (i_episode, score, avg_loss)
-                    )
+            if loss_episode:
+                avg_loss = np.array(loss_episode).mean()
+                print(
+                    "[INFO] episode %d\ttotal score: %d\tloss: %f"
+                    % (i_episode, score, avg_loss)
+                )
 
-                    if self.args.log:
-                        wandb.log({"score": score, "avg_loss": avg_loss})
+            if self.args.log:
+                wandb.log({"score": score, "avg_loss": avg_loss})
 
-                    if i_episode % self.args.save_period == 0:
-                        self.save_params(i_episode)
-
-        # termination
-        self.env.close()
-
-    def test(self):
-        """Test the agent."""
-        step = 0
-        for i_episode in range(hyper_params["EPISODE_NUM"]):
-            state = self.env.reset()
-            done = False
-            score = 0
-
-            while not done:
-                if self.args.render and i_episode >= self.args.render_after:
-                    self.env.render()
-
-                action = self.select_action(state, step)
-                next_state, reward, done = self.step(state, action)
-
-                state = next_state
-                score += reward
-
-            else:
-                print("[INFO] episode %d\ttotal score: %d" % (i_episode, score))
+            if i_episode % self.args.save_period == 0:
+                self.save_params(i_episode)
 
         # termination
         self.env.close()
