@@ -41,16 +41,17 @@ hyper_params = {
 class Agent(AbstractAgent):
     """ActorCritic interacting with environment.
 
-    Attrtibutes:
+    Attributes:
         memory (ReplayBuffer): replay memory
         noise (OUNoise): random noise for exploration
         actor (nn.Module): actor model to select actions
         critic_1 (nn.Module): critic model to predict state values
         critic_2 (nn.Module): critic model to predict state values
-        critic_target (nn.Module): target critic model to predict state values
+        critic_target1 (nn.Module): target critic model to predict state values
+        critic_target2 (nn.Module): target critic model to predict state values
         actor_target (nn.Module): target actor model to select actions
-        critic_optimizer_1 (Optimizer): optimizer for training critic_1
-        critic_optimizer_2 (Optimizer): optimizer for training critic_2
+        critic_optimizer1 (Optimizer): optimizer for training critic_1
+        critic_optimizer2 (Optimizer): optimizer for training critic_2
         actor_optimizer (Optimizer): optimizer for training actor
         curr_state (np.ndarray): temporary storage of the current state
         n_step (int): iteration number of the current episode
@@ -160,6 +161,8 @@ class Agent(AbstractAgent):
         curr_returns = rewards + hyper_params["GAMMA"] * next_values * masks
         curr_returns = curr_returns.to(device).detach()
 
+        # n-step return
+
         # critic loss
         values1 = self.critic_1(states, actions)
         values2 = self.critic_2(states, actions)
@@ -178,6 +181,14 @@ class Agent(AbstractAgent):
         # for logging
         total_loss = critic_loss1 + critic_loss2
 
+        # update target networks
+        common_utils.soft_update(
+            self.critic_1, self.critic_target1, hyper_params["TAU"]
+        )
+        common_utils.soft_update(
+            self.critic_2, self.critic_target2, hyper_params["TAU"]
+        )
+
         if self.n_step % hyper_params["DELAYED_UPDATE"] == 0:
             # train actor
             actions = self.actor(states)
@@ -187,12 +198,6 @@ class Agent(AbstractAgent):
             self.actor_optimizer.step()
 
             # update target networks
-            common_utils.soft_update(
-                self.critic_1, self.critic_target1, hyper_params["TAU"]
-            )
-            common_utils.soft_update(
-                self.critic_2, self.critic_target2, hyper_params["TAU"]
-            )
             common_utils.soft_update(self.actor, self.actor_target, hyper_params["TAU"])
 
             # for logging

@@ -70,6 +70,11 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self.min_tree = MinSegmentTree(tree_capacity)
         self.init_priority = 1.0
 
+        if demo:
+            for _ in range(len(demo)):
+                self.sum_tree[self.next_idx] = self.init_priority ** self.alpha
+                self.min_tree[self.next_idx] = self.init_priority ** self.alpha
+
     def add(
         self,
         state: torch.Tensor,
