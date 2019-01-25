@@ -128,9 +128,8 @@ class PrioritizedReplayBuffer(ReplayBuffer):
 
         for idx, priority in zip(indices, priorities):
             assert priority > 0
-            # if not 0 <= idx < len(self.memory):
-            #     print("idx", idx)
             assert 0 <= idx < len(self.memory)
+
             self.sum_tree[idx] = priority ** self.alpha
             self.min_tree[idx] = priority ** self.alpha
 
