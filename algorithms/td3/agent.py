@@ -161,8 +161,6 @@ class Agent(AbstractAgent):
         curr_returns = rewards + hyper_params["GAMMA"] * next_values * masks
         curr_returns = curr_returns.to(device).detach()
 
-        # n-step return
-
         # critic loss
         values1 = self.critic_1(states, actions)
         values2 = self.critic_2(states, actions)

@@ -36,10 +36,14 @@ class ReplayBuffer:
             demo (deque) : demonstration deque
 
         """
+
+        self.memory = deque(maxlen=buffer_size) if not demo else demo
+        # TODO: if use one buffer both demo and experience
+        """
         self.memory: deque = deque(maxlen=buffer_size)
 
         if demo:
-            self.memory.extend(demo)
+            self.memory.extend(demo)"""
 
         self.batch_size = batch_size
         random.seed(seed)

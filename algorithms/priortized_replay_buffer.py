@@ -70,6 +70,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self.min_tree = MinSegmentTree(tree_capacity)
         self.init_priority = 1.0
 
+        # for init priority of demo
         if demo:
             for _ in range(len(demo)):
                 self.sum_tree[self.next_idx] = self.init_priority ** self.alpha
