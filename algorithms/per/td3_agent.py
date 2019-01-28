@@ -46,7 +46,7 @@ class Agent(AbstractAgent):
     """ActorCritic interacting with environment.
 
     Attributes:
-        memory (PrioritizedReplayBufferReplayBuffer): replay memory
+        memory (PrioritizedReplayBuffer): replay memory
         noise (GaussianNoise): random noise for exploration
         actor (nn.Module): actor model to select actions
         critic_1 (nn.Module): critic model to predict state values
