@@ -109,9 +109,26 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         """Sample a batch of experiences."""
         assert beta > 0
 
-        experiences = super().sample()
-
         indices = self._sample_proportional(self.batch_size)
+
+        samples = [self.memory[i] for i in indices]
+
+        states, actions, rewards, next_states, dones = [], [], [], [], []
+
+        for s in samples:
+            states.append(np.expand_dims(s[0], axis=0))
+            actions.append(s[1])
+            rewards.append(s[2])
+            next_states.append(np.expand_dims(s[3], axis=0))
+            dones.append(s[4])
+
+        states = torch.from_numpy(np.vstack(states)).float().to(device)
+        actions = torch.from_numpy(np.vstack(actions)).float().to(device)
+        rewards = torch.from_numpy(np.vstack(rewards)).float().to(device)
+        next_states = torch.from_numpy(np.vstack(next_states)).float().to(device)
+        dones = torch.from_numpy(np.vstack(dones).astype(np.uint8)).float().to(device)
+
+        experiences = (states, actions, rewards, next_states, dones)
 
         weights = []
         p_min = self.min_tree.min() / self.sum_tree.sum()
