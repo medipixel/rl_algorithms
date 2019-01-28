@@ -36,7 +36,6 @@ class ReplayBuffer:
             demo (deque) : demonstration deque
 
         """
-
         self.memory = deque(maxlen=buffer_size) if not demo else demo
         # TODO: if use one buffer both demo and experience
         """
