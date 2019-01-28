@@ -179,14 +179,6 @@ class Agent(AbstractAgent):
         critic_loss2.backward()
         self.critic_optimizer2.step()
 
-        # update target networks
-        common_utils.soft_update(
-            self.critic_1, self.critic_target1, hyper_params["TAU"]
-        )
-        common_utils.soft_update(
-            self.critic_2, self.critic_target2, hyper_params["TAU"]
-        )
-
         # for logging
         total_loss = critic_loss1 + critic_loss2
 
@@ -199,6 +191,12 @@ class Agent(AbstractAgent):
             self.actor_optimizer.step()
 
             # update target networks
+            common_utils.soft_update(
+                self.critic_1, self.critic_target1, hyper_params["TAU"]
+            )
+            common_utils.soft_update(
+                self.critic_2, self.critic_target2, hyper_params["TAU"]
+            )
             common_utils.soft_update(self.actor, self.actor_target, hyper_params["TAU"])
 
             # for logging

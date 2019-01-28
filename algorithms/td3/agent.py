@@ -179,14 +179,6 @@ class Agent(AbstractAgent):
         # for logging
         total_loss = critic_loss1 + critic_loss2
 
-        # update target networks
-        common_utils.soft_update(
-            self.critic_1, self.critic_target1, hyper_params["TAU"]
-        )
-        common_utils.soft_update(
-            self.critic_2, self.critic_target2, hyper_params["TAU"]
-        )
-
         if self.n_step % hyper_params["DELAYED_UPDATE"] == 0:
             # train actor
             actions = self.actor(states)
@@ -196,6 +188,12 @@ class Agent(AbstractAgent):
             self.actor_optimizer.step()
 
             # update target networks
+            common_utils.soft_update(
+                self.critic_1, self.critic_target1, hyper_params["TAU"]
+            )
+            common_utils.soft_update(
+                self.critic_2, self.critic_target2, hyper_params["TAU"]
+            )
             common_utils.soft_update(self.actor, self.actor_target, hyper_params["TAU"])
 
             # for logging
