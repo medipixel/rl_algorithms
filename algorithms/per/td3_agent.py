@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-"""TD3 agent for episodic tasks in OpenAI Gym.
+"""TD3 agent for episodic tasks using PER in OpenAI Gym.
 
-- Author: Curt Park
-- Contact: curt.park@medipixel.io
+- Author: Kh Kim
+- Contact: kh.kim@medipixel.io
 - Paper: https://arxiv.org/pdf/1802.09477.pdf
 """
 
@@ -20,7 +20,7 @@ import wandb
 import algorithms.utils as common_utils
 from algorithms.abstract_agent import AbstractAgent
 from algorithms.noise import GaussianNoise
-from algorithms.replay_buffer import ReplayBuffer
+from algorithms.priortized_replay_buffer import PrioritizedReplayBuffer
 from algorithms.td3.model import Actor, Critic
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -35,6 +35,10 @@ hyper_params = {
     "BUFFER_SIZE": int(1e5),
     "BATCH_SIZE": 128,
     "MAX_EPISODE_STEPS": 300,
+    "EPISODE_NUM": 1500,
+    "PER_ALPHA": 0.5,
+    "PER_BETA": 0.4,
+    "PER_EPS": 1e-6,
 }
 
 
@@ -42,7 +46,7 @@ class Agent(AbstractAgent):
     """ActorCritic interacting with environment.
 
     Attributes:
-        memory (ReplayBuffer): replay memory
+        memory (PrioritizedReplayBuffer): replay memory
         noise (GaussianNoise): random noise for exploration
         actor (nn.Module): actor model to select actions
         critic_1 (nn.Module): critic model to predict state values
@@ -104,8 +108,12 @@ class Agent(AbstractAgent):
         self.noise = GaussianNoise(self.action_dim, self.action_low, self.action_high)
 
         # replay memory
-        self.memory = ReplayBuffer(
-            hyper_params["BUFFER_SIZE"], hyper_params["BATCH_SIZE"], self.args.seed
+        self.beta = hyper_params["PER_BETA"]
+        self.memory = PrioritizedReplayBuffer(
+            hyper_params["BUFFER_SIZE"],
+            hyper_params["BATCH_SIZE"],
+            self.args.seed,
+            alpha=hyper_params["PER_ALPHA"],
         )
 
     def select_action(self, state: np.ndarray) -> torch.Tensor:
@@ -131,14 +139,9 @@ class Agent(AbstractAgent):
 
         return next_state, reward, done
 
-    def update_model(
-        self,
-        experiences: Tuple[
-            torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor
-        ],
-    ) -> torch.Tensor:
+    def update_model(self, experiences: Tuple[torch.Tensor, ...]) -> torch.Tensor:
         """Train the model after each episode."""
-        states, actions, rewards, next_states, dones = experiences
+        states, actions, rewards, next_states, dones, weights, indexes = experiences
         masks = 1 - dones
 
         # get actions with noise
@@ -164,8 +167,8 @@ class Agent(AbstractAgent):
         # critic loss
         values1 = self.critic_1(states, actions)
         values2 = self.critic_2(states, actions)
-        critic_loss1 = F.mse_loss(values1, curr_returns)
-        critic_loss2 = F.mse_loss(values2, curr_returns)
+        critic_loss1 = F.mse_loss(values1, curr_returns) * torch.mean(weights)
+        critic_loss2 = F.mse_loss(values2, curr_returns) * torch.mean(weights)
 
         # train critic
         self.critic_optimizer1.zero_grad()
@@ -176,9 +179,6 @@ class Agent(AbstractAgent):
         critic_loss2.backward()
         self.critic_optimizer2.step()
 
-        # for logging
-        total_loss = critic_loss1 + critic_loss2
-
         # update target networks
         common_utils.soft_update(
             self.critic_1, self.critic_target1, hyper_params["TAU"]
@@ -186,6 +186,9 @@ class Agent(AbstractAgent):
         common_utils.soft_update(
             self.critic_2, self.critic_target2, hyper_params["TAU"]
         )
+
+        # for logging
+        total_loss = critic_loss1 + critic_loss2
 
         if self.n_step % hyper_params["DELAYED_UPDATE"] == 0:
             # train actor
@@ -200,6 +203,16 @@ class Agent(AbstractAgent):
 
             # for logging
             total_loss += actor_loss
+
+        # update priorities in PER
+        new_priorities = (
+            (torch.pow(torch.min(values1, values2) - curr_returns, 2) * weights)
+            .data.cpu()
+            .numpy()
+        )
+
+        new_priorities += hyper_params["PER_EPS"]
+        self.memory.update_priorities(indexes, new_priorities)
 
         return total_loss.data
 
@@ -235,7 +248,7 @@ class Agent(AbstractAgent):
             "critic_optim2": self.critic_optimizer2.state_dict(),
         }
 
-        AbstractAgent.save_params(self, self.args.algo, params, n_episode)
+        AbstractAgent.save_params(self, "td3", params, n_episode)
 
     def train(self):
         """Train the agent."""
@@ -245,8 +258,8 @@ class Agent(AbstractAgent):
             wandb.config.update(hyper_params)
             wandb.watch([self.actor, self.critic_1, self.critic_2], log="parameters")
 
-        self.n_step = 0
-        for i_episode in range(1, self.args.episode_num + 1):
+        step = 0
+        for i_episode in range(1, hyper_params["EPISODE_NUM"] + 1):
             state = self.env.reset()
             done = False
             score = 0
@@ -266,7 +279,7 @@ class Agent(AbstractAgent):
 
                 state = next_state
                 score += reward
-                self.n_step += 1
+                step += 1
 
             if loss_episode:
                 avg_loss = np.array(loss_episode).mean()
@@ -275,11 +288,11 @@ class Agent(AbstractAgent):
                     % (i_episode, score, avg_loss)
                 )
 
-            if self.args.log:
-                wandb.log({"score": score, "avg_loss": avg_loss})
+                if self.args.log:
+                    wandb.log({"score": score, "avg_loss": avg_loss})
 
-            if i_episode % self.args.save_period == 0:
-                self.save_params(i_episode)
+                if i_episode % self.args.save_period == 0:
+                    self.save_params(i_episode)
 
         # termination
         self.env.close()

@@ -153,8 +153,7 @@ disable=print-statement,
         duplicate-code,
         protected-access,
         too-many-instance-attributes,
-        DeprecationWarning
-
+	fixme
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
