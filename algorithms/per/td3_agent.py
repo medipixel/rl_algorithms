@@ -4,6 +4,7 @@
 - Author: Kh Kim
 - Contact: kh.kim@medipixel.io
 - Paper: https://arxiv.org/pdf/1802.09477.pdf
+         https://arxiv.org/pdf/1511.05952.pdf
 """
 
 import argparse
@@ -29,6 +30,9 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 hyper_params = {
     "GAMMA": 0.99,
     "TAU": 1e-3,
+    "LR_ACTOR": 1e-4,
+    "LR_CRITIC_1": 1e-3,
+    "LR_CRITIC_2": 1e-3,
     "NOISE_STD": 1.0,
     "NOISE_CLIP": 0.5,
     "DELAYED_UPDATE": 2,
@@ -87,9 +91,15 @@ class Agent(AbstractAgent):
         self.critic_target2.load_state_dict(self.critic_2.state_dict())
 
         # create optimizers
-        self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=1e-4)
-        self.critic_optimizer1 = optim.Adam(self.critic_1.parameters(), lr=1e-3)
-        self.critic_optimizer2 = optim.Adam(self.critic_2.parameters(), lr=1e-3)
+        self.actor_optimizer = optim.Adam(
+            self.actor.parameters(), lr=hyper_params["LR_ACTOR"]
+        )
+        self.critic_optimizer1 = optim.Adam(
+            self.critic_1.parameters(), lr=hyper_params["LR_CRITIC_1"]
+        )
+        self.critic_optimizer2 = optim.Adam(
+            self.critic_2.parameters(), lr=hyper_params["LR_CRITIC_2"]
+        )
 
         # load the optimizer and model parameters
         if args.load_from is not None and os.path.exists(args.load_from):
