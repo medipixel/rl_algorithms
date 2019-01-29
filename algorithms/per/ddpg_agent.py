@@ -4,6 +4,7 @@
 - Author: Kh Kim
 - Contact: kh.kim@medipixel.io
 - Paper: https://arxiv.org/pdf/1509.02971.pdf
+         https://arxiv.org/pdf/1511.05952.pdf
 """
 
 import argparse
