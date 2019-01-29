@@ -37,7 +37,6 @@ hyper_params = {
     "LAMBDA1": 1e-3,
     "LAMBDA2": 1.0,
 }
-DEMO_PATH = "data/lunarlander_continuous_demo.pkl"
 
 
 class Agent(AbstractAgent):
@@ -99,7 +98,7 @@ class Agent(AbstractAgent):
         )
 
         # load demo replay memory
-        with open(DEMO_PATH, "rb") as f:
+        with open(self.args.demo_path, "rb") as f:
             demo = pickle.load(f)
 
         self.demo_memory = ReplayBuffer(

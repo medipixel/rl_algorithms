@@ -220,7 +220,7 @@ class Agent(AbstractAgent):
             # update target networks
             common_utils.soft_update(self.vf, self.vf_target, hyper_params["TAU"])
         else:
-            actor_loss = 1.0
+            actor_loss = 0.0
 
         return (actor_loss, qf_1_loss, qf_2_loss, vf_loss, alpha_loss)
 
@@ -301,7 +301,7 @@ class Agent(AbstractAgent):
                         i_episode,
                         score,
                         total_loss,
-                        avg_loss[0],  # actor loss
+                        avg_loss[0] * hyper_params["DELAYED_UPDATE"],  # actor loss
                         avg_loss[1],  # qf_1 loss
                         avg_loss[2],  # qf_2 loss
                         avg_loss[3],  # vf loss
@@ -314,7 +314,7 @@ class Agent(AbstractAgent):
                         {
                             "score": score,
                             "total_loss": total_loss,
-                            "actor loss": avg_loss[0],
+                            "actor loss": avg_loss[0] * hyper_params["DELAYED_UPDATE"],
                             "qf_1 loss": avg_loss[1],
                             "qf_2 loss": avg_loss[2],
                             "vf loss": avg_loss[3],

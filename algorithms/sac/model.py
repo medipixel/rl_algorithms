@@ -12,8 +12,7 @@ with continuous action space in OpenAI Gym.
 
 import torch
 import torch.nn as nn
-
-from algorithms.distribution import TanhNormal
+from torch.distributions import Normal
 
 
 class Actor(nn.Module):
@@ -70,7 +69,7 @@ class Actor(nn.Module):
         self.log_std.weight.data.uniform_(-init_w, init_w)
         self.log_std.bias.data.uniform_(-init_w, init_w)
 
-    def forward(self, state: torch.Tensor) -> torch.Tensor:
+    def forward(self, state: torch.Tensor, epsilon: float = 1e-6) -> torch.Tensor:
         """Forward method implementation.
 
         Args:
@@ -87,14 +86,15 @@ class Actor(nn.Module):
         log_std = torch.clamp(self.log_std(hidden), self.log_std_min, self.log_std_max)
         std = log_std.exp()
 
-        # get dist, log_prob, pre_tanh_value
-        dist = TanhNormal(mu, log_std.exp())
-        action, pre_tanh_value = dist.rsample(return_pretanh_value=True)
-        log_prob = dist.log_prob(action, pre_tanh_value=pre_tanh_value).sum(
-            dim=-1, keepdim=True
-        )
+        # normalize action and log_prob
+        # see appendix C of 'https://arxiv.org/pdf/1812.05905.pdf'
+        dist = Normal(mu, log_std.exp())
+        z = dist.rsample()
+        action = torch.tanh(z)
+        log_prob = dist.log_prob(z) - torch.log(1 - action.pow(2) + epsilon)
+        log_prob = log_prob.sum(-1, keepdim=True)
 
-        return action, log_prob, pre_tanh_value, mu, std
+        return action, log_prob, z, mu, std
 
 
 class Qvalue(nn.Module):
