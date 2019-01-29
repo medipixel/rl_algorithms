@@ -28,30 +28,19 @@ class ActorCritic(nn.Module):
 
     """
 
-    def __init__(
-        self,
-        std: float,
-        state_dim: int,
-        action_dim: int,
-        action_low: float,
-        action_high: float,
-    ):
+    def __init__(self, std: float, state_dim: int, action_dim: int):
         """Initialization.
 
         Args:
             std (float): standard deviation of the output distribution
             state_dim (int): dimension of state space
             action_dim (int): dimension of action space
-            action_low (float): lower bound of the action value
-            action_high (float): upper bound of the action value
 
         """
         super(ActorCritic, self).__init__()
 
         self.state_dim = state_dim
         self.action_dim = action_dim
-        self.action_low = action_low
-        self.action_high = action_high
 
         self.std = std
         self.actor_mu = nn.Sequential(
@@ -98,7 +87,7 @@ class ActorCritic(nn.Module):
         norm_dist_mu = self.actor_mu(state)
         norm_dist_std = self.std
         dist = Normal(norm_dist_mu, norm_dist_std)
-        selected_action = torch.clamp(dist.rsample(), self.action_low, self.action_high)
+        selected_action = torch.clamp(dist.rsample(), -1.0, 1.0)
 
         predicted_value = self.critic(state)
 

@@ -23,7 +23,7 @@ from algorithms.dpg.model import Actor, Critic
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # hyper parameters
-hyper_params = {"GAMMA": 0.99, "MAX_EPISODE_STEPS": 500}
+hyper_params = {"GAMMA": 0.99}
 
 
 class Agent(AbstractAgent):
@@ -47,13 +47,8 @@ class Agent(AbstractAgent):
         """
         AbstractAgent.__init__(self, env, args)
 
-        # environment setup
-        self.env._max_episode_steps = hyper_params["MAX_EPISODE_STEPS"]
-
         # create a model
-        self.actor = Actor(
-            self.state_dim, self.action_dim, self.action_low, self.action_high
-        ).to(device)
+        self.actor = Actor(self.state_dim, self.action_dim).to(device)
         self.critic = Critic(self.state_dim, self.action_dim).to(device)
 
         # create optimizer

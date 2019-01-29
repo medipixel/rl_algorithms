@@ -29,14 +29,13 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # hyper parameters
 hyper_params = {
-    "GAMMA": 0.95,
-    "LAMBDA": 0.9,
+    "GAMMA": 0.99,
+    "LAMBDA": 0.95,
     "MAX_KL": 1e-2,
     "DAMPING": 1e-1,
     "L2_REG": 1e-3,
     "LBFGS_MAX_ITER": 200,
     "BATCH_SIZE": 256,
-    "MAX_EPISODE_STEPS": 300,
 }
 
 
@@ -66,16 +65,9 @@ class Agent(AbstractAgent):
         self.memory: Deque = deque()
         self.get_gae = GAE()
 
-        # environment setup
-        self.env._max_episode_steps = hyper_params["MAX_EPISODE_STEPS"]
-
         # create models
-        self.actor = Actor(
-            self.state_dim, self.action_dim, self.action_low, self.action_high
-        ).to(device)
-        self.old_actor = Actor(
-            self.state_dim, self.action_dim, self.action_low, self.action_high
-        ).to(device)
+        self.actor = Actor(self.state_dim, self.action_dim).to(device)
+        self.old_actor = Actor(self.state_dim, self.action_dim).to(device)
         self.critic = Critic(self.state_dim, self.action_dim).to(device)
 
         # load model parameters

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Actor-Critic agent for episodic tasks in OpenAI Gym.
+"""1-Step Advantage Actor-Critic agent for episodic tasks in OpenAI Gym.
 
 - Author: Curt Park
 - Contact: curt.park@medipixel.io
@@ -16,18 +16,18 @@ import torch.nn.functional as F
 import torch.optim as optim
 import wandb
 
+from algorithms.a2c.model import ActorCritic
 from algorithms.abstract_agent import AbstractAgent
-from algorithms.ac.model import ActorCritic
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 # hyper parameters
-hyper_params = {"GAMMA": 0.99, "STD": 1.0, "MAX_EPISODE_STEPS": 500}
+hyper_params = {"GAMMA": 0.99, "STD": 1.0}
 
 
 class Agent(AbstractAgent):
-    """ActorCritic interacting with environment.
+    """1-Step Advantage Actor-Critic interacting with environment.
 
     Attributes:
         model (nn.Module): policy gradient model to select actions
@@ -48,16 +48,9 @@ class Agent(AbstractAgent):
         self.log_prob = torch.zeros((1,))
         self.predicted_value = torch.zeros((1,))
 
-        # environment setup
-        self.env._max_episode_steps = hyper_params["MAX_EPISODE_STEPS"]
-
         # create a model
         self.model = ActorCritic(
-            hyper_params["STD"],
-            self.state_dim,
-            self.action_dim,
-            self.action_low,
-            self.action_high,
+            hyper_params["STD"], self.state_dim, self.action_dim
         ).to(device)
 
         # create optimizer
@@ -89,19 +82,19 @@ class Agent(AbstractAgent):
         reward, next_state, done = experience
         next_state = torch.FloatTensor(next_state).to(device)
 
-        # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
+        # Q_t   = r + gamma * V(s_{t+1})  if state != Terminal
         #       = r                       otherwise
         mask = 1 - done
         next_value = self.model.critic(next_state).detach()
-        curr_return = reward + hyper_params["GAMMA"] * next_value * mask
-        curr_return = curr_return.float().to(device)
+        q_value = reward + hyper_params["GAMMA"] * next_value * mask
+        q_value = q_value.to(device)
 
-        # delta = G_t - v(s_t)
-        delta = curr_return - self.predicted_value.detach()
+        # advantage = Q_t - V(s_t)
+        advantage = q_value - self.predicted_value
 
         # calculate loss at the current step
-        policy_loss = -delta * self.log_prob  # delta is not backpropagated
-        value_loss = F.mse_loss(self.predicted_value, curr_return)
+        policy_loss = -advantage.detach() * self.log_prob  # adv. is not backpropagated
+        value_loss = F.mse_loss(self.predicted_value, q_value.detach())
         loss = policy_loss + value_loss
 
         # train

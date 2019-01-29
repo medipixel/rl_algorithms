@@ -19,28 +19,31 @@ import torch
 class AbstractAgent(ABC):
     """Abstract Agent used for all agents.
 
-    Args:
-        env (gym.Env): openAI Gym environment with discrete action space
-        args (argparse.Namespace): arguments including hyperparameters and training settings
-
     Attributes:
         env (gym.Env): openAI Gym environment with discrete action space
         args (argparse.Namespace): arguments including hyperparameters and training settings
         state_dim (int): dimension of state space
         action_dim (int): dimension of action space
-        action_low (float): lower bound of the action value
-        action_high (float): upper bound of the action value
 
     """
 
     def __init__(self, env: gym.Env, args: argparse.Namespace):
-        """Initialization."""
+        """Initialization.
+
+        Args:
+            env (gym.Env): openAI Gym environment with discrete action space
+            args (argparse.Namespace): arguments including hyperparameters and training settings
+
+        """
         self.args = args
-        self.env = env
+        self.env = NormalizedActions(env)
+        if self.args.max_episode_steps > 0:
+            env._max_episode_steps = self.args.max_episode_steps
+        else:
+            self.args.max_episode_steps = env._max_episode_steps
+
         self.state_dim = env.observation_space.shape[0]
         self.action_dim = env.action_space.shape[0]
-        self.action_low = float(env.action_space.low[0])
-        self.action_high = float(env.action_space.high[0])
 
     @abstractmethod
     def select_action(self, state: np.ndarray):
@@ -98,3 +101,33 @@ class AbstractAgent(ABC):
 
         # termination
         self.env.close()
+
+
+class NormalizedActions(gym.ActionWrapper):
+    """Rescale and relocate the actions."""
+
+    def action(self, action: np.ndarray) -> np.ndarray:
+        """Change the range (-1, 1) to (low, high)."""
+        low = self.action_space.low
+        high = self.action_space.high
+
+        scale_factor = (high - low) / 2
+        reloc_factor = high - scale_factor
+
+        action = action * scale_factor + reloc_factor
+        action = np.clip(action, low, high)
+
+        return action
+
+    def reverse_action(self, action: np.ndarray) -> np.ndarray:
+        """Change the range (low, high) to (-1, 1)."""
+        low = self.action_space.low
+        high = self.action_space.high
+
+        scale_factor = (high - low) / 2
+        reloc_factor = high - scale_factor
+
+        action = (action - reloc_factor) / scale_factor
+        action = np.clip(action, -1.0, 1.0)
+
+        return action
