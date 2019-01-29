@@ -34,11 +34,9 @@ hyper_params = {
     "BUFFER_SIZE": int(1e5),
     "BATCH_SIZE": 1024,
     "DEMO_BATCH_SIZE": 128,
-    "MAX_EPISODE_STEPS": 300,
     "LAMBDA1": 1e-3,
     "LAMBDA2": 1.0,
 }
-DEMO_PATH = "data/lunarlander_continuous_demo.pkl"
 
 
 class Agent(AbstractAgent):
@@ -69,16 +67,9 @@ class Agent(AbstractAgent):
 
         self.curr_state = np.zeros((self.state_dim,))
 
-        # environment setup
-        self.env._max_episode_steps = hyper_params["MAX_EPISODE_STEPS"]
-
         # create actor
-        self.actor = Actor(
-            self.state_dim, self.action_dim, self.action_low, self.action_high
-        ).to(device)
-        self.actor_target = Actor(
-            self.state_dim, self.action_dim, self.action_low, self.action_high
-        ).to(device)
+        self.actor = Actor(self.state_dim, self.action_dim).to(device)
+        self.actor_target = Actor(self.state_dim, self.action_dim).to(device)
         self.actor_target.load_state_dict(self.actor.state_dict())
 
         # create critic
@@ -107,7 +98,7 @@ class Agent(AbstractAgent):
         )
 
         # load demo replay memory
-        with open(DEMO_PATH, "rb") as f:
+        with open(self.args.demo_path, "rb") as f:
             demo = pickle.load(f)
 
         self.demo_memory = ReplayBuffer(
@@ -122,9 +113,7 @@ class Agent(AbstractAgent):
         selected_action = self.actor(state)
         selected_action += torch.FloatTensor(self.noise.sample()).to(device)
 
-        action_low = self.action_low
-        action_high = self.action_high
-        selected_action = torch.clamp(selected_action, action_low, action_high)
+        selected_action = torch.clamp(selected_action, -1.0, 1.0)
 
         return selected_action
 

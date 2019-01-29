@@ -34,7 +34,6 @@ hyper_params = {
     "DELAYED_UPDATE": 2,
     "BUFFER_SIZE": int(1e5),
     "BATCH_SIZE": 128,
-    "MAX_EPISODE_STEPS": 300,
 }
 
 
@@ -71,16 +70,9 @@ class Agent(AbstractAgent):
         self.curr_state = np.zeros((self.state_dim,))
         self.n_step = 0
 
-        # environment setup
-        self.env._max_episode_steps = hyper_params["MAX_EPISODE_STEPS"]
-
         # create actor
-        self.actor = Actor(
-            self.state_dim, self.action_dim, self.action_low, self.action_high
-        ).to(device)
-        self.actor_target = Actor(
-            self.state_dim, self.action_dim, self.action_low, self.action_high
-        ).to(device)
+        self.actor = Actor(self.state_dim, self.action_dim).to(device)
+        self.actor_target = Actor(self.state_dim, self.action_dim).to(device)
         self.actor_target.load_state_dict(self.actor.state_dict())
 
         # create critic
@@ -101,7 +93,7 @@ class Agent(AbstractAgent):
             self.load_params(args.load_from)
 
         # noise instance to make randomness of action
-        self.noise = GaussianNoise(self.action_dim, self.action_low, self.action_high)
+        self.noise = GaussianNoise(self.action_dim, -1.0, 1.0)
 
         # replay memory
         self.memory = ReplayBuffer(
@@ -120,7 +112,7 @@ class Agent(AbstractAgent):
             self.noise.sample(action_size, self.n_step)
         ).to(device)
 
-        return torch.clamp(selected_action, self.action_low, self.action_high)
+        return torch.clamp(selected_action, -1.0, 1.0)
 
     def step(self, action: torch.Tensor) -> Tuple[np.ndarray, np.float64, bool]:
         """Take an action and return the response of the env."""

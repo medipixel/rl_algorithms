@@ -23,7 +23,7 @@ from algorithms.reinforce.model import ActorCritic
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # hyper parameters
-hyper_params = {"GAMMA": 0.99, "STD": 1.0, "MAX_EPISODE_STEPS": 500}
+hyper_params = {"GAMMA": 0.99, "STD": 1.0}
 
 
 class Agent(AbstractAgent):
@@ -52,16 +52,9 @@ class Agent(AbstractAgent):
         self.predicted_value_sequence: list = []
         self.reward_sequence: list = []
 
-        # environment setup
-        self.env._max_episode_steps = hyper_params["MAX_EPISODE_STEPS"]
-
         # create a model
         self.model = ActorCritic(
-            hyper_params["STD"],
-            self.state_dim,
-            self.action_dim,
-            self.action_low,
-            self.action_high,
+            hyper_params["STD"], self.state_dim, self.action_dim
         ).to(device)
 
         # create optimizer

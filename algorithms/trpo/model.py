@@ -21,29 +21,21 @@ class Actor(nn.Module):
         actor (nn.Sequential): actor model with FC layers
         state_dim (int): dimension of state space
         action_dim (int): dimension of action space
-        action_low (float): lower bound of the action value
-        action_high (float): upper bound of the action value
 
     """
 
-    def __init__(
-        self, state_dim: int, action_dim: int, action_low: float, action_high: float
-    ):
+    def __init__(self, state_dim: int, action_dim: int):
         """Initialization.
 
         Args:
             state_dim (int): dimension of state space
             action_dim (int): dimension of action space
-            action_low (float): lower bound of the action value
-            action_high (float): upper bound of the action value
 
         """
         super(Actor, self).__init__()
 
         self.state_dim = state_dim
         self.action_dim = action_dim
-        self.action_low = action_low
-        self.action_high = action_high
 
         self.actor = nn.Sequential(
             nn.Linear(self.state_dim, 24),
@@ -71,7 +63,7 @@ class Actor(nn.Module):
         std = torch.exp(logstd)
 
         dist = Normal(mu, std)
-        selected_action = torch.clamp(dist.rsample(), self.action_low, self.action_high)
+        selected_action = torch.clamp(dist.rsample(), -1.0, 1.0)
 
         return selected_action, dist
 

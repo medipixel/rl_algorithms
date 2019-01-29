@@ -31,7 +31,6 @@ hyper_params = {
     "TAU": 1e-3,
     "BUFFER_SIZE": int(1e5),
     "BATCH_SIZE": 128,
-    "MAX_EPISODE_STEPS": 300,
     "PER_ALPHA": 0.5,
     "PER_BETA": 0.4,
     "PER_EPS": 1e-6,
@@ -67,16 +66,9 @@ class Agent(AbstractAgent):
 
         self.curr_state = np.zeros((self.state_dim,))
 
-        # environment setup
-        self.env._max_episode_steps = hyper_params["MAX_EPISODE_STEPS"]
-
         # create actor
-        self.actor = Actor(
-            self.state_dim, self.action_dim, self.action_low, self.action_high
-        ).to(device)
-        self.actor_target = Actor(
-            self.state_dim, self.action_dim, self.action_low, self.action_high
-        ).to(device)
+        self.actor = Actor(self.state_dim, self.action_dim).to(device)
+        self.actor_target = Actor(self.state_dim, self.action_dim).to(device)
         self.actor_target.load_state_dict(self.actor.state_dict())
 
         # create critic
@@ -112,9 +104,7 @@ class Agent(AbstractAgent):
         selected_action = self.actor(state)
         selected_action += torch.FloatTensor(self.noise.sample()).to(device)
 
-        selected_action = torch.clamp(
-            selected_action, self.action_low, self.action_high
-        )
+        selected_action = torch.clamp(selected_action, -1.0, 1.0)
 
         return selected_action
 
@@ -229,9 +219,7 @@ class Agent(AbstractAgent):
                 next_state, reward, done = self.step(action)
 
                 # increase beta
-                fraction = min(
-                    float(i_episode) / hyper_params["MAX_EPISODE_STEPS"], 1.0
-                )
+                fraction = min(float(i_episode) / self.args.max_episode_steps, 1.0)
                 self.beta = self.beta + fraction * (1.0 - self.beta)
 
                 if len(self.memory) >= hyper_params["BATCH_SIZE"]:

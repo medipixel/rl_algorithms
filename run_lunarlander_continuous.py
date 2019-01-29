@@ -34,6 +34,16 @@ parser.add_argument(
 parser.add_argument("--log", dest="log", action="store_true", help="turn on logging")
 parser.add_argument("--save-period", type=int, default=100, help="save model period")
 parser.add_argument("--episode-num", type=int, default=1500, help="total episode num")
+parser.add_argument(
+    "--max-episode-steps", type=int, default=300, help="max episode step"
+)
+parser.add_argument(
+    "--demo-path",
+    type=str,
+    default="data/lunarlander_continuous_demo.pkl",
+    help="demonstration path",
+)
+
 parser.set_defaults(test=False)
 parser.set_defaults(load_from=None)
 parser.set_defaults(render=True)
@@ -43,8 +53,8 @@ args = parser.parse_args()
 # import the agent
 if args.algo == "reinforce":
     from algorithms.reinforce.agent import Agent
-elif args.algo == "ac":
-    from algorithms.ac.agent import Agent
+elif args.algo == "a2c":
+    from algorithms.a2c.agent import Agent
 elif args.algo == "dpg":
     from algorithms.dpg.agent import Agent
 elif args.algo == "ddpg":
@@ -55,6 +65,8 @@ elif args.algo == "ppo":
     from algorithms.ppo.agent import Agent
 elif args.algo == "td3":
     from algorithms.td3.agent import Agent
+elif args.algo == "sac":
+    from algorithms.sac.agent import Agent
 # with bc
 elif args.algo == "bc-ddpg":
     from algorithms.bc.ddpg_agent import Agent

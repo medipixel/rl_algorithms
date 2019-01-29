@@ -26,13 +26,7 @@ from algorithms.replay_buffer import ReplayBuffer
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # hyper parameters
-hyper_params = {
-    "GAMMA": 0.99,
-    "TAU": 1e-3,
-    "BUFFER_SIZE": int(1e5),
-    "BATCH_SIZE": 128,
-    "MAX_EPISODE_STEPS": 300,
-}
+hyper_params = {"GAMMA": 0.99, "TAU": 1e-3, "BUFFER_SIZE": int(1e5), "BATCH_SIZE": 128}
 
 
 class Agent(AbstractAgent):
@@ -63,16 +57,9 @@ class Agent(AbstractAgent):
 
         self.curr_state = np.zeros((self.state_dim,))
 
-        # environment setup
-        self.env._max_episode_steps = hyper_params["MAX_EPISODE_STEPS"]
-
         # create actor
-        self.actor = Actor(
-            self.state_dim, self.action_dim, self.action_low, self.action_high
-        ).to(device)
-        self.actor_target = Actor(
-            self.state_dim, self.action_dim, self.action_low, self.action_high
-        ).to(device)
+        self.actor = Actor(self.state_dim, self.action_dim).to(device)
+        self.actor_target = Actor(self.state_dim, self.action_dim).to(device)
         self.actor_target.load_state_dict(self.actor.state_dict())
 
         # create critic
@@ -104,9 +91,7 @@ class Agent(AbstractAgent):
         selected_action = self.actor(state)
         selected_action += torch.FloatTensor(self.noise.sample()).to(device)
 
-        selected_action = torch.clamp(
-            selected_action, self.action_low, self.action_high
-        )
+        selected_action = torch.clamp(selected_action, -1.0, 1.0)
 
         return selected_action
 
