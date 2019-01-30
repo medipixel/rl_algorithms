@@ -39,7 +39,7 @@ hyper_params = {
     "LR_CRITIC": 1e-3,
     "OU_NOISE_THETA": 0.0,
     "OU_NOISE_SIGMA": 0.0,
-    "PRETRAIN_STEP": 0,
+    "PRETRAIN_STEP": 3000,
     "MULTIPLE_LEARN": 1,  # multiple learning updates
     "LAMDA1": 1.0,  # N-step return weight
     "LAMDA2": 1e-5,  # l2 regularization weight
@@ -172,7 +172,8 @@ class Agent(AbstractAgent):
 
         # train actor
         actions = self.actor(states)
-        actor_loss = torch.mean(-self.critic(states, actions) * weights)
+        actor_loss_element_wise = -self.critic(states, actions)
+        actor_loss = torch.mean(actor_loss_element_wise * weights)
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
         self.actor_optimizer.step()
@@ -181,13 +182,12 @@ class Agent(AbstractAgent):
         common_utils.soft_update(self.actor, self.actor_target, hyper_params["TAU"])
         common_utils.soft_update(self.critic, self.critic_target, hyper_params["TAU"])
 
-        # update priorities in PER
+        # update priorities
         new_priorities = (values - curr_returns).pow(2)
-        new_priorities = new_priorities.data.cpu().numpy().squeeze()
-        new_priorities += (
-            hyper_params["LAMDA3"] * actor_loss.pow(2).detach().cpu().numpy()
-        )
+        new_priorities += hyper_params["LAMDA3"] * actor_loss_element_wise.pow(2)
+        new_priorities = new_priorities.squeeze()
         new_priorities += hyper_params["PER_EPS"]
+        new_priorities = new_priorities.data.cpu().numpy().squeeze()
         new_priorities += eps_d
         self.memory.update_priorities(indexes, new_priorities)
 
@@ -229,8 +229,8 @@ class Agent(AbstractAgent):
             wandb.config.update(hyper_params)
             wandb.watch([self.actor, self.critic], log="parameters")
 
-        pretrain_loss = list()
         # pre-training by demo
+        pretrain_loss = list()
         print("[INFO] Pre-Train %d step." % hyper_params["PRETRAIN_STEP"])
         for i_step in range(1, hyper_params["PRETRAIN_STEP"] + 1):
             experiences = self.memory.sample()
@@ -238,21 +238,14 @@ class Agent(AbstractAgent):
             pretrain_loss.append(loss)  # for logging
 
             # logging
-            avg_loss = np.vstack(pretrain_loss).mean(axis=0)
-            total_loss = avg_loss.sum()
-            if self.args.log:
-                wandb.log(
-                    {
-                        "total_loss": total_loss,
-                        "actor loss": avg_loss[0],
-                        "critic loss": avg_loss[1],
-                    }
-                )
+            if i_step == 1 or i_step % 100 == 0:
+                avg_loss = np.vstack(pretrain_loss).mean(axis=0)
+                total_loss = avg_loss.sum()
+                pretrain_loss.clear()
 
-            if i_step == 1 or i_step % 500 == 0:
                 print(
                     "[INFO] step %d total loss: %f\n"
-                    "actor_loss: %.3f critic_loss: %.3f"
+                    "actor_loss: %.3f critic_loss: %.3f\n"
                     % (
                         i_step,
                         total_loss,
@@ -260,6 +253,16 @@ class Agent(AbstractAgent):
                         avg_loss[1],  # critic loss
                     )
                 )
+
+                if self.args.log:
+                    wandb.log(
+                        {
+                            "score": 0.0,
+                            "total_loss": total_loss,
+                            "actor loss": avg_loss[0],
+                            "critic loss": avg_loss[1],
+                        }
+                    )
 
         for i_episode in range(1, self.args.episode_num + 1):
             state = self.env.reset()
@@ -279,14 +282,13 @@ class Agent(AbstractAgent):
                 self.beta = self.beta + fraction * (1.0 - self.beta)
 
                 if len(self.memory) >= hyper_params["BATCH_SIZE"]:
-                    multiple_loss = []
+                    loss_multiple_learn = []
                     for _ in range(hyper_params["MULTIPLE_LEARN"]):
                         experiences = self.memory.sample(self.beta)
                         loss = self.update_model(experiences)
-                        multiple_loss.append(loss)
-                    loss_episode.append(
-                        np.vstack(multiple_loss).mean(axis=0)
-                    )  # for logging
+                        loss_multiple_learn.append(loss)
+                    # for logging
+                    loss_episode.append(np.vstack(loss_multiple_learn).mean(axis=0))
 
                 state = next_state
                 score += reward
@@ -297,7 +299,7 @@ class Agent(AbstractAgent):
                 total_loss = avg_loss.sum()
                 print(
                     "[INFO] episode %d total score: %d, total loss: %f\n"
-                    "actor_loss: %.3f critic_loss: %.3f"
+                    "actor_loss: %.3f critic_loss: %.3f\n"
                     % (
                         i_episode,
                         score,
