@@ -14,7 +14,6 @@ from typing import List, Tuple
 import gym
 import numpy as np
 import torch
-import torch.nn.functional as F
 import torch.optim as optim
 import wandb
 
@@ -129,7 +128,7 @@ class Agent(AbstractAgent):
             torch.Tensor,
             List[int],
         ],
-    ) -> torch.Tensor:
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Train the model after each episode."""
 
         states, actions, rewards, next_states, dones, weights, indexes = experiences
@@ -144,7 +143,7 @@ class Agent(AbstractAgent):
 
         # train critic
         values = self.critic(states, actions)
-        critic_loss = F.mse_loss(values, curr_returns) * torch.mean(weights)
+        critic_loss = torch.mean((values - curr_returns).pow(2) * weights)
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
         self.critic_optimizer.step()
@@ -161,14 +160,11 @@ class Agent(AbstractAgent):
         common_utils.soft_update(self.critic, self.critic_target, hyper_params["TAU"])
 
         # update priorities in PER
-        new_priorties = torch.abs(values - curr_returns) * weights
+        new_priorties = torch.abs(values - curr_returns)
         new_priorties = new_priorties.data.cpu().numpy() + hyper_params["PER_EPS"]
         self.memory.update_priorities(indexes, new_priorties)
 
-        # for logging
-        total_loss = critic_loss + actor_loss
-
-        return total_loss.data
+        return (actor_loss, critic_loss)
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
@@ -232,17 +228,32 @@ class Agent(AbstractAgent):
                 score += reward
 
             if loss_episode:
-                avg_loss = np.array(loss_episode).mean()
+                avg_loss = np.vstack(loss_episode).mean(axis=0)
+                total_loss = avg_loss.sum()
                 print(
-                    "[INFO] episode %d\ttotal score: %d\tloss: %f"
-                    % (i_episode, score, avg_loss)
+                    "[INFO] episode %d total score: %d, total loss: %f\n"
+                    "actor_loss: %.3f critic_loss: %.3f"
+                    % (
+                        i_episode,
+                        score,
+                        total_loss,
+                        avg_loss[0],  # actor loss
+                        avg_loss[1],  # critic loss
+                    )
                 )
 
                 if self.args.log:
-                    wandb.log({"score": score, "avg_loss": avg_loss})
+                    wandb.log(
+                        {
+                            "score": score,
+                            "total_loss": total_loss,
+                            "actor loss": avg_loss[0],
+                            "critic loss": avg_loss[1],
+                        }
+                    )
 
-                if i_episode % self.args.save_period == 0:
-                    self.save_params(i_episode)
+            if i_episode % self.args.save_period == 0:
+                self.save_params(i_episode)
 
         # termination
         self.env.close()

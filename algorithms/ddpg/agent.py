@@ -109,7 +109,7 @@ class Agent(AbstractAgent):
         experiences: Tuple[
             torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor
         ],
-    ) -> torch.Tensor:
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Train the model after each episode."""
         states, actions, rewards, next_states, dones = experiences
 
@@ -139,10 +139,7 @@ class Agent(AbstractAgent):
         common_utils.soft_update(self.actor, self.actor_target, hyper_params["TAU"])
         common_utils.soft_update(self.critic, self.critic_target, hyper_params["TAU"])
 
-        # for logging
-        total_loss = critic_loss + actor_loss
-
-        return total_loss.data
+        return (actor_loss, critic_loss)
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
@@ -202,17 +199,32 @@ class Agent(AbstractAgent):
                 score += reward
 
             if loss_episode:
-                avg_loss = np.array(loss_episode).mean()
+                avg_loss = np.vstack(loss_episode).mean(axis=0)
+                total_loss = avg_loss.sum()
                 print(
-                    "[INFO] episode %d\ttotal score: %d\tloss: %f"
-                    % (i_episode, score, avg_loss)
+                    "[INFO] episode %d total score: %d, total loss: %f\n"
+                    "actor_loss: %.3f critic_loss: %.3f"
+                    % (
+                        i_episode,
+                        score,
+                        total_loss,
+                        avg_loss[0],  # actor loss
+                        avg_loss[1],  # critic loss
+                    )
                 )
 
                 if self.args.log:
-                    wandb.log({"score": score, "avg_loss": avg_loss})
+                    wandb.log(
+                        {
+                            "score": score,
+                            "total_loss": total_loss,
+                            "actor loss": avg_loss[0],
+                            "critic loss": avg_loss[1],
+                        }
+                    )
 
-                if i_episode % self.args.save_period == 0:
-                    self.save_params(i_episode)
+            if i_episode % self.args.save_period == 0:
+                self.save_params(i_episode)
 
         # termination
         self.env.close()

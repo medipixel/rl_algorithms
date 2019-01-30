@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
-"""TD3 agent for episodic tasks using PER in OpenAI Gym.
+"""TD3 with PER using demo agent for episodic tasks in OpenAI Gym.
 
 - Author: Kh Kim
 - Contact: kh.kim@medipixel.io
 - Paper: https://arxiv.org/pdf/1802.09477.pdf
-         https://arxiv.org/pdf/1511.05952.pdf
+         https://arxiv.org/pdf/1707.08817.pdf
 """
 
 import argparse
 import os
+import pickle
 from typing import Tuple
 
 import gym
@@ -19,8 +20,8 @@ import wandb
 
 import algorithms.utils as common_utils
 from algorithms.abstract_agent import AbstractAgent
+from algorithms.fd.perfd import PERfromDemo
 from algorithms.noise import GaussianNoise
-from algorithms.priortized_replay_buffer import PrioritizedReplayBuffer
 from algorithms.td3.model import Actor, Critic
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -29,14 +30,19 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 hyper_params = {
     "GAMMA": 0.99,
     "TAU": 1e-3,
-    "LR_ACTOR": 1e-4,
-    "LR_CRITIC_1": 1e-3,
-    "LR_CRITIC_2": 1e-3,
     "NOISE_STD": 1.0,
     "NOISE_CLIP": 0.5,
     "DELAYED_UPDATE": 2,
     "BUFFER_SIZE": int(1e5),
     "BATCH_SIZE": 128,
+    "MAX_EPISODE_STEPS": 300,
+    "EPISODE_NUM": 1500,
+    "PRETRAIN_STEP": 2000,
+    "MULTIPLE_LEARN": 1,  # multiple learning updates
+    "LAMDA1": 1.0,  # N-step return weight
+    "LAMDA2": 1e-5,  # l2 regularization weight
+    "LAMDA3": 1.0,  # actor loss contribution of prior weight
+    "N_STEP_RETURNS": 5,
     "PER_ALPHA": 0.5,
     "PER_BETA": 0.4,
     "PER_EPS": 1e-6,
@@ -47,7 +53,7 @@ class Agent(AbstractAgent):
     """ActorCritic interacting with environment.
 
     Attributes:
-        memory (PrioritizedReplayBuffer): replay memory
+        memory (ReplayBuffer): replay memory
         noise (GaussianNoise): random noise for exploration
         actor (nn.Module): actor model to select actions
         critic_1 (nn.Module): critic model to predict state values
@@ -76,6 +82,9 @@ class Agent(AbstractAgent):
         self.curr_state = np.zeros((self.state_dim,))
         self.n_step = 0
 
+        # environment setup
+        self.env._max_episode_steps = hyper_params["MAX_EPISODE_STEPS"]
+
         # create actor
         self.actor = Actor(self.state_dim, self.action_dim).to(device)
         self.actor_target = Actor(self.state_dim, self.action_dim).to(device)
@@ -91,13 +100,13 @@ class Agent(AbstractAgent):
 
         # create optimizers
         self.actor_optimizer = optim.Adam(
-            self.actor.parameters(), lr=hyper_params["LR_ACTOR"]
+            self.actor.parameters(), lr=1e-4, weight_decay=hyper_params["LAMDA2"]
         )
         self.critic_optimizer1 = optim.Adam(
-            self.critic_1.parameters(), lr=hyper_params["LR_CRITIC_1"]
+            self.critic_1.parameters(), lr=1e-3, weight_decay=hyper_params["LAMDA2"]
         )
         self.critic_optimizer2 = optim.Adam(
-            self.critic_2.parameters(), lr=hyper_params["LR_CRITIC_2"]
+            self.critic_2.parameters(), lr=1e-3, weight_decay=hyper_params["LAMDA2"]
         )
 
         # load the optimizer and model parameters
@@ -107,12 +116,17 @@ class Agent(AbstractAgent):
         # noise instance to make randomness of action
         self.noise = GaussianNoise(self.action_dim, -1.0, 1.0)
 
+        # load demo replay memory
+        with open(self.args.demo_path, "rb") as f:
+            demo = pickle.load(f)
+
         # replay memory
         self.beta = hyper_params["PER_BETA"]
-        self.memory = PrioritizedReplayBuffer(
+        self.memory = PERfromDemo(
             hyper_params["BUFFER_SIZE"],
             hyper_params["BATCH_SIZE"],
             self.args.seed,
+            demo=demo,
             alpha=hyper_params["PER_ALPHA"],
         )
 
@@ -128,7 +142,7 @@ class Agent(AbstractAgent):
             self.noise.sample(action_size, self.n_step)
         ).to(device)
 
-        return torch.clamp(selected_action, -1.0, 1.0)
+        return torch.clamp(selected_action, -0.1, 0.1)
 
     def step(self, action: torch.Tensor) -> Tuple[np.ndarray, np.float64, bool]:
         """Take an action and return the response of the env."""
@@ -143,7 +157,9 @@ class Agent(AbstractAgent):
         self, experiences: Tuple[torch.Tensor, ...]
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Train the model after each episode."""
-        states, actions, rewards, next_states, dones, weights, indexes = experiences
+        states, actions, rewards, next_states, dones, weights, indexes, eps_d = (
+            experiences
+        )
         masks = 1 - dones
 
         # get actions with noise
@@ -181,6 +197,14 @@ class Agent(AbstractAgent):
         critic_loss2.backward()
         self.critic_optimizer2.step()
 
+        # update priorities in PER
+        new_priorities = (
+            torch.pow(torch.min(values1, values2) - curr_returns, 2)
+            .data.cpu()
+            .numpy()
+            .squeeze()
+        )
+
         if self.n_step % hyper_params["DELAYED_UPDATE"] == 0:
             # train actor
             actions = self.actor(states)
@@ -198,14 +222,16 @@ class Agent(AbstractAgent):
             )
             common_utils.soft_update(self.actor, self.actor_target, hyper_params["TAU"])
 
-        # update priorities in PER
-        new_priorities = (
-            (torch.pow(torch.min(values1, values2) - curr_returns, 2) * weights)
-            .data.cpu()
-            .numpy()
-        )
+            # update priorities
+            new_priorities += (
+                hyper_params["LAMDA3"] * torch.pow(actor_loss, 2).data.cpu().numpy()
+            )
+        else:
+            actor_loss = 0.0
 
         new_priorities += hyper_params["PER_EPS"]
+        new_priorities += eps_d
+
         self.memory.update_priorities(indexes, new_priorities)
 
         return (actor_loss, critic_loss1, critic_loss2)
@@ -252,12 +278,50 @@ class Agent(AbstractAgent):
             wandb.config.update(hyper_params)
             wandb.watch([self.actor, self.critic_1, self.critic_2], log="parameters")
 
-        step = 0
+        pretrain_loss = list()
+        # pre-training by demo
+        self.n_step = 0
+        print("[INFO] Pre-Train %d step." % hyper_params["PRETRAIN_STEP"])
+        for i_step in range(1, hyper_params["PRETRAIN_STEP"] + 1):
+            experiences = self.memory.sample()
+            loss = self.update_model(experiences)
+            pretrain_loss.append(loss)  # for logging
+            self.n_step += 1
+
+            # logging
+            avg_loss = np.vstack(pretrain_loss).mean(axis=0)
+            total_loss = avg_loss.sum()
+            if self.args.log:
+                wandb.log(
+                    {
+                        "total_loss": total_loss,
+                        "actor loss": avg_loss[0] * hyper_params["DELAYED_UPDATE"],
+                        "critic_1 loss": avg_loss[1],
+                        "critic_2 loss": avg_loss[2],
+                    }
+                )
+
+            if i_step == 1 or i_step % 500 == 0:
+                print(
+                    "[INFO] step %d total loss: %f\n"
+                    "actor_loss: %.3f critic_1_loss: %.3f critic_2_loss: %.3f "
+                    % (
+                        i_step,
+                        total_loss,
+                        avg_loss[0] * hyper_params["DELAYED_UPDATE"],  # actor loss
+                        avg_loss[1],  # critic1 loss
+                        avg_loss[2],  # critic2 loss
+                    )
+                )
+
+        # train
+        print("[INFO] Train Start.")
+        loss_episode = list()
+        self.n_step = 0
         for i_episode in range(1, self.args.episode_num + 1):
             state = self.env.reset()
             done = False
             score = 0
-            loss_episode = list()
 
             while not done:
                 if self.args.render and i_episode >= self.args.render_after:
@@ -267,14 +331,20 @@ class Agent(AbstractAgent):
                 next_state, reward, done = self.step(action)
 
                 if len(self.memory) >= hyper_params["BATCH_SIZE"]:
-                    experiences = self.memory.sample()
-                    loss = self.update_model(experiences)
-                    loss_episode.append(loss)  # for logging
+                    multiple_loss = []
+                    for _ in range(hyper_params["MULTIPLE_LEARN"]):
+                        experiences = self.memory.sample()
+                        loss = self.update_model(experiences)
+                        multiple_loss.append(loss)
+                    loss_episode.append(
+                        np.vstack(multiple_loss).mean(axis=0)
+                    )  # for logging
 
                 state = next_state
                 score += reward
-                step += 1
+                self.n_step += 1
 
+            # logging
             if loss_episode:
                 avg_loss = np.vstack(loss_episode).mean(axis=0)
                 total_loss = avg_loss.sum()

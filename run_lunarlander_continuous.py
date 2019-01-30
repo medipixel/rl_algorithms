@@ -77,6 +77,9 @@ elif args.algo == "per-td3":
     from algorithms.per.td3_agent import Agent
 elif args.algo == "per-sac":
     from algorithms.per.sac_agent import Agent
+# from demo
+elif args.algo == "fd-td3":
+    from algorithms.fd.td3_agent import Agent
 
 
 def main():

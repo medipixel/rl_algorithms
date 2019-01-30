@@ -19,7 +19,7 @@ class ReplayBuffer:
     ddpg-pendulum/ddpg_agent.py
 
     Attributes:
-        memory (deque): deque of replay buffer
+        buffer (deque): deque of replay buffer
         batch_size (int): size of a batched sampled from replay buffer for training
 
     """
@@ -36,13 +36,7 @@ class ReplayBuffer:
             demo (deque) : demonstration deque
 
         """
-        self.memory = deque(maxlen=buffer_size) if not demo else demo
-        # TODO: if use one buffer both demo and experience
-        """
-        self.memory: deque = deque(maxlen=buffer_size)
-
-        if demo:
-            self.memory.extend(demo)"""
+        self.buffer = deque(maxlen=buffer_size) if not demo else demo
 
         self.batch_size = batch_size
         random.seed(seed)
@@ -56,13 +50,13 @@ class ReplayBuffer:
         done: torch.Tensor,
     ):
         """Add a new experience to memory."""
-        self.memory.append((state, action, reward, next_state, done))
+        self.buffer.append((state, action, reward, next_state, done))
 
     def sample(
         self
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """Randomly sample a batch of experiences from memory."""
-        experiences = random.sample(self.memory, k=self.batch_size)
+        experiences = random.sample(self.buffer, k=self.batch_size)
 
         states, actions, rewards, next_states, dones = [], [], [], [], []
 
@@ -83,4 +77,4 @@ class ReplayBuffer:
 
     def __len__(self) -> int:
         """Return the current size of internal memory."""
-        return len(self.memory)
+        return len(self.buffer)

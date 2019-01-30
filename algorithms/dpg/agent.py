@@ -75,7 +75,7 @@ class Agent(AbstractAgent):
 
     def update_model(
         self, experience: Tuple[np.ndarray, torch.Tensor, np.float64, np.ndarray, bool]
-    ) -> torch.Tensor:
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Train the model after each episode."""
         state, action, reward, next_state, done = experience
         state = torch.FloatTensor(state).to(device)
@@ -103,10 +103,7 @@ class Agent(AbstractAgent):
         actor_loss.backward()
         self.actor_optimizer.step()
 
-        # for logging
-        total_loss = critic_loss + actor_loss
-
-        return total_loss.data
+        return (actor_loss, critic_loss)
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
@@ -160,15 +157,32 @@ class Agent(AbstractAgent):
 
                 loss_episode.append(loss)  # for logging
 
-            avg_loss = np.array(loss_episode).mean()
+            # logging
+            avg_loss = np.vstack(loss_episode).mean(axis=0)
+            total_loss = avg_loss.sum()
             print(
-                "[INFO] episode %d\ttotal score: %d\tloss: %f"
-                % (i_episode, score, avg_loss)
+                "[INFO] episode %d total score: %d, total loss: %f\n"
+                "actor_loss: %.3f critic_1_loss: %.3f critic_2_loss: %.3f "
+                % (
+                    i_episode,
+                    score,
+                    total_loss,
+                    avg_loss[0] * hyper_params["DELAYED_UPDATE"],  # actor loss
+                    avg_loss[1],  # critic1 loss
+                    avg_loss[2],  # critic2 loss
+                )
             )
 
             if self.args.log:
-                wandb.log({"score": score, "avg_loss": avg_loss})
-
+                wandb.log(
+                    {
+                        "score": score,
+                        "total_loss": total_loss,
+                        "actor loss": avg_loss[0] * hyper_params["DELAYED_UPDATE"],
+                        "critic_1 loss": avg_loss[1],
+                        "critic_2 loss": avg_loss[2],
+                    }
+                )
             if i_episode % self.args.save_period == 0:
                 self.save_params(i_episode)
 
