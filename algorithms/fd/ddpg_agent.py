@@ -19,11 +19,13 @@ import torch
 import torch.optim as optim
 import wandb
 
-import algorithms.utils as common_utils
-from algorithms.abstract_agent import AbstractAgent
+import algorithms.common.utils.helper_functions as common_utils
+from algorithms.common.abstract.agent import AbstractAgent
+from algorithms.common.noise.ou_noise import OUNoise
+from algorithms.common.replaybuffer.priortized_replay_buffer_fd import (
+    PrioritizedReplayBufferfD,
+)
 from algorithms.ddpg.model import Actor, Critic
-from algorithms.fd.priortized_replay_buffer_fd import PrioritizedReplayBufferfD
-from algorithms.noise import OUNoise
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 

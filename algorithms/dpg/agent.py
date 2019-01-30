@@ -17,7 +17,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import wandb
 
-from algorithms.abstract_agent import AbstractAgent
+from algorithms.common.abstract.agent import AbstractAgent
 from algorithms.dpg.model import Actor, Critic
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

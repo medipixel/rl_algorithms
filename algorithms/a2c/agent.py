@@ -17,7 +17,7 @@ import torch.optim as optim
 import wandb
 
 from algorithms.a2c.model import ActorCritic
-from algorithms.abstract_agent import AbstractAgent
+from algorithms.common.abstract.agent import AbstractAgent
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 

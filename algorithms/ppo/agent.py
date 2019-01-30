@@ -19,7 +19,7 @@ import torch.optim as optim
 import wandb
 
 import algorithms.ppo.utils as ppo_utils
-from algorithms.abstract_agent import AbstractAgent
+from algorithms.common.abstract.agent import AbstractAgent
 from algorithms.gae import GAE
 from algorithms.ppo.model import Actor, Critic
 

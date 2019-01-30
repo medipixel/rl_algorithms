@@ -21,7 +21,7 @@ import torch
 import wandb
 
 import algorithms.trpo.utils as trpo_utils
-from algorithms.abstract_agent import AbstractAgent
+from algorithms.common.abstract.agent import AbstractAgent
 from algorithms.gae import GAE
 from algorithms.trpo.model import Actor, Critic
 
