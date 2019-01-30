@@ -101,7 +101,7 @@ class PrioritizedReplayBufferfD(ReplayBuffer):
         idx = self.next_idx
         # buffer is full
         if (self.next_idx + 1) % (self.buffer_size + self.demo_size) == 0:
-            self.next_idx = self.demo_size + 1
+            self.next_idx = self.demo_size
         else:
             self.next_idx = self.next_idx + 1
         super().add(state, action, reward, next_state, done)

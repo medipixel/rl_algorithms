@@ -38,8 +38,8 @@ hyper_params = {
     "LAMDA1": 1.0,  # N-step return weight
     "LAMDA2": 1e-5,  # l2 regularization weight
     "LAMDA3": 1.0,  # actor loss contribution of prior weight
-    "PER_ALPHA": 0.5,
-    "PER_BETA": 0.4,
+    "PER_ALPHA": 0.3,
+    "PER_BETA": 1.0,
     "PER_EPS": 1e-6,
 }
 
