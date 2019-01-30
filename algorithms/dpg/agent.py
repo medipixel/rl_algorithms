@@ -23,7 +23,7 @@ from algorithms.dpg.model import Actor, Critic
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # hyper parameters
-hyper_params = {"GAMMA": 0.99}
+hyper_params = {"GAMMA": 0.99, "LR_ACTOR": 1e-4, "LR_CRITIC": 1e-3}
 
 
 class Agent(AbstractAgent):
@@ -52,8 +52,12 @@ class Agent(AbstractAgent):
         self.critic = Critic(self.state_dim, self.action_dim).to(device)
 
         # create optimizer
-        self.actor_optimizer = optim.Adam(self.actor.parameters())
-        self.critic_optimizer = optim.Adam(self.critic.parameters())
+        self.actor_optimizer = optim.Adam(
+            self.actor.parameters(), lr=hyper_params["LR_ACTOR"]
+        )
+        self.critic_optimizer = optim.Adam(
+            self.critic.parameters(), lr=hyper_params["LR_CRITIC"]
+        )
 
         # load stored parameters
         if args.load_from is not None and os.path.exists(args.load_from):

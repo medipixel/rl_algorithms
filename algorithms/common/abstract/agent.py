@@ -59,11 +59,11 @@ class AbstractAgent(ABC):
         pass
 
     @abstractmethod
-    def update_model(self):
+    def update_model(self, *args):
         pass
 
     @abstractmethod
-    def load_params(self):
+    def load_params(self, *args):
         pass
 
     @abstractmethod

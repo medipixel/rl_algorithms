@@ -31,14 +31,17 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 hyper_params = {
     "GAMMA": 0.99,
     "TAU": 1e-3,
-    "LR_ACTOR": 1e-4,
-    "LR_CRITIC_1": 1e-3,
-    "LR_CRITIC_2": 1e-3,
     "NOISE_STD": 1.0,
     "NOISE_CLIP": 0.5,
     "DELAYED_UPDATE": 2,
     "BUFFER_SIZE": int(1e5),
     "BATCH_SIZE": 128,
+    "LR_ACTOR": 1e-4,
+    "LR_CRITIC_1": 1e-3,
+    "LR_CRITIC_2": 1e-3,
+    "GAUSSIAN_NOISE_MIN_SIGMA": 1.0,
+    "GAUSSIAN_NOISE_MAX_SIGMA": 1.0,
+    "GAUSSIAN_NOISE_DECAY_PERIOD": 1000000,
     "PER_ALPHA": 0.5,
     "PER_BETA": 0.4,
     "PER_EPS": 1e-6,
@@ -107,7 +110,12 @@ class Agent(AbstractAgent):
             self.load_params(args.load_from)
 
         # noise instance to make randomness of action
-        self.noise = GaussianNoise(self.args.seed)
+        self.noise = GaussianNoise(
+            self.args.seed,
+            hyper_params["GAUSSIAN_NOISE_MIN_SIGMA"],
+            hyper_params["GAUSSIAN_NOISE_MAX_SIGMA"],
+            hyper_params["GAUSSIAN_NOISE_DECAY_PERIOD"],
+        )
 
         # replay memory
         self.beta = hyper_params["PER_BETA"]

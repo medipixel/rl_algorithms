@@ -23,7 +23,7 @@ from algorithms.reinforce.model import ActorCritic
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # hyper parameters
-hyper_params = {"GAMMA": 0.99, "STD": 1.0}
+hyper_params = {"GAMMA": 0.99, "STD": 1.0, "LR_MODEL": 1e-3}
 
 
 class Agent(AbstractAgent):
@@ -58,7 +58,9 @@ class Agent(AbstractAgent):
         ).to(device)
 
         # create optimizer
-        self.optimizer = optim.Adam(self.model.parameters())
+        self.optimizer = optim.Adam(
+            self.model.parameters(), lr=hyper_params["LR_MODEL"]
+        )
 
         # load stored parameters
         if args.load_from is not None and os.path.exists(args.load_from):

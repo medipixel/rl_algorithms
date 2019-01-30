@@ -34,6 +34,10 @@ hyper_params = {
     "BUFFER_SIZE": int(1e5),
     "BATCH_SIZE": 1024,
     "DEMO_BATCH_SIZE": 128,
+    "LR_ACTOR": 1e-4,
+    "LR_CRITIC": 1e-3,
+    "OU_NOISE_THETA": 0.0,
+    "OU_NOISE_SIGMA": 0.0,
     "LAMBDA1": 1e-3,
     "LAMBDA2": 1.0,
 }
@@ -78,8 +82,12 @@ class Agent(AbstractAgent):
         self.critic_target.load_state_dict(self.critic.state_dict())
 
         # create optimizers
-        self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=1e-4)
-        self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=1e-3)
+        self.actor_optimizer = optim.Adam(
+            self.actor.parameters(), lr=hyper_params["LR_ACTOR"]
+        )
+        self.critic_optimizer = optim.Adam(
+            self.critic.parameters(), lr=hyper_params["LR_CRITIC"]
+        )
 
         # set hyper parameters
         self.lambda1 = hyper_params["LAMBDA1"]
@@ -90,7 +98,12 @@ class Agent(AbstractAgent):
             self.load_params(args.load_from)
 
         # noise instance to make randomness of action
-        self.noise = OUNoise(self.action_dim, self.args.seed, theta=0.0, sigma=0.0)
+        self.noise = OUNoise(
+            self.action_dim,
+            self.args.seed,
+            theta=hyper_params["OU_NOISE_THETA"],
+            sigma=hyper_params["OU_NOISE_SIGMA"],
+        )
 
         # replay memory
         self.memory = ReplayBuffer(

@@ -38,6 +38,12 @@ hyper_params = {
     "DELAYED_UPDATE": 2,
     "BUFFER_SIZE": int(1e5),
     "BATCH_SIZE": 128,
+    "LR_ACTOR": 1e-4,
+    "LR_CRITIC_1": 1e-3,
+    "LR_CRITIC_2": 1e-3,
+    "GAUSSIAN_NOISE_MIN_SIGMA": 1.0,
+    "GAUSSIAN_NOISE_MAX_SIGMA": 1.0,
+    "GAUSSIAN_NOISE_DECAY_PERIOD": 1000000,
     "PRETRAIN_STEP": 0,
     "MULTIPLE_LEARN": 1,  # multiple learning updates
     "LAMDA1": 1.0,  # N-step return weight
@@ -97,13 +103,19 @@ class Agent(AbstractAgent):
 
         # create optimizers
         self.actor_optimizer = optim.Adam(
-            self.actor.parameters(), lr=1e-4, weight_decay=hyper_params["LAMDA2"]
+            self.actor.parameters(),
+            lr=hyper_params["LR_ACTOR"],
+            weight_decay=hyper_params["LAMDA2"],
         )
         self.critic_optimizer1 = optim.Adam(
-            self.critic_1.parameters(), lr=1e-3, weight_decay=hyper_params["LAMDA2"]
+            self.critic_1.parameters(),
+            lr=hyper_params["LR_CRITIC_1"],
+            weight_decay=hyper_params["LAMDA2"],
         )
         self.critic_optimizer2 = optim.Adam(
-            self.critic_2.parameters(), lr=1e-3, weight_decay=hyper_params["LAMDA2"]
+            self.critic_2.parameters(),
+            lr=hyper_params["LR_CRITIC_2"],
+            weight_decay=hyper_params["LAMDA2"],
         )
 
         # load the optimizer and model parameters
@@ -111,7 +123,12 @@ class Agent(AbstractAgent):
             self.load_params(args.load_from)
 
         # noise instance to make randomness of action
-        self.noise = GaussianNoise(self.args.seed)
+        self.noise = GaussianNoise(
+            self.args.seed,
+            hyper_params["GAUSSIAN_NOISE_MIN_SIGMA"],
+            hyper_params["GAUSSIAN_NOISE_MAX_SIGMA"],
+            hyper_params["GAUSSIAN_NOISE_DECAY_PERIOD"],
+        )
 
         # load demo replay memory
         with open(self.args.demo_path, "rb") as f:

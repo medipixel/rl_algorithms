@@ -35,6 +35,10 @@ hyper_params = {
     "TAU": 1e-3,
     "BUFFER_SIZE": int(1e5),
     "BATCH_SIZE": 128,
+    "LR_ACTOR": 1e-4,
+    "LR_CRITIC": 1e-3,
+    "OU_NOISE_THETA": 0.0,
+    "OU_NOISE_SIGMA": 0.0,
     "PRETRAIN_STEP": 0,
     "MULTIPLE_LEARN": 1,  # multiple learning updates
     "LAMDA1": 1.0,  # N-step return weight
@@ -87,10 +91,14 @@ class Agent(AbstractAgent):
 
         # create optimizers
         self.actor_optimizer = optim.Adam(
-            self.actor.parameters(), lr=1e-4, weight_decay=hyper_params["LAMDA2"]
+            self.actor.parameters(),
+            lr=hyper_params["LR_ACTOR"],
+            weight_decay=hyper_params["LAMDA2"],
         )
         self.critic_optimizer = optim.Adam(
-            self.critic.parameters(), lr=1e-3, weight_decay=hyper_params["LAMDA2"]
+            self.critic.parameters(),
+            lr=hyper_params["LR_CRITIC"],
+            weight_decay=hyper_params["LAMDA2"],
         )
 
         # load the optimizer and model parameters
@@ -98,7 +106,12 @@ class Agent(AbstractAgent):
             self.load_params(args.load_from)
 
         # noise instance to make randomness of action
-        self.noise = OUNoise(self.action_dim, self.args.seed, theta=0.0, sigma=0.0)
+        self.noise = OUNoise(
+            self.action_dim,
+            self.args.seed,
+            theta=hyper_params["OU_NOISE_THETA"],
+            sigma=hyper_params["OU_NOISE_SIGMA"],
+        )
 
         # load demo replay memory
         with open(self.args.demo_path, "rb") as f:

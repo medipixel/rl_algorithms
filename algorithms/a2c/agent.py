@@ -23,7 +23,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 # hyper parameters
-hyper_params = {"GAMMA": 0.99, "STD": 1.0}
+hyper_params = {"GAMMA": 0.99, "STD": 1.0, "LR": 1e-3}
 
 
 class Agent(AbstractAgent):
@@ -54,7 +54,7 @@ class Agent(AbstractAgent):
         ).to(device)
 
         # create optimizer
-        self.optimizer = optim.Adam(self.model.parameters())
+        self.optimizer = optim.Adam(self.model.parameters(), lr=hyper_params["LR"])
 
         if args.load_from is not None and os.path.exists(args.load_from):
             self.load_params(args.load_from)
@@ -74,7 +74,7 @@ class Agent(AbstractAgent):
         action = action.detach().cpu().numpy()
         next_state, reward, done, _ = self.env.step(action)
 
-        return (next_state, reward, done)
+        return next_state, reward, done
 
     def update_model(
         self, experience: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]
