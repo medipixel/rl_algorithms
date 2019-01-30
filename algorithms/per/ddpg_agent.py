@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""DDPG agent for episodic tasks using PER in OpenAI Gym.
+"""DDPG agent with PER for episodic tasks in OpenAI Gym.
 
 - Author: Kh Kim
 - Contact: kh.kim@medipixel.io
@@ -139,7 +139,7 @@ class Agent(AbstractAgent):
         next_actions = self.actor_target(next_states)
         next_values = self.critic_target(next_states, next_actions)
         curr_returns = rewards + hyper_params["GAMMA"] * next_values * masks
-        curr_returns = curr_returns.to(device)
+        curr_returns = curr_returns.to(device).detach()
 
         # train critic
         values = self.critic(states, actions)
@@ -150,7 +150,7 @@ class Agent(AbstractAgent):
 
         # train actor
         actions = self.actor(states)
-        actor_loss = -self.critic(states, actions).mean()
+        actor_loss = torch.mean(-self.critic(states, actions) * weights)
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
         self.actor_optimizer.step()

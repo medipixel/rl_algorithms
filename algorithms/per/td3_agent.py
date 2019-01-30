@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""TD3 agent for episodic tasks using PER in OpenAI Gym.
+"""TD3 agent with PER for episodic tasks in OpenAI Gym.
 
 - Author: Kh Kim
 - Contact: kh.kim@medipixel.io
@@ -184,7 +184,7 @@ class Agent(AbstractAgent):
         if self.n_step % hyper_params["DELAYED_UPDATE"] == 0:
             # train actor
             actions = self.actor(states)
-            actor_loss = -self.critic_1(states, actions).mean()
+            actor_loss = torch.mean(-self.critic_1(states, actions) * weights)
             self.actor_optimizer.zero_grad()
             actor_loss.backward()
             self.actor_optimizer.step()
@@ -261,8 +261,12 @@ class Agent(AbstractAgent):
                 action = self.select_action(state)
                 next_state, reward, done = self.step(action)
 
+                # increase beta
+                fraction = min(float(i_episode) / self.args.max_episode_steps, 1.0)
+                self.beta = self.beta + fraction * (1.0 - self.beta)
+
                 if len(self.memory) >= hyper_params["BATCH_SIZE"]:
-                    experiences = self.memory.sample()
+                    experiences = self.memory.sample(self.beta)
                     loss = self.update_model(experiences)
                     loss_episode.append(loss)  # for logging
 

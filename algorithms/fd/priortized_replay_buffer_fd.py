@@ -20,7 +20,7 @@ from algorithms.segment_tree import MinSegmentTree, SumSegmentTree
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-class PERfromDemo(ReplayBuffer):
+class PrioritizedReplayBufferfD(ReplayBuffer):
     """Create Prioritized Replay buffer.
 
     Taken from OpenAI baselines github repository:
@@ -61,7 +61,9 @@ class PERfromDemo(ReplayBuffer):
             epsilon_d (float) : epsilon_d parameter to update priority using demo
 
         """
-        super(PERfromDemo, self).__init__(buffer_size, batch_size, seed, demo)
+        super(PrioritizedReplayBufferfD, self).__init__(
+            buffer_size, batch_size, seed, demo
+        )
         assert alpha >= 0
         self.buffer: deque = deque(maxlen=buffer_size)
         self.demo = demo
