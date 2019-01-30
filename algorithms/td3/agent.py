@@ -17,10 +17,10 @@ import torch.nn.functional as F
 import torch.optim as optim
 import wandb
 
-import algorithms.utils as common_utils
-from algorithms.abstract_agent import AbstractAgent
-from algorithms.noise import GaussianNoise
-from algorithms.replay_buffer import ReplayBuffer
+import algorithms.common.utils.helper_functions as common_utils
+from algorithms.common.abstract.agent import AbstractAgent
+from algorithms.common.noise.gaussian_noise import GaussianNoise
+from algorithms.common.replaybuffer.replay_buffer import ReplayBuffer
 from algorithms.td3.model import Actor, Critic
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -34,6 +34,12 @@ hyper_params = {
     "DELAYED_UPDATE": 2,
     "BUFFER_SIZE": int(1e5),
     "BATCH_SIZE": 128,
+    "LR_ACTOR": 1e-4,
+    "LR_CRITIC_1": 1e-3,
+    "LR_CRITIC_2": 1e-3,
+    "GAUSSIAN_NOISE_MIN_SIGMA": 1.0,
+    "GAUSSIAN_NOISE_MAX_SIGMA": 1.0,
+    "GAUSSIAN_NOISE_DECAY_PERIOD": 1000000,
 }
 
 
@@ -84,16 +90,27 @@ class Agent(AbstractAgent):
         self.critic_target2.load_state_dict(self.critic_2.state_dict())
 
         # create optimizers
-        self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=1e-4)
-        self.critic_optimizer1 = optim.Adam(self.critic_1.parameters(), lr=1e-3)
-        self.critic_optimizer2 = optim.Adam(self.critic_2.parameters(), lr=1e-3)
+        self.actor_optimizer = optim.Adam(
+            self.actor.parameters(), lr=hyper_params["LR_ACTOR"]
+        )
+        self.critic_optimizer1 = optim.Adam(
+            self.critic_1.parameters(), lr=hyper_params["LR_CRITIC_1"]
+        )
+        self.critic_optimizer2 = optim.Adam(
+            self.critic_2.parameters(), lr=hyper_params["LR_CRITIC_2"]
+        )
 
         # load the optimizer and model parameters
         if args.load_from is not None and os.path.exists(args.load_from):
             self.load_params(args.load_from)
 
         # noise instance to make randomness of action
-        self.noise = GaussianNoise(self.action_dim, -1.0, 1.0)
+        self.noise = GaussianNoise(
+            self.args.seed,
+            hyper_params["GAUSSIAN_NOISE_MIN_SIGMA"],
+            hyper_params["GAUSSIAN_NOISE_MAX_SIGMA"],
+            hyper_params["GAUSSIAN_NOISE_DECAY_PERIOD"],
+        )
 
         # replay memory
         self.memory = ReplayBuffer(
@@ -128,7 +145,7 @@ class Agent(AbstractAgent):
         experiences: Tuple[
             torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor
         ],
-    ) -> torch.Tensor:
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Train the model after each episode."""
         states, actions, rewards, next_states, dones = experiences
         masks = 1 - dones
@@ -168,9 +185,6 @@ class Agent(AbstractAgent):
         critic_loss2.backward()
         self.critic_optimizer2.step()
 
-        # for logging
-        total_loss = critic_loss1 + critic_loss2
-
         if self.n_step % hyper_params["DELAYED_UPDATE"] == 0:
             # train actor
             actions = self.actor(states)
@@ -187,11 +201,10 @@ class Agent(AbstractAgent):
                 self.critic_2, self.critic_target2, hyper_params["TAU"]
             )
             common_utils.soft_update(self.actor, self.actor_target, hyper_params["TAU"])
+        else:
+            actor_loss = 0.0
 
-            # for logging
-            total_loss += actor_loss
-
-        return total_loss.data
+        return actor_loss, critic_loss1, critic_loss2
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
@@ -258,15 +271,33 @@ class Agent(AbstractAgent):
                 score += reward
                 self.n_step += 1
 
+            # logging
             if loss_episode:
-                avg_loss = np.array(loss_episode).mean()
+                avg_loss = np.vstack(loss_episode).mean(axis=0)
+                total_loss = avg_loss.sum()
                 print(
-                    "[INFO] episode %d\ttotal score: %d\tloss: %f"
-                    % (i_episode, score, avg_loss)
+                    "[INFO] episode %d total score: %d, total loss: %f\n"
+                    "actor_loss: %.3f critic_1_loss: %.3f critic_2_loss: %.3f "
+                    % (
+                        i_episode,
+                        score,
+                        total_loss,
+                        avg_loss[0] * hyper_params["DELAYED_UPDATE"],  # actor loss
+                        avg_loss[1],  # critic1 loss
+                        avg_loss[2],  # critic2 loss
+                    )
                 )
 
-            if self.args.log:
-                wandb.log({"score": score, "avg_loss": avg_loss})
+                if self.args.log:
+                    wandb.log(
+                        {
+                            "score": score,
+                            "total loss": total_loss,
+                            "actor loss": avg_loss[0] * hyper_params["DELAYED_UPDATE"],
+                            "critic_1 loss": avg_loss[1],
+                            "critic_2 loss": avg_loss[2],
+                        }
+                    )
 
             if i_episode % self.args.save_period == 0:
                 self.save_params(i_episode)

@@ -24,6 +24,7 @@ class AbstractAgent(ABC):
         args (argparse.Namespace): arguments including hyperparameters and training settings
         state_dim (int): dimension of state space
         action_dim (int): dimension of action space
+        sha (str): sha code of current git commit
 
     """
 
@@ -45,6 +46,10 @@ class AbstractAgent(ABC):
         self.state_dim = env.observation_space.shape[0]
         self.action_dim = env.action_space.shape[0]
 
+        # for logging
+        repo = git.Repo(search_parent_directories=True)
+        self.sha = repo.head.object.hexsha[:7]
+
     @abstractmethod
     def select_action(self, state: np.ndarray):
         pass
@@ -54,11 +59,11 @@ class AbstractAgent(ABC):
         pass
 
     @abstractmethod
-    def update_model(self):
+    def update_model(self, *args):
         pass
 
     @abstractmethod
-    def load_params(self):
+    def load_params(self, *args):
         pass
 
     @abstractmethod
@@ -66,11 +71,8 @@ class AbstractAgent(ABC):
         if not os.path.exists("./save"):
             os.mkdir("./save")
 
-        repo = git.Repo(search_parent_directories=True)
-        sha = repo.head.object.hexsha
-
         path = os.path.join(
-            "./save/" + name + "_" + sha[:7] + "_ep_" + str(n_episode) + ".pt"
+            "./save/" + name + "_" + self.sha + "_ep_" + str(n_episode) + ".pt"
         )
         torch.save(params, path)
 

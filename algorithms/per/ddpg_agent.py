@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""DDPG agent for episodic tasks using PER in OpenAI Gym.
+"""DDPG agent with PER for episodic tasks in OpenAI Gym.
 
 - Author: Kh Kim
 - Contact: kh.kim@medipixel.io
@@ -14,15 +14,16 @@ from typing import List, Tuple
 import gym
 import numpy as np
 import torch
-import torch.nn.functional as F
 import torch.optim as optim
 import wandb
 
-import algorithms.utils as common_utils
-from algorithms.abstract_agent import AbstractAgent
+import algorithms.common.utils.helper_functions as common_utils
+from algorithms.common.abstract.agent import AbstractAgent
+from algorithms.common.noise.ou_noise import OUNoise
+from algorithms.common.replaybuffer.priortized_replay_buffer import (
+    PrioritizedReplayBuffer,
+)
 from algorithms.ddpg.model import Actor, Critic
-from algorithms.noise import OUNoise
-from algorithms.priortized_replay_buffer import PrioritizedReplayBuffer
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -32,6 +33,10 @@ hyper_params = {
     "TAU": 1e-3,
     "BUFFER_SIZE": int(1e5),
     "BATCH_SIZE": 128,
+    "LR_ACTOR": 1e-4,
+    "LR_CRITIC": 1e-3,
+    "OU_NOISE_THETA": 0.0,
+    "OU_NOISE_SIGMA": 0.0,
     "PER_ALPHA": 0.5,
     "PER_BETA": 0.4,
     "PER_EPS": 1e-6,
@@ -78,15 +83,24 @@ class Agent(AbstractAgent):
         self.critic_target.load_state_dict(self.critic.state_dict())
 
         # create optimizers
-        self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=1e-4)
-        self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=1e-3)
+        self.actor_optimizer = optim.Adam(
+            self.actor.parameters(), lr=hyper_params["LR_ACTOR"]
+        )
+        self.critic_optimizer = optim.Adam(
+            self.critic.parameters(), lr=hyper_params["LR_CRITIC"]
+        )
 
         # load the optimizer and model parameters
         if args.load_from is not None and os.path.exists(args.load_from):
             self.load_params(args.load_from)
 
         # noise instance to make randomness of action
-        self.noise = OUNoise(self.action_dim, self.args.seed, theta=0.0, sigma=0.0)
+        self.noise = OUNoise(
+            self.action_dim,
+            self.args.seed,
+            theta=hyper_params["OU_NOISE_THETA"],
+            sigma=hyper_params["OU_NOISE_SIGMA"],
+        )
 
         # replay memory
         self.beta = hyper_params["PER_BETA"]
@@ -129,7 +143,7 @@ class Agent(AbstractAgent):
             torch.Tensor,
             List[int],
         ],
-    ) -> torch.Tensor:
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Train the model after each episode."""
 
         states, actions, rewards, next_states, dones, weights, indexes = experiences
@@ -140,18 +154,18 @@ class Agent(AbstractAgent):
         next_actions = self.actor_target(next_states)
         next_values = self.critic_target(next_states, next_actions)
         curr_returns = rewards + hyper_params["GAMMA"] * next_values * masks
-        curr_returns = curr_returns.to(device)
+        curr_returns = curr_returns.to(device).detach()
 
         # train critic
         values = self.critic(states, actions)
-        critic_loss = F.mse_loss(values, curr_returns) * torch.mean(weights)
+        critic_loss = torch.mean((values - curr_returns).pow(2) * weights)
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
         self.critic_optimizer.step()
 
         # train actor
         actions = self.actor(states)
-        actor_loss = -self.critic(states, actions).mean()
+        actor_loss = torch.mean(-self.critic(states, actions) * weights)
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
         self.actor_optimizer.step()
@@ -161,14 +175,11 @@ class Agent(AbstractAgent):
         common_utils.soft_update(self.critic, self.critic_target, hyper_params["TAU"])
 
         # update priorities in PER
-        new_priorties = torch.abs(values - curr_returns) * weights
-        new_priorties = new_priorties.data.cpu().numpy() + hyper_params["PER_EPS"]
-        self.memory.update_priorities(indexes, new_priorties)
+        new_priorities = (values - curr_returns).pow(2)
+        new_priorities = new_priorities.data.cpu().numpy() + hyper_params["PER_EPS"]
+        self.memory.update_priorities(indexes, new_priorities)
 
-        # for logging
-        total_loss = critic_loss + actor_loss
-
-        return total_loss.data
+        return actor_loss, critic_loss
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
@@ -231,18 +242,34 @@ class Agent(AbstractAgent):
                 state = next_state
                 score += reward
 
+            # logging
             if loss_episode:
-                avg_loss = np.array(loss_episode).mean()
+                avg_loss = np.vstack(loss_episode).mean(axis=0)
+                total_loss = avg_loss.sum()
                 print(
-                    "[INFO] episode %d\ttotal score: %d\tloss: %f"
-                    % (i_episode, score, avg_loss)
+                    "[INFO] episode %d total score: %d, total loss: %f\n"
+                    "actor_loss: %.3f critic_loss: %.3f"
+                    % (
+                        i_episode,
+                        score,
+                        total_loss,
+                        avg_loss[0],  # actor loss
+                        avg_loss[1],  # critic loss
+                    )
                 )
 
                 if self.args.log:
-                    wandb.log({"score": score, "avg_loss": avg_loss})
+                    wandb.log(
+                        {
+                            "score": score,
+                            "total loss": total_loss,
+                            "actor loss": avg_loss[0],
+                            "critic loss": avg_loss[1],
+                        }
+                    )
 
-                if i_episode % self.args.save_period == 0:
-                    self.save_params(i_episode)
+            if i_episode % self.args.save_period == 0:
+                self.save_params(i_episode)
 
         # termination
         self.env.close()

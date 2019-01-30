@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Noise classes for baselines."""
+"""OUNoise class for baselines."""
 
 import copy
 import random
@@ -40,36 +40,7 @@ class OUNoise:
         """Update internal state and return it as a noise sample."""
         x = self.state
         dx = self.theta * (self.mu - x) + self.sigma * np.array(
-            [random.random() for i in range(len(x))]
+            [random.random() for _ in range(len(x))]
         )
         self.state = x + dx
         return self.state
-
-
-class GaussianNoise:
-    """Gaussian Noise.
-
-    Taken from https://github.com/vitchyr/rlkit
-    """
-
-    def __init__(
-        self,
-        action_low: float,
-        action_high: float,
-        min_sigma: float = 1.0,
-        max_sigma: float = 1.0,
-        decay_period: int = 1000000,
-    ):
-        """Initialization."""
-        self.low = action_low
-        self.high = action_high
-        self.max_sigma = max_sigma
-        self.min_sigma = min_sigma
-        self.decay_period = decay_period
-
-    def sample(self, action_size: int, t: int = 0) -> float:
-        """Get an action with gaussian noise."""
-        sigma = self.max_sigma - (self.max_sigma - self.min_sigma) * min(
-            1.0, t / self.decay_period
-        )
-        return np.random.normal(size=action_size) * sigma

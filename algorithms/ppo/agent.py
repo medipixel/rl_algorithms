@@ -19,7 +19,7 @@ import torch.optim as optim
 import wandb
 
 import algorithms.ppo.utils as ppo_utils
-from algorithms.abstract_agent import AbstractAgent
+from algorithms.common.abstract.agent import AbstractAgent
 from algorithms.gae import GAE
 from algorithms.ppo.model import Actor, Critic
 
@@ -35,6 +35,8 @@ hyper_params = {
     "ROLLOUT_LENGTH": 128,
     "EPOCH": 4,
     "BATCH_SIZE": 16,
+    "LR_ACTOR": 3e-4,
+    "LR_CRITIC": 1e-3,
 }
 
 
@@ -71,8 +73,12 @@ class Agent(AbstractAgent):
         self.critic = Critic(self.state_dim, self.action_dim).to(device)
 
         # create optimizer
-        self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=3e-4)
-        self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=1e-3)
+        self.actor_optimizer = optim.Adam(
+            self.actor.parameters(), lr=hyper_params["LR_ACTOR"]
+        )
+        self.critic_optimizer = optim.Adam(
+            self.critic.parameters(), lr=hyper_params["LR_CRITIC"]
+        )
 
         # load model parameters
         if self.args.load_from is not None and os.path.exists(self.args.load_from):
@@ -218,6 +224,7 @@ class Agent(AbstractAgent):
                     loss = self.update_model()
                     self.memory.clear()
 
+            # logging
             print(
                 "[INFO] episode %d\ttotal score: %d\trecent loss: %f"
                 % (i_episode, score, loss)

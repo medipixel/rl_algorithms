@@ -17,13 +17,13 @@ import torch.nn.functional as F
 import torch.optim as optim
 import wandb
 
-from algorithms.abstract_agent import AbstractAgent
+from algorithms.common.abstract.agent import AbstractAgent
 from algorithms.reinforce.model import ActorCritic
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # hyper parameters
-hyper_params = {"GAMMA": 0.99, "STD": 1.0}
+hyper_params = {"GAMMA": 0.99, "STD": 1.0, "LR_MODEL": 1e-3}
 
 
 class Agent(AbstractAgent):
@@ -58,7 +58,9 @@ class Agent(AbstractAgent):
         ).to(device)
 
         # create optimizer
-        self.optimizer = optim.Adam(self.model.parameters())
+        self.optimizer = optim.Adam(
+            self.model.parameters(), lr=hyper_params["LR_MODEL"]
+        )
 
         # load stored parameters
         if args.load_from is not None and os.path.exists(args.load_from):
@@ -128,7 +130,7 @@ class Agent(AbstractAgent):
         self.predicted_value_sequence.clear()
         self.reward_sequence.clear()
 
-        return total_loss.data
+        return total_loss
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
@@ -174,6 +176,8 @@ class Agent(AbstractAgent):
                 score += reward
 
             loss = self.update_model()
+
+            # logging
             print(
                 "[INFO] episode %d\ttotal score: %d\tloss: %f"
                 % (i_episode, score, loss)
