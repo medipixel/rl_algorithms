@@ -15,7 +15,6 @@ from typing import Tuple
 import gym
 import numpy as np
 import torch
-import torch.nn.functional as F
 import torch.optim as optim
 import wandb
 
@@ -156,9 +155,9 @@ class Agent(AbstractAgent):
 
         # train alpha
         if hyper_params["AUTO_ENTROPY_TUNING"]:
-            alpha_loss = (
-                -self.log_alpha * (log_prob + self.target_entropy).detach()
-            ).mean()
+            alpha_loss = torch.mean(
+                (-self.log_alpha * (log_prob + self.target_entropy).detach()) * weights
+            )
 
             self.alpha_optimizer.zero_grad()
             alpha_loss.backward()
@@ -175,8 +174,8 @@ class Agent(AbstractAgent):
         q_2_pred = self.qf_2(states, actions)
         v_target = self.vf_target(next_states)
         q_target = rewards + hyper_params["GAMMA"] * v_target * masks
-        qf_1_loss = F.mse_loss(q_1_pred, q_target.detach()) * torch.mean(weights)
-        qf_2_loss = F.mse_loss(q_2_pred, q_target.detach()) * torch.mean(weights)
+        qf_1_loss = torch.mean((q_1_pred - q_target.detach()).pow(2) * weights)
+        qf_2_loss = torch.mean((q_2_pred - q_target.detach()).pow(2) * weights)
 
         # V function loss
         v_pred = self.vf(states)
@@ -184,7 +183,7 @@ class Agent(AbstractAgent):
             self.qf_1(states, new_actions), self.qf_2(states, new_actions)
         )
         v_target = (q_pred - alpha * log_prob).detach()
-        vf_loss = F.mse_loss(v_pred, v_target) * torch.mean(weights)
+        vf_loss = torch.mean((v_pred - v_target).pow(2) * weights)
 
         # train Q functions
         self.qf_1_optimizer.zero_grad()
@@ -203,7 +202,7 @@ class Agent(AbstractAgent):
         if self.n_step % hyper_params["DELAYED_UPDATE"] == 0:
             # actor loss
             advantage = q_pred - v_pred.detach()
-            actor_loss = (alpha * log_prob - advantage).mean() * torch.mean(weights)
+            actor_loss = torch.mean((alpha * log_prob - advantage) * weights)
             # actor_loss = (log_prob * (alpha * log_prob - advantage).detach()).mean()
 
             # regularization
@@ -228,13 +227,12 @@ class Agent(AbstractAgent):
             actor_loss = 0.0
 
         # update priorities in PER
-        per_delta = (v_pred - v_target).pow(2)
-        new_priorities = per_delta.data.cpu().numpy()
-
+        new_priorities = (v_pred - v_target).pow(2)
+        new_priorities = new_priorities.data.cpu().numpy()
         new_priorities += hyper_params["PER_EPS"]
         self.memory.update_priorities(indexes, new_priorities)
 
-        return (actor_loss, qf_1_loss, qf_2_loss, vf_loss, alpha_loss)
+        return actor_loss, qf_1_loss, qf_2_loss, vf_loss, alpha_loss
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""

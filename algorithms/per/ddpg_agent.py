@@ -160,11 +160,11 @@ class Agent(AbstractAgent):
         common_utils.soft_update(self.critic, self.critic_target, hyper_params["TAU"])
 
         # update priorities in PER
-        new_priorties = torch.abs(values - curr_returns)
-        new_priorties = new_priorties.data.cpu().numpy() + hyper_params["PER_EPS"]
-        self.memory.update_priorities(indexes, new_priorties)
+        new_priorities = (values - curr_returns).pow(2)
+        new_priorities = new_priorities.data.cpu().numpy() + hyper_params["PER_EPS"]
+        self.memory.update_priorities(indexes, new_priorities)
 
-        return (actor_loss, critic_loss)
+        return actor_loss, critic_loss
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""

@@ -73,6 +73,7 @@ class SegmentTree:
     def __getitem__(self, idx: int) -> float:
         """Get real value in leaf node of tree."""
         assert 0 <= idx < self.capacity
+
         return self.tree[self.capacity + idx]
 
 

@@ -111,37 +111,37 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         assert beta > 0
 
         indices = self._sample_proportional(self.batch_size)
+        states, actions, rewards, next_states, dones, weights = [], [], [], [], [], []
 
-        samples = [self.buffer[i] for i in indices]
+        # get max weight
+        p_min = self.min_tree.min() / self.sum_tree.sum()
+        max_weight = (p_min * len(self.buffer)) ** (-beta)
 
-        states, actions, rewards, next_states, dones = [], [], [], [], []
+        for idx in indices:
+            s = self.buffer[idx]
 
-        for s in samples:
+            # append transition info
             states.append(np.expand_dims(s[0], axis=0))
             actions.append(s[1])
             rewards.append(s[2])
             next_states.append(np.expand_dims(s[3], axis=0))
             dones.append(s[4])
 
+            # calculate weights
+            p_sample = self.sum_tree[idx] / self.sum_tree.sum()
+            weight = (p_sample * len(self.buffer)) ** (-beta)
+            weights.append(weight / max_weight)
+
         states = torch.from_numpy(np.vstack(states)).float().to(device)
         actions = torch.from_numpy(np.vstack(actions)).float().to(device)
         rewards = torch.from_numpy(np.vstack(rewards)).float().to(device)
         next_states = torch.from_numpy(np.vstack(next_states)).float().to(device)
         dones = torch.from_numpy(np.vstack(dones).astype(np.uint8)).float().to(device)
-
-        experiences = (states, actions, rewards, next_states, dones)
-
-        weights = []
-        p_min = self.min_tree.min() / self.sum_tree.sum()
-        max_weight = (p_min * len(self.buffer)) ** (-beta)
-
-        for idx in indices:
-            p_sample = self.sum_tree[idx] / self.sum_tree.sum()
-            weight = (p_sample * len(self.buffer)) ** (-beta)
-            weights.append(weight / max_weight)
         weights = torch.Tensor(np.reshape(weights, [self.batch_size, 1])).to(device)
 
-        return tuple(list(experiences) + [weights, indices])
+        experiences = (states, actions, rewards, next_states, dones, weights, indices)
+
+        return experiences
 
     def update_priorities(self, indices: list, priorities: np.ndarray):
         """Update priorities of sampled transitions."""

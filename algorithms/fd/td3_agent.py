@@ -37,7 +37,7 @@ hyper_params = {
     "BATCH_SIZE": 128,
     "MAX_EPISODE_STEPS": 300,
     "EPISODE_NUM": 1500,
-    "PRETRAIN_STEP": 2000,
+    "PRETRAIN_STEP": 0,
     "MULTIPLE_LEARN": 1,  # multiple learning updates
     "LAMDA1": 1.0,  # N-step return weight
     "LAMDA2": 1e-5,  # l2 regularization weight
