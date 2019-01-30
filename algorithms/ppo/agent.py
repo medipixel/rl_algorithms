@@ -218,6 +218,7 @@ class Agent(AbstractAgent):
                     loss = self.update_model()
                     self.memory.clear()
 
+            # logging
             print(
                 "[INFO] episode %d\ttotal score: %d\trecent loss: %f"
                 % (i_episode, score, loss)

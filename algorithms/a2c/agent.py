@@ -151,6 +151,7 @@ class Agent(AbstractAgent):
                 state = next_state
                 score += reward
 
+            # logging
             avg_loss = np.array(loss_episode).mean()
             print(
                 "[INFO] episode %d\ttotal score: %d\tloss: %f"

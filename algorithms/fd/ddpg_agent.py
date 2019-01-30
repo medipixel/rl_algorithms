@@ -276,6 +276,7 @@ class Agent(AbstractAgent):
                 state = next_state
                 score += reward
 
+            # logging
             if loss_episode:
                 avg_loss = np.vstack(loss_episode).mean(axis=0)
                 total_loss = avg_loss.sum()
@@ -295,7 +296,7 @@ class Agent(AbstractAgent):
                     wandb.log(
                         {
                             "score": score,
-                            "total_loss": total_loss,
+                            "total loss": total_loss,
                             "actor loss": avg_loss[0],
                             "critic loss": avg_loss[1],
                         }

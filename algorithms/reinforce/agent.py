@@ -128,7 +128,7 @@ class Agent(AbstractAgent):
         self.predicted_value_sequence.clear()
         self.reward_sequence.clear()
 
-        return total_loss.data
+        return total_loss
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
@@ -174,6 +174,8 @@ class Agent(AbstractAgent):
                 score += reward
 
             loss = self.update_model()
+
+            # logging
             print(
                 "[INFO] episode %d\ttotal score: %d\tloss: %f"
                 % (i_episode, score, loss)

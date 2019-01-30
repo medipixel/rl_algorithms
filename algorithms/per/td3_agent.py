@@ -105,7 +105,7 @@ class Agent(AbstractAgent):
             self.load_params(args.load_from)
 
         # noise instance to make randomness of action
-        self.noise = GaussianNoise(self.action_dim, -1.0, 1.0)
+        self.noise = GaussianNoise(self.args.seed)
 
         # replay memory
         self.beta = hyper_params["PER_BETA"]
@@ -274,6 +274,7 @@ class Agent(AbstractAgent):
                 score += reward
                 step += 1
 
+            # logging
             if loss_episode:
                 avg_loss = np.vstack(loss_episode).mean(axis=0)
                 total_loss = avg_loss.sum()
@@ -294,7 +295,7 @@ class Agent(AbstractAgent):
                     wandb.log(
                         {
                             "score": score,
-                            "total_loss": total_loss,
+                            "total loss": total_loss,
                             "actor loss": avg_loss[0] * hyper_params["DELAYED_UPDATE"],
                             "critic_1 loss": avg_loss[1],
                             "critic_2 loss": avg_loss[2],

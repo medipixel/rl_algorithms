@@ -290,6 +290,7 @@ class Agent(AbstractAgent):
                 score += reward
                 self.n_step += 1
 
+            # logging
             if loss_episode:
                 avg_loss = np.vstack(loss_episode).mean(axis=0)
                 total_loss = avg_loss.sum()
@@ -313,7 +314,7 @@ class Agent(AbstractAgent):
                     wandb.log(
                         {
                             "score": score,
-                            "total_loss": total_loss,
+                            "total loss": total_loss,
                             "actor loss": avg_loss[0] * hyper_params["DELAYED_UPDATE"],
                             "qf_1 loss": avg_loss[1],
                             "qf_2 loss": avg_loss[2],

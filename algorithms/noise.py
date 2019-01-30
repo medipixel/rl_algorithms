@@ -40,7 +40,7 @@ class OUNoise:
         """Update internal state and return it as a noise sample."""
         x = self.state
         dx = self.theta * (self.mu - x) + self.sigma * np.array(
-            [random.random() for i in range(len(x))]
+            [random.random() for _ in range(len(x))]
         )
         self.state = x + dx
         return self.state
@@ -54,18 +54,16 @@ class GaussianNoise:
 
     def __init__(
         self,
-        action_low: float,
-        action_high: float,
+        seed: int,
         min_sigma: float = 1.0,
         max_sigma: float = 1.0,
         decay_period: int = 1000000,
     ):
         """Initialization."""
-        self.low = action_low
-        self.high = action_high
         self.max_sigma = max_sigma
         self.min_sigma = min_sigma
         self.decay_period = decay_period
+        np.random.seed(seed)
 
     def sample(self, action_size: int, t: int = 0) -> float:
         """Get an action with gaussian noise."""

@@ -103,7 +103,7 @@ class Agent(AbstractAgent):
         actor_loss.backward()
         self.actor_optimizer.step()
 
-        return (actor_loss, critic_loss)
+        return actor_loss, critic_loss
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
@@ -162,14 +162,13 @@ class Agent(AbstractAgent):
             total_loss = avg_loss.sum()
             print(
                 "[INFO] episode %d total score: %d, total loss: %f\n"
-                "actor_loss: %.3f critic_1_loss: %.3f critic_2_loss: %.3f "
+                "actor_loss: %.3f critic_loss: %.3f"
                 % (
                     i_episode,
                     score,
                     total_loss,
-                    avg_loss[0] * hyper_params["DELAYED_UPDATE"],  # actor loss
-                    avg_loss[1],  # critic1 loss
-                    avg_loss[2],  # critic2 loss
+                    avg_loss[0],  # actor loss
+                    avg_loss[1],  # critic loss
                 )
             )
 
@@ -177,10 +176,9 @@ class Agent(AbstractAgent):
                 wandb.log(
                     {
                         "score": score,
-                        "total_loss": total_loss,
-                        "actor loss": avg_loss[0] * hyper_params["DELAYED_UPDATE"],
-                        "critic_1 loss": avg_loss[1],
-                        "critic_2 loss": avg_loss[2],
+                        "total loss": total_loss,
+                        "actor loss": avg_loss[0],
+                        "critic loss": avg_loss[1],
                     }
                 )
             if i_episode % self.args.save_period == 0:
