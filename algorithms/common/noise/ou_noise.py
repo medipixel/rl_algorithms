@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""OUNoise classes for baselines."""
+"""OUNoise class for baselines."""
 
 import copy
 import random

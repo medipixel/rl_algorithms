@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""GaussianNoise classes for baselines."""
+"""GaussianNoise class for baselines."""
 
 import numpy as np
 
