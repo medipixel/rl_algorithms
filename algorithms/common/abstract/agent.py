@@ -7,10 +7,10 @@
 
 import argparse
 import os
+import subprocess
 from abc import ABC, abstractmethod
 from typing import Tuple
 
-import git
 import gym
 import numpy as np
 import torch
@@ -47,8 +47,11 @@ class AbstractAgent(ABC):
         self.action_dim = env.action_space.shape[0]
 
         # for logging
-        repo = git.Repo(search_parent_directories=True)
-        self.sha = repo.head.object.hexsha[:7]
+        self.sha = (
+            subprocess.check_output(["git", "rev-parse", "--short", "HEAD"])[:-1]
+            .decode("ascii")
+            .strip()
+        )
 
     @abstractmethod
     def select_action(self, state: np.ndarray):

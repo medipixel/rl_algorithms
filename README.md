@@ -14,4 +14,4 @@ RL key algorithms with [LunarLanderContinuous-v2](https://gym.openai.com/envs/Lu
 8. Soft Actor Critic Algorithm (SAC)
 9. Behaviour Cloning (BC with DDPG)
 10. Prioritized Experience Replay (PER with DDPG, TD3, SAC)
-11. From Demonstrations (DDPGfD, TD3fD)
+11. From Demonstrations (DDPGfD, TD3fD, SACfD)

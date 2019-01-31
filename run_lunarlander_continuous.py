@@ -82,6 +82,8 @@ elif args.algo == "ddpgfd":
     from algorithms.fd.ddpg_agent import Agent
 elif args.algo == "td3fd":
     from algorithms.fd.td3_agent import Agent
+elif args.algo == "sacfd":
+    from algorithms.fd.sac_agent import Agent
 
 
 def main():
