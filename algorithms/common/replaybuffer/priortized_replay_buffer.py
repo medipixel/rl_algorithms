@@ -79,11 +79,11 @@ class PrioritizedReplayBuffer(ReplayBuffer):
 
     def add(
         self,
-        state: torch.Tensor,
-        action: torch.Tensor,
-        reward: torch.Tensor,
-        next_state: torch.Tensor,
-        done: torch.Tensor,
+        state: np.ndarray,
+        action: np.ndarray,
+        reward: np.float64,
+        next_state: np.ndarray,
+        done: bool,
     ):
         """Add experience and priority."""
         idx = self.next_idx
@@ -92,6 +92,10 @@ class PrioritizedReplayBuffer(ReplayBuffer):
 
         self.sum_tree[idx] = self.init_priority ** self.alpha
         self.min_tree[idx] = self.init_priority ** self.alpha
+
+    def extend(self, transitions: list):
+        """Add experiences to memory."""
+        raise Exception("Not Implemented.")
 
     def _sample_proportional(self, batch_size: int) -> list:
         """Sample indices based on proportional."""

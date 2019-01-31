@@ -8,6 +8,7 @@
 import argparse
 
 import gym
+import numpy as np
 import torch
 
 # configurations
@@ -94,6 +95,7 @@ def main():
     # set a random seed
     env.seed(args.seed)
     torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
 
     # create an agent
     agent = Agent(env, args)

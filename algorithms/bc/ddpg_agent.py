@@ -6,7 +6,6 @@
 - Paper: https://arxiv.org/pdf/1709.10089.pdf
 """
 
-
 import argparse
 import os
 import pickle
@@ -24,6 +23,7 @@ from algorithms.common.abstract.agent import AbstractAgent
 from algorithms.common.noise.ou_noise import OUNoise
 from algorithms.common.replaybuffer.replay_buffer import ReplayBuffer
 from algorithms.ddpg.model import Actor, Critic
+from algorithms.her import HER
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -40,6 +40,7 @@ hyper_params = {
     "OU_NOISE_SIGMA": 0.0,
     "LAMBDA1": 1e-3,
     "LAMBDA2": 1.0,
+    "USE_HER": False,
 }
 
 
@@ -56,6 +57,9 @@ class Agent(AbstractAgent):
         noise (OUNoise): random noise for exploration
         memory (ReplayBuffer): replay memory
         curr_state (np.ndarray): temporary storage of the current state
+        her (HER): hinsight experience replay
+        transitions_epi (list): transitions per episode (for HER)
+        goal_state (np.ndarray): goal state to generate concatenated states
 
     """
 
@@ -70,15 +74,37 @@ class Agent(AbstractAgent):
         AbstractAgent.__init__(self, env, args)
 
         self.curr_state = np.zeros((self.state_dim,))
+        state_dim = self.state_dim
+
+        # load demo replay memory
+        with open(self.args.demo_path, "rb") as f:
+            demo = pickle.load(f)
+
+        # HER
+        if hyper_params["USE_HER"]:
+            state_dim *= 2
+            self.her = HER(self.args.demo_path)
+            self.transitions_epi: list = list()
+            self.desired_state = np.zeros((self.state_dim,))
+            demo = self.her.generate_demo_transitions(demo)
+
+        # Replay buffers
+        self.demo_memory = ReplayBuffer(
+            len(demo), hyper_params["DEMO_BATCH_SIZE"], self.args.seed, demo
+        )
+
+        self.memory = ReplayBuffer(
+            hyper_params["BUFFER_SIZE"], hyper_params["BATCH_SIZE"], self.args.seed
+        )
 
         # create actor
-        self.actor = Actor(self.state_dim, self.action_dim).to(device)
-        self.actor_target = Actor(self.state_dim, self.action_dim).to(device)
+        self.actor = Actor(state_dim, self.action_dim).to(device)
+        self.actor_target = Actor(state_dim, self.action_dim).to(device)
         self.actor_target.load_state_dict(self.actor.state_dict())
 
         # create critic
-        self.critic = Critic(self.state_dim, self.action_dim).to(device)
-        self.critic_target = Critic(self.state_dim, self.action_dim).to(device)
+        self.critic = Critic(state_dim, self.action_dim).to(device)
+        self.critic_target = Critic(state_dim, self.action_dim).to(device)
         self.critic_target.load_state_dict(self.critic.state_dict())
 
         # create optimizers
@@ -105,22 +131,14 @@ class Agent(AbstractAgent):
             sigma=hyper_params["OU_NOISE_SIGMA"],
         )
 
-        # replay memory
-        self.memory = ReplayBuffer(
-            hyper_params["BUFFER_SIZE"], hyper_params["BATCH_SIZE"], self.args.seed
-        )
-
-        # load demo replay memory
-        with open(self.args.demo_path, "rb") as f:
-            demo = pickle.load(f)
-
-        self.demo_memory = ReplayBuffer(
-            len(demo), hyper_params["DEMO_BATCH_SIZE"], self.args.seed, demo
-        )
-
     def select_action(self, state: np.ndarray) -> torch.Tensor:
         """Select an action from the input space."""
         self.curr_state = state
+
+        # HER
+        if hyper_params["USE_HER"]:
+            self.desired_state = self.her.sample_desired_state()
+            state = np.concatenate((state, self.desired_state), axis=-1)
 
         state = torch.FloatTensor(state).to(device)
         selected_action = self.actor(state)
@@ -134,7 +152,21 @@ class Agent(AbstractAgent):
         """Take an action and return the response of the env."""
         action = action.detach().cpu().numpy()
         next_state, reward, done, _ = self.env.step(action)
-        self.memory.add(self.curr_state, action, reward, next_state, done)
+
+        e = (self.curr_state, action, reward, next_state, done)
+
+        # HER
+        if hyper_params["USE_HER"]:
+            self.transitions_epi.append(e)
+
+            # insert generated transitions if the episode is done
+            if done:
+                transitions = self.her.generate_transitions(
+                    self.transitions_epi, self.desired_state
+                )
+                self.memory.extend(transitions)
+        else:
+            self.memory.add(*e)
 
         return next_state, reward, done
 
@@ -266,7 +298,7 @@ class Agent(AbstractAgent):
                 total_loss = avg_loss.sum()
                 print(
                     "[INFO] episode %d total score: %d, total loss: %f\n"
-                    "actor_loss: %.3f critic_loss: %.3f"
+                    "actor_loss: %.3f critic_loss: %.3f\n"
                     % (
                         i_episode,
                         score,
@@ -288,8 +320,6 @@ class Agent(AbstractAgent):
 
             if i_episode % self.args.save_period == 0:
                 self.save_params(i_episode)
-                if i_episode % self.args.save_period == 0:
-                    self.save_params(i_episode)
 
         # termination
         self.env.close()

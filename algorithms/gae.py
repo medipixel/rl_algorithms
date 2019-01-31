@@ -20,8 +20,8 @@ class GAE:
 
     """
 
-    def __call__(
-        self,
+    @staticmethod
+    def get_gae(
         rewards: torch.Tensor,
         values: torch.Tensor,
         dones: torch.Tensor,
