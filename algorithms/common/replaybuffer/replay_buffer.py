@@ -43,14 +43,18 @@ class ReplayBuffer:
 
     def add(
         self,
-        state: torch.Tensor,
-        action: torch.Tensor,
-        reward: torch.Tensor,
-        next_state: torch.Tensor,
-        done: torch.Tensor,
+        state: np.ndarray,
+        action: np.ndarray,
+        reward: np.float64,
+        next_state: np.ndarray,
+        done: bool,
     ):
         """Add a new experience to memory."""
         self.buffer.append((state, action, reward, next_state, done))
+
+    def extend(self, transitions: list):
+        """Add experiences to memory."""
+        self.buffer.extend(transitions)
 
     def sample(
         self

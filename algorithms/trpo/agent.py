@@ -63,7 +63,7 @@ class Agent(AbstractAgent):
 
         self.curr_state = np.zeros((self.state_dim,))
         self.memory: Deque = deque()
-        self.get_gae = GAE()
+        self.gae = GAE()
 
         # create models
         self.actor = Actor(self.state_dim, self.action_dim).to(device)
@@ -99,7 +99,7 @@ class Agent(AbstractAgent):
 
         # calculate returns and gae
         values = self.critic(states)
-        returns, advantages = self.get_gae(
+        returns, advantages = self.gae.get_gae(
             rewards, values, dones, hyper_params["GAMMA"], hyper_params["LAMBDA"], False
         )
 

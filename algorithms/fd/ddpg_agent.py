@@ -39,7 +39,7 @@ hyper_params = {
     "LR_CRITIC": 1e-3,
     "OU_NOISE_THETA": 0.0,
     "OU_NOISE_SIGMA": 0.0,
-    "PRETRAIN_STEP": 0,
+    "PRETRAIN_STEP": 3000,
     "MULTIPLE_LEARN": 1,  # multiple learning updates
     "LAMDA1": 1.0,  # N-step return weight
     "LAMDA2": 1e-5,  # l2 regularization weight

@@ -65,7 +65,7 @@ class Agent(AbstractAgent):
         AbstractAgent.__init__(self, env, args)
 
         self.memory: Deque = deque()
-        self.get_gae = GAE()
+        self.gae = GAE()
         self.transition: list = []
 
         # create models
@@ -114,7 +114,7 @@ class Agent(AbstractAgent):
 
         # calculate returns and gae
         values = self.critic(states)
-        returns, advantages = self.get_gae(
+        returns, advantages = self.gae.get_gae(
             rewards, values, dones, hyper_params["GAMMA"], hyper_params["LAMBDA"]
         )
 
