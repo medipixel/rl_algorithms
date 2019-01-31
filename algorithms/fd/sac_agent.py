@@ -248,9 +248,15 @@ class Agent(AbstractAgent):
             new_priorities += eps_d
             self.memory.update_priorities(indexes, new_priorities)
         else:
-            actor_loss = 0.0
+            actor_loss = torch.zeros(1)
 
-        return actor_loss, qf_1_loss, qf_2_loss, vf_loss, alpha_loss
+        return (
+            actor_loss.data,
+            qf_1_loss.data,
+            qf_2_loss.data,
+            vf_loss.data,
+            alpha_loss.data,
+        )
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
@@ -287,6 +293,50 @@ class Agent(AbstractAgent):
 
         AbstractAgent.save_params(self, self.args.algo, params, n_episode)
 
+    def write_log(
+        self,
+        i: int,
+        loss: np.ndarray,
+        score: float = 0.0,
+        delayed_update: int = 1,
+        is_step: bool = False,
+    ):
+        """Write log about loss and score"""
+        total_loss = loss.sum()
+
+        message = "episode"
+        if is_step:
+            message = "step"
+
+        print(
+            "[INFO] " + message + " %d total score: %d, total loss: %f\n"
+            "actor_loss: %.3f qf_1_loss: %.3f qf_2_loss: %.3f "
+            "vf_loss: %.3f alpha_loss: %.3f\n"
+            % (
+                i,
+                score,
+                total_loss,
+                loss[0] * delayed_update,  # actor loss
+                loss[1],  # qf_1 loss
+                loss[2],  # qf_2 loss
+                loss[3],  # vf loss
+                loss[4],  # alpha loss
+            )
+        )
+
+        if self.args.log:
+            wandb.log(
+                {
+                    "score": score,
+                    "total loss": total_loss,
+                    "actor loss": loss[0] * delayed_update,
+                    "qf_1 loss": loss[1],
+                    "qf_2 loss": loss[2],
+                    "vf loss": loss[3],
+                    "alpha loss": loss[4],
+                }
+            )
+
     def train(self):
         """Train the agent."""
         # logger
@@ -308,36 +358,13 @@ class Agent(AbstractAgent):
             # logging
             if i_step == 1 or i_step % 100 == 0:
                 avg_loss = np.vstack(pretrain_loss).mean(axis=0)
-                total_loss = avg_loss.sum()
                 pretrain_loss.clear()
-
-                print(
-                    "[INFO] step %d total loss: %f\n"
-                    "actor_loss: %.3f qf_1_loss: %.3f qf_2_loss: %.3f "
-                    "vf_loss: %.3f alpha_loss: %.3f\n"
-                    % (
-                        i_step,
-                        total_loss,
-                        avg_loss[0] * hyper_params["DELAYED_UPDATE"],  # actor loss
-                        avg_loss[1],  # qf_1 loss
-                        avg_loss[2],  # qf_2 loss
-                        avg_loss[3],  # vf loss
-                        avg_loss[4],  # alpha loss
-                    )
+                self.write_log(
+                    i_step,
+                    avg_loss,
+                    delayed_update=hyper_params["DELAYED_UPDATE"],
+                    is_step=True,
                 )
-
-                if self.args.log:
-                    wandb.log(
-                        {
-                            "score": 0.0,
-                            "total loss": total_loss,
-                            "actor loss": avg_loss[0] * hyper_params["DELAYED_UPDATE"],
-                            "qf_1 loss": avg_loss[1],
-                            "qf_2 loss": avg_loss[2],
-                            "vf loss": avg_loss[3],
-                            "alpha loss": avg_loss[4],
-                        }
-                    )
 
         # train
         print("[INFO] Train Start.")
@@ -375,35 +402,9 @@ class Agent(AbstractAgent):
             # logging
             if loss_episode:
                 avg_loss = np.vstack(loss_episode).mean(axis=0)
-                total_loss = avg_loss.sum()
-                print(
-                    "[INFO] episode %d total score: %d, total loss: %f\n"
-                    "actor_loss: %.3f qf_1_loss: %.3f qf_2_loss: %.3f "
-                    "vf_loss: %.3f alpha_loss: %.3f\n"
-                    % (
-                        i_episode,
-                        score,
-                        total_loss,
-                        avg_loss[0] * hyper_params["DELAYED_UPDATE"],  # actor loss
-                        avg_loss[1],  # qf_1 loss
-                        avg_loss[2],  # qf_2 loss
-                        avg_loss[3],  # vf loss
-                        avg_loss[4],  # alpha loss
-                    )
+                self.write_log(
+                    i_episode, avg_loss, score, hyper_params["DELAYED_UPDATE"]
                 )
-
-                if self.args.log:
-                    wandb.log(
-                        {
-                            "score": score,
-                            "total loss": total_loss,
-                            "actor loss": avg_loss[0] * hyper_params["DELAYED_UPDATE"],
-                            "qf_1 loss": avg_loss[1],
-                            "qf_2 loss": avg_loss[2],
-                            "vf loss": avg_loss[3],
-                            "alpha loss": avg_loss[4],
-                        }
-                    )
 
             if i_episode % self.args.save_period == 0:
                 self.save_params(i_episode)

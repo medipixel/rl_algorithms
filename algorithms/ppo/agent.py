@@ -196,6 +196,12 @@ class Agent(AbstractAgent):
 
         AbstractAgent.save_params(self, self.args.algo, params, n_episode)
 
+    def write_log(self, i: int, loss: float, score: float = 0.0):
+        print("[INFO] episode %d\ttotal score: %d\trecent loss: %f" % (i, score, loss))
+
+        if self.args.log:
+            wandb.log({"recent loss": loss, "score": score})
+
     def train(self):
         """Train the agent."""
         # logger
@@ -225,13 +231,7 @@ class Agent(AbstractAgent):
                     self.memory.clear()
 
             # logging
-            print(
-                "[INFO] episode %d\ttotal score: %d\trecent loss: %f"
-                % (i_episode, score, loss)
-            )
-
-            if self.args.log:
-                wandb.log({"recent loss": loss, "score": score})
+            self.write_log(i_episode, score, loss)
 
             if i_episode % self.args.save_period == 0:
                 self.save_params(i_episode)

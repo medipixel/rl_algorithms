@@ -107,7 +107,7 @@ class Agent(AbstractAgent):
         actor_loss.backward()
         self.actor_optimizer.step()
 
-        return actor_loss, critic_loss
+        return actor_loss.data, critic_loss.data
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
@@ -132,6 +132,26 @@ class Agent(AbstractAgent):
         }
 
         AbstractAgent.save_params(self, self.args.algo, params, n_episode)
+
+    def write_log(self, i: int, loss: np.ndarray, score: float = 0.0):
+        """Write log about loss and score"""
+        total_loss = loss.sum()
+
+        print(
+            "[INFO] episode %d total score: %d, total loss: %f\n"
+            "actor_loss: %.3f critic_loss: %.3f\n"
+            % (i, score, total_loss, loss[0], loss[1])  # actor loss  # critic loss
+        )
+
+        if self.args.log:
+            wandb.log(
+                {
+                    "score": score,
+                    "total loss": total_loss,
+                    "actor loss": loss[0],
+                    "critic loss": loss[1],
+                }
+            )
 
     def train(self):
         """Train the agent."""
@@ -163,28 +183,8 @@ class Agent(AbstractAgent):
 
             # logging
             avg_loss = np.vstack(loss_episode).mean(axis=0)
-            total_loss = avg_loss.sum()
-            print(
-                "[INFO] episode %d total score: %d, total loss: %f\n"
-                "actor_loss: %.3f critic_loss: %.3f"
-                % (
-                    i_episode,
-                    score,
-                    total_loss,
-                    avg_loss[0],  # actor loss
-                    avg_loss[1],  # critic loss
-                )
-            )
+            self.write_log(i_episode, avg_loss, score)
 
-            if self.args.log:
-                wandb.log(
-                    {
-                        "score": score,
-                        "total loss": total_loss,
-                        "actor loss": avg_loss[0],
-                        "critic loss": avg_loss[1],
-                    }
-                )
             if i_episode % self.args.save_period == 0:
                 self.save_params(i_episode)
 

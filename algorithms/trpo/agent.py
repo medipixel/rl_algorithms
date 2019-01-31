@@ -123,7 +123,7 @@ class Agent(AbstractAgent):
             hyper_params["DAMPING"],
         )
 
-        return actor_loss, critic_loss
+        return actor_loss.data, critic_loss.data
 
     def load_params(self, path):
         """Load model and optimizer parameters."""
@@ -144,6 +144,26 @@ class Agent(AbstractAgent):
         }
 
         AbstractAgent.save_params(self, "trpo", params, n_episode)
+
+    def write_log(self, i: int, loss: np.ndarray, score: float = 0.0):
+        """Write log about loss and score"""
+        total_loss = loss.sum()
+
+        print(
+            "[INFO] episode %d total score: %d, total loss: %f\n"
+            "actor_loss: %.3f critic_loss: %.3f\n"
+            % (i, score, total_loss, loss[0], loss[1])  # actor loss  # critic loss
+        )
+
+        if self.args.log:
+            wandb.log(
+                {
+                    "score": score,
+                    "total loss": total_loss,
+                    "actor loss": loss[0],
+                    "critic loss": loss[1],
+                }
+            )
 
     def train(self):
         """Train the agent."""
@@ -177,28 +197,7 @@ class Agent(AbstractAgent):
             # for logging
             if loss_episode:
                 avg_loss = np.vstack(loss_episode).mean(axis=0)
-                total_loss = avg_loss.sum()
-                print(
-                    "[INFO] episode %d total score: %d, total loss: %f\n"
-                    "actor_loss: %.3f critic_loss: %.3f"
-                    % (
-                        i_episode,
-                        score,
-                        total_loss,
-                        avg_loss[0],  # actor loss
-                        avg_loss[1],  # critic loss
-                    )
-                )
-
-                if self.args.log:
-                    wandb.log(
-                        {
-                            "score": score,
-                            "total loss": total_loss,
-                            "actor loss": avg_loss[0],
-                            "critic loss": avg_loss[1],
-                        }
-                    )
+                self.write_log(i_episode, avg_loss, score)
 
                 if i_episode % self.args.save_period == 0:
                     self.save_params(i_episode)

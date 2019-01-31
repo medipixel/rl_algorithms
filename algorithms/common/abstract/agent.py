@@ -82,6 +82,10 @@ class AbstractAgent(ABC):
         print("[INFO] Saved the model and optimizer to", path)
 
     @abstractmethod
+    def write_log(self, *args):
+        pass
+
+    @abstractmethod
     def train(self):
         pass
 

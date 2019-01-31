@@ -124,6 +124,12 @@ class Agent(AbstractAgent):
 
         AbstractAgent.save_params(self, self.args.algo, params, n_episode)
 
+    def write_log(self, i: int, loss: np.ndarray, score: float = 0.0):
+        print("[INFO] episode %d\ttotal score: %d\tloss: %f" % (i, score, loss))
+
+        if self.args.log:
+            wandb.log({"score": score, "avg_loss": loss})
+
     def train(self):
         """Train the agent."""
         # logger
@@ -153,13 +159,7 @@ class Agent(AbstractAgent):
 
             # logging
             avg_loss = np.array(loss_episode).mean()
-            print(
-                "[INFO] episode %d\ttotal score: %d\tloss: %f"
-                % (i_episode, score, avg_loss)
-            )
-
-            if self.args.log:
-                wandb.log({"score": score, "avg_loss": avg_loss})
+            self.write_log(i_episode, avg_loss, score)
 
             if i_episode % self.args.save_period == 0:
                 self.save_params(i_episode)
