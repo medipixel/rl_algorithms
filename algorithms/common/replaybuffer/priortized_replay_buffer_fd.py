@@ -109,6 +109,7 @@ class PrioritizedReplayBufferfD(ReplayBuffer):
         self.sum_tree[idx] = self.init_priority ** self.alpha
         self.min_tree[idx] = self.init_priority ** self.alpha
 
+        # update current total size
         self.total_size = self.demo_size + len(self.buffer)
 
     def extend(self, transitions: list):

@@ -130,7 +130,7 @@ class Agent(AbstractAgent):
         self.predicted_value_sequence.clear()
         self.reward_sequence.clear()
 
-        return total_loss
+        return total_loss.data
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
@@ -151,6 +151,12 @@ class Agent(AbstractAgent):
         }
 
         AbstractAgent.save_params(self, self.args.algo, params, n_episode)
+
+    def write_log(self, i: int, loss: float, score: float = 0.0):
+        print("[INFO] episode %d\ttotal score: %d\trecent loss: %f" % (i, score, loss))
+
+        if self.args.log:
+            wandb.log({"recent loss": loss, "score": score})
 
     def train(self):
         """Run the agent."""
@@ -178,13 +184,7 @@ class Agent(AbstractAgent):
             loss = self.update_model()
 
             # logging
-            print(
-                "[INFO] episode %d\ttotal score: %d\tloss: %f"
-                % (i_episode, score, loss)
-            )
-
-            if self.args.log:
-                wandb.log({"score": score, "loss": loss})
+            self.write_log(i_episode, score, loss)
 
             if i_episode % self.args.save_period == 0:
                 self.save_params(i_episode)
