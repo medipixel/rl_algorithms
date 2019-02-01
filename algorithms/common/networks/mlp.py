@@ -177,15 +177,3 @@ class GaussianTanhMLP(MLP):
         log_prob = log_prob.sum(-1, keepdim=True)
 
         return action, log_prob, z, mu, std
-
-
-if __name__ == "__main__":
-    # test
-    mlp = GaussianMLP(3, [1, 2], [3, 4, 5], output_activation=F.relu)
-    for n, v in mlp.state_dict().items():
-        print(n, v)
-        print(v.size())
-
-    a = torch.Tensor(3)
-    output = mlp(a)
-    print("output\n", output)
