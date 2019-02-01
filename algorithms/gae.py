@@ -14,8 +14,9 @@ class GAE:
     """Return returns and advantages.
 
     Example:
-        returns, advantages = GAE(
-            rewards, values, dones, 0.99, 0.95
+        gae = GAE()
+        returns, advantages = gae.get_gae(
+            rewards, values, dones, gamma=0.99, labd=0.95
         )
 
     """
@@ -48,7 +49,6 @@ class GAE:
             prev_advantage = advantages[i, 0]
 
         if normalize:
-            returns = (returns - returns.mean()) / (returns.std() + 1e-7)
             advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-7)
 
         return returns, advantages

@@ -157,13 +157,10 @@ class Agent(AbstractAgent):
         masks = 1 - dones
 
         # get actions with noise
+        noise_std, noise_clip = hyper_params["NOISE_STD"], hyper_params["NOISE_CLIP"]
         next_actions = self.actor_target(next_states)
-        noise = torch.normal(
-            torch.zeros(next_actions.size()), hyper_params["NOISE_STD"]
-        ).to(device)
-        noise = torch.clamp(
-            noise, -hyper_params["NOISE_CLIP"], hyper_params["NOISE_CLIP"]
-        )
+        noise = torch.normal(torch.zeros(next_actions.size()), noise_std).to(device)
+        noise = torch.clamp(noise, -noise_clip, noise_clip)
         next_actions += noise
 
         # min (Q_1', Q_2')
@@ -200,13 +197,10 @@ class Agent(AbstractAgent):
             self.actor_optimizer.step()
 
             # update target networks
-            common_utils.soft_update(
-                self.critic_1, self.critic_target1, hyper_params["TAU"]
-            )
-            common_utils.soft_update(
-                self.critic_2, self.critic_target2, hyper_params["TAU"]
-            )
-            common_utils.soft_update(self.actor, self.actor_target, hyper_params["TAU"])
+            tau = hyper_params["TAU"]
+            common_utils.soft_update(self.critic_1, self.critic_target1, tau)
+            common_utils.soft_update(self.critic_2, self.critic_target2, tau)
+            common_utils.soft_update(self.actor, self.actor_target, tau)
         else:
             actor_loss = torch.zeros(1)
 
@@ -302,14 +296,14 @@ class Agent(AbstractAgent):
                 action = self.select_action(state)
                 next_state, reward, done = self.step(action)
 
-                # increase beta
-                fraction = min(float(i_episode) / self.args.max_episode_steps, 1.0)
-                self.beta = self.beta + fraction * (1.0 - self.beta)
-
                 if len(self.memory) >= hyper_params["BATCH_SIZE"]:
                     experiences = self.memory.sample(self.beta)
                     loss = self.update_model(experiences)
                     loss_episode.append(loss)  # for logging
+
+                # increase beta
+                fraction = min(float(i_episode) / self.args.max_episode_steps, 1.0)
+                self.beta = self.beta + fraction * (1.0 - self.beta)
 
                 state = next_state
                 score += reward

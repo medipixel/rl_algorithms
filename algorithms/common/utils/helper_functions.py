@@ -5,10 +5,21 @@
 - Contact: curt.park@medipixel.io
 """
 
+import math
 import pickle
 
 import numpy as np
+import torch
 import torch.nn as nn
+
+
+# taken and modified from https://github.com/ikostrikov/pytorch-trpo
+def normal_log_density(
+    x: torch.Tensor, mean: torch.Tensor, log_std: torch.Tensor, std: torch.Tensor
+):
+    var = std.pow(2)
+    log_density = -(x - mean).pow(2) / (2 * var) - 0.5 * math.log(2 * math.pi) - log_std
+    return log_density.sum(-1, keepdim=True)
 
 
 def soft_update(local: nn.Module, target: nn.Module, tau: float):

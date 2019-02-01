@@ -317,8 +317,8 @@ class Agent(AbstractAgent):
                 avg_loss = np.vstack(loss_episode).mean(axis=0)
                 self.write_log(i_episode, avg_loss, score)
 
-        if i_episode % self.args.save_period == 0:
-            self.save_params(i_episode)
+            if i_episode % self.args.save_period == 0:
+                self.save_params(i_episode)
 
         # termination
         self.env.close()

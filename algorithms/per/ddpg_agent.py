@@ -250,14 +250,14 @@ class Agent(AbstractAgent):
                 action = self.select_action(state)
                 next_state, reward, done = self.step(action)
 
-                # increase beta
-                fraction = min(float(i_episode) / self.args.max_episode_steps, 1.0)
-                self.beta = self.beta + fraction * (1.0 - self.beta)
-
                 if len(self.memory) >= hyper_params["BATCH_SIZE"]:
                     experiences = self.memory.sample(self.beta)
                     loss = self.update_model(experiences)
                     loss_episode.append(loss)  # for logging
+
+                # increase beta
+                fraction = min(float(i_episode) / self.args.max_episode_steps, 1.0)
+                self.beta = self.beta + fraction * (1.0 - self.beta)
 
                 state = next_state
                 score += reward

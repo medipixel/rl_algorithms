@@ -29,13 +29,13 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # hyper parameters
 hyper_params = {
-    "GAMMA": 0.99,
-    "LAMBDA": 0.95,
+    "GAMMA": 0.95,
+    "LAMBDA": 0.9,
     "MAX_KL": 1e-2,
     "DAMPING": 1e-1,
     "L2_REG": 1e-3,
     "LBFGS_MAX_ITER": 200,
-    "BATCH_SIZE": 256,
+    "MIN_ROLLOUT_LEN": 128,
 }
 
 
@@ -46,6 +46,7 @@ class Agent(AbstractAgent):
         memory (deque): memory for on-policy training
         gae (GAE): calculator for generalized advantage estimation
         actor (nn.Module): policy gradient model to select actions
+        old_actor (nn.Module): old policy gradient model to select actions
         critic (nn.Module): policy gradient model to predict values
         curr_state (np.ndarray): temporary storage of the current state
 
@@ -79,7 +80,8 @@ class Agent(AbstractAgent):
         self.curr_state = state
 
         state = torch.FloatTensor(state).to(device)
-        selected_action, _ = self.actor(state)
+        mu, _, std = self.actor(state)
+        selected_action = torch.normal(mu, std)
 
         return selected_action
 
@@ -100,7 +102,7 @@ class Agent(AbstractAgent):
         # calculate returns and gae
         values = self.critic(states)
         returns, advantages = self.gae.get_gae(
-            rewards, values, dones, hyper_params["GAMMA"], hyper_params["LAMBDA"], False
+            rewards, values, dones, hyper_params["GAMMA"], hyper_params["LAMBDA"]
         )
 
         # train critic
@@ -189,10 +191,10 @@ class Agent(AbstractAgent):
                 state = next_state
                 score += reward
 
-                if len(self.memory) % hyper_params["BATCH_SIZE"] == 0:
-                    loss = self.update_model()
-                    loss_episode.append(loss)  # for logging
-                    self.memory.clear()
+            if len(self.memory) >= hyper_params["MIN_ROLLOUT_LEN"]:
+                loss = self.update_model()
+                loss_episode.append(loss)  # for logging
+                self.memory.clear()
 
             # for logging
             if loss_episode:

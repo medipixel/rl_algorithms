@@ -246,15 +246,8 @@ class Agent(AbstractAgent):
                 }
             )
 
-    def train(self):
-        """Train the agent."""
-        # logger
-        if self.args.log:
-            wandb.init()
-            wandb.config.update(hyper_params)
-            wandb.watch([self.actor, self.critic], log="parameters")
-
-        # pre-training by demo
+    def pretrain(self):
+        """Pretraining steps."""
         pretrain_loss = list()
         print("[INFO] Pre-Train %d step." % hyper_params["PRETRAIN_STEP"])
         for i_step in range(1, hyper_params["PRETRAIN_STEP"] + 1):
@@ -267,6 +260,17 @@ class Agent(AbstractAgent):
                 avg_loss = np.vstack(pretrain_loss).mean(axis=0)
                 pretrain_loss.clear()
                 self.write_log(i_step, avg_loss, is_step=True)
+
+    def train(self):
+        """Train the agent."""
+        # logger
+        if self.args.log:
+            wandb.init()
+            wandb.config.update(hyper_params)
+            wandb.watch([self.actor, self.critic], log="parameters")
+
+        # pre-training by demo
+        self.pretrain()
 
         for i_episode in range(1, self.args.episode_num + 1):
             state = self.env.reset()
@@ -281,10 +285,6 @@ class Agent(AbstractAgent):
                 action = self.select_action(state)
                 next_state, reward, done = self.step(action)
 
-                # increase beta
-                fraction = min(float(i_episode) / self.args.max_episode_steps, 1.0)
-                self.beta = self.beta + fraction * (1.0 - self.beta)
-
                 if len(self.memory) >= hyper_params["BATCH_SIZE"]:
                     loss_multiple_learn = []
                     for _ in range(hyper_params["MULTIPLE_LEARN"]):
@@ -293,6 +293,10 @@ class Agent(AbstractAgent):
                         loss_multiple_learn.append(loss)
                     # for logging
                     loss_episode.append(np.vstack(loss_multiple_learn).mean(axis=0))
+
+                # increase beta
+                fraction = min(float(i_episode) / self.args.max_episode_steps, 1.0)
+                self.beta = self.beta + fraction * (1.0 - self.beta)
 
                 state = next_state
                 score += reward
