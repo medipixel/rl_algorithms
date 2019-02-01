@@ -18,10 +18,10 @@ import torch.nn.functional as F
 import torch.optim as optim
 import wandb
 
-import algorithms.common.utils.helper_functions as common_utils
+import algorithms.common.helper_functions as common_utils
 from algorithms.common.abstract.agent import AbstractAgent
-from algorithms.common.noise.ou_noise import OUNoise
-from algorithms.common.replaybuffer.replay_buffer import ReplayBuffer
+from algorithms.common.buffer.replay_buffer import ReplayBuffer
+from algorithms.common.noise import OUNoise
 from algorithms.ddpg.model import Actor, Critic
 from algorithms.her import HER
 
@@ -197,7 +197,7 @@ class Agent(AbstractAgent):
         curr_returns = rewards + (hyper_params["GAMMA"] * next_values * masks)
         curr_returns = curr_returns.to(device)
 
-        # crittic loss
+        # critic loss
         values = self.critic(states, actions)
         critic_loss = F.mse_loss(values, curr_returns)
 
@@ -217,9 +217,10 @@ class Agent(AbstractAgent):
             self.critic(demo_states, pred_actions),
         ).to(device)
         qf_mask = qf_mask.float()
-        bc_loss = F.mse_loss(
-            torch.mul(pred_actions, qf_mask), torch.mul(demo_actions, qf_mask)
-        )
+        n_qf_mask = qf_mask.sum()
+        bc_loss = (
+            torch.mul(pred_actions, qf_mask) - torch.mul(demo_actions, qf_mask)
+        ).pow(2).sum() / (n_qf_mask + 1e-6)
 
         # train actor: pg loss + BC loss
         actor_loss = self.lambda1 * policy_loss + self.lambda2 * bc_loss
@@ -232,7 +233,7 @@ class Agent(AbstractAgent):
         common_utils.soft_update(self.actor, self.actor_target, hyper_params["TAU"])
         common_utils.soft_update(self.critic, self.critic_target, hyper_params["TAU"])
 
-        return actor_loss.data, critic_loss.data
+        return (actor_loss.data, critic_loss.data), n_qf_mask.item()  # TODO DELETE
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
@@ -296,6 +297,7 @@ class Agent(AbstractAgent):
             score = 0
             loss_episode = list()
 
+            n_qf_mask_list = []  # TODO DELETE
             while not done:
                 if self.args.render and i_episode >= self.args.render_after:
                     self.env.render()
@@ -306,7 +308,8 @@ class Agent(AbstractAgent):
                 if len(self.memory) >= hyper_params["BATCH_SIZE"]:
                     experiences = self.memory.sample()
                     demos = self.demo_memory.sample()
-                    loss = self.update_model(experiences, demos)
+                    loss, n_qf_mask = self.update_model(experiences, demos)
+                    n_qf_mask_list.append(n_qf_mask)  # TODO DELETE
                     loss_episode.append(loss)  # for logging
 
                 state = next_state
@@ -315,6 +318,7 @@ class Agent(AbstractAgent):
             # logging
             if loss_episode:
                 avg_loss = np.vstack(loss_episode).mean(axis=0)
+                print("n_qf_mask", np.mean(n_qf_mask_list))  # TODO DELETE
                 self.write_log(i_episode, avg_loss, score)
 
             if i_episode % self.args.save_period == 0:

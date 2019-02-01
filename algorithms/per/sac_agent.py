@@ -18,11 +18,9 @@ import torch
 import torch.optim as optim
 import wandb
 
-import algorithms.common.utils.helper_functions as common_utils
+import algorithms.common.helper_functions as common_utils
 from algorithms.common.abstract.agent import AbstractAgent
-from algorithms.common.replaybuffer.priortized_replay_buffer import (
-    PrioritizedReplayBuffer,
-)
+from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
 from algorithms.sac.model import Actor, Qvalue, Value
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

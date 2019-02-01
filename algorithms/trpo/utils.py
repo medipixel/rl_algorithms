@@ -15,7 +15,7 @@ import scipy.optimize
 import torch
 import torch.nn as nn
 
-from algorithms.common.utils.helper_functions import normal_log_density
+from algorithms.common.helper_functions import normal_log_density
 
 # device selection: cpu / gpu
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

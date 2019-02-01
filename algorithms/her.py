@@ -11,7 +11,7 @@ from typing import Callable, Deque
 
 import numpy as np
 
-from algorithms.common.utils.helper_functions import fetch_desired_states_from_demo
+from algorithms.common.helper_functions import fetch_desired_states_from_demo
 
 
 def default_reward_func(
