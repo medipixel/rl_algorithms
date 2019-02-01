@@ -29,14 +29,14 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 hyper_params = {
     "GAMMA": 0.99,
     "LAMBDA": 0.95,
-    "EPSILON": 0.001,  # should be a small value for consistent, stable learning
-    "W_VALUE": 3.0,
-    "W_ENTROPY": 0.0,  # maxmizing entropy may occur severe fluctuation
-    "ROLLOUT_LENGTH": 128,
-    "EPOCH": 4,
-    "BATCH_SIZE": 16,
+    "EPSILON": 0.2,
+    "W_VALUE": 1e-2,
+    "W_ENTROPY": 1e-3,
     "LR_ACTOR": 3e-4,
     "LR_CRITIC": 1e-3,
+    "EPOCH": 2,
+    "BATCH_SIZE": 32,
+    "MIN_ROLLOUT_LEN": 128,
 }
 
 
@@ -89,15 +89,12 @@ class Agent(AbstractAgent):
         state_ft = torch.FloatTensor(state).to(device)
         selected_action, dist = self.actor(state_ft)
 
-        self.transition += [
-            state,
-            dist.log_prob(selected_action).detach().cpu().numpy(),
-        ]
+        self.transition += [state, dist.log_prob(selected_action).data.cpu().numpy()]
 
         return selected_action
 
     def step(self, action: torch.Tensor) -> Tuple[np.ndarray, np.float64, bool]:
-        action = action.detach().cpu().numpy()
+        action = action.data.cpu().numpy()
         next_state, reward, done, _ = self.env.step(action)
 
         self.transition += [action, reward, done]
@@ -106,7 +103,7 @@ class Agent(AbstractAgent):
 
         return next_state, reward, done
 
-    def update_model(self) -> torch.Tensor:
+    def update_model(self) -> Tuple[float, float, float]:
         """Train the model after every N episodes."""
         states, log_probs, actions, rewards, dones = ppo_utils.decompose_memory(
             self.memory
@@ -118,7 +115,9 @@ class Agent(AbstractAgent):
             rewards, values, dones, hyper_params["GAMMA"], hyper_params["LAMBDA"]
         )
 
-        losses = []
+        actor_losses = []
+        critic_losses = []
+        total_losses = []
         for state, old_log_prob, action, return_, adv in ppo_utils.ppo_iter(
             hyper_params["EPOCH"],
             hyper_params["BATCH_SIZE"],
@@ -168,9 +167,15 @@ class Agent(AbstractAgent):
             total_loss.backward()
             self.actor_optimizer.step()
 
-            losses.append(total_loss.data)
+            actor_losses.append(actor_loss.data)
+            critic_losses.append(critic_loss.data)
+            total_losses.append(total_loss.data)
 
-        return sum(losses) / len(losses)
+        actor_loss = sum(actor_losses) / len(actor_losses)
+        critic_loss = sum(critic_losses) / len(critic_losses)
+        total_loss = sum(total_losses) / len(total_losses)
+
+        return actor_loss, critic_loss, total_loss
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
@@ -196,11 +201,24 @@ class Agent(AbstractAgent):
 
         AbstractAgent.save_params(self, self.args.algo, params, n_episode)
 
-    def write_log(self, i: int, loss: float, score: float = 0.0):
-        print("[INFO] episode %d\ttotal score: %d\trecent loss: %f" % (i, score, loss))
+    def write_log(
+        self, i: int, actor_loss: float, critic_loss, total_loss, score: int = 0
+    ):
+        print(
+            "[INFO] episode %d\ttotal score: %d\ttotal loss: %f\n"
+            "Actor loss: %f\tCritic loss: %f\n"
+            % (i, score, total_loss, actor_loss, critic_loss)
+        )
 
         if self.args.log:
-            wandb.log({"recent loss": loss, "score": score})
+            wandb.log(
+                {
+                    "total loss": total_loss,
+                    "actor loss": actor_loss,
+                    "critic loss": critic_loss,
+                    "score": score,
+                }
+            )
 
     def train(self):
         """Train the agent."""
@@ -210,7 +228,6 @@ class Agent(AbstractAgent):
             wandb.config.update(hyper_params)
             wandb.watch([self.actor, self.critic], log="parameters")
 
-        loss = 0
         for i_episode in range(1, self.args.episode_num + 1):
             state = self.env.reset()
             done = False
@@ -226,12 +243,12 @@ class Agent(AbstractAgent):
                 state = next_state
                 score += reward
 
-                if len(self.memory) % hyper_params["ROLLOUT_LENGTH"] == 0:
-                    loss = self.update_model()
-                    self.memory.clear()
+            if len(self.memory) >= hyper_params["MIN_ROLLOUT_LEN"]:
+                actor_loss, critic_loss, total_loss = self.update_model()
+                self.memory.clear()
 
-            # logging
-            self.write_log(i_episode, score, loss)
+                # logging
+                self.write_log(i_episode, actor_loss, critic_loss, total_loss, score)
 
             if i_episode % self.args.save_period == 0:
                 self.save_params(i_episode)

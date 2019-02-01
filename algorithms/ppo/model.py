@@ -15,38 +15,40 @@ from torch.distributions import Normal
 
 
 class Actor(nn.Module):
-    """PPO actor-critic model with simple FC layers.
+    """PPO actor model with simple FC layers.
 
     Attributes:
+        hidden (nn.Sequential): hidden FC layers
+        mu (nn.Linear): last layer for mean
+        log_std (nn.Linear): last layer for log_std
         state_dim (int): dimension of state space
         action_dim (int): dimension of action space
-        actor (nn.Sequential): actor model with FC layers
 
     """
 
-    def __init__(self, state_dim: int, action_dim: int):
+    def __init__(self, state_dim: int, action_dim: int, hidden_size: int = 256):
         """Initialization.
-
         Args:
             state_dim (int): dimension of state space
             action_dim (int): dimension of action space
-
+            hidden_size (int): hidden layer size
         """
         super(Actor, self).__init__()
 
         self.state_dim = state_dim
         self.action_dim = action_dim
 
-        self.actor = nn.Sequential(
-            nn.Linear(self.state_dim, 24),
+        self.hidden = nn.Sequential(
+            nn.Linear(self.state_dim, hidden_size),
             nn.Tanh(),
-            nn.Linear(24, 48),
-            nn.Tanh(),
-            nn.Linear(48, 24),
-            nn.Tanh(),
-            nn.Linear(24, self.action_dim),
+            nn.Linear(hidden_size, hidden_size),
             nn.Tanh(),
         )
+
+        self.mu = nn.Linear(hidden_size, self.action_dim)
+        self.mu.weight.data.mul_(0.1)
+        self.mu.bias.data.mul_(0.0)
+        self.log_std = nn.Parameter(torch.zeros(self.action_dim))
 
     def forward(self, state: torch.Tensor) -> torch.Tensor:
         """Forward method implementation.
@@ -58,12 +60,12 @@ class Actor(nn.Module):
             specific action
 
         """
-        mu = self.actor(state)
-        logstd = torch.zeros_like(mu)
-        std = torch.exp(logstd)
+        hidden = self.hidden(state)
+        mu = self.mu(hidden)
+        std = self.log_std.exp().expand_as(mu)
 
         dist = Normal(mu, std)
-        selected_action = torch.clamp(dist.rsample(), -1.0, 1.0)
+        selected_action = dist.rsample()
 
         return selected_action, dist
 

@@ -102,7 +102,7 @@ class Agent(AbstractAgent):
         # calculate returns and gae
         values = self.critic(states)
         returns, advantages = self.gae.get_gae(
-            rewards, values, dones, hyper_params["GAMMA"], hyper_params["LAMBDA"], True
+            rewards, values, dones, hyper_params["GAMMA"], hyper_params["LAMBDA"]
         )
 
         # train critic

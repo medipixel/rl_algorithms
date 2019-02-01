@@ -17,7 +17,9 @@ class Actor(nn.Module):
     """TRPO actor model with simple FC layers.
 
     Attributes:
-        actor (nn.Sequential): actor model with FC layers
+        hidden (nn.Sequential): hidden FC layers
+        mu (nn.Linear): last layer for mean
+        log_std (nn.Linear): last layer for log_std
         state_dim (int): dimension of state space
         action_dim (int): dimension of action space
 
