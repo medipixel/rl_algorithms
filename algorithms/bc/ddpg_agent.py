@@ -18,10 +18,10 @@ import torch.nn.functional as F
 import torch.optim as optim
 import wandb
 
-import algorithms.common.utils.helper_functions as common_utils
+import algorithms.common.helper_functions as common_utils
 from algorithms.common.abstract.agent import AbstractAgent
-from algorithms.common.noise.ou_noise import OUNoise
-from algorithms.common.replaybuffer.replay_buffer import ReplayBuffer
+from algorithms.common.buffer.replay_buffer import ReplayBuffer
+from algorithms.common.noise import OUNoise
 from algorithms.ddpg.model import Actor, Critic
 from algorithms.her import HER
 
@@ -197,7 +197,7 @@ class Agent(AbstractAgent):
         curr_returns = rewards + (hyper_params["GAMMA"] * next_values * masks)
         curr_returns = curr_returns.to(device)
 
-        # crittic loss
+        # critic loss
         values = self.critic(states, actions)
         critic_loss = F.mse_loss(values, curr_returns)
 
@@ -217,9 +217,10 @@ class Agent(AbstractAgent):
             self.critic(demo_states, pred_actions),
         ).to(device)
         qf_mask = qf_mask.float()
-        bc_loss = F.mse_loss(
-            torch.mul(pred_actions, qf_mask), torch.mul(demo_actions, qf_mask)
-        )
+        n_qf_mask = qf_mask.sum()
+        bc_loss = (
+            torch.mul(pred_actions, qf_mask) - torch.mul(demo_actions, qf_mask)
+        ).pow(2).sum() / (n_qf_mask + 1e-6)
 
         # train actor: pg loss + BC loss
         actor_loss = self.lambda1 * policy_loss + self.lambda2 * bc_loss
