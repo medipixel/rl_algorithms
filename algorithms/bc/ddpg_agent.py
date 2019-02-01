@@ -233,7 +233,7 @@ class Agent(AbstractAgent):
         common_utils.soft_update(self.actor, self.actor_target, hyper_params["TAU"])
         common_utils.soft_update(self.critic, self.critic_target, hyper_params["TAU"])
 
-        return (actor_loss.data, critic_loss.data), n_qf_mask.item()  # TODO DELETE
+        return actor_loss.data, critic_loss.data
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
@@ -297,7 +297,6 @@ class Agent(AbstractAgent):
             score = 0
             loss_episode = list()
 
-            n_qf_mask_list = []  # TODO DELETE
             while not done:
                 if self.args.render and i_episode >= self.args.render_after:
                     self.env.render()
@@ -308,8 +307,7 @@ class Agent(AbstractAgent):
                 if len(self.memory) >= hyper_params["BATCH_SIZE"]:
                     experiences = self.memory.sample()
                     demos = self.demo_memory.sample()
-                    loss, n_qf_mask = self.update_model(experiences, demos)
-                    n_qf_mask_list.append(n_qf_mask)  # TODO DELETE
+                    loss = self.update_model(experiences, demos)
                     loss_episode.append(loss)  # for logging
 
                 state = next_state
@@ -318,7 +316,6 @@ class Agent(AbstractAgent):
             # logging
             if loss_episode:
                 avg_loss = np.vstack(loss_episode).mean(axis=0)
-                print("n_qf_mask", np.mean(n_qf_mask_list))  # TODO DELETE
                 self.write_log(i_episode, avg_loss, score)
 
             if i_episode % self.args.save_period == 0:
