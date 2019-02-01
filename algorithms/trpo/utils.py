@@ -14,7 +14,8 @@ import numpy as np
 import scipy.optimize
 import torch
 import torch.nn as nn
-from torch.distributions.kl import kl_divergence
+
+from algorithms.common.utils.helper_functions import normal_log_density
 
 # device selection: cpu / gpu
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -155,25 +156,37 @@ def actor_step(
     damping: float,
 ) -> torch.Tensor:
     """Train actor and return the loss."""
-    _, old_dist = old_actor(states)
-    old_log_prob = old_dist.log_prob(actions)
+    old_mu, old_log_std, old_std = old_actor(states)
+    old_log_prob = normal_log_density(actions, old_mu, old_log_std, old_std)
 
     def get_loss(volatile: bool = False):
         if volatile:
             with torch.no_grad():
-                _, dist = actor(states)
+                mu, log_std, std = actor(states)
+
         else:
-            _, dist = actor(states)
+            mu, log_std, std = actor(states)
 
-        log_prob = dist.log_prob(actions)
-        loss = -advantages * torch.exp(log_prob - old_log_prob)
+        log_prob = normal_log_density(actions, mu, log_std, std)
+        actor_loss = -advantages * torch.exp(log_prob - old_log_prob)
 
-        return loss.mean()
+        return actor_loss.mean()
 
     def get_kl():
-        _, dist = actor(states)
+        mu, log_std, std = actor(states)
 
-        return kl_divergence(old_dist, dist).sum(1, keepdim=True)
+        old_mu_ = old_mu.data
+        old_log_std_ = old_log_std.data
+        old_std_ = old_std.data
+
+        kl = (
+            log_std
+            - old_log_std_
+            + (old_std_.pow(2) + (old_mu_ - mu).pow(2)) / (2.0 * std.pow(2))
+            - 0.5
+        )
+
+        return kl.sum(1, keepdim=True)
 
     loss = get_loss()
     grads = torch.autograd.grad(loss, actor.parameters())
