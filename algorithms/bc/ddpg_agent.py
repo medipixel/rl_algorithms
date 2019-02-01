@@ -40,7 +40,7 @@ hyper_params = {
     "OU_NOISE_SIGMA": 0.0,
     "LAMBDA1": 1e-3,
     "LAMBDA2": 1.0,
-    "USE_HER": False,
+    "USE_HER": True,
 }
 
 
@@ -317,8 +317,8 @@ class Agent(AbstractAgent):
                 avg_loss = np.vstack(loss_episode).mean(axis=0)
                 self.write_log(i_episode, avg_loss, score)
 
-        if i_episode % self.args.save_period == 0:
-            self.save_params(i_episode)
+            if i_episode % self.args.save_period == 0:
+                self.save_params(i_episode)
 
         # termination
         self.env.close()

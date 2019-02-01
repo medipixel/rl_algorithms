@@ -308,14 +308,8 @@ class Agent(AbstractAgent):
                 }
             )
 
-    def train(self):
-        """Train the agent."""
-        # logger
-        if self.args.log:
-            wandb.init()
-            wandb.config.update(hyper_params)
-            wandb.watch([self.actor, self.critic_1, self.critic_2], log="parameters")
-
+    def pretrain(self):
+        """Pretraining steps."""
         # pre-training by demo
         self.n_step = 0
         pretrain_loss = list()
@@ -337,6 +331,17 @@ class Agent(AbstractAgent):
                     is_step=True,
                 )
 
+    def train(self):
+        """Train the agent."""
+        # logger
+        if self.args.log:
+            wandb.init()
+            wandb.config.update(hyper_params)
+            wandb.watch([self.actor, self.critic_1, self.critic_2], log="parameters")
+
+        # pre-training by demo
+        self.pretrain()
+
         # train
         print("[INFO] Train Start.")
         self.n_step = 0
@@ -353,10 +358,6 @@ class Agent(AbstractAgent):
                 action = self.select_action(state)
                 next_state, reward, done = self.step(action)
 
-                # increase beta
-                fraction = min(float(i_episode) / self.args.max_episode_steps, 1.0)
-                self.beta = self.beta + fraction * (1.0 - self.beta)
-
                 if len(self.memory) >= hyper_params["BATCH_SIZE"]:
                     loss_multiple_learn = []
                     for _ in range(hyper_params["MULTIPLE_LEARN"]):
@@ -365,6 +366,10 @@ class Agent(AbstractAgent):
                         loss_multiple_learn.append(loss)
                     # for logging
                     loss_episode.append(np.vstack(loss_multiple_learn).mean(axis=0))
+
+                # increase beta
+                fraction = min(float(i_episode) / self.args.max_episode_steps, 1.0)
+                self.beta = self.beta + fraction * (1.0 - self.beta)
 
                 state = next_state
                 score += reward
