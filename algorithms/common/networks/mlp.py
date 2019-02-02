@@ -3,7 +3,6 @@
 
 - Author: Kh Kim
 - Contact: kh.kim@medipixel.io
-- Reference: https://github.com/vitchyr/rlkit/blob/master/rlkit/torch/networks.py
 """
 
 from typing import Callable, Tuple
@@ -19,7 +18,7 @@ class MLP(nn.Module):
 
     Attributes:
         input_size (int): size of input
-        output_sizes (list): sizes of output layers
+        output_size (int): size of output layer
         hidden_sizes (list): sizes of hidden layers
         hidden_activation (function): activation function of hidden layers
         output_activation (function): activation function of output layer
@@ -30,16 +29,17 @@ class MLP(nn.Module):
     def __init__(
         self,
         input_size: int,
-        output_sizes: list,
+        output_size: int,
         hidden_sizes: list,
         hidden_activation: Callable = F.relu,
         output_activation: Callable = None,
+        init_w: float = 3e-3,
     ):
         """Initialization.
 
         Args:
             input_size (int): size of input
-            output_sizes (list): sizes of output layers
+            output_size (int): size of output layer
             hidden_sizes (list): number of hidden layers
             hidden_activation (function): activation function of hidden layers
             output_activation (function): activation function of output layer
@@ -49,129 +49,185 @@ class MLP(nn.Module):
 
         self.hidden_sizes = hidden_sizes
         self.input_size = input_size
-        self.output_sizes = output_sizes
+        self.output_size = output_size
         self.hidden_activation = hidden_activation
         self.output_activation = output_activation
 
-        self.hidden_layers: list = []
-        self.output_layers: list = []
-        in_size = self.input_size
         # set hidden layers
+        self.hidden_layers: list = []
+        in_size = self.input_size
         for i, next_size in enumerate(hidden_sizes):
             fc = nn.Linear(in_size, next_size)
             in_size = next_size
-
             self.__setattr__("hidden_fc{}".format(i), fc)
             self.hidden_layers.append(fc)
 
         # set output layers
-        in_size = hidden_sizes[-1]
-        for i, output_size in enumerate(output_sizes):
-            output_layer = nn.Linear(in_size, output_size)
+        self.output_layer = nn.Linear(in_size, output_size)
+        self.output_layer.weight.data.uniform_(-init_w, init_w)
+        self.output_layer.bias.data.uniform_(-init_w, init_w)
 
-            self.__setattr__("output_fc{}".format(i), fc)
-            self.output_layers.append(output_layer)
-
-    def forward(self, x: torch.Tensor):
-        """Forward method implementation."""
+    def get_last_activation(self, x: torch.Tensor) -> torch.Tensor:
+        """Get the activation of the last hidden layer."""
         for hidden_layer in self.hidden_layers:
-            x = hidden_layer(x)
+            x = self.hidden_activation(hidden_layer(x))
+        return x
 
-        output_list = list()
-        for output_layer in self.output_layers:
-            x = output_layer(x)
-            if self.output_activation:
-                x = self.output_activation(x)
-            output_list.append(x)
-        return tuple(output_list)
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward method implementation."""
+        x = self.get_last_activation(x)
+
+        output = self.output_layer(x)
+        if self.output_activation:
+            output = self.output_activation(output)
+        return output
 
 
-class GaussianMLP(MLP):
-    """Multilayer perceptron with Gaussian distribution output."""
+class GaussianDistPolicy(MLP):
+    """Multilayer perceptron with Gaussian distribution output.
+
+    Attributes:
+        mu_activation (function): bounding function for mean
+        log_std_clamping (bool): wheather or not to clamp log std
+        log_std_min (float): lower bound of log std
+        log_std_max (float): upper bound of log std
+        mu_layer (nn.Linear): output layer for mean
+        log_std_layer (nn.Linear): output layer for log std
+    """
 
     def __init__(
         self,
         input_size: int,
-        output_sizes: list,
+        output_size: int,
         hidden_sizes: list,
         hidden_activation: Callable = F.relu,
-        output_activation: Callable = None,
+        mu_activation: Callable = torch.tanh,
+        log_std_clamping: bool = True,
+        log_std_min: float = -20,
+        log_std_max: float = 2,
+        init_w: float = 3e-3,
     ):
-        """Initialization."""
-        super(GaussianMLP, self).__init__(
-            input_size, output_sizes, hidden_sizes, hidden_activation, output_activation
+        """Initialization.
+
+        """
+        super(GaussianDistPolicy, self).__init__(
+            input_size=input_size,
+            output_size=output_size,
+            hidden_sizes=hidden_sizes,
+            hidden_activation=hidden_activation,
         )
-        assert len(self.output_layers) == 2
 
-    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, Normal]:
+        self.mu_activation = mu_activation
+        self.log_std_clamping = log_std_clamping
+        self.log_std_min = log_std_min
+        self.log_std_max = log_std_max
+        in_size = hidden_sizes[-1]
+
+        # set log_std layer
+        self.log_std_layer = nn.Linear(in_size, output_size)
+        self.log_std_layer.weight.data.uniform_(-init_w, init_w)
+        self.log_std_layer.bias.data.uniform_(-init_w, init_w)
+
+        # set mean layer
+        self.mu_layer = nn.Linear(in_size, output_size)
+        self.mu_layer.weight.data.uniform_(-init_w, init_w)
+        self.mu_layer.bias.data.uniform_(-init_w, init_w)
+
+    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, ...]:
         """Forward method implementation."""
-        # hidden layer
-        for hidden_layer in self.hidden_layers:
-            x = hidden_layer(x)
+        hidden = super(GaussianDistPolicy, self).get_last_activation(x)
 
-        # get mean, std, log_std
-        mu = self.output_layers[0](x)
-        log_std = torch.zeros_like(mu)
+        # get mean
+        mu = self.mu_layer(hidden)
+        if self.mu_activation:
+            mu = self.mu_activation(mu)
+
+        # get std
+        log_std = self.log_std_layer(hidden)
+        if self.log_std_clamping:
+            log_std = torch.clamp(log_std, self.log_std_min, self.log_std_max)
         std = torch.exp(log_std)
 
+        # get normal distribution and action
         dist = Normal(mu, std)
-        action = torch.clamp(dist.rsample(), -1.0, 1.0)
+        action = dist.sample()
 
         return action, dist
 
 
-class GaussianTanhMLP(MLP):
+class TanhGaussianParamsPolicy(MLP):
     """Multilayer perceptron with Gaussian distribution output.
 
     Attributes:
-            log_std_min (float): lower bound of log std
-            log_std_max (float): upper bound of log std
+        log_std_clamping (bool): wheather or not to clamp log std
+        log_std_min (float): lower bound of log std
+        log_std_max (float): upper bound of log std
+        mu_layer (nn.Linear): output layer for mean
+        log_std_layer (nn.Linear): output layer for log std
 
     """
 
     def __init__(
         self,
         input_size: int,
-        output_sizes: list,
+        output_size: int,
         hidden_sizes: list,
         hidden_activation: Callable = F.relu,
-        output_activation: Callable = None,
+        log_std_clamping: bool = True,
         log_std_min: float = -20,
         log_std_max: float = 2,
+        init_w: float = 3e-3,
     ):
         """Initialization.
 
         Args:
+            init_w (float): initial range of log std layer
             log_std_min (float): lower bound of log std
             log_std_max (float): upper bound of log std
 
         """
-        super(GaussianTanhMLP, self).__init__(
-            input_size, output_sizes, hidden_sizes, hidden_activation, output_activation
+        super(TanhGaussianParamsPolicy, self).__init__(
+            input_size=input_size,
+            output_size=output_size,
+            hidden_sizes=hidden_sizes,
+            hidden_activation=hidden_activation,
         )
-        assert len(self.output_layers) == 2
+        self.log_std_clamping = log_std_clamping
         self.log_std_min = log_std_min
         self.log_std_max = log_std_max
+        in_size = hidden_sizes[-1]
+
+        # set log_std layer
+        self.log_std_layer = nn.Linear(in_size, output_size)
+        self.log_std_layer.weight.data.uniform_(-init_w, init_w)
+        self.log_std_layer.bias.data.uniform_(-init_w, init_w)
+
+        # set mean layer
+        self.mu_layer = nn.Linear(in_size, output_size)
+        self.mu_layer.weight.data.uniform_(-init_w, init_w)
+        self.mu_layer.bias.data.uniform_(-init_w, init_w)
 
     def forward(
         self, x: torch.Tensor, epsilon: float = 1e-6
     ) -> Tuple[torch.Tensor, ...]:
         """Forward method implementation."""
-        # hidden layer
-        for hidden_layer in self.hidden_layers:
-            x = hidden_layer(x)
+        hidden = super(TanhGaussianParamsPolicy, self).get_last_activation(x)
 
-        # get mean, std, log_std
-        mu = self.output_layers[0](x)
-        log_std = torch.clamp(
-            self.output_layers[1](x), self.log_std_min, self.log_std_max
-        )
+        # get mean
+        mu = self.mu_layer(hidden)
+
+        # get std
+        log_std = self.log_std_layer(hidden)
+        if self.log_std_clamping:
+            log_std = torch.clamp(log_std, self.log_std_min, self.log_std_max)
         std = torch.exp(log_std)
+
+        # sampling actions
+        dist = Normal(mu, std)
+        z = dist.sample()
 
         # normalize action and log_prob
         # see appendix C of 'https://arxiv.org/pdf/1812.05905.pdf'
-        dist = Normal(mu, std)
-        z = dist.rsample()
         action = torch.tanh(z)
         log_prob = dist.log_prob(z) - torch.log(1 - action.pow(2) + epsilon)
         log_prob = log_prob.sum(-1, keepdim=True)
