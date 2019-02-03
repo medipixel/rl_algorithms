@@ -16,21 +16,24 @@ import torch.nn.functional as F
 import torch.optim as optim
 import wandb
 
-from algorithms.a2c.model import ActorCritic
 from algorithms.common.abstract.agent import AbstractAgent
+from algorithms.common.networks.mlp import MLP, GaussianDist
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 # hyper parameters
-hyper_params = {"GAMMA": 0.99, "STD": 1.0, "LR": 1e-3}
+hyper_params = {"GAMMA": 0.99, "LR_ACTOR": 1e-4, "LR_CRITIC": 1e-3, "WEIGHT_DECAY": 0.0}
 
 
 class Agent(AbstractAgent):
     """1-Step Advantage Actor-Critic interacting with environment.
 
     Attributes:
-        model (nn.Module): policy gradient model to select actions
+        actor (nn.Module): policy model to select actions
+        critic (nn.Module): critic model to evaluate states
+        actor_optimizer (Optimizer): optimizer for actor
+        critic_optimizer (Optimizer): optimizer for critic
         optimizer (Optimizer): optimizer for training
 
     """
@@ -48,13 +51,28 @@ class Agent(AbstractAgent):
         self.log_prob = torch.zeros((1,))
         self.predicted_value = torch.zeros((1,))
 
-        # create a model
-        self.model = ActorCritic(
-            hyper_params["STD"], self.state_dim, self.action_dim
+        # create models
+        self.actor = GaussianDist(
+            input_size=self.state_dim,
+            output_size=self.action_dim,
+            hidden_sizes=[48, 48],
+        ).to(device)
+
+        self.critic = MLP(
+            input_size=self.state_dim, output_size=1, hidden_sizes=[48, 48]
         ).to(device)
 
         # create optimizer
-        self.optimizer = optim.Adam(self.model.parameters(), lr=hyper_params["LR"])
+        self.actor_optimizer = optim.Adam(
+            self.actor.parameters(),
+            lr=hyper_params["LR_ACTOR"],
+            weight_decay=hyper_params["WEIGHT_DECAY"],
+        )
+        self.critic_optimizer = optim.Adam(
+            self.critic.parameters(),
+            lr=hyper_params["LR_CRITIC"],
+            weight_decay=hyper_params["WEIGHT_DECAY"],
+        )
 
         if args.load_from is not None and os.path.exists(args.load_from):
             self.load_params(args.load_from)
@@ -62,9 +80,11 @@ class Agent(AbstractAgent):
     def select_action(self, state: np.ndarray) -> torch.Tensor:
         """Select an action from the input space."""
         state = torch.FloatTensor(state).to(device)
-        selected_action, predicted_value, dist = self.model(state)
 
-        self.log_prob = dist.log_prob(selected_action).sum()
+        selected_action, dist = self.actor(state)
+        predicted_value = self.critic(state)
+
+        self.log_prob = dist.log_prob(selected_action).sum(dim=-1)
         self.predicted_value = predicted_value
 
         return selected_action
@@ -78,14 +98,14 @@ class Agent(AbstractAgent):
 
     def update_model(
         self, experience: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]
-    ) -> torch.Tensor:
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         reward, next_state, done = experience
         next_state = torch.FloatTensor(next_state).to(device)
 
         # Q_t   = r + gamma * V(s_{t+1})  if state != Terminal
         #       = r                       otherwise
         mask = 1 - done
-        next_value = self.model.critic(next_state).detach()
+        next_value = self.critic(next_state).detach()
         q_value = reward + hyper_params["GAMMA"] * next_value * mask
         q_value = q_value.to(device)
 
@@ -95,14 +115,17 @@ class Agent(AbstractAgent):
         # calculate loss at the current step
         policy_loss = -advantage.detach() * self.log_prob  # adv. is not backpropagated
         value_loss = F.mse_loss(self.predicted_value, q_value.detach())
-        loss = policy_loss + value_loss
 
         # train
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
+        self.actor_optimizer.zero_grad()
+        policy_loss.backward()
+        self.actor_optimizer.step()
 
-        return loss.data
+        self.critic_optimizer.zero_grad()
+        value_loss.backward()
+        self.critic_optimizer.step()
+
+        return policy_loss.data, value_loss.data
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
@@ -111,24 +134,41 @@ class Agent(AbstractAgent):
             return
 
         params = torch.load(path)
-        self.model.load_state_dict(params["model_state_dict"])
-        self.optimizer.load_state_dict(params["optim_state_dict"])
+        self.actor.load_state_dict(params["actor_state_dict"])
+        self.critic.load_state_dict(params["critic_state_dict"])
+        self.actor_optimizer.load_state_dict(params["actor_optim_state_dict"])
+        self.critic_optimizer.load_state_dict(params["critic_optim_state_dict"])
         print("[INFO] Loaded the model and optimizer from", path)
 
     def save_params(self, n_episode: int):
         """Save model and optimizer parameters."""
         params = {
-            "model_state_dict": self.model.state_dict(),
-            "optim_state_dict": self.optimizer.state_dict(),
+            "actor_state_dict": self.actor.state_dict(),
+            "critic_state_dict": self.critic.state_dict(),
+            "actor_optim_state_dict": self.actor_optimizer.state_dict(),
+            "critic_optim_state_dict": self.critic_optimizer.state_dict(),
         }
 
         AbstractAgent.save_params(self, self.args.algo, params, n_episode)
 
-    def write_log(self, i: int, loss: np.ndarray, score: float = 0.0):
-        print("[INFO] episode %d\ttotal score: %d\tloss: %f" % (i, score, loss))
+    def write_log(self, i: int, score: int, policy_loss: float, value_loss: float):
+        total_loss = policy_loss + value_loss
+
+        print(
+            "[INFO] episode %d\ttotal score: %d\ttotal loss: %f\n"
+            "policy loss: %f\tvalue loss: %f\n"
+            % (i, score, total_loss, policy_loss, value_loss)
+        )
 
         if self.args.log:
-            wandb.log({"score": score, "avg_loss": loss})
+            wandb.log(
+                {
+                    "total loss": total_loss,
+                    "policy loss": policy_loss,
+                    "value loss": value_loss,
+                    "score": score,
+                }
+            )
 
     def train(self):
         """Train the agent."""
@@ -136,13 +176,14 @@ class Agent(AbstractAgent):
         if self.args.log:
             wandb.init()
             wandb.config.update(hyper_params)
-            wandb.watch(self.model, log="parameters")
+            wandb.watch([self.actor, self.critic], log="parameters")
 
         for i_episode in range(1, self.args.episode_num + 1):
             state = self.env.reset()
             done = False
             score = 0
-            loss_episode = list()
+            policy_loss_episode = list()
+            value_loss_episode = list()
 
             while not done:
                 if self.args.render and i_episode >= self.args.render_after:
@@ -151,15 +192,17 @@ class Agent(AbstractAgent):
                 action = self.select_action(state)
                 next_state, reward, done = self.step(action)
 
-                loss = self.update_model((reward, next_state, done))
-                loss_episode.append(loss)
+                policy_loss, value_loss = self.update_model((reward, next_state, done))
+                policy_loss_episode.append(policy_loss)
+                value_loss_episode.append(value_loss)
 
                 state = next_state
                 score += reward
 
             # logging
-            avg_loss = np.array(loss_episode).mean()
-            self.write_log(i_episode, avg_loss, score)
+            policy_loss = np.array(policy_loss_episode).mean()
+            value_loss = np.array(value_loss_episode).mean()
+            self.write_log(i_episode, score, policy_loss, value_loss)
 
             if i_episode % self.args.save_period == 0:
                 self.save_params(i_episode)

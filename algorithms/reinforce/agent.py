@@ -18,7 +18,7 @@ import torch.optim as optim
 import wandb
 
 from algorithms.common.abstract.agent import AbstractAgent
-from algorithms.common.networks.mlp import MLP, GaussianDistPolicy
+from algorithms.common.networks.mlp import MLP, GaussianDist
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -30,8 +30,10 @@ class Agent(AbstractAgent):
     """ReinforceAgent interacting with environment.
 
     Attributes:
-        model (nn.Module): policy gradient model to select actions
-        optimizer (Optimizer): optimizer for training
+        actor (nn.Module): policy model to select actions
+        critic (nn.Module): critic model to evaluate states
+        actor_optimizer (Optimizer): optimizer for actor
+        critic_optimizer (Optimizer): optimizer for critic
         log_prob_sequence (list): log probabailities of an episode
         predicted_value_sequence (list): predicted values of an episode
         reward_sequence (list): rewards of an episode to calculate returns
@@ -53,7 +55,7 @@ class Agent(AbstractAgent):
         self.reward_sequence: list = []
 
         # create models
-        self.actor = GaussianDistPolicy(
+        self.actor = GaussianDist(
             input_size=self.state_dim,
             output_size=self.action_dim,
             hidden_sizes=[256, 256],
@@ -79,7 +81,7 @@ class Agent(AbstractAgent):
         selected_action, dist = self.actor(state)
         predicted_value = self.baseline(state)
 
-        self.log_prob_sequence.append(dist.log_prob(selected_action))
+        self.log_prob_sequence.append(dist.log_prob(selected_action).sum(dim=-1))
         self.predicted_value_sequence.append(predicted_value)
 
         return selected_action
