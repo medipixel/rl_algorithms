@@ -95,12 +95,15 @@ class Agent(AbstractAgent):
         state_ft = torch.FloatTensor(state).to(device)
         selected_action, dist = self.actor(state_ft)
 
-        self.transition += [state, dist.log_prob(selected_action).data.cpu().numpy()]
+        self.transition += [
+            state,
+            dist.log_prob(selected_action).detach().cpu().numpy(),
+        ]
 
         return selected_action
 
     def step(self, action: torch.Tensor) -> Tuple[np.ndarray, np.float64, bool]:
-        action = action.data.cpu().numpy()
+        action = action.detach().cpu().numpy()
         next_state, reward, done, _ = self.env.step(action)
 
         self.transition += [action, reward, done]
