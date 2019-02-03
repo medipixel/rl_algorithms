@@ -165,6 +165,75 @@ class GaussianDist(MLP):
         return action, dist
 
 
+class GaussianDistParams(MLP):
+    """Multilayer perceptron with Gaussian distribution output.
+
+    Attributes:
+        mu_activation (function): bounding function for mean
+        log_std_clamping (bool): whether or not to clamp log std
+        log_std_min (float): lower bound of log std
+        log_std_max (float): upper bound of log std
+        mu_layer (nn.Linear): output layer for mean
+        log_std_layer (nn.Linear): output layer for log std
+    """
+
+    def __init__(
+        self,
+        input_size: int,
+        output_size: int,
+        hidden_sizes: list,
+        hidden_activation: Callable = F.relu,
+        mu_activation: Callable = torch.tanh,
+        log_std_clamping: bool = True,
+        log_std_min: float = -20,
+        log_std_max: float = 2,
+        init_w: float = 3e-3,
+    ):
+        """Initialization.
+
+        """
+        super(GaussianDistParams, self).__init__(
+            input_size=input_size,
+            output_size=output_size,
+            hidden_sizes=hidden_sizes,
+            hidden_activation=hidden_activation,
+            use_output_layer=False,
+        )
+
+        self.mu_activation = mu_activation
+        self.log_std_clamping = log_std_clamping
+        self.log_std_min = log_std_min
+        self.log_std_max = log_std_max
+        in_size = hidden_sizes[-1]
+
+        # set log_std layer
+        self.log_std_layer = nn.Linear(in_size, output_size)
+        self.log_std_layer.weight.data.uniform_(-init_w, init_w)
+        self.log_std_layer.bias.data.uniform_(-init_w, init_w)
+
+        # set mean layer
+        self.mu_layer = nn.Linear(in_size, output_size)
+        self.mu_layer.weight.data.uniform_(-init_w, init_w)
+        self.mu_layer.bias.data.uniform_(-init_w, init_w)
+
+    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, ...]:
+        """Forward method implementation."""
+        hidden = super(GaussianDistParams, self).get_last_activation(x)
+
+        # get mean
+        mu = self.mu_layer(hidden)
+        if self.mu_activation:
+            mu = self.mu_activation(mu)
+
+        # get std
+        log_std = self.log_std_layer(hidden)
+        if self.log_std_clamping:
+            log_std = torch.clamp(log_std, self.log_std_min, self.log_std_max)
+        std = torch.exp(log_std)
+
+        return mu, log_std, std
+
+
 class TanhGaussianDistParams(MLP):
     """Multilayer perceptron with Gaussian distribution output.
 

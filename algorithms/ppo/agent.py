@@ -20,8 +20,8 @@ import wandb
 
 import algorithms.ppo.utils as ppo_utils
 from algorithms.common.abstract.agent import AbstractAgent
+from algorithms.common.networks.mlp import MLP, GaussianDist
 from algorithms.gae import GAE
-from algorithms.ppo.model import Actor, Critic
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -69,8 +69,14 @@ class Agent(AbstractAgent):
         self.transition: list = []
 
         # create models
-        self.actor = Actor(self.state_dim, self.action_dim).to(device)
-        self.critic = Critic(self.state_dim, self.action_dim).to(device)
+        self.actor = GaussianDist(
+            input_size=self.state_dim,
+            output_size=self.action_dim,
+            hidden_sizes=[128, 128, 128],
+        ).to(device)
+        self.critic = MLP(
+            input_size=self.state_dim, output_size=1, hidden_sizes=[128, 128, 128]
+        ).to(device)
 
         # create optimizer
         self.actor_optimizer = optim.Adam(
@@ -201,9 +207,7 @@ class Agent(AbstractAgent):
 
         AbstractAgent.save_params(self, self.args.algo, params, n_episode)
 
-    def write_log(
-        self, i: int, actor_loss: float, critic_loss, total_loss, score: int = 0
-    ):
+    def write_log(self, i: int, actor_loss: float, critic_loss, total_loss, score: int):
         print(
             "[INFO] episode %d\ttotal score: %d\ttotal loss: %f\n"
             "Actor loss: %f\tCritic loss: %f\n"
