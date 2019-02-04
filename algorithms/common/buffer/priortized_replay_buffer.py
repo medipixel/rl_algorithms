@@ -96,7 +96,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
 
     def extend(self, transitions: list):
         """Add experiences to memory."""
-        raise Exception("Not Implemented.")
+        raise NotImplementedError
 
     def _sample_proportional(self, batch_size: int) -> list:
         """Sample indices based on proportional."""
@@ -256,7 +256,7 @@ class PrioritizedReplayBufferfD(ReplayBuffer):
 
     def extend(self, transitions: list):
         """Add experiences to memory."""
-        raise Exception("Not Implemented.")
+        raise NotImplementedError
 
     def _sample_proportional(self, batch_size: int) -> list:
         """Sample indices based on proportional."""
