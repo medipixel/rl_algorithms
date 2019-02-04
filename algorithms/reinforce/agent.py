@@ -18,20 +18,22 @@ import torch.optim as optim
 import wandb
 
 from algorithms.common.abstract.agent import AbstractAgent
-from algorithms.reinforce.model import ActorCritic
+from algorithms.common.networks.mlp import MLP, GaussianDist
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # hyper parameters
-hyper_params = {"GAMMA": 0.99, "STD": 1.0, "LR_MODEL": 1e-3}
+hyper_params = {"GAMMA": 0.99, "LR_ACTOR": 1e-3, "LR_BASELINE": 1e-3}
 
 
 class Agent(AbstractAgent):
     """ReinforceAgent interacting with environment.
 
     Attributes:
-        model (nn.Module): policy gradient model to select actions
-        optimizer (Optimizer): optimizer for training
+        actor (nn.Module): policy model to select actions
+        critic (nn.Module): critic model to evaluate states
+        actor_optimizer (Optimizer): optimizer for actor
+        critic_optimizer (Optimizer): optimizer for critic
         log_prob_sequence (list): log probabailities of an episode
         predicted_value_sequence (list): predicted values of an episode
         reward_sequence (list): rewards of an episode to calculate returns
@@ -52,15 +54,21 @@ class Agent(AbstractAgent):
         self.predicted_value_sequence: list = []
         self.reward_sequence: list = []
 
-        # create a model
-        self.model = ActorCritic(
-            hyper_params["STD"], self.state_dim, self.action_dim
+        # create models
+        self.actor = GaussianDist(
+            input_size=self.state_dim,
+            output_size=self.action_dim,
+            hidden_sizes=[256, 256],
+        ).to(device)
+
+        self.baseline = MLP(
+            input_size=self.state_dim, output_size=1, hidden_sizes=[256, 256]
         ).to(device)
 
         # create optimizer
-        self.optimizer = optim.Adam(
-            self.model.parameters(), lr=hyper_params["LR_MODEL"]
-        )
+        lr_actor, lr_baseline = hyper_params["LR_ACTOR"], hyper_params["LR_BASELINE"]
+        self.actor_optimizer = optim.Adam(self.actor.parameters(), lr_actor)
+        self.baseline_optimizer = optim.Adam(self.baseline.parameters(), lr=lr_baseline)
 
         # load stored parameters
         if args.load_from is not None and os.path.exists(args.load_from):
@@ -69,9 +77,11 @@ class Agent(AbstractAgent):
     def select_action(self, state: np.ndarray) -> torch.Tensor:
         """Select an action from the input space."""
         state = torch.FloatTensor(state).to(device)
-        selected_action, predicted_value, dist = self.model(state)
 
-        self.log_prob_sequence.append(dist.log_prob(selected_action).sum())
+        selected_action, dist = self.actor(state)
+        predicted_value = self.baseline(state)
+
+        self.log_prob_sequence.append(dist.log_prob(selected_action).sum(dim=-1))
         self.predicted_value_sequence.append(predicted_value)
 
         return selected_action
@@ -86,7 +96,7 @@ class Agent(AbstractAgent):
 
         return next_state, reward, done
 
-    def update_model(self) -> torch.Tensor:
+    def update_model(self) -> Tuple[torch.Tensor, torch.Tensor]:
         """Train the model after each episode."""
         return_value = 0  # initial return value
         return_sequence: Deque = deque()
@@ -105,7 +115,8 @@ class Agent(AbstractAgent):
         ) / (return_sequence_tensor.std() + 1e-7)
 
         # calculate loss at each step
-        loss_sequence = []
+        policy_loss_sequence = []
+        value_loss_sequence = []
         for log_prob, return_value, predicted_value in zip(
             self.log_prob_sequence,
             return_sequence_tensor,
@@ -114,23 +125,28 @@ class Agent(AbstractAgent):
             delta = return_value - predicted_value.detach()
 
             policy_loss = -delta * log_prob
-            value_loss = F.smooth_l1_loss(predicted_value, return_value)
+            value_loss = F.mse_loss(predicted_value, return_value)
 
-            loss = policy_loss + value_loss
-            loss_sequence.append(loss)
+            policy_loss_sequence.append(policy_loss)
+            value_loss_sequence.append(value_loss)
 
         # train
-        self.optimizer.zero_grad()
-        total_loss = torch.stack(loss_sequence).sum()
-        total_loss.backward()
-        self.optimizer.step()
+        self.actor_optimizer.zero_grad()
+        policy_loss = torch.stack(policy_loss_sequence).mean()
+        policy_loss.backward()
+        self.actor_optimizer.step()
+
+        self.baseline_optimizer.zero_grad()
+        value_loss = torch.stack(value_loss_sequence).mean()
+        value_loss.backward()
+        self.baseline_optimizer.step()
 
         # clear
         self.log_prob_sequence.clear()
         self.predicted_value_sequence.clear()
         self.reward_sequence.clear()
 
-        return total_loss.data
+        return policy_loss.data, value_loss.data
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
@@ -139,24 +155,41 @@ class Agent(AbstractAgent):
             return
 
         params = torch.load(path)
-        self.model.load_state_dict(params["model_state_dict"])
-        self.optimizer.load_state_dict(params["optim_state_dict"])
+        self.actor.load_state_dict(params["actor_state_dict"])
+        self.baseline.load_state_dict(params["baseline_state_dict"])
+        self.actor_optimizer.load_state_dict(params["actor_optim_state_dict"])
+        self.baseline_optimizer.load_state_dict(params["baseline_optim_state_dict"])
         print("[INFO] loaded the model and optimizer from", path)
 
     def save_params(self, n_episode: int):
         """Save model and optimizer parameters."""
         params = {
-            "model_state_dict": self.model.state_dict(),
-            "optim_state_dict": self.optimizer.state_dict(),
+            "actor_state_dict": self.actor.state_dict(),
+            "baseline_state_dict": self.baseline.state_dict(),
+            "actor_optim_state_dict": self.actor_optimizer.state_dict(),
+            "baseline_optim_state_dict": self.baseline_optimizer.state_dict(),
         }
 
         AbstractAgent.save_params(self, self.args.algo, params, n_episode)
 
-    def write_log(self, i: int, loss: float, score: float = 0.0):
-        print("[INFO] episode %d\ttotal score: %d\trecent loss: %f" % (i, score, loss))
+    def write_log(self, i: int, score: int, policy_loss: float, value_loss: float):
+        total_loss = policy_loss + value_loss
+
+        print(
+            "[INFO] episode %d\ttotal score: %d\ttotal loss: %f\n"
+            "policy loss: %f\tvalue loss: %f\n"
+            % (i, score, total_loss, policy_loss, value_loss)
+        )
 
         if self.args.log:
-            wandb.log({"recent loss": loss, "score": score})
+            wandb.log(
+                {
+                    "total loss": total_loss,
+                    "policy loss": policy_loss,
+                    "value loss": value_loss,
+                    "score": score,
+                }
+            )
 
     def train(self):
         """Run the agent."""
@@ -164,7 +197,7 @@ class Agent(AbstractAgent):
         if self.args.log:
             wandb.init()
             wandb.config.update(hyper_params)
-            wandb.watch(self.model, log="parameters")
+            wandb.watch([self.actor, self.baseline], log="parameters")
 
         for i_episode in range(1, self.args.episode_num + 1):
             state = self.env.reset()
@@ -181,10 +214,10 @@ class Agent(AbstractAgent):
                 state = next_state
                 score += reward
 
-            loss = self.update_model()
+            policy_loss, value_loss = self.update_model()
 
             # logging
-            self.write_log(i_episode, score, loss)
+            self.write_log(i_episode, score, policy_loss, value_loss)
 
             if i_episode % self.args.save_period == 0:
                 self.save_params(i_episode)

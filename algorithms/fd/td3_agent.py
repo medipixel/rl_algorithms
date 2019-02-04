@@ -22,8 +22,8 @@ import wandb
 import algorithms.common.helper_functions as common_utils
 from algorithms.common.abstract.agent import AbstractAgent
 from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBufferfD
+from algorithms.common.networks.mlp import MLP
 from algorithms.common.noise import GaussianNoise
-from algorithms.td3.model import Actor, Critic
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -87,15 +87,41 @@ class Agent(AbstractAgent):
         self.n_step = 0
 
         # create actor
-        self.actor = Actor(self.state_dim, self.action_dim).to(device)
-        self.actor_target = Actor(self.state_dim, self.action_dim).to(device)
+        self.actor = MLP(
+            input_size=self.state_dim,
+            output_size=self.action_dim,
+            hidden_sizes=[128, 128, 128],
+            output_activation=torch.tanh,
+        ).to(device)
+        self.actor_target = MLP(
+            input_size=self.state_dim,
+            output_size=self.action_dim,
+            hidden_sizes=[128, 128, 128],
+            output_activation=torch.tanh,
+        ).to(device)
         self.actor_target.load_state_dict(self.actor.state_dict())
 
         # create critic
-        self.critic_1 = Critic(self.state_dim, self.action_dim).to(device)
-        self.critic_2 = Critic(self.state_dim, self.action_dim).to(device)
-        self.critic_target1 = Critic(self.state_dim, self.action_dim).to(device)
-        self.critic_target2 = Critic(self.state_dim, self.action_dim).to(device)
+        self.critic_1 = MLP(
+            input_size=self.state_dim + self.action_dim,
+            output_size=1,
+            hidden_sizes=[128, 128, 128],
+        ).to(device)
+        self.critic_2 = MLP(
+            input_size=self.state_dim + self.action_dim,
+            output_size=1,
+            hidden_sizes=[128, 128, 128],
+        ).to(device)
+        self.critic_target1 = MLP(
+            input_size=self.state_dim + self.action_dim,
+            output_size=1,
+            hidden_sizes=[128, 128, 128],
+        ).to(device)
+        self.critic_target2 = MLP(
+            input_size=self.state_dim + self.action_dim,
+            output_size=1,
+            hidden_sizes=[128, 128, 128],
+        ).to(device)
         self.critic_target1.load_state_dict(self.critic_1.state_dict())
         self.critic_target2.load_state_dict(self.critic_2.state_dict())
 
@@ -182,8 +208,9 @@ class Agent(AbstractAgent):
         next_actions += noise
 
         # min (Q_1', Q_2')
-        next_values1 = self.critic_target1(next_states, next_actions)
-        next_values2 = self.critic_target2(next_states, next_actions)
+        next_states_actions = torch.cat((next_states, next_actions), dim=-1)
+        next_values1 = self.critic_target1(next_states_actions)
+        next_values2 = self.critic_target2(next_states_actions)
         next_values = torch.min(next_values1, next_values2)
 
         # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
@@ -192,8 +219,9 @@ class Agent(AbstractAgent):
         curr_returns = curr_returns.to(device).detach()
 
         # critic loss
-        values1 = self.critic_1(states, actions)
-        values2 = self.critic_2(states, actions)
+        states_actions = torch.cat((states, actions), dim=-1)
+        values1 = self.critic_1(states_actions)
+        values2 = self.critic_2(states_actions)
         critic_loss1 = torch.mean((values1 - curr_returns).pow(2) * weights)
         critic_loss2 = torch.mean((values2 - curr_returns).pow(2) * weights)
 
@@ -209,7 +237,8 @@ class Agent(AbstractAgent):
         if self.n_step % hyper_params["DELAYED_UPDATE"] == 0:
             # train actor
             actions = self.actor(states)
-            actor_loss_element_wise = -self.critic_1(states, actions)
+            states_actions = torch.cat((states, actions), dim=-1)
+            actor_loss_element_wise = -self.critic_1(states_actions)
             actor_loss = torch.mean(actor_loss_element_wise * weights)
             self.actor_optimizer.zero_grad()
             actor_loss.backward()

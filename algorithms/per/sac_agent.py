@@ -21,7 +21,7 @@ import wandb
 import algorithms.common.helper_functions as common_utils
 from algorithms.common.abstract.agent import AbstractAgent
 from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
-from algorithms.sac.model import Actor, Qvalue, Value
+from algorithms.common.networks.mlp import MLP, TanhGaussianDistParams
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -84,16 +84,32 @@ class Agent(AbstractAgent):
         self.n_step = 0
 
         # create actor
-        self.actor = Actor(self.state_dim, self.action_dim).to(device)
+        self.actor = TanhGaussianDistParams(
+            input_size=self.state_dim,
+            output_size=self.action_dim,
+            hidden_sizes=[128, 128, 128],
+        ).to(device)
 
         # create v_critic
-        self.vf = Value(self.state_dim).to(device)
-        self.vf_target = Value(self.state_dim).to(device)
+        self.vf = MLP(
+            input_size=self.state_dim, output_size=1, hidden_sizes=[128, 128, 128]
+        ).to(device)
+        self.vf_target = MLP(
+            input_size=self.state_dim, output_size=1, hidden_sizes=[128, 128, 128]
+        ).to(device)
         self.vf_target.load_state_dict(self.vf.state_dict())
 
         # create q_critic
-        self.qf_1 = Qvalue(self.state_dim, self.action_dim).to(device)
-        self.qf_2 = Qvalue(self.state_dim, self.action_dim).to(device)
+        self.qf_1 = MLP(
+            input_size=self.state_dim + self.action_dim,
+            output_size=1,
+            hidden_sizes=[128, 128, 128],
+        ).to(device)
+        self.qf_2 = MLP(
+            input_size=self.state_dim + self.action_dim,
+            output_size=1,
+            hidden_sizes=[128, 128, 128],
+        ).to(device)
 
         # create optimizers
         self.actor_optimizer = optim.Adam(
@@ -170,18 +186,18 @@ class Agent(AbstractAgent):
 
         # Q function loss
         masks = 1 - dones
-        q_1_pred = self.qf_1(states, actions)
-        q_2_pred = self.qf_2(states, actions)
+        states_actions = torch.cat((states, actions), dim=-1)
+        q_1_pred = self.qf_1(states_actions)
+        q_2_pred = self.qf_2(states_actions)
         v_target = self.vf_target(next_states)
         q_target = rewards + hyper_params["GAMMA"] * v_target * masks
         qf_1_loss = torch.mean((q_1_pred - q_target.detach()).pow(2) * weights)
         qf_2_loss = torch.mean((q_2_pred - q_target.detach()).pow(2) * weights)
 
         # V function loss
+        states_actions = torch.cat((states, new_actions), dim=-1)
         v_pred = self.vf(states)
-        q_pred = torch.min(
-            self.qf_1(states, new_actions), self.qf_2(states, new_actions)
-        )
+        q_pred = torch.min(self.qf_1(states_actions), self.qf_2(states_actions))
         v_target = (q_pred - alpha * log_prob).detach()
         vf_loss = torch.mean((v_pred - v_target).pow(2) * weights)
 

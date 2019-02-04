@@ -22,8 +22,8 @@ import wandb
 
 import algorithms.trpo.utils as trpo_utils
 from algorithms.common.abstract.agent import AbstractAgent
+from algorithms.common.networks.mlp import MLP, GaussianDistParams
 from algorithms.gae import GAE
-from algorithms.trpo.model import Actor, Critic
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -67,9 +67,19 @@ class Agent(AbstractAgent):
         self.gae = GAE()
 
         # create models
-        self.actor = Actor(self.state_dim, self.action_dim).to(device)
-        self.old_actor = Actor(self.state_dim, self.action_dim).to(device)
-        self.critic = Critic(self.state_dim, self.action_dim).to(device)
+        self.actor = GaussianDistParams(
+            input_size=self.state_dim,
+            output_size=self.action_dim,
+            hidden_sizes=[128, 128, 128],
+        ).to(device)
+        self.old_actor = GaussianDistParams(
+            input_size=self.state_dim,
+            output_size=self.action_dim,
+            hidden_sizes=[128, 128, 128],
+        ).to(device)
+        self.critic = MLP(
+            input_size=self.state_dim, output_size=1, hidden_sizes=[128, 128, 128]
+        ).to(device)
 
         # load model parameters
         if args.load_from is not None and os.path.exists(args.load_from):
@@ -147,7 +157,7 @@ class Agent(AbstractAgent):
 
         AbstractAgent.save_params(self, "trpo", params, n_episode)
 
-    def write_log(self, i: int, loss: np.ndarray, score: float = 0.0):
+    def write_log(self, i: int, loss: np.ndarray, score: int):
         """Write log about loss and score"""
         total_loss = loss.sum()
 

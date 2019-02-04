@@ -20,8 +20,8 @@ import wandb
 import algorithms.common.helper_functions as common_utils
 from algorithms.common.abstract.agent import AbstractAgent
 from algorithms.common.buffer.replay_buffer import ReplayBuffer
+from algorithms.common.networks.mlp import MLP
 from algorithms.common.noise import OUNoise
-from algorithms.ddpg.model import Actor, Critic
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -67,13 +67,31 @@ class Agent(AbstractAgent):
         self.curr_state = np.zeros((self.state_dim,))
 
         # create actor
-        self.actor = Actor(self.state_dim, self.action_dim).to(device)
-        self.actor_target = Actor(self.state_dim, self.action_dim).to(device)
+        self.actor = MLP(
+            input_size=self.state_dim,
+            output_size=self.action_dim,
+            hidden_sizes=[256, 256],
+            output_activation=torch.tanh,
+        ).to(device)
+        self.actor_target = MLP(
+            input_size=self.state_dim,
+            output_size=self.action_dim,
+            hidden_sizes=[256, 256],
+            output_activation=torch.tanh,
+        ).to(device)
         self.actor_target.load_state_dict(self.actor.state_dict())
 
         # create critic
-        self.critic = Critic(self.state_dim, self.action_dim).to(device)
-        self.critic_target = Critic(self.state_dim, self.action_dim).to(device)
+        self.critic = MLP(
+            input_size=self.state_dim + self.action_dim,
+            output_size=1,
+            hidden_sizes=[256, 256],
+        ).to(device)
+        self.critic_target = MLP(
+            input_size=self.state_dim + self.action_dim,
+            output_size=1,
+            hidden_sizes=[256, 256],
+        ).to(device)
         self.critic_target.load_state_dict(self.critic.state_dict())
 
         # create optimizers
@@ -135,12 +153,12 @@ class Agent(AbstractAgent):
         #       = r                       otherwise
         masks = 1 - dones
         next_actions = self.actor_target(next_states)
-        next_values = self.critic_target(next_states, next_actions)
+        next_values = self.critic_target(torch.cat((next_states, next_actions), dim=-1))
         curr_returns = rewards + hyper_params["GAMMA"] * next_values * masks
         curr_returns = curr_returns.to(device)
 
         # train critic
-        values = self.critic(states, actions)
+        values = self.critic(torch.cat((states, actions), dim=-1))
         critic_loss = F.mse_loss(values, curr_returns)
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
@@ -148,7 +166,7 @@ class Agent(AbstractAgent):
 
         # train actor
         actions = self.actor(states)
-        actor_loss = -self.critic(states, actions).mean()
+        actor_loss = -self.critic(torch.cat((states, actions), dim=-1)).mean()
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
         self.actor_optimizer.step()
@@ -187,7 +205,7 @@ class Agent(AbstractAgent):
 
         AbstractAgent.save_params(self, self.args.algo, params, n_episode)
 
-    def write_log(self, i: int, loss: np.ndarray, score: float = 0.0):
+    def write_log(self, i: int, loss: np.ndarray, score: int):
         """Write log about loss and score"""
         total_loss = loss.sum()
 

@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 """DPG agent for episodic tasks in OpenAI Gym.
 
+This algorithm doesn't guarantee convergence becasue
+the model structures don't complies theorem 4.3 in the paper.
+
 - Author: Curt Park
 - Contact: curt.park@medipixel.io
 - Paper: http://proceedings.mlr.press/v32/silver14.pdf
@@ -18,12 +21,12 @@ import torch.optim as optim
 import wandb
 
 from algorithms.common.abstract.agent import AbstractAgent
-from algorithms.dpg.model import Actor, Critic
+from algorithms.common.networks.mlp import MLP
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # hyper parameters
-hyper_params = {"GAMMA": 0.99, "LR_ACTOR": 1e-4, "LR_CRITIC": 1e-3}
+hyper_params = {"GAMMA": 0.99, "LR_ACTOR": 1e-3, "LR_CRITIC": 1e-3}
 
 
 class Agent(AbstractAgent):
@@ -47,9 +50,19 @@ class Agent(AbstractAgent):
         """
         AbstractAgent.__init__(self, env, args)
 
-        # create a model
-        self.actor = Actor(self.state_dim, self.action_dim).to(device)
-        self.critic = Critic(self.state_dim, self.action_dim).to(device)
+        # create models
+        self.actor = MLP(
+            input_size=self.state_dim,
+            output_size=self.action_dim,
+            hidden_sizes=[256, 256],
+            output_activation=torch.tanh,
+        ).to(device)
+
+        self.critic = MLP(
+            input_size=self.state_dim + self.action_dim,
+            output_size=1,
+            hidden_sizes=[256, 256],
+        ).to(device)
 
         # create optimizer
         self.actor_optimizer = optim.Adam(
@@ -84,13 +97,13 @@ class Agent(AbstractAgent):
         state, action, reward, next_state, done = experience
         state = torch.FloatTensor(state).to(device)
         next_state = torch.FloatTensor(next_state).to(device)
+        mask = 1 - done
 
         # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
         #       = r                       otherwise
-        mask = 1 - done
-        value = self.critic(state, action)
+        value = self.critic(torch.cat((state, action), dim=-1))
         next_action = self.actor(next_state)
-        next_value = self.critic(next_state, next_action).detach()
+        next_value = self.critic(torch.cat((next_state, next_action), dim=-1)).detach()
         curr_return = reward + hyper_params["GAMMA"] * next_value * mask
         curr_return = curr_return.to(device)
 
@@ -102,7 +115,7 @@ class Agent(AbstractAgent):
 
         # train actor
         action = self.actor(state)
-        actor_loss = -self.critic(state, action).mean()
+        actor_loss = -self.critic(torch.cat((state, action), dim=-1)).mean()
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
         self.actor_optimizer.step()
@@ -133,7 +146,7 @@ class Agent(AbstractAgent):
 
         AbstractAgent.save_params(self, self.args.algo, params, n_episode)
 
-    def write_log(self, i: int, loss: np.ndarray, score: float = 0.0):
+    def write_log(self, i: int, loss: np.ndarray, score: int):
         """Write log about loss and score"""
         total_loss = loss.sum()
 
