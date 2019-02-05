@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Run module for DDPG on LunarLanderContinuous-v2.
+"""Run module for DDPG with PER on LunarLanderContinuous-v2.
 
 - Author: Curt Park
 - Contact: curt.park@medipixel.io
