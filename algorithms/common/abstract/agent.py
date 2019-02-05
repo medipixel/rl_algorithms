@@ -20,7 +20,7 @@ class AbstractAgent(ABC):
     """Abstract Agent used for all agents.
 
     Attributes:
-        env (gym.Env): openAI Gym environment with discrete action space
+        env (gym.Env): openAI Gym environment
         args (argparse.Namespace): arguments including hyperparameters and training settings
         sha (str): sha code of current git commit
 
@@ -30,7 +30,7 @@ class AbstractAgent(ABC):
         """Initialization.
 
         Args:
-            env (gym.Env): openAI Gym environment with discrete action space
+            env (gym.Env): openAI Gym environment
             args (argparse.Namespace): arguments including hyperparameters and training settings
 
         """
