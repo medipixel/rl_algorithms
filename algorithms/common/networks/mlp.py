@@ -12,6 +12,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Normal
 
+from algorithms.common.helper_functions import identity
+
 
 class MLP(nn.Module):
     """Baseline of Multilayer perceptron.
@@ -33,7 +35,7 @@ class MLP(nn.Module):
         output_size: int,
         hidden_sizes: list,
         hidden_activation: Callable = F.relu,
-        output_activation: Callable = None,
+        output_activation: Callable = identity,
         use_output_layer: bool = True,
         init_w: float = 3e-3,
     ):
@@ -86,8 +88,7 @@ class MLP(nn.Module):
         x = self.get_last_activation(x)
 
         output = self.output_layer(x)
-        if self.output_activation:
-            output = self.output_activation(output)
+        output = self.output_activation(output)
 
         return output
 
@@ -111,7 +112,6 @@ class GaussianDist(MLP):
         hidden_sizes: list,
         hidden_activation: Callable = F.relu,
         mu_activation: Callable = torch.tanh,
-        log_std_clamping: bool = True,
         log_std_min: float = -20,
         log_std_max: float = 2,
         init_w: float = 3e-3,
@@ -128,7 +128,6 @@ class GaussianDist(MLP):
         )
 
         self.mu_activation = mu_activation
-        self.log_std_clamping = log_std_clamping
         self.log_std_min = log_std_min
         self.log_std_max = log_std_max
         in_size = hidden_sizes[-1]
@@ -148,14 +147,12 @@ class GaussianDist(MLP):
         hidden = super(GaussianDist, self).get_last_activation(x)
 
         # get mean
-        mu = self.mu_layer(hidden)
-        if self.mu_activation:
-            mu = self.mu_activation(mu)
+        mu = self.mu_activation(self.mu_layer(hidden))
 
         # get std
-        log_std = self.log_std_layer(hidden)
-        if self.log_std_clamping:
-            log_std = torch.clamp(log_std, self.log_std_min, self.log_std_max)
+        log_std = torch.clamp(
+            self.log_std_layer(hidden), self.log_std_min, self.log_std_max
+        )
         std = torch.exp(log_std)
 
         return mu, log_std, std
@@ -186,7 +183,7 @@ class TanhGaussianDistParams(GaussianDist):
 
     def __init__(self, **kwargs):
         """Initialization."""
-        super(TanhGaussianDistParams, self).__init__(**kwargs, mu_activation=None)
+        super(TanhGaussianDistParams, self).__init__(**kwargs, mu_activation=identity)
 
     def forward(
         self, x: torch.Tensor, epsilon: float = 1e-6

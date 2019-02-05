@@ -21,31 +21,8 @@ import wandb
 import algorithms.common.helper_functions as common_utils
 from algorithms.common.abstract.agent import AbstractAgent
 from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
-from algorithms.common.networks.mlp import MLP, TanhGaussianDistParams
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-# hyper parameters
-hyper_params = {
-    "GAMMA": 0.99,
-    "TAU": 1e-3,
-    "W_ENTROPY": 1e-3,
-    "W_MEAN_REG": 1e-3,
-    "W_STD_REG": 1e-3,
-    "W_PRE_ACTIVATION_REG": 0.0,
-    "LR_ACTOR": 3e-4,
-    "LR_VF": 3e-4,
-    "LR_QF1": 3e-4,
-    "LR_QF2": 3e-4,
-    "LR_ENTROPY": 3e-4,
-    "DELAYED_UPDATE": 2,
-    "BUFFER_SIZE": int(1e6),
-    "BATCH_SIZE": 128,
-    "AUTO_ENTROPY_TUNING": True,
-    "PER_ALPHA": 0.5,
-    "PER_BETA": 0.4,
-    "PER_EPS": 1e-6,
-}
 
 
 class Agent(AbstractAgent):
@@ -67,65 +44,42 @@ class Agent(AbstractAgent):
         target_entropy (int): desired entropy used for the inequality constraint
         alpha (torch.Tensor): weight for entropy
         alpha_optimizer (Optimizer): optimizer for alpha
+        hyper_params (dict): hyper-parameters
 
     """
 
-    def __init__(self, env: gym.Env, args: argparse.Namespace):
+    def __init__(
+        self,
+        env: gym.Env,
+        args: argparse.Namespace,
+        hyper_params: dict,
+        models: tuple,
+        optims: tuple,
+        target_entropy: float,
+    ):
         """Initialization.
 
         Args:
-            env (gym.Env): openAI Gym environment with discrete action space
+            env (gym.Env): openAI Gym environment
             args (argparse.Namespace): arguments including hyperparameters and training settings
+            hyper_params (dict): hyper-parameters
+            models (tuple): models including actor and critic
+            optims (tuple): optimizers for actor and critic
+            target_entropy (float): target entropy for the inequality constraint
 
         """
         AbstractAgent.__init__(self, env, args)
 
-        self.curr_state = np.zeros((self.state_dim,))
+        self.actor, self.vf, self.vf_target, self.qf_1, self.qf_2 = models
+        self.actor_optimizer, self.vf_optimizer = optims[0:2]
+        self.qf_1_optimizer, self.qf_2_optimizer = optims[2:4]
+        self.hyper_params = hyper_params
+        self.curr_state = np.zeros((1,))
         self.n_step = 0
-
-        # create actor
-        self.actor = TanhGaussianDistParams(
-            input_size=self.state_dim,
-            output_size=self.action_dim,
-            hidden_sizes=[128, 128, 128],
-        ).to(device)
-
-        # create v_critic
-        self.vf = MLP(
-            input_size=self.state_dim, output_size=1, hidden_sizes=[128, 128, 128]
-        ).to(device)
-        self.vf_target = MLP(
-            input_size=self.state_dim, output_size=1, hidden_sizes=[128, 128, 128]
-        ).to(device)
-        self.vf_target.load_state_dict(self.vf.state_dict())
-
-        # create q_critic
-        self.qf_1 = MLP(
-            input_size=self.state_dim + self.action_dim,
-            output_size=1,
-            hidden_sizes=[128, 128, 128],
-        ).to(device)
-        self.qf_2 = MLP(
-            input_size=self.state_dim + self.action_dim,
-            output_size=1,
-            hidden_sizes=[128, 128, 128],
-        ).to(device)
-
-        # create optimizers
-        self.actor_optimizer = optim.Adam(
-            self.actor.parameters(), lr=hyper_params["LR_ACTOR"]
-        )
-        self.vf_optimizer = optim.Adam(self.vf.parameters(), lr=hyper_params["LR_VF"])
-        self.qf_1_optimizer = optim.Adam(
-            self.qf_1.parameters(), lr=hyper_params["LR_QF1"]
-        )
-        self.qf_2_optimizer = optim.Adam(
-            self.qf_2.parameters(), lr=hyper_params["LR_QF2"]
-        )
 
         # automatic entropy tuning
         if hyper_params["AUTO_ENTROPY_TUNING"]:
-            self.target_entropy = -np.prod((self.action_dim,)).item()  # heuristic
+            self.target_entropy = target_entropy
             self.log_alpha = torch.zeros(1, requires_grad=True, device=device)
             self.alpha_optimizer = optim.Adam(
                 [self.log_alpha], lr=hyper_params["LR_ENTROPY"]
@@ -136,12 +90,12 @@ class Agent(AbstractAgent):
             self.load_params(args.load_from)
 
         # replay memory
-        self.beta = hyper_params["PER_BETA"]
+        self.beta = self.hyper_params["PER_BETA"]
         self.memory = PrioritizedReplayBuffer(
-            hyper_params["BUFFER_SIZE"],
-            hyper_params["BATCH_SIZE"],
+            self.hyper_params["BUFFER_SIZE"],
+            self.hyper_params["BATCH_SIZE"],
             self.args.seed,
-            alpha=hyper_params["PER_ALPHA"],
+            alpha=self.hyper_params["PER_ALPHA"],
         )
 
     def select_action(self, state: np.ndarray) -> torch.Tensor:
@@ -170,7 +124,7 @@ class Agent(AbstractAgent):
         new_actions, log_prob, pre_tanh_value, mu, std = self.actor(states)
 
         # train alpha
-        if hyper_params["AUTO_ENTROPY_TUNING"]:
+        if self.hyper_params["AUTO_ENTROPY_TUNING"]:
             alpha_loss = torch.mean(
                 (-self.log_alpha * (log_prob + self.target_entropy).detach()) * weights
             )
@@ -182,7 +136,7 @@ class Agent(AbstractAgent):
             alpha = self.log_alpha.exp()
         else:
             alpha_loss = 0.0
-            alpha = hyper_params["W_ENTROPY"]
+            alpha = self.hyper_params["W_ENTROPY"]
 
         # Q function loss
         masks = 1 - dones
@@ -190,7 +144,7 @@ class Agent(AbstractAgent):
         q_1_pred = self.qf_1(states_actions)
         q_2_pred = self.qf_2(states_actions)
         v_target = self.vf_target(next_states)
-        q_target = rewards + hyper_params["GAMMA"] * v_target * masks
+        q_target = rewards + self.hyper_params["GAMMA"] * v_target * masks
         qf_1_loss = torch.mean((q_1_pred - q_target.detach()).pow(2) * weights)
         qf_2_loss = torch.mean((q_2_pred - q_target.detach()).pow(2) * weights)
 
@@ -215,16 +169,16 @@ class Agent(AbstractAgent):
         vf_loss.backward()
         self.vf_optimizer.step()
 
-        if self.n_step % hyper_params["DELAYED_UPDATE"] == 0:
+        if self.n_step % self.hyper_params["DELAYED_UPDATE"] == 0:
             # actor loss
             advantage = q_pred - v_pred.detach()
             actor_loss = torch.mean((alpha * log_prob - advantage) * weights)
             # actor_loss = (log_prob * (alpha * log_prob - advantage).detach()).mean()
 
             # regularization
-            mean_reg = hyper_params["W_MEAN_REG"] * mu.pow(2).mean()
-            std_reg = hyper_params["W_STD_REG"] * std.pow(2).mean()
-            pre_activation_reg = hyper_params["W_PRE_ACTIVATION_REG"] * (
+            mean_reg = self.hyper_params["W_MEAN_REG"] * mu.pow(2).mean()
+            std_reg = self.hyper_params["W_STD_REG"] * std.pow(2).mean()
+            pre_activation_reg = self.hyper_params["W_PRE_ACTIVATION_REG"] * (
                 pre_tanh_value.pow(2).sum(dim=1).mean()
             )
             actor_reg = mean_reg + std_reg + pre_activation_reg
@@ -238,14 +192,14 @@ class Agent(AbstractAgent):
             self.actor_optimizer.step()
 
             # update target networks
-            common_utils.soft_update(self.vf, self.vf_target, hyper_params["TAU"])
+            common_utils.soft_update(self.vf, self.vf_target, self.hyper_params["TAU"])
         else:
             actor_loss = torch.zeros(1)
 
         # update priorities in PER
         new_priorities = (v_pred - v_target).pow(2)
         new_priorities = new_priorities.data.cpu().numpy()
-        new_priorities += hyper_params["PER_EPS"]
+        new_priorities += self.hyper_params["PER_EPS"]
         self.memory.update_priorities(indexes, new_priorities)
 
         return (
@@ -331,7 +285,7 @@ class Agent(AbstractAgent):
         # logger
         if self.args.log:
             wandb.init()
-            wandb.config.update(hyper_params)
+            wandb.config.update(self.hyper_params)
             wandb.watch([self.actor, self.vf, self.qf_1, self.qf_2], log="parameters")
 
         self.n_step = 0
@@ -348,7 +302,7 @@ class Agent(AbstractAgent):
                 action = self.select_action(state)
                 next_state, reward, done = self.step(action)
 
-                if len(self.memory) >= hyper_params["BATCH_SIZE"]:
+                if len(self.memory) >= self.hyper_params["BATCH_SIZE"]:
                     experiences = self.memory.sample()
                     loss = self.update_model(experiences)
                     loss_episode.append(loss)  # for logging
@@ -365,7 +319,7 @@ class Agent(AbstractAgent):
             if loss_episode:
                 avg_loss = np.vstack(loss_episode).mean(axis=0)
                 self.write_log(
-                    i_episode, avg_loss, score, hyper_params["DELAYED_UPDATE"]
+                    i_episode, avg_loss, score, self.hyper_params["DELAYED_UPDATE"]
                 )
 
             if i_episode % self.args.save_period == 0:

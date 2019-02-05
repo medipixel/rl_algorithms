@@ -20,10 +20,8 @@ class AbstractAgent(ABC):
     """Abstract Agent used for all agents.
 
     Attributes:
-        env (gym.Env): openAI Gym environment with discrete action space
+        env (gym.Env): openAI Gym environment
         args (argparse.Namespace): arguments including hyperparameters and training settings
-        state_dim (int): dimension of state space
-        action_dim (int): dimension of action space
         sha (str): sha code of current git commit
 
     """
@@ -32,7 +30,7 @@ class AbstractAgent(ABC):
         """Initialization.
 
         Args:
-            env (gym.Env): openAI Gym environment with discrete action space
+            env (gym.Env): openAI Gym environment
             args (argparse.Namespace): arguments including hyperparameters and training settings
 
         """
@@ -42,9 +40,6 @@ class AbstractAgent(ABC):
             env._max_episode_steps = self.args.max_episode_steps
         else:
             self.args.max_episode_steps = env._max_episode_steps
-
-        self.state_dim = env.observation_space.shape[0]
-        self.action_dim = env.action_space.shape[0]
 
         # for logging
         self.sha = (

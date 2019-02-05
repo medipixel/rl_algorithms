@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
-"""Training or testing baselines on LunarLander-v2 or LunarLanderContinuous-v2.
+"""Train or test baselines on LunarLanderContinuous-v2.
 
 - Author: Curt Park
 - Contact: curt.park@medipixel.io
 """
 
 import argparse
+import importlib
 
 import gym
 import numpy as np
@@ -51,60 +52,23 @@ parser.set_defaults(render=True)
 parser.set_defaults(log=False)
 args = parser.parse_args()
 
-# import the agent
-if args.algo == "reinforce":
-    from algorithms.reinforce.agent import Agent
-elif args.algo == "a2c":
-    from algorithms.a2c.agent import Agent
-elif args.algo == "dpg":
-    from algorithms.dpg.agent import Agent
-elif args.algo == "ddpg":
-    from algorithms.ddpg.agent import Agent
-elif args.algo == "trpo":
-    from algorithms.trpo.agent import Agent
-elif args.algo == "ppo":
-    from algorithms.ppo.agent import Agent
-elif args.algo == "td3":
-    from algorithms.td3.agent import Agent
-elif args.algo == "sac":
-    from algorithms.sac.agent import Agent
-# with bc
-elif args.algo == "bc-ddpg":
-    from algorithms.bc.ddpg_agent import Agent
-# with per
-elif args.algo == "per-ddpg":
-    from algorithms.per.ddpg_agent import Agent
-elif args.algo == "per-td3":
-    from algorithms.per.td3_agent import Agent
-elif args.algo == "per-sac":
-    from algorithms.per.sac_agent import Agent
-# from demo
-elif args.algo == "ddpgfd":
-    from algorithms.fd.ddpg_agent import Agent
-elif args.algo == "td3fd":
-    from algorithms.fd.td3_agent import Agent
-elif args.algo == "sacfd":
-    from algorithms.fd.sac_agent import Agent
-
 
 def main():
     """Main."""
     # env initialization
     env = gym.make("LunarLanderContinuous-v2")
+    state_dim = env.observation_space.shape[0]
+    action_dim = env.action_space.shape[0]
 
     # set a random seed
     env.seed(args.seed)
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
 
-    # create an agent
-    agent = Agent(env, args)
-
     # run
-    if args.test:
-        agent.test()
-    else:
-        agent.train()
+    module_path = "examples.lunarlander_continuous_v2." + args.algo
+    example = importlib.import_module(module_path)
+    example.run(env, args, state_dim, action_dim)
 
 
 if __name__ == "__main__":

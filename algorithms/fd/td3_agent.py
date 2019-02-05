@@ -16,41 +16,14 @@ from typing import Tuple
 import gym
 import numpy as np
 import torch
-import torch.optim as optim
 import wandb
 
 import algorithms.common.helper_functions as common_utils
 from algorithms.common.abstract.agent import AbstractAgent
 from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBufferfD
-from algorithms.common.networks.mlp import MLP
 from algorithms.common.noise import GaussianNoise
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-# hyper parameters
-hyper_params = {
-    "GAMMA": 0.99,
-    "TAU": 1e-3,
-    "NOISE_STD": 1.0,
-    "NOISE_CLIP": 0.5,
-    "DELAYED_UPDATE": 2,
-    "BUFFER_SIZE": int(1e5),
-    "BATCH_SIZE": 128,
-    "LR_ACTOR": 1e-4,
-    "LR_CRITIC_1": 1e-3,
-    "LR_CRITIC_2": 1e-3,
-    "GAUSSIAN_NOISE_MIN_SIGMA": 1.0,
-    "GAUSSIAN_NOISE_MAX_SIGMA": 1.0,
-    "GAUSSIAN_NOISE_DECAY_PERIOD": 1000000,
-    "PRETRAIN_STEP": 0,
-    "MULTIPLE_LEARN": 1,  # multiple learning updates
-    "LAMDA1": 1.0,  # N-step return weight
-    "LAMDA2": 1e-5,  # l2 regularization weight
-    "LAMDA3": 1.0,  # actor loss contribution of prior weight
-    "PER_ALPHA": 0.3,
-    "PER_BETA": 1.0,
-    "PER_EPS": 1e-6,
-}
 
 
 class Agent(AbstractAgent):
@@ -70,89 +43,44 @@ class Agent(AbstractAgent):
         actor_optimizer (Optimizer): optimizer for training actor
         curr_state (np.ndarray): temporary storage of the current state
         n_step (int): iteration number of the current episode
+        hyper_params (dict): hyper-parameters
 
     """
 
-    def __init__(self, env: gym.Env, args: argparse.Namespace):
+    def __init__(
+        self,
+        env: gym.Env,
+        args: argparse.Namespace,
+        hyper_params: dict,
+        models: tuple,
+        optims: tuple,
+        noise: GaussianNoise,
+    ):
         """Initialization.
 
         Args:
-            env (gym.Env): openAI Gym environment with discrete action space
+            env (gym.Env): openAI Gym environment
             args (argparse.Namespace): arguments including hyperparameters and training settings
+            models (tuple): models including actor and critic
+            optims (tuple): optimizers for actor and critic
+            noise (GaussianNoise): random noise for exploration
 
         """
         AbstractAgent.__init__(self, env, args)
 
-        self.curr_state = np.zeros((self.state_dim,))
+        self.actor, self.actor_target = models[0:2]
+        self.critic_1, self.critic_2 = models[2:4]
+        self.critic_target1, self.critic_target2 = models[4:6]
+        self.actor_optimizer = optims[0]
+        self.critic_optimizer1, self.critic_optimizer2 = optims[1:3]
+        self.hyper_params = hyper_params
+        self.curr_state = np.zeros((1,))
+        self.noise = noise
         self.n_step = 0
-
-        # create actor
-        self.actor = MLP(
-            input_size=self.state_dim,
-            output_size=self.action_dim,
-            hidden_sizes=[128, 128, 128],
-            output_activation=torch.tanh,
-        ).to(device)
-        self.actor_target = MLP(
-            input_size=self.state_dim,
-            output_size=self.action_dim,
-            hidden_sizes=[128, 128, 128],
-            output_activation=torch.tanh,
-        ).to(device)
-        self.actor_target.load_state_dict(self.actor.state_dict())
-
-        # create critic
-        self.critic_1 = MLP(
-            input_size=self.state_dim + self.action_dim,
-            output_size=1,
-            hidden_sizes=[128, 128, 128],
-        ).to(device)
-        self.critic_2 = MLP(
-            input_size=self.state_dim + self.action_dim,
-            output_size=1,
-            hidden_sizes=[128, 128, 128],
-        ).to(device)
-        self.critic_target1 = MLP(
-            input_size=self.state_dim + self.action_dim,
-            output_size=1,
-            hidden_sizes=[128, 128, 128],
-        ).to(device)
-        self.critic_target2 = MLP(
-            input_size=self.state_dim + self.action_dim,
-            output_size=1,
-            hidden_sizes=[128, 128, 128],
-        ).to(device)
-        self.critic_target1.load_state_dict(self.critic_1.state_dict())
-        self.critic_target2.load_state_dict(self.critic_2.state_dict())
-
-        # create optimizers
-        self.actor_optimizer = optim.Adam(
-            self.actor.parameters(),
-            lr=hyper_params["LR_ACTOR"],
-            weight_decay=hyper_params["LAMDA2"],
-        )
-        self.critic_optimizer1 = optim.Adam(
-            self.critic_1.parameters(),
-            lr=hyper_params["LR_CRITIC_1"],
-            weight_decay=hyper_params["LAMDA2"],
-        )
-        self.critic_optimizer2 = optim.Adam(
-            self.critic_2.parameters(),
-            lr=hyper_params["LR_CRITIC_2"],
-            weight_decay=hyper_params["LAMDA2"],
-        )
 
         # load the optimizer and model parameters
         if args.load_from is not None and os.path.exists(args.load_from):
             self.load_params(args.load_from)
-
-        # noise instance to make randomness of action
-        self.noise = GaussianNoise(
-            self.args.seed,
-            hyper_params["GAUSSIAN_NOISE_MIN_SIGMA"],
-            hyper_params["GAUSSIAN_NOISE_MAX_SIGMA"],
-            hyper_params["GAUSSIAN_NOISE_DECAY_PERIOD"],
-        )
 
         # load demo replay memory
         with open(self.args.demo_path, "rb") as f:
@@ -201,7 +129,10 @@ class Agent(AbstractAgent):
         masks = 1 - dones
 
         # get actions with noise
-        noise_std, noise_clip = hyper_params["NOISE_STD"], hyper_params["NOISE_CLIP"]
+        noise_std, noise_clip = (
+            self.hyper_params["NOISE_STD"],
+            self.hyper_params["NOISE_CLIP"],
+        )
         next_actions = self.actor_target(next_states)
         noise = torch.normal(torch.zeros(next_actions.size()), noise_std).to(device)
         noise = torch.clamp(noise, -noise_clip, noise_clip)
@@ -215,7 +146,7 @@ class Agent(AbstractAgent):
 
         # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
         #       = r                       otherwise
-        curr_returns = rewards + hyper_params["GAMMA"] * next_values * masks
+        curr_returns = rewards + self.hyper_params["GAMMA"] * next_values * masks
         curr_returns = curr_returns.to(device).detach()
 
         # critic loss
@@ -234,7 +165,7 @@ class Agent(AbstractAgent):
         critic_loss2.backward()
         self.critic_optimizer2.step()
 
-        if self.n_step % hyper_params["DELAYED_UPDATE"] == 0:
+        if self.n_step % self.hyper_params["DELAYED_UPDATE"] == 0:
             # train actor
             actions = self.actor(states)
             states_actions = torch.cat((states, actions), dim=-1)
@@ -245,15 +176,17 @@ class Agent(AbstractAgent):
             self.actor_optimizer.step()
 
             # update target networks
-            tau = hyper_params["TAU"]
+            tau = self.hyper_params["TAU"]
             common_utils.soft_update(self.critic_1, self.critic_target1, tau)
             common_utils.soft_update(self.critic_2, self.critic_target2, tau)
             common_utils.soft_update(self.actor, self.actor_target, tau)
 
             # update priorities
             new_priorities = (torch.min(values1, values2) - curr_returns).pow(2)
-            new_priorities += hyper_params["LAMDA3"] * actor_loss_element_wise.pow(2)
-            new_priorities += hyper_params["PER_EPS"]
+            new_priorities += self.hyper_params["LAMDA3"] * actor_loss_element_wise.pow(
+                2
+            )
+            new_priorities += self.hyper_params["PER_EPS"]
             new_priorities = new_priorities.data.cpu().numpy().squeeze()
             new_priorities += eps_d
             self.memory.update_priorities(indexes, new_priorities)
@@ -340,8 +273,8 @@ class Agent(AbstractAgent):
         # pre-training by demo
         self.n_step = 0
         pretrain_loss = list()
-        print("[INFO] Pre-Train %d step." % hyper_params["PRETRAIN_STEP"])
-        for i_step in range(1, hyper_params["PRETRAIN_STEP"] + 1):
+        print("[INFO] Pre-Train %d step." % self.hyper_params["PRETRAIN_STEP"])
+        for i_step in range(1, self.hyper_params["PRETRAIN_STEP"] + 1):
             experiences = self.memory.sample()
             loss = self.update_model(experiences)
             pretrain_loss.append(loss)  # for logging
@@ -354,7 +287,7 @@ class Agent(AbstractAgent):
                 self.write_log(
                     i_step,
                     avg_loss,
-                    delayed_update=hyper_params["DELAYED_UPDATE"],
+                    delayed_update=self.hyper_params["DELAYED_UPDATE"],
                     is_step=True,
                 )
 
@@ -363,7 +296,7 @@ class Agent(AbstractAgent):
         # logger
         if self.args.log:
             wandb.init()
-            wandb.config.update(hyper_params)
+            wandb.config.update(self.hyper_params)
             wandb.watch([self.actor, self.critic_1, self.critic_2], log="parameters")
 
         # pre-training by demo
@@ -385,9 +318,9 @@ class Agent(AbstractAgent):
                 action = self.select_action(state)
                 next_state, reward, done = self.step(action)
 
-                if len(self.memory) >= hyper_params["BATCH_SIZE"]:
+                if len(self.memory) >= self.hyper_params["BATCH_SIZE"]:
                     loss_multiple_learn = []
-                    for _ in range(hyper_params["MULTIPLE_LEARN"]):
+                    for _ in range(self.hyper_params["MULTIPLE_LEARN"]):
                         experiences = self.memory.sample(self.beta)
                         loss = self.update_model(experiences)
                         loss_multiple_learn.append(loss)
@@ -406,7 +339,7 @@ class Agent(AbstractAgent):
             if loss_episode:
                 avg_loss = np.vstack(loss_episode).mean(axis=0)
                 self.write_log(
-                    i_episode, avg_loss, score, hyper_params["DELAYED_UPDATE"]
+                    i_episode, avg_loss, score, self.hyper_params["DELAYED_UPDATE"]
                 )
 
             if i_episode % self.args.save_period == 0:

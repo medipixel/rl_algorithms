@@ -13,17 +13,11 @@ import gym
 import numpy as np
 import torch
 import torch.nn.functional as F
-import torch.optim as optim
 import wandb
 
 from algorithms.common.abstract.agent import AbstractAgent
-from algorithms.common.networks.mlp import MLP, GaussianDist
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-
-# hyper parameters
-hyper_params = {"GAMMA": 0.99, "LR_ACTOR": 1e-4, "LR_CRITIC": 1e-3, "WEIGHT_DECAY": 0.0}
 
 
 class Agent(AbstractAgent):
@@ -32,47 +26,38 @@ class Agent(AbstractAgent):
     Attributes:
         actor (nn.Module): policy model to select actions
         critic (nn.Module): critic model to evaluate states
+        hyper_params (dict): hyper-parameters
         actor_optimizer (Optimizer): optimizer for actor
         critic_optimizer (Optimizer): optimizer for critic
         optimizer (Optimizer): optimizer for training
 
     """
 
-    def __init__(self, env: gym.Env, args: argparse.Namespace):
+    def __init__(
+        self,
+        env: gym.Env,
+        args: argparse.Namespace,
+        hyper_params: dict,
+        models: tuple,
+        optims: tuple,
+    ):
         """Initialization.
 
         Args:
-            env (gym.Env): openAI Gym environment with discrete action space
+            env (gym.Env): openAI Gym environment
             args (argparse.Namespace): arguments including hyperparameters and training settings
+            hyper_params (dict): hyper-parameters
+            models (tuple): models including actor and critic
+            optims (tuple): optimizers for actor and critic
 
         """
         AbstractAgent.__init__(self, env, args)
 
+        self.actor, self.critic = models
+        self.actor_optimizer, self.critic_optimizer = optims
+        self.hyper_params = hyper_params
         self.log_prob = torch.zeros((1,))
         self.predicted_value = torch.zeros((1,))
-
-        # create models
-        self.actor = GaussianDist(
-            input_size=self.state_dim,
-            output_size=self.action_dim,
-            hidden_sizes=[48, 48],
-        ).to(device)
-
-        self.critic = MLP(
-            input_size=self.state_dim, output_size=1, hidden_sizes=[48, 48]
-        ).to(device)
-
-        # create optimizer
-        self.actor_optimizer = optim.Adam(
-            self.actor.parameters(),
-            lr=hyper_params["LR_ACTOR"],
-            weight_decay=hyper_params["WEIGHT_DECAY"],
-        )
-        self.critic_optimizer = optim.Adam(
-            self.critic.parameters(),
-            lr=hyper_params["LR_CRITIC"],
-            weight_decay=hyper_params["WEIGHT_DECAY"],
-        )
 
         if args.load_from is not None and os.path.exists(args.load_from):
             self.load_params(args.load_from)
@@ -106,7 +91,7 @@ class Agent(AbstractAgent):
         #       = r                       otherwise
         mask = 1 - done
         next_value = self.critic(next_state).detach()
-        q_value = reward + hyper_params["GAMMA"] * next_value * mask
+        q_value = reward + self.hyper_params["GAMMA"] * next_value * mask
         q_value = q_value.to(device)
 
         # advantage = Q_t - V(s_t)
@@ -175,7 +160,7 @@ class Agent(AbstractAgent):
         # logger
         if self.args.log:
             wandb.init()
-            wandb.config.update(hyper_params)
+            wandb.config.update(self.hyper_params)
             wandb.watch([self.actor, self.critic], log="parameters")
 
         for i_episode in range(1, self.args.episode_num + 1):

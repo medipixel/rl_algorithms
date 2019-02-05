@@ -14,16 +14,11 @@ import gym
 import numpy as np
 import torch
 import torch.nn.functional as F
-import torch.optim as optim
 import wandb
 
 from algorithms.common.abstract.agent import AbstractAgent
-from algorithms.common.networks.mlp import MLP, GaussianDist
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-# hyper parameters
-hyper_params = {"GAMMA": 0.99, "LR_ACTOR": 1e-3, "LR_BASELINE": 1e-3}
 
 
 class Agent(AbstractAgent):
@@ -32,6 +27,7 @@ class Agent(AbstractAgent):
     Attributes:
         actor (nn.Module): policy model to select actions
         critic (nn.Module): critic model to evaluate states
+        hyper_params (dict): hyper-parameters
         actor_optimizer (Optimizer): optimizer for actor
         critic_optimizer (Optimizer): optimizer for critic
         log_prob_sequence (list): log probabailities of an episode
@@ -40,35 +36,32 @@ class Agent(AbstractAgent):
 
     """
 
-    def __init__(self, env: gym.Env, args: argparse.Namespace):
+    def __init__(
+        self,
+        env: gym.Env,
+        args: argparse.Namespace,
+        hyper_params: dict,
+        models: tuple,
+        optims: tuple,
+    ):
         """Initialization.
 
         Args:
-            env (gym.Env): openAI Gym environment with discrete action space
+            env (gym.Env): openAI Gym environment
             args (argparse.Namespace): arguments including hyperparameters and training settings
+            hyper_params (dict): hyper-parameters
+            models (tuple): models including actor and baseline
+            optims (tuple): optimizers for actor and baseline
 
         """
         AbstractAgent.__init__(self, env, args)
 
+        self.actor, self.baseline = models
+        self.actor_optimizer, self.baseline_optimizer = optims
+        self.hyper_params = hyper_params
         self.log_prob_sequence: list = []
         self.predicted_value_sequence: list = []
         self.reward_sequence: list = []
-
-        # create models
-        self.actor = GaussianDist(
-            input_size=self.state_dim,
-            output_size=self.action_dim,
-            hidden_sizes=[256, 256],
-        ).to(device)
-
-        self.baseline = MLP(
-            input_size=self.state_dim, output_size=1, hidden_sizes=[256, 256]
-        ).to(device)
-
-        # create optimizer
-        lr_actor, lr_baseline = hyper_params["LR_ACTOR"], hyper_params["LR_BASELINE"]
-        self.actor_optimizer = optim.Adam(self.actor.parameters(), lr_actor)
-        self.baseline_optimizer = optim.Adam(self.baseline.parameters(), lr=lr_baseline)
 
         # load stored parameters
         if args.load_from is not None and os.path.exists(args.load_from):
@@ -104,7 +97,7 @@ class Agent(AbstractAgent):
         # calculate return value at each step
         for i in range(len(self.reward_sequence) - 1, -1, -1):
             return_value = (
-                self.reward_sequence[i] + hyper_params["GAMMA"] * return_value
+                self.reward_sequence[i] + self.hyper_params["GAMMA"] * return_value
             )
             return_sequence.appendleft(return_value)
 
@@ -196,7 +189,7 @@ class Agent(AbstractAgent):
         # logger
         if self.args.log:
             wandb.init()
-            wandb.config.update(hyper_params)
+            wandb.config.update(self.hyper_params)
             wandb.watch([self.actor, self.baseline], log="parameters")
 
         for i_episode in range(1, self.args.episode_num + 1):
