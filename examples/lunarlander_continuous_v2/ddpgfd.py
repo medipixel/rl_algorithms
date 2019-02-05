@@ -11,9 +11,9 @@ import gym
 import torch
 import torch.optim as optim
 
-from algorithms.bc.ddpg_agent import Agent
 from algorithms.common.networks.mlp import MLP
 from algorithms.common.noise import OUNoise
+from algorithms.fd.ddpg_agent import Agent
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -22,15 +22,19 @@ hyper_params = {
     "GAMMA": 0.99,
     "TAU": 1e-3,
     "BUFFER_SIZE": int(1e5),
-    "BATCH_SIZE": 512,
-    "DEMO_BATCH_SIZE": 64,
+    "BATCH_SIZE": 128,
     "LR_ACTOR": 1e-4,
     "LR_CRITIC": 1e-3,
     "OU_NOISE_THETA": 0.0,
     "OU_NOISE_SIGMA": 0.0,
-    "LAMBDA1": 1e-3,
-    "LAMBDA2": 1.0,
-    "USE_HER": False,
+    "PRETRAIN_STEP": 3000,
+    "MULTIPLE_LEARN": 1,  # multiple learning updates
+    "LAMDA1": 1.0,  # N-step return weight
+    "LAMDA2": 1e-5,  # l2 regularization weight
+    "LAMDA3": 1.0,  # actor loss contribution of prior weight
+    "PER_ALPHA": 0.3,
+    "PER_BETA": 1.0,
+    "PER_EPS": 1e-6,
     "WEIGHT_DECAY": 1e-6,
 }
 
@@ -45,9 +49,6 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
         action_dim (int): dimension of actions
 
     """
-    if hyper_params["USE_HER"]:
-        state_dim *= 2
-
     hidden_sizes_actor = [256, 256]
     hidden_sizes_critic = [256, 256]
 

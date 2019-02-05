@@ -16,36 +16,14 @@ from typing import Tuple
 import gym
 import numpy as np
 import torch
-import torch.optim as optim
 import wandb
 
 import algorithms.common.helper_functions as common_utils
 from algorithms.common.abstract.agent import AbstractAgent
 from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBufferfD
-from algorithms.common.networks.mlp import MLP
 from algorithms.common.noise import OUNoise
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-# hyper parameters
-hyper_params = {
-    "GAMMA": 0.99,
-    "TAU": 1e-3,
-    "BUFFER_SIZE": int(1e5),
-    "BATCH_SIZE": 128,
-    "LR_ACTOR": 1e-4,
-    "LR_CRITIC": 1e-3,
-    "OU_NOISE_THETA": 0.0,
-    "OU_NOISE_SIGMA": 0.0,
-    "PRETRAIN_STEP": 3000,
-    "MULTIPLE_LEARN": 1,  # multiple learning updates
-    "LAMDA1": 1.0,  # N-step return weight
-    "LAMDA2": 1e-5,  # l2 regularization weight
-    "LAMDA3": 1.0,  # actor loss contribution of prior weight
-    "PER_ALPHA": 0.3,
-    "PER_BETA": 1.0,
-    "PER_EPS": 1e-6,
-}
 
 
 class Agent(AbstractAgent):
@@ -60,87 +38,56 @@ class Agent(AbstractAgent):
         critic_target (nn.Module): target critic model to predict state values
         actor_optimizer (Optimizer): optimizer for training actor
         critic_optimizer (Optimizer): optimizer for training critic
+        hyper_params (dict): hyper-parameters
         beta (float): beta parameter for prioritized replay buffer
         curr_state (np.ndarray): temporary storage of the current state
 
     """
 
-    def __init__(self, env: gym.Env, args: argparse.Namespace):
+    def __init__(
+        self,
+        env: gym.Env,
+        args: argparse.Namespace,
+        hyper_params: dict,
+        models: tuple,
+        optims: tuple,
+        noise: OUNoise,
+    ):
         """Initialization.
 
         Args:
             env (gym.Env): openAI Gym environment with discrete action space
             args (argparse.Namespace): arguments including hyperparameters and training settings
+            hyper_params (dict): hyper-parameters
+            models (tuple): models including actor and critic
+            optims (tuple): optimizers for actor and critic
+            noise (OUNoise): random noise for exploration
 
         """
         AbstractAgent.__init__(self, env, args)
 
-        self.curr_state = np.zeros((self.state_dim,))
-
-        # create actor
-        self.actor = MLP(
-            input_size=self.state_dim,
-            output_size=self.action_dim,
-            hidden_sizes=[128, 128, 128],
-            output_activation=torch.tanh,
-        ).to(device)
-        self.actor_target = MLP(
-            input_size=self.state_dim,
-            output_size=self.action_dim,
-            hidden_sizes=[128, 128, 128],
-            output_activation=torch.tanh,
-        ).to(device)
-        self.actor_target.load_state_dict(self.actor.state_dict())
-
-        # create critic
-        self.critic = MLP(
-            input_size=self.state_dim + self.action_dim,
-            output_size=1,
-            hidden_sizes=[128, 128, 128],
-        ).to(device)
-        self.critic_target = MLP(
-            input_size=self.state_dim + self.action_dim,
-            output_size=1,
-            hidden_sizes=[128, 128, 128],
-        ).to(device)
-        self.critic_target.load_state_dict(self.critic.state_dict())
-
-        # create optimizers
-        self.actor_optimizer = optim.Adam(
-            self.actor.parameters(),
-            lr=hyper_params["LR_ACTOR"],
-            weight_decay=hyper_params["LAMDA2"],
-        )
-        self.critic_optimizer = optim.Adam(
-            self.critic.parameters(),
-            lr=hyper_params["LR_CRITIC"],
-            weight_decay=hyper_params["LAMDA2"],
-        )
+        self.actor, self.actor_target, self.critic, self.critic_target = models
+        self.actor_optimizer, self.critic_optimizer = optims
+        self.hyper_params = hyper_params
+        self.curr_state = np.zeros((1,))
+        self.noise = noise
 
         # load the optimizer and model parameters
         if args.load_from is not None and os.path.exists(args.load_from):
             self.load_params(args.load_from)
-
-        # noise instance to make randomness of action
-        self.noise = OUNoise(
-            self.action_dim,
-            self.args.seed,
-            theta=hyper_params["OU_NOISE_THETA"],
-            sigma=hyper_params["OU_NOISE_SIGMA"],
-        )
 
         # load demo replay memory
         with open(self.args.demo_path, "rb") as f:
             demo = pickle.load(f)
 
         # replay memory
-        self.beta = hyper_params["PER_BETA"]
+        self.beta = self.hyper_params["PER_BETA"]
         self.memory = PrioritizedReplayBufferfD(
-            hyper_params["BUFFER_SIZE"],
-            hyper_params["BATCH_SIZE"],
+            self.hyper_params["BUFFER_SIZE"],
+            self.hyper_params["BATCH_SIZE"],
             self.args.seed,
             demo=demo,
-            alpha=hyper_params["PER_ALPHA"],
+            alpha=self.hyper_params["PER_ALPHA"],
         )
 
     def select_action(self, state: np.ndarray) -> torch.Tensor:
@@ -177,7 +124,7 @@ class Agent(AbstractAgent):
         next_actions = self.actor_target(next_states)
         next_states_actions = torch.cat((next_states, next_actions), dim=-1)
         next_values = self.critic_target(next_states_actions)
-        curr_returns = rewards + hyper_params["GAMMA"] * next_values * masks
+        curr_returns = rewards + self.hyper_params["GAMMA"] * next_values * masks
         curr_returns = curr_returns.to(device).detach()
 
         # train critic
@@ -196,13 +143,14 @@ class Agent(AbstractAgent):
         self.actor_optimizer.step()
 
         # update target networks
-        common_utils.soft_update(self.actor, self.actor_target, hyper_params["TAU"])
-        common_utils.soft_update(self.critic, self.critic_target, hyper_params["TAU"])
+        tau = self.hyper_params["TAU"]
+        common_utils.soft_update(self.actor, self.actor_target, tau)
+        common_utils.soft_update(self.critic, self.critic_target, tau)
 
         # update priorities
         new_priorities = (values - curr_returns).pow(2)
-        new_priorities += hyper_params["LAMDA3"] * actor_loss_element_wise.pow(2)
-        new_priorities += hyper_params["PER_EPS"]
+        new_priorities += self.hyper_params["LAMDA3"] * actor_loss_element_wise.pow(2)
+        new_priorities += self.hyper_params["PER_EPS"]
         new_priorities = new_priorities.data.cpu().numpy().squeeze()
         new_priorities += eps_d
         self.memory.update_priorities(indexes, new_priorities)
@@ -266,8 +214,8 @@ class Agent(AbstractAgent):
     def pretrain(self):
         """Pretraining steps."""
         pretrain_loss = list()
-        print("[INFO] Pre-Train %d step." % hyper_params["PRETRAIN_STEP"])
-        for i_step in range(1, hyper_params["PRETRAIN_STEP"] + 1):
+        print("[INFO] Pre-Train %d step." % self.hyper_params["PRETRAIN_STEP"])
+        for i_step in range(1, self.hyper_params["PRETRAIN_STEP"] + 1):
             experiences = self.memory.sample()
             loss = self.update_model(experiences)
             pretrain_loss.append(loss)  # for logging
@@ -283,7 +231,7 @@ class Agent(AbstractAgent):
         # logger
         if self.args.log:
             wandb.init()
-            wandb.config.update(hyper_params)
+            wandb.config.update(self.hyper_params)
             wandb.watch([self.actor, self.critic], log="parameters")
 
         # pre-training by demo
@@ -302,9 +250,9 @@ class Agent(AbstractAgent):
                 action = self.select_action(state)
                 next_state, reward, done = self.step(action)
 
-                if len(self.memory) >= hyper_params["BATCH_SIZE"]:
+                if len(self.memory) >= self.hyper_params["BATCH_SIZE"]:
                     loss_multiple_learn = []
-                    for _ in range(hyper_params["MULTIPLE_LEARN"]):
+                    for _ in range(self.hyper_params["MULTIPLE_LEARN"]):
                         experiences = self.memory.sample(self.beta)
                         loss = self.update_model(experiences)
                         loss_multiple_learn.append(loss)

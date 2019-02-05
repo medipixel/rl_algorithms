@@ -22,21 +22,9 @@ import wandb
 
 import algorithms.trpo.utils as trpo_utils
 from algorithms.common.abstract.agent import AbstractAgent
-from algorithms.common.networks.mlp import MLP, GaussianDistParams
 from algorithms.gae import GAE
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-# hyper parameters
-hyper_params = {
-    "GAMMA": 0.95,
-    "LAMBDA": 0.9,
-    "MAX_KL": 1e-2,
-    "DAMPING": 1e-1,
-    "L2_REG": 1e-3,
-    "LBFGS_MAX_ITER": 200,
-    "MIN_ROLLOUT_LEN": 128,
-}
 
 
 class Agent(AbstractAgent):
@@ -48,38 +36,30 @@ class Agent(AbstractAgent):
         actor (nn.Module): policy gradient model to select actions
         old_actor (nn.Module): old policy gradient model to select actions
         critic (nn.Module): policy gradient model to predict values
+        hyper_params (dict): hyper-parameters
         curr_state (np.ndarray): temporary storage of the current state
 
     """
 
-    def __init__(self, env: gym.Env, args: argparse.Namespace):
+    def __init__(
+        self, env: gym.Env, args: argparse.Namespace, hyper_params: dict, models: tuple
+    ):
         """Initialization.
 
         Args:
             env (gym.Env): openAI Gym environment with discrete action space
             args (argparse.Namespace): arguments including hyperparameters and training settings
+            hyper_params (dict): hyper-parameters
+            models (tuple): models including actor and critic
         """
 
         AbstractAgent.__init__(self, env, args)
 
-        self.curr_state = np.zeros((self.state_dim,))
+        self.actor, self.old_actor, self.critic = models
+        self.hyper_params = hyper_params
         self.memory: Deque = deque()
         self.gae = GAE()
-
-        # create models
-        self.actor = GaussianDistParams(
-            input_size=self.state_dim,
-            output_size=self.action_dim,
-            hidden_sizes=[128, 128, 128],
-        ).to(device)
-        self.old_actor = GaussianDistParams(
-            input_size=self.state_dim,
-            output_size=self.action_dim,
-            hidden_sizes=[128, 128, 128],
-        ).to(device)
-        self.critic = MLP(
-            input_size=self.state_dim, output_size=1, hidden_sizes=[128, 128, 128]
-        ).to(device)
+        self.curr_state = np.zeros((1,))
 
         # load model parameters
         if args.load_from is not None and os.path.exists(args.load_from):
@@ -112,7 +92,11 @@ class Agent(AbstractAgent):
         # calculate returns and gae
         values = self.critic(states)
         returns, advantages = self.gae.get_gae(
-            rewards, values, dones, hyper_params["GAMMA"], hyper_params["LAMBDA"]
+            rewards,
+            values,
+            dones,
+            self.hyper_params["GAMMA"],
+            self.hyper_params["LAMBDA"],
         )
 
         # train critic
@@ -120,8 +104,8 @@ class Agent(AbstractAgent):
             self.critic,
             states,
             returns.detach(),
-            hyper_params["L2_REG"],
-            hyper_params["LBFGS_MAX_ITER"],
+            self.hyper_params["L2_REG"],
+            self.hyper_params["LBFGS_MAX_ITER"],
         )
 
         # train actor
@@ -131,8 +115,8 @@ class Agent(AbstractAgent):
             states,
             actions,
             advantages,
-            hyper_params["MAX_KL"],
-            hyper_params["DAMPING"],
+            self.hyper_params["MAX_KL"],
+            self.hyper_params["DAMPING"],
         )
 
         return actor_loss.data, critic_loss.data
@@ -182,7 +166,7 @@ class Agent(AbstractAgent):
         # logger
         if self.args.log:
             wandb.init()
-            wandb.config.update(hyper_params)
+            wandb.config.update(self.hyper_params)
             wandb.watch([self.actor, self.critic], log="parameters")
 
         for i_episode in range(1, self.args.episode_num + 1):
@@ -201,7 +185,7 @@ class Agent(AbstractAgent):
                 state = next_state
                 score += reward
 
-            if len(self.memory) >= hyper_params["MIN_ROLLOUT_LEN"]:
+            if len(self.memory) >= self.hyper_params["MIN_ROLLOUT_LEN"]:
                 loss = self.update_model()
                 loss_episode.append(loss)  # for logging
                 self.memory.clear()

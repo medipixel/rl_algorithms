@@ -14,31 +14,14 @@ from typing import List, Tuple
 import gym
 import numpy as np
 import torch
-import torch.optim as optim
 import wandb
 
 import algorithms.common.helper_functions as common_utils
 from algorithms.common.abstract.agent import AbstractAgent
 from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
-from algorithms.common.networks.mlp import MLP
 from algorithms.common.noise import OUNoise
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-# hyper parameters
-hyper_params = {
-    "GAMMA": 0.99,
-    "TAU": 1e-3,
-    "BUFFER_SIZE": int(1e5),
-    "BATCH_SIZE": 128,
-    "LR_ACTOR": 1e-4,
-    "LR_CRITIC": 1e-3,
-    "OU_NOISE_THETA": 0.0,
-    "OU_NOISE_SIGMA": 0.0,
-    "PER_ALPHA": 0.5,
-    "PER_BETA": 0.4,
-    "PER_EPS": 1e-6,
-}
 
 
 class Agent(AbstractAgent):
@@ -53,78 +36,51 @@ class Agent(AbstractAgent):
         critic_target (nn.Module): target critic model to predict state values
         actor_optimizer (Optimizer): optimizer for training actor
         critic_optimizer (Optimizer): optimizer for training critic
+        hyper_params (dict): hyper-parameters
         beta (float): beta parameter for prioritized replay buffer
         curr_state (np.ndarray): temporary storage of the current state
 
     """
 
-    def __init__(self, env: gym.Env, args: argparse.Namespace):
+    def __init__(
+        self,
+        env: gym.Env,
+        args: argparse.Namespace,
+        hyper_params: dict,
+        models: tuple,
+        optims: tuple,
+        noise: OUNoise,
+    ):
         """Initialization.
 
         Args:
             env (gym.Env): openAI Gym environment with discrete action space
             args (argparse.Namespace): arguments including hyperparameters and training settings
+            hyper_params (dict): hyper-parameters
+            models (tuple): models including actor and critic
+            optims (tuple): optimizers for actor and critic
+            noise (OUNoise): random noise for exploration
 
         """
         AbstractAgent.__init__(self, env, args)
 
-        self.curr_state = np.zeros((self.state_dim,))
-
-        # create actor
-        self.actor = MLP(
-            input_size=self.state_dim,
-            output_size=self.action_dim,
-            hidden_sizes=[128, 128, 128],
-            output_activation=torch.tanh,
-        ).to(device)
-        self.actor_target = MLP(
-            input_size=self.state_dim,
-            output_size=self.action_dim,
-            hidden_sizes=[128, 128, 128],
-            output_activation=torch.tanh,
-        ).to(device)
-        self.actor_target.load_state_dict(self.actor.state_dict())
-
-        # create critic
-        self.critic = MLP(
-            input_size=self.state_dim + self.action_dim,
-            output_size=1,
-            hidden_sizes=[128, 128, 128],
-        ).to(device)
-        self.critic_target = MLP(
-            input_size=self.state_dim + self.action_dim,
-            output_size=1,
-            hidden_sizes=[128, 128, 128],
-        ).to(device)
-        self.critic_target.load_state_dict(self.critic.state_dict())
-
-        # create optimizers
-        self.actor_optimizer = optim.Adam(
-            self.actor.parameters(), lr=hyper_params["LR_ACTOR"]
-        )
-        self.critic_optimizer = optim.Adam(
-            self.critic.parameters(), lr=hyper_params["LR_CRITIC"]
-        )
+        self.actor, self.actor_target, self.critic, self.critic_target = models
+        self.actor_optimizer, self.critic_optimizer = optims
+        self.hyper_params = hyper_params
+        self.curr_state = np.zeros((1,))
+        self.noise = noise
 
         # load the optimizer and model parameters
         if args.load_from is not None and os.path.exists(args.load_from):
             self.load_params(args.load_from)
 
-        # noise instance to make randomness of action
-        self.noise = OUNoise(
-            self.action_dim,
-            self.args.seed,
-            theta=hyper_params["OU_NOISE_THETA"],
-            sigma=hyper_params["OU_NOISE_SIGMA"],
-        )
-
         # replay memory
-        self.beta = hyper_params["PER_BETA"]
+        self.beta = self.hyper_params["PER_BETA"]
         self.memory = PrioritizedReplayBuffer(
-            hyper_params["BUFFER_SIZE"],
-            hyper_params["BATCH_SIZE"],
+            self.hyper_params["BUFFER_SIZE"],
+            self.hyper_params["BATCH_SIZE"],
             self.args.seed,
-            alpha=hyper_params["PER_ALPHA"],
+            alpha=self.hyper_params["PER_ALPHA"],
         )
 
     def select_action(self, state: np.ndarray) -> torch.Tensor:
@@ -169,7 +125,7 @@ class Agent(AbstractAgent):
         masks = 1 - dones
         next_actions = self.actor_target(next_states)
         next_values = self.critic_target(torch.cat((next_states, next_actions), dim=-1))
-        curr_returns = rewards + hyper_params["GAMMA"] * next_values * masks
+        curr_returns = rewards + self.hyper_params["GAMMA"] * next_values * masks
         curr_returns = curr_returns.to(device).detach()
 
         # train critic
@@ -188,12 +144,15 @@ class Agent(AbstractAgent):
         self.actor_optimizer.step()
 
         # update target networks
-        common_utils.soft_update(self.actor, self.actor_target, hyper_params["TAU"])
-        common_utils.soft_update(self.critic, self.critic_target, hyper_params["TAU"])
+        tau = self.hyper_params["TAU"]
+        common_utils.soft_update(self.actor, self.actor_target, tau)
+        common_utils.soft_update(self.critic, self.critic_target, tau)
 
         # update priorities in PER
         new_priorities = (values - curr_returns).pow(2)
-        new_priorities = new_priorities.data.cpu().numpy() + hyper_params["PER_EPS"]
+        new_priorities = (
+            new_priorities.data.cpu().numpy() + self.hyper_params["PER_EPS"]
+        )
         self.memory.update_priorities(indexes, new_priorities)
 
         return actor_loss.data, critic_loss.data
@@ -251,7 +210,7 @@ class Agent(AbstractAgent):
         # logger
         if self.args.log:
             wandb.init()
-            wandb.config.update(hyper_params)
+            wandb.config.update(self.hyper_params)
             wandb.watch([self.actor, self.critic], log="parameters")
 
         for i_episode in range(1, self.args.episode_num + 1):
@@ -267,7 +226,7 @@ class Agent(AbstractAgent):
                 action = self.select_action(state)
                 next_state, reward, done = self.step(action)
 
-                if len(self.memory) >= hyper_params["BATCH_SIZE"]:
+                if len(self.memory) >= self.hyper_params["BATCH_SIZE"]:
                     experiences = self.memory.sample(self.beta)
                     loss = self.update_model(experiences)
                     loss_episode.append(loss)  # for logging

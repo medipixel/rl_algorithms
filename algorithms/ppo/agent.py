@@ -15,29 +15,13 @@ import gym
 import numpy as np
 import torch
 import torch.nn.functional as F
-import torch.optim as optim
 import wandb
 
 import algorithms.ppo.utils as ppo_utils
 from algorithms.common.abstract.agent import AbstractAgent
-from algorithms.common.networks.mlp import MLP, GaussianDist
 from algorithms.gae import GAE
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-# hyper parameters
-hyper_params = {
-    "GAMMA": 0.99,
-    "LAMBDA": 0.95,
-    "EPSILON": 0.2,
-    "W_VALUE": 1e-2,
-    "W_ENTROPY": 1e-3,
-    "LR_ACTOR": 3e-4,
-    "LR_CRITIC": 1e-3,
-    "EPOCH": 2,
-    "BATCH_SIZE": 32,
-    "MIN_ROLLOUT_LEN": 128,
-}
 
 
 class Agent(AbstractAgent):
@@ -51,40 +35,36 @@ class Agent(AbstractAgent):
         critic (nn.Module): policy gradient model to predict values
         actor_optimizer (Optimizer): optimizer for training actor
         critic_optimizer (Optimizer): optimizer for training critic
+        hyper_params (dict): hyper-parameters
 
     """
 
-    def __init__(self, env: gym.Env, args: argparse.Namespace):
+    def __init__(
+        self,
+        env: gym.Env,
+        args: argparse.Namespace,
+        hyper_params: dict,
+        models: tuple,
+        optims: tuple,
+    ):
         """Initialization.
 
         Args:
             env (gym.Env): openAI Gym environment with discrete action space
             args (argparse.Namespace): arguments including hyperparameters and training settings
+            hyper_params (dict): hyper-parameters
+            models (tuple): models including actor and critic
+            optims (tuple): optimizers for actor and critic
 
         """
         AbstractAgent.__init__(self, env, args)
 
+        self.actor, self.critic = models
+        self.actor_optimizer, self.critic_optimizer = optims
+        self.hyper_params = hyper_params
         self.memory: Deque = deque()
         self.gae = GAE()
         self.transition: list = []
-
-        # create models
-        self.actor = GaussianDist(
-            input_size=self.state_dim,
-            output_size=self.action_dim,
-            hidden_sizes=[128, 128, 128],
-        ).to(device)
-        self.critic = MLP(
-            input_size=self.state_dim, output_size=1, hidden_sizes=[128, 128, 128]
-        ).to(device)
-
-        # create optimizer
-        self.actor_optimizer = optim.Adam(
-            self.actor.parameters(), lr=hyper_params["LR_ACTOR"]
-        )
-        self.critic_optimizer = optim.Adam(
-            self.critic.parameters(), lr=hyper_params["LR_CRITIC"]
-        )
 
         # load model parameters
         if self.args.load_from is not None and os.path.exists(self.args.load_from):
@@ -121,15 +101,19 @@ class Agent(AbstractAgent):
         # calculate returns and gae
         values = self.critic(states)
         returns, advantages = self.gae.get_gae(
-            rewards, values, dones, hyper_params["GAMMA"], hyper_params["LAMBDA"]
+            rewards,
+            values,
+            dones,
+            self.hyper_params["GAMMA"],
+            self.hyper_params["LAMBDA"],
         )
 
         actor_losses = []
         critic_losses = []
         total_losses = []
         for state, old_log_prob, action, return_, adv in ppo_utils.ppo_iter(
-            hyper_params["EPOCH"],
-            hyper_params["BATCH_SIZE"],
+            self.hyper_params["EPOCH"],
+            self.hyper_params["BATCH_SIZE"],
             states,
             log_probs,
             actions,
@@ -144,13 +128,9 @@ class Agent(AbstractAgent):
             ratio = (log_prob - old_log_prob).exp()
 
             # actor_loss
+            epsilon = self.hyper_params["EPSILON"]
             surr_loss = ratio * adv
-            clipped_surr_loss = (
-                torch.clamp(
-                    ratio, 1.0 - hyper_params["EPSILON"], 1.0 + hyper_params["EPSILON"]
-                )
-                * adv
-            )
+            clipped_surr_loss = torch.clamp(ratio, 1.0 - epsilon, 1.0 + epsilon) * adv
             actor_loss = -torch.min(surr_loss, clipped_surr_loss).mean()
 
             # critic_loss
@@ -162,8 +142,8 @@ class Agent(AbstractAgent):
             # total_loss
             total_loss = (
                 actor_loss
-                + hyper_params["W_VALUE"] * critic_loss
-                - hyper_params["W_ENTROPY"] * entropy
+                + self.hyper_params["W_VALUE"] * critic_loss
+                - self.hyper_params["W_ENTROPY"] * entropy
             )
 
             # train critic
@@ -232,7 +212,7 @@ class Agent(AbstractAgent):
         # logger
         if self.args.log:
             wandb.init()
-            wandb.config.update(hyper_params)
+            wandb.config.update(self.hyper_params)
             wandb.watch([self.actor, self.critic], log="parameters")
 
         for i_episode in range(1, self.args.episode_num + 1):
@@ -250,7 +230,7 @@ class Agent(AbstractAgent):
                 state = next_state
                 score += reward
 
-            if len(self.memory) >= hyper_params["MIN_ROLLOUT_LEN"]:
+            if len(self.memory) >= self.hyper_params["MIN_ROLLOUT_LEN"]:
                 actor_loss, critic_loss, total_loss = self.update_model()
                 self.memory.clear()
 
