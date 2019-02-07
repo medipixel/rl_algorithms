@@ -65,13 +65,14 @@ class AbstractAgent(ABC):
         pass
 
     @abstractmethod
-    def save_params(self, name: str, params: dict, n_episode: int):
+    def save_params(self, params: dict, n_episode: int):
         if not os.path.exists("./save"):
             os.mkdir("./save")
 
-        path = os.path.join(
-            "./save/" + name + "_" + self.sha + "_ep_" + str(n_episode) + ".pt"
-        )
+        env_name = str(self.env.env).split("<")[2].replace(">>", "") + "_"
+        save_name = env_name + "_" + self.args.algo + "_" + self.sha
+
+        path = os.path.join("./save/" + save_name + "_ep_" + str(n_episode) + ".pt")
         torch.save(params, path)
 
         print("[INFO] Saved the model and optimizer to", path)

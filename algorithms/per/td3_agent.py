@@ -214,7 +214,7 @@ class Agent(AbstractAgent):
             "critic_optim2": self.critic_optimizer2.state_dict(),
         }
 
-        AbstractAgent.save_params(self, self.args.algo, params, n_episode)
+        AbstractAgent.save_params(self, params, n_episode)
 
     def write_log(
         self, i: int, loss: np.ndarray, score: float = 0.0, delayed_update: int = 1

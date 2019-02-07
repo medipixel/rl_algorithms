@@ -3,3 +3,4 @@ wandb*
 save
 .idea
 .mypy_cache
+MUJOCO_LOG.TXT

@@ -256,7 +256,7 @@ class Agent(AbstractAgent):
             "vf_optim": self.vf_optimizer.state_dict(),
         }
 
-        AbstractAgent.save_params(self, self.args.algo, params, n_episode)
+        AbstractAgent.save_params(self, params, n_episode)
 
     def write_log(
         self,
