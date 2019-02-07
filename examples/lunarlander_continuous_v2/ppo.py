@@ -21,13 +21,13 @@ hyper_params = {
     "GAMMA": 0.95,
     "LAMBDA": 0.9,
     "EPSILON": 0.2,
-    "W_VALUE": 1.0,
+    "W_VALUE": 1e-2,
     "W_ENTROPY": 1e-3,
-    "LR_ACTOR": 3e-4,
+    "LR_ACTOR": 1e-3,
     "LR_CRITIC": 1e-3,
-    "EPOCH": 2,
-    "BATCH_SIZE": 64,
-    "MIN_ROLLOUT_LEN": 128,
+    "EPOCH": 4,
+    "BATCH_SIZE": 32,
+    "MIN_ROLLOUT_LEN": 512,
     "WEIGHT_DECAY": 0.0,
 }
 

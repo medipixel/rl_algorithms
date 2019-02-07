@@ -150,8 +150,9 @@ class GaussianDist(MLP):
         mu = self.mu_activation(self.mu_layer(hidden))
 
         # get std
-        log_std = torch.clamp(
-            self.log_std_layer(hidden), self.log_std_min, self.log_std_max
+        log_std = torch.tanh(self.log_std_layer(hidden))
+        log_std = self.log_std_min + 0.5 * (self.log_std_max - self.log_std_min) * (
+            log_std + 1
         )
         std = torch.exp(log_std)
 
