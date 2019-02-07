@@ -30,7 +30,7 @@ hyper_params = {
     "LR_CRITIC_1": 1e-3,
     "LR_CRITIC_2": 1e-3,
     "GAUSSIAN_NOISE_MIN_SIGMA": 0.1,
-    "GAUSSIAN_NOISE_MAX_SIGMA": 1.0,
+    "GAUSSIAN_NOISE_MAX_SIGMA": 0.1,
     "GAUSSIAN_NOISE_DECAY_PERIOD": 1000000,
     "WEIGHT_DECAY": 1e-6,
 }
@@ -46,8 +46,8 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
         action_dim (int): dimension of actions
 
     """
-    hidden_sizes_actor = [256, 256]
-    hidden_sizes_critic = [256, 256]
+    hidden_sizes_actor = [400, 300]
+    hidden_sizes_critic = [400, 300]
 
     # create actor
     actor = MLP(
@@ -107,7 +107,6 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
 
     # noise instance to make randomness of action
     noise = GaussianNoise(
-        args.seed,
         hyper_params["GAUSSIAN_NOISE_MIN_SIGMA"],
         hyper_params["GAUSSIAN_NOISE_MAX_SIGMA"],
         hyper_params["GAUSSIAN_NOISE_DECAY_PERIOD"],

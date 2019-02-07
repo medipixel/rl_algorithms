@@ -75,7 +75,7 @@ class Agent(AbstractAgent):
 
         # replay memory
         self.memory = ReplayBuffer(
-            hyper_params["BUFFER_SIZE"], hyper_params["BATCH_SIZE"], self.args.seed
+            hyper_params["BUFFER_SIZE"], hyper_params["BATCH_SIZE"]
         )
 
     def select_action(self, state: np.ndarray) -> torch.Tensor:

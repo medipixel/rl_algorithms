@@ -69,7 +69,7 @@ class AbstractAgent(ABC):
         if not os.path.exists("./save"):
             os.mkdir("./save")
 
-        env_name = str(self.env.env).split("<")[2].replace(">>", "") + "_"
+        env_name = str(self.env.env).split("<")[2].replace(">>", "")
         save_name = env_name + "_" + self.args.algo + "_" + self.sha
 
         path = os.path.join("./save/" + save_name + "_ep_" + str(n_episode) + ".pt")

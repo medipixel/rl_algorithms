@@ -87,11 +87,11 @@ class Agent(AbstractAgent):
 
         # Replay buffers
         self.demo_memory = ReplayBuffer(
-            len(demo), hyper_params["DEMO_BATCH_SIZE"], self.args.seed, demo
+            len(demo), hyper_params["DEMO_BATCH_SIZE"], demo
         )
 
         self.memory = ReplayBuffer(
-            hyper_params["BUFFER_SIZE"], hyper_params["BATCH_SIZE"], self.args.seed
+            hyper_params["BUFFER_SIZE"], hyper_params["BATCH_SIZE"]
         )
 
         # set hyper parameters

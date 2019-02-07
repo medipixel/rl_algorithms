@@ -7,7 +7,9 @@
 
 import math
 import pickle
+import random
 
+import gym
 import numpy as np
 import torch
 import torch.nn as nn
@@ -43,3 +45,11 @@ def fetch_desired_states_from_demo(demo_path: str) -> np.ndarray:
     goal_states = demo[goal_indices][:, 0]
 
     return goal_states, goal_indices
+
+
+def set_random_seed(seed: int, env: gym.Env):
+    """Set random seed"""
+    env.seed(seed)
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)

@@ -85,7 +85,6 @@ class Agent(AbstractAgent):
         self.memory = PrioritizedReplayBuffer(
             hyper_params["BUFFER_SIZE"],
             hyper_params["BATCH_SIZE"],
-            self.args.seed,
             alpha=hyper_params["PER_ALPHA"],
         )
 
@@ -128,6 +127,7 @@ class Agent(AbstractAgent):
         noise = torch.normal(torch.zeros(next_actions.size()), noise_std).to(device)
         noise = torch.clamp(noise, -noise_clip, noise_clip)
         next_actions += noise
+        next_actions = torch.clamp(next_actions, -1.0, 1.0)
 
         # min (Q_1', Q_2')
         next_states_actions = torch.cat((next_states, next_actions), dim=-1)

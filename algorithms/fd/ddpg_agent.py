@@ -85,7 +85,6 @@ class Agent(AbstractAgent):
         self.memory = PrioritizedReplayBufferfD(
             self.hyper_params["BUFFER_SIZE"],
             self.hyper_params["BATCH_SIZE"],
-            self.args.seed,
             demo=demo,
             alpha=self.hyper_params["PER_ALPHA"],
         )

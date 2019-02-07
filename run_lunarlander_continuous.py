@@ -9,8 +9,8 @@ import argparse
 import importlib
 
 import gym
-import numpy as np
-import torch
+
+import algorithms.common.helper_functions as common_utils
 
 # configurations
 parser = argparse.ArgumentParser(description="Pytorch RL baselines")
@@ -61,9 +61,7 @@ def main():
     action_dim = env.action_space.shape[0]
 
     # set a random seed
-    env.seed(args.seed)
-    torch.manual_seed(args.seed)
-    np.random.seed(args.seed)
+    common_utils.set_random_seed(args.seed, env)
 
     # run
     module_path = "examples.lunarlander_continuous_v2." + args.algo
