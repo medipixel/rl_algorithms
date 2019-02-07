@@ -22,6 +22,7 @@ class AbstractAgent(ABC):
     Attributes:
         env (gym.Env): openAI Gym environment
         args (argparse.Namespace): arguments including hyperparameters and training settings
+        env_name (str) : gym env name for logging
         sha (str): sha code of current git commit
 
     """
@@ -42,6 +43,7 @@ class AbstractAgent(ABC):
             self.args.max_episode_steps = env._max_episode_steps
 
         # for logging
+        self.env_name = str(self.env.env).split("<")[2].replace(">>", "")
         self.sha = (
             subprocess.check_output(["git", "rev-parse", "--short", "HEAD"])[:-1]
             .decode("ascii")
@@ -69,8 +71,7 @@ class AbstractAgent(ABC):
         if not os.path.exists("./save"):
             os.mkdir("./save")
 
-        env_name = str(self.env.env).split("<")[2].replace(">>", "")
-        save_name = env_name + "_" + self.args.algo + "_" + self.sha
+        save_name = self.env_name + "_" + self.args.algo + "_" + self.sha
 
         path = os.path.join("./save/" + save_name + "_ep_" + str(n_episode) + ".pt")
         torch.save(params, path)

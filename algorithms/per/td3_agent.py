@@ -95,12 +95,14 @@ class Agent(AbstractAgent):
         state = torch.FloatTensor(state).to(device)
         selected_action = self.actor(state)
 
-        action_size = selected_action.size()
-        selected_action += torch.FloatTensor(
-            self.noise.sample(action_size, self.n_step)
-        ).to(device)
+        if not self.args.test:
+            action_size = selected_action.size()
+            selected_action += torch.FloatTensor(
+                self.noise.sample(action_size, self.n_step)
+            ).to(device)
+            selected_action = torch.clamp(selected_action, -1.0, 1.0)
 
-        return torch.clamp(selected_action, -1.0, 1.0)
+        return selected_action
 
     def step(self, action: torch.Tensor) -> Tuple[np.ndarray, np.float64, bool]:
         """Take an action and return the response of the env."""

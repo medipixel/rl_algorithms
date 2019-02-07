@@ -87,8 +87,10 @@ class Agent(AbstractAgent):
         self.curr_state = state
 
         state = torch.FloatTensor(state).to(device)
-        selected_action = self.actor(state)
-        selected_action += torch.FloatTensor(self.noise.sample()).to(device)
+
+        if not self.args.test:
+            selected_action = self.actor(state)
+            selected_action += torch.FloatTensor(self.noise.sample()).to(device)
 
         selected_action = torch.clamp(selected_action, -1.0, 1.0)
 
