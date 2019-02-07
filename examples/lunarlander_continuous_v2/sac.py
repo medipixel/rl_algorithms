@@ -20,16 +20,16 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 # hyper parameters
 hyper_params = {
     "GAMMA": 0.99,
-    "TAU": 1e-3,
+    "TAU": 5e-3,
     "W_ENTROPY": 1e-3,
-    "W_MEAN_REG": 1e-3,
-    "W_STD_REG": 1e-3,
+    "W_MEAN_REG": 0.0,
+    "W_STD_REG": 0.0,
     "W_PRE_ACTIVATION_REG": 0.0,
-    "LR_ACTOR": 3e-4,
-    "LR_VF": 3e-4,
-    "LR_QF1": 3e-4,
-    "LR_QF2": 3e-4,
-    "LR_ENTROPY": 3e-4,
+    "LR_ACTOR": 1e-3,
+    "LR_VF": 1e-3,
+    "LR_QF1": 1e-3,
+    "LR_QF2": 1e-3,
+    "LR_ENTROPY": 1e-4,
     "DELAYED_UPDATE": 2,
     "BUFFER_SIZE": int(1e6),
     "BATCH_SIZE": 128,
@@ -94,7 +94,7 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
         weight_decay=hyper_params["WEIGHT_DECAY"],
     )
     qf_2_optim = optim.Adam(
-        qf_1.parameters(),
+        qf_2.parameters(),
         lr=hyper_params["LR_QF2"],
         weight_decay=hyper_params["WEIGHT_DECAY"],
     )

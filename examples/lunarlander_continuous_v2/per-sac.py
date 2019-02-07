@@ -97,7 +97,7 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
         weight_decay=hyper_params["WEIGHT_DECAY"],
     )
     qf_2_optim = optim.Adam(
-        qf_1.parameters(),
+        qf_2.parameters(),
         lr=hyper_params["LR_QF2"],
         weight_decay=hyper_params["WEIGHT_DECAY"],
     )

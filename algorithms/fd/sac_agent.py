@@ -144,7 +144,7 @@ class Agent(AbstractAgent):
 
             alpha = self.log_alpha.exp()
         else:
-            alpha_loss = 0.0
+            alpha_loss = torch.zeros(1)
             alpha = self.hyper_params["W_ENTROPY"]
 
         # Q function loss
