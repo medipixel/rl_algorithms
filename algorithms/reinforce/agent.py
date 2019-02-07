@@ -163,7 +163,7 @@ class Agent(AbstractAgent):
             "baseline_optim_state_dict": self.baseline_optimizer.state_dict(),
         }
 
-        AbstractAgent.save_params(self, self.args.algo, params, n_episode)
+        AbstractAgent.save_params(self, params, n_episode)
 
     def write_log(self, i: int, score: int, policy_loss: float, value_loss: float):
         total_loss = policy_loss + value_loss

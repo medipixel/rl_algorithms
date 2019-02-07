@@ -85,7 +85,6 @@ class Agent(AbstractAgent):
         self.memory = PrioritizedReplayBuffer(
             hyper_params["BUFFER_SIZE"],
             hyper_params["BATCH_SIZE"],
-            self.args.seed,
             alpha=hyper_params["PER_ALPHA"],
         )
 
@@ -96,12 +95,14 @@ class Agent(AbstractAgent):
         state = torch.FloatTensor(state).to(device)
         selected_action = self.actor(state)
 
-        action_size = selected_action.size()
-        selected_action += torch.FloatTensor(
-            self.noise.sample(action_size, self.n_step)
-        ).to(device)
+        if not self.args.test:
+            action_size = selected_action.size()
+            selected_action += torch.FloatTensor(
+                self.noise.sample(action_size, self.n_step)
+            ).to(device)
+            selected_action = torch.clamp(selected_action, -1.0, 1.0)
 
-        return torch.clamp(selected_action, -1.0, 1.0)
+        return selected_action
 
     def step(self, action: torch.Tensor) -> Tuple[np.ndarray, np.float64, bool]:
         """Take an action and return the response of the env."""
@@ -128,6 +129,7 @@ class Agent(AbstractAgent):
         noise = torch.normal(torch.zeros(next_actions.size()), noise_std).to(device)
         noise = torch.clamp(noise, -noise_clip, noise_clip)
         next_actions += noise
+        next_actions = torch.clamp(next_actions, -1.0, 1.0)
 
         # min (Q_1', Q_2')
         next_states_actions = torch.cat((next_states, next_actions), dim=-1)
@@ -214,7 +216,7 @@ class Agent(AbstractAgent):
             "critic_optim2": self.critic_optimizer2.state_dict(),
         }
 
-        AbstractAgent.save_params(self, self.args.algo, params, n_episode)
+        AbstractAgent.save_params(self, params, n_episode)
 
     def write_log(
         self, i: int, loss: np.ndarray, score: float = 0.0, delayed_update: int = 1

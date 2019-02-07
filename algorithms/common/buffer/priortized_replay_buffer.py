@@ -29,7 +29,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
     Attributes:
         buffer_size (int): size of replay buffer for experience
         alpha (float): alpha parameter for prioritized replay buffer
-        next_idx (int): next index of tree
+        tree_idx (int): next index of tree
         sum_tree (SumSegmentTree): sum tree for prior
         min_tree (MinSegmentTree): min tree for min prior to get max weight
         init_priority (float): lower bound of priority
@@ -37,30 +37,22 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         """
 
     def __init__(
-        self,
-        buffer_size: int,
-        batch_size: int,
-        seed: int,
-        demo: deque = None,
-        alpha: float = 0.6,
+        self, buffer_size: int, batch_size: int, demo: deque = None, alpha: float = 0.6
     ):
         """Initialization.
 
         Args:
             buffer_size (int): size of replay buffer for experience
             batch_size (int): size of a batched sampled from replay buffer for training
-            seed (int): random seed
             demo (deque): demonstration
             alpha (float): alpha parameter for prioritized replay buffer
 
         """
-        super(PrioritizedReplayBuffer, self).__init__(
-            buffer_size, batch_size, seed, demo
-        )
+        super(PrioritizedReplayBuffer, self).__init__(buffer_size, batch_size, demo)
         assert alpha >= 0
         self.buffer_size = buffer_size
         self.alpha = alpha
-        self.next_idx = 0
+        self.tree_idx = 0
 
         # capacity must be positive and a power of 2.
         tree_capacity = 1
@@ -74,9 +66,9 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         # for init priority of demo
         if demo:
             for _ in range(len(demo)):
-                self.sum_tree[self.next_idx] = self.init_priority ** self.alpha
-                self.min_tree[self.next_idx] = self.init_priority ** self.alpha
-                self.next_idx += 1
+                self.sum_tree[self.tree_idx] = self.init_priority ** self.alpha
+                self.min_tree[self.tree_idx] = self.init_priority ** self.alpha
+                self.tree_idx += 1
 
     def add(
         self,
@@ -87,8 +79,8 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         done: bool,
     ):
         """Add experience and priority."""
-        idx = self.next_idx
-        self.next_idx = (self.next_idx + 1) % self.buffer_size
+        idx = self.tree_idx
+        self.tree_idx = (self.tree_idx + 1) % self.buffer_size
         super().add(state, action, reward, next_state, done)
 
         self.sum_tree[idx] = self.init_priority ** self.alpha
@@ -176,7 +168,7 @@ class PrioritizedReplayBufferfD(ReplayBuffer):
         total_size (int): sum of demo size and number of samples of experience
         alpha (float): alpha parameter for prioritized replay buffer
         epsilon_d (float) : epsilon_d parameter to update priority using demo
-        next_idx (int): next index of tree
+        tree_idx (int): next index of tree
         sum_tree (SumSegmentTree): sum tree for prior
         min_tree (MinSegmentTree): min tree for min prior to get max weight
         init_priority (float): lower bound of priority
@@ -187,7 +179,6 @@ class PrioritizedReplayBufferfD(ReplayBuffer):
         self,
         buffer_size: int,
         batch_size: int,
-        seed: int,
         demo: deque,
         alpha: float = 0.6,
         epsilon_d: float = 1.0,
@@ -197,15 +188,12 @@ class PrioritizedReplayBufferfD(ReplayBuffer):
         Args:
             buffer_size (int): size of replay buffer for experience
             batch_size (int): size of a batched sampled from replay buffer for training
-            seed (int): random seed
             demo (deque): demonstration
             alpha (float): alpha parameter for prioritized replay buffer
             epsilon_d (float) : epsilon_d parameter to update priority using demo
 
         """
-        super(PrioritizedReplayBufferfD, self).__init__(
-            buffer_size, batch_size, seed, demo
-        )
+        super(PrioritizedReplayBufferfD, self).__init__(buffer_size, batch_size, demo)
         assert alpha >= 0
         self.buffer: deque = deque(maxlen=buffer_size)
         self.demo = demo
@@ -214,7 +202,7 @@ class PrioritizedReplayBufferfD(ReplayBuffer):
         self.total_size = self.demo_size + len(self.buffer)
         self.alpha = alpha
         self.epsilon_d = epsilon_d
-        self.next_idx = 0
+        self.tree_idx = 0
 
         # capacity must be positive and a power of 2.
         tree_capacity = 1
@@ -227,9 +215,9 @@ class PrioritizedReplayBufferfD(ReplayBuffer):
 
         # for init priority of demo
         for _ in range(self.demo_size):
-            self.sum_tree[self.next_idx] = self.init_priority ** self.alpha
-            self.min_tree[self.next_idx] = self.init_priority ** self.alpha
-            self.next_idx += 1
+            self.sum_tree[self.tree_idx] = self.init_priority ** self.alpha
+            self.min_tree[self.tree_idx] = self.init_priority ** self.alpha
+            self.tree_idx += 1
 
     def add(
         self,
@@ -240,12 +228,12 @@ class PrioritizedReplayBufferfD(ReplayBuffer):
         done: bool,
     ):
         """Add experience and priority."""
-        idx = self.next_idx
+        idx = self.tree_idx
         # buffer is full
-        if (self.next_idx + 1) % (self.buffer_size + self.demo_size) == 0:
-            self.next_idx = self.demo_size
+        if (self.tree_idx + 1) % (self.buffer_size + self.demo_size) == 0:
+            self.tree_idx = self.demo_size
         else:
-            self.next_idx = self.next_idx + 1
+            self.tree_idx = self.tree_idx + 1
         super().add(state, action, reward, next_state, done)
 
         self.sum_tree[idx] = self.init_priority ** self.alpha

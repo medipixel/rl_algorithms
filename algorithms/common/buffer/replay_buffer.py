@@ -24,22 +24,19 @@ class ReplayBuffer:
 
     """
 
-    def __init__(
-        self, buffer_size: int, batch_size: int, seed: int, demo: deque = None
-    ):
+    def __init__(self, buffer_size: int, batch_size: int, demo: deque = None):
         """Initialize a ReplayBuffer object.
 
         Args:
             buffer_size (int): size of replay buffer for experience
             batch_size (int): size of a batched sampled from replay buffer for training
-            seed (int): random seed
             demo (deque) : demonstration deque
 
         """
-        self.buffer = deque(maxlen=buffer_size) if not demo else demo
-
+        self.buffer = list() if not demo else list(demo)
+        self.buffer_size = buffer_size
         self.batch_size = batch_size
-        random.seed(seed)
+        self.idx = 0
 
     def add(
         self,
@@ -50,7 +47,13 @@ class ReplayBuffer:
         done: bool,
     ):
         """Add a new experience to memory."""
-        self.buffer.append((state, action, reward, next_state, done))
+        data = (state, action, reward, next_state, done)
+
+        if len(self.buffer) == self.buffer_size:
+            self.buffer[self.idx] = data
+            self.idx = (self.idx + 1) % self.buffer_size
+        else:
+            self.buffer.append(data)
 
     def extend(self, transitions: list):
         """Add experiences to memory."""
@@ -77,7 +80,7 @@ class ReplayBuffer:
         next_states = torch.from_numpy(np.vstack(next_states)).float().to(device)
         dones = torch.from_numpy(np.vstack(dones).astype(np.uint8)).float().to(device)
 
-        return (states, actions, rewards, next_states, dones)
+        return states, actions, rewards, next_states, dones
 
     def __len__(self) -> int:
         """Return the current size of internal memory."""

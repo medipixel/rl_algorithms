@@ -90,7 +90,6 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
     # noise
     noise = OUNoise(
         action_dim,
-        args.seed,
         theta=hyper_params["OU_NOISE_THETA"],
         sigma=hyper_params["OU_NOISE_SIGMA"],
     )

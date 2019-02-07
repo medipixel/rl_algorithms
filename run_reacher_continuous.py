@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-"""Train or test baselines on LunarLanderContinuous-v2.
+"""Train or test baselines on Reacher-v2 of Mujoco.
 
-- Author: Curt Park
-- Contact: curt.park@medipixel.io
+- Author: Kh Kim
+- Contact: kh.kim@medipixel.io
 """
 
 import argparse
@@ -56,7 +56,7 @@ args = parser.parse_args()
 def main():
     """Main."""
     # env initialization
-    env = gym.make("LunarLanderContinuous-v2")
+    env = gym.make("Reacher-v2")
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.shape[0]
 
@@ -64,7 +64,7 @@ def main():
     common_utils.set_random_seed(args.seed, env)
 
     # run
-    module_path = "examples.lunarlander_continuous_v2." + args.algo
+    module_path = "examples.Reacher-v2." + args.algo
     example = importlib.import_module(module_path)
     example.run(env, args, state_dim, action_dim)
 

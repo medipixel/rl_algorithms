@@ -75,7 +75,7 @@ class Agent(AbstractAgent):
 
         # replay memory
         self.memory = ReplayBuffer(
-            hyper_params["BUFFER_SIZE"], hyper_params["BATCH_SIZE"], self.args.seed
+            hyper_params["BUFFER_SIZE"], hyper_params["BATCH_SIZE"]
         )
 
     def select_action(self, state: np.ndarray) -> torch.Tensor:
@@ -84,9 +84,10 @@ class Agent(AbstractAgent):
 
         state = torch.FloatTensor(state).to(device)
         selected_action = self.actor(state)
-        selected_action += torch.FloatTensor(self.noise.sample()).to(device)
 
-        selected_action = torch.clamp(selected_action, -1.0, 1.0)
+        if not self.args.test:
+            selected_action += torch.FloatTensor(self.noise.sample()).to(device)
+            selected_action = torch.clamp(selected_action, -1.0, 1.0)
 
         return selected_action
 
@@ -163,7 +164,7 @@ class Agent(AbstractAgent):
             "critic_optim_state_dict": self.critic_optimizer.state_dict(),
         }
 
-        AbstractAgent.save_params(self, self.args.algo, params, n_episode)
+        AbstractAgent.save_params(self, params, n_episode)
 
     def write_log(self, i: int, loss: np.ndarray, score: int):
         """Write log about loss and score"""

@@ -15,7 +15,6 @@ class GaussianNoise:
 
     def __init__(
         self,
-        seed: int,
         min_sigma: float = 1.0,
         max_sigma: float = 1.0,
         decay_period: int = 1000000,
@@ -24,7 +23,6 @@ class GaussianNoise:
         self.max_sigma = max_sigma
         self.min_sigma = min_sigma
         self.decay_period = decay_period
-        np.random.seed(seed)
 
     def sample(self, action_size: int, t: int = 0) -> float:
         """Get an action with gaussian noise."""
@@ -43,12 +41,7 @@ class OUNoise:
     """
 
     def __init__(
-        self,
-        size: int,
-        seed: int,
-        mu: float = 0.0,
-        theta: float = 0.15,
-        sigma: float = 0.2,
+        self, size: int, mu: float = 0.0, theta: float = 0.15, sigma: float = 0.2
     ):
         """Initialize parameters and noise process."""
         self.state = np.float64(0.0)
@@ -56,8 +49,6 @@ class OUNoise:
         self.theta = theta
         self.sigma = sigma
         self.reset()
-
-        random.seed(seed)
 
     def reset(self):
         """Reset the internal state (= noise) to mean (mu)."""

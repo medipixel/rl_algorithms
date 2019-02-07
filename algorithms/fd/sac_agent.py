@@ -100,7 +100,6 @@ class Agent(AbstractAgent):
         self.memory = PrioritizedReplayBufferfD(
             hyper_params["BUFFER_SIZE"],
             hyper_params["BATCH_SIZE"],
-            self.args.seed,
             demo=demo,
             alpha=hyper_params["PER_ALPHA"],
         )
@@ -256,7 +255,7 @@ class Agent(AbstractAgent):
             "vf_optim": self.vf_optimizer.state_dict(),
         }
 
-        AbstractAgent.save_params(self, self.args.algo, params, n_episode)
+        AbstractAgent.save_params(self, params, n_episode)
 
     def write_log(
         self,

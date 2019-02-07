@@ -115,7 +115,6 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
 
     # noise instance to make randomness of action
     noise = GaussianNoise(
-        args.seed,
         hyper_params["GAUSSIAN_NOISE_MIN_SIGMA"],
         hyper_params["GAUSSIAN_NOISE_MAX_SIGMA"],
         hyper_params["GAUSSIAN_NOISE_DECAY_PERIOD"],
