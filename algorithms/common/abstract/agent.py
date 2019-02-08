@@ -92,6 +92,7 @@ class AbstractAgent(ABC):
             state = self.env.reset()
             done = False
             score = 0
+            step = 0
 
             while not done:
                 if self.args.render and i_episode >= self.args.render_after:
@@ -102,8 +103,12 @@ class AbstractAgent(ABC):
 
                 state = next_state
                 score += reward
+                step += 1
 
-            print("[INFO] episode %d\ttotal score: %d" % (i_episode, score))
+            print(
+                "[INFO] episode %d\tstep: %d\ttotal score: %d"
+                % (i_episode, step, score)
+            )
 
         # termination
         self.env.close()

@@ -107,7 +107,7 @@ class Agent(AbstractAgent):
         action = action.detach().cpu().numpy()
         next_state, reward, done, _ = self.env.step(action)
 
-        self.memory.add(self.curr_state, action, reward, next_state, done)
+        self.memory.add(self.curr_state, action, reward, next_state, float(done))
 
         return next_state, reward, done
 
@@ -123,8 +123,8 @@ class Agent(AbstractAgent):
 
         # get actions with noise
         noise_std, noise_clip = (
-            self.hyper_params["NOISE_STD"],
-            self.hyper_params["NOISE_CLIP"],
+            self.hyper_params["TARGET_SMOOTHING_NOISE_STD"],
+            self.hyper_params["TARGET_SMOOTHING_NOISE_CLIP"],
         )
         next_actions = self.actor_target(next_states)
         noise = torch.normal(torch.zeros(next_actions.size()), noise_std).to(device)

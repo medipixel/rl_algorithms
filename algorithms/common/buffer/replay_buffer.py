@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """Replay buffer for baselines."""
 
-import random
 from collections import deque
 from typing import Tuple
 
@@ -19,7 +18,7 @@ class ReplayBuffer:
     ddpg-pendulum/ddpg_agent.py
 
     Attributes:
-        buffer (deque): deque of replay buffer
+        buffer (list): deque of replay buffer
         batch_size (int): size of a batched sampled from replay buffer for training
 
     """
@@ -44,7 +43,7 @@ class ReplayBuffer:
         action: np.ndarray,
         reward: np.float64,
         next_state: np.ndarray,
-        done: bool,
+        done: float,
     ):
         """Add a new experience to memory."""
         data = (state, action, reward, next_state, done)
@@ -63,22 +62,23 @@ class ReplayBuffer:
         self
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """Randomly sample a batch of experiences from memory."""
-        experiences = random.sample(self.buffer, k=self.batch_size)
+        idxs = np.random.randint(0, len(self.buffer), size=self.batch_size)
 
         states, actions, rewards, next_states, dones = [], [], [], [], []
 
-        for e in experiences:
-            states.append(np.expand_dims(e[0], axis=0))
-            actions.append(e[1])
-            rewards.append(e[2])
-            next_states.append(np.expand_dims(e[3], axis=0))
-            dones.append(e[4])
+        for i in idxs:
+            s, a, r, n_s, d = self.buffer[i]
+            states.append(np.array(s, copy=False))
+            actions.append(np.array(a, copy=False))
+            rewards.append(np.array(r, copy=False))
+            next_states.append(np.array(n_s, copy=False))
+            dones.append(np.array(d, copy=False))
 
-        states = torch.from_numpy(np.vstack(states)).float().to(device)
-        actions = torch.from_numpy(np.vstack(actions)).float().to(device)
-        rewards = torch.from_numpy(np.vstack(rewards)).float().to(device)
-        next_states = torch.from_numpy(np.vstack(next_states)).float().to(device)
-        dones = torch.from_numpy(np.vstack(dones).astype(np.uint8)).float().to(device)
+        states = torch.FloatTensor(np.array(states)).to(device)
+        actions = torch.FloatTensor(np.array(actions)).to(device)
+        rewards = torch.FloatTensor(np.array(rewards).reshape(-1, 1)).to(device)
+        next_states = torch.FloatTensor(np.array(next_states)).to(device)
+        dones = torch.FloatTensor(np.array(dones).reshape(-1, 1)).to(device)
 
         return states, actions, rewards, next_states, dones
 
