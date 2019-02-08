@@ -131,8 +131,8 @@ class Agent(AbstractAgent):
 
         # get actions with noise
         noise_std, noise_clip = (
-            self.hyper_params["NOISE_STD"],
-            self.hyper_params["NOISE_CLIP"],
+            self.hyper_params["TARGET_SMOOTHING_NOISE_STD"],
+            self.hyper_params["TARGET_SMOOTHING_NOISE_CLIP"],
         )
         next_actions = self.actor_target(next_states)
         noise = torch.normal(torch.zeros(next_actions.size()), noise_std).to(device)

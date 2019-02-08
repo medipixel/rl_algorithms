@@ -21,8 +21,8 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 hyper_params = {
     "GAMMA": 0.99,
     "TAU": 5e-3,
-    "NOISE_STD": 0.2,
-    "NOISE_CLIP": 0.5,
+    "TARGET_SMOOTHING_NOISE_STD": 0.2,
+    "TARGET_SMOOTHING_NOISE_CLIP": 0.5,
     "DELAYED_UPDATE": 2,
     "BUFFER_SIZE": int(1e5),
     "BATCH_SIZE": 128,
@@ -30,7 +30,7 @@ hyper_params = {
     "LR_CRITIC_1": 1e-3,
     "LR_CRITIC_2": 1e-3,
     "GAUSSIAN_NOISE_MIN_SIGMA": 0.1,
-    "GAUSSIAN_NOISE_MAX_SIGMA": 1.0,
+    "GAUSSIAN_NOISE_MAX_SIGMA": 0.1,
     "GAUSSIAN_NOISE_DECAY_PERIOD": 1000000,
     "WEIGHT_DECAY": 1e-6,
 }
@@ -46,8 +46,8 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
         action_dim (int): dimension of actions
 
     """
-    hidden_sizes_actor = [256, 256]
-    hidden_sizes_critic = [256, 256]
+    hidden_sizes_actor = [400, 300]
+    hidden_sizes_critic = [400, 300]
 
     # create actor
     actor = MLP(

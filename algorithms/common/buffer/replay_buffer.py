@@ -19,7 +19,7 @@ class ReplayBuffer:
     ddpg-pendulum/ddpg_agent.py
 
     Attributes:
-        buffer (deque): deque of replay buffer
+        buffer (list): deque of replay buffer
         batch_size (int): size of a batched sampled from replay buffer for training
 
     """
