@@ -307,14 +307,6 @@ class Agent(AbstractAgent):
                     loss = self.update_model(experiences)
                     loss_episode.append(loss)  # for logging
 
-            #            # training
-            #            if len(self.memory) >= self.hyper_params["BATCH_SIZE"]:
-            #                for _ in range(self.hyper_params["EPOCH"]):
-            #                    self.n_step += 1
-            #                    experiences = self.memory.sample()
-            #                    loss = self.update_model(experiences)
-            #                    loss_episode.append(loss)  # for logging
-
             # logging
             if loss_episode:
                 avg_loss = np.vstack(loss_episode).mean(axis=0)
