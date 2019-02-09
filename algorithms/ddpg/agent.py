@@ -96,7 +96,7 @@ class Agent(AbstractAgent):
         action = action.detach().cpu().numpy()
         next_state, reward, done, _ = self.env.step(action)
 
-        self.memory.add(self.curr_state, action, reward, next_state, float(done))
+        self.memory.add(self.curr_state, action, reward, next_state, done)
 
         return next_state, reward, done
 

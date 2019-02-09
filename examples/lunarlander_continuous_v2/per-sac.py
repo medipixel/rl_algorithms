@@ -38,6 +38,7 @@ hyper_params = {
     "PER_BETA": 0.4,
     "PER_EPS": 1e-6,
     "WEIGHT_DECAY": 0.0,
+    "EPOCH": 128,
 }
 
 

@@ -111,7 +111,7 @@ class Agent(AbstractAgent):
         action = action.detach().cpu().numpy()
         next_state, reward, done, _ = self.env.step(action)
 
-        self.memory.add(self.curr_state, action, reward, next_state, float(done))
+        self.memory.add(self.curr_state, action, reward, next_state, done)
 
         return next_state, reward, done
 
@@ -301,18 +301,20 @@ class Agent(AbstractAgent):
                 action = self.select_action(state)
                 next_state, reward, done = self.step(action)
 
-                if len(self.memory) >= self.hyper_params["BATCH_SIZE"]:
-                    experiences = self.memory.sample()
-                    loss = self.update_model(experiences)
-                    loss_episode.append(loss)  # for logging
-
-                # increase beta
-                fraction = min(float(i_episode) / self.args.max_episode_steps, 1.0)
-                self.beta = self.beta + fraction * (1.0 - self.beta)
-
                 state = next_state
                 score += reward
                 self.n_step += 1
+
+            # training
+            if len(self.memory) >= self.hyper_params["BATCH_SIZE"]:
+                for _ in range(self.hyper_params["EPOCH"]):
+                    experiences = self.memory.sample(self.beta)
+                    loss = self.update_model(experiences)
+                    loss_episode.append(loss)  # for logging
+
+            # increase beta
+            fraction = min(float(i_episode) / self.args.max_episode_steps, 1.0)
+            self.beta = self.beta + fraction * (1.0 - self.beta)
 
             # logging
             if loss_episode:

@@ -125,7 +125,7 @@ class Agent(AbstractAgent):
         action = action.detach().cpu().numpy()
         next_state, reward, done, _ = self.env.step(action)
 
-        e = (self.curr_state, action, reward, next_state, float(done))
+        e = (self.curr_state, action, reward, next_state, done)
 
         # HER
         if self.hyper_params["USE_HER"]:

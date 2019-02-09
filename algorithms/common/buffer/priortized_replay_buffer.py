@@ -8,7 +8,6 @@
 """
 
 import random
-from collections import deque
 from typing import Tuple
 
 import numpy as np
@@ -37,14 +36,14 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         """
 
     def __init__(
-        self, buffer_size: int, batch_size: int, demo: deque = None, alpha: float = 0.6
+        self, buffer_size: int, batch_size: int, demo: list = None, alpha: float = 0.6
     ):
         """Initialization.
 
         Args:
             buffer_size (int): size of replay buffer for experience
             batch_size (int): size of a batched sampled from replay buffer for training
-            demo (deque): demonstration
+            demo (list): demonstration
             alpha (float): alpha parameter for prioritized replay buffer
 
         """
@@ -120,7 +119,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             actions.append(np.array(a, copy=False))
             rewards.append(np.array(r, copy=False))
             next_states.append(np.array(n_s, copy=False))
-            dones.append(np.array(d, copy=False))
+            dones.append(np.array(float(d), copy=False))
 
             # calculate weights
             p_sample = self.sum_tree[i] / self.sum_tree.sum()
@@ -159,8 +158,8 @@ class PrioritizedReplayBufferfD(ReplayBuffer):
     https://github.com/openai/baselines/blob/master/baselines/deepq/replay_buffer.py
 
     Attributes:
-        buffer (deque): deque of experience replay buffer
-        demo (deque): deque of demo replay buffer
+        buffer (list): list of experience replay buffer
+        demo (list): list of demo replay buffer
         buffer_size (int): size of replay buffer for experience
         demo_size (int): size of replay buffer for demonstration
         total_size (int): sum of demo size and number of samples of experience
@@ -177,7 +176,7 @@ class PrioritizedReplayBufferfD(ReplayBuffer):
         self,
         buffer_size: int,
         batch_size: int,
-        demo: deque,
+        demo: list,
         alpha: float = 0.6,
         epsilon_d: float = 1.0,
     ):
@@ -186,14 +185,14 @@ class PrioritizedReplayBufferfD(ReplayBuffer):
         Args:
             buffer_size (int): size of replay buffer for experience
             batch_size (int): size of a batched sampled from replay buffer for training
-            demo (deque): demonstration
+            demo (list): demonstration
             alpha (float): alpha parameter for prioritized replay buffer
             epsilon_d (float) : epsilon_d parameter to update priority using demo
 
         """
         super(PrioritizedReplayBufferfD, self).__init__(buffer_size, batch_size, demo)
         assert alpha >= 0
-        self.buffer: deque = deque(maxlen=buffer_size)
+        self.buffer: list = list()
         self.demo = demo
         self.buffer_size = buffer_size
         self.demo_size = len(demo)
@@ -283,7 +282,7 @@ class PrioritizedReplayBufferfD(ReplayBuffer):
             actions.append(np.array(a, copy=False))
             rewards.append(np.array(r, copy=False))
             next_states.append(np.array(n_s, copy=False))
-            dones.append(np.array(d, copy=False))
+            dones.append(np.array(float(d), copy=False))
 
             # calculate weights
             p_sample = self.sum_tree[i] / self.sum_tree.sum()

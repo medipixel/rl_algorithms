@@ -71,7 +71,7 @@ class ReplayBuffer:
             actions.append(np.array(a, copy=False))
             rewards.append(np.array(r, copy=False))
             next_states.append(np.array(n_s, copy=False))
-            dones.append(np.array(d, copy=False))
+            dones.append(np.array(float(d), copy=False))
 
         states = torch.FloatTensor(np.array(states)).to(device)
         actions = torch.FloatTensor(np.array(actions)).to(device)
