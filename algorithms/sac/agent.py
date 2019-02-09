@@ -99,7 +99,11 @@ class Agent(AbstractAgent):
         self.curr_state = state
 
         state = torch.FloatTensor(state).to(device)
-        selected_action, _, _, _, _ = self.actor(state)
+
+        if self.args.test:
+            _, _, _, selected_action, _ = self.actor(state)
+        else:
+            selected_action, _, _, _, _ = self.actor(state)
 
         return selected_action
 
@@ -280,7 +284,6 @@ class Agent(AbstractAgent):
             wandb.config.update(self.hyper_params)
             wandb.watch([self.actor, self.vf, self.qf_1, self.qf_2], log="parameters")
 
-        self.n_step = 0
         for i_episode in range(1, self.args.episode_num + 1):
             state = self.env.reset()
             done = False
@@ -298,12 +301,19 @@ class Agent(AbstractAgent):
                 score += reward
                 self.n_step += 1
 
-            # training
-            if len(self.memory) >= self.hyper_params["BATCH_SIZE"]:
-                for _ in range(self.hyper_params["EPOCH"]):
+                # training
+                if len(self.memory) >= self.hyper_params["BATCH_SIZE"]:
                     experiences = self.memory.sample()
                     loss = self.update_model(experiences)
                     loss_episode.append(loss)  # for logging
+
+            #            # training
+            #            if len(self.memory) >= self.hyper_params["BATCH_SIZE"]:
+            #                for _ in range(self.hyper_params["EPOCH"]):
+            #                    self.n_step += 1
+            #                    experiences = self.memory.sample()
+            #                    loss = self.update_model(experiences)
+            #                    loss_episode.append(loss)  # for logging
 
             # logging
             if loss_episode:

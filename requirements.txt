@@ -1,6 +1,7 @@
 numpy
 torch==0.4.1
 gym
+box2d-py
 scipy
 typing
 wandb
