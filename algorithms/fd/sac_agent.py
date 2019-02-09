@@ -309,17 +309,17 @@ class Agent(AbstractAgent):
         """Pretraining steps."""
         pretrain_loss = list()
         print("[INFO] Pre-Train %d steps." % self.hyper_params["PRETRAIN_STEP"])
-        for n_step in range(1, self.hyper_params["PRETRAIN_STEP"] + 1):
+        for i_step in range(1, self.hyper_params["PRETRAIN_STEP"] + 1):
             experiences = self.memory.sample()
             loss = self.update_model(experiences)
             pretrain_loss.append(loss)  # for logging
 
             # logging
-            if n_step == 1 or n_step % 100 == 0:
+            if i_step == 1 or i_step % 100 == 0:
                 avg_loss = np.vstack(pretrain_loss).mean(axis=0)
                 pretrain_loss.clear()
                 self.write_log(
-                    n_step,
+                    i_step,
                     avg_loss,
                     delayed_update=self.hyper_params["DELAYED_UPDATE"],
                     is_step=True,
