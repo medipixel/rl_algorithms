@@ -330,7 +330,7 @@ class Agent(AbstractAgent):
 
             # training
             if len(self.memory) >= self.hyper_params["BATCH_SIZE"]:
-                for _ in range(self.args.epoches):
+                for _ in range(self.hyper_params["EPOCH"]):
                     loss_multiple_learn = []
                     for _ in range(self.hyper_params["MULTIPLE_LEARN"]):
                         experiences = self.memory.sample(self.beta)

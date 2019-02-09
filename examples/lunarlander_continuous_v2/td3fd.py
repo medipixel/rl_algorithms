@@ -40,7 +40,7 @@ hyper_params = {
     "PER_ALPHA": 0.3,
     "PER_BETA": 1.0,
     "PER_EPS": 1e-6,
-    "WEIGHT_DECAY": 1e-6,
+    "EPOCH": 128,
 }
 
 
@@ -100,17 +100,17 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
     actor_optim = optim.Adam(
         actor.parameters(),
         lr=hyper_params["LR_ACTOR"],
-        weight_decay=hyper_params["WEIGHT_DECAY"],
+        weight_decay=hyper_params["LAMDA2"],
     )
     critic_optim1 = optim.Adam(
         critic_1.parameters(),
         lr=hyper_params["LR_CRITIC_1"],
-        weight_decay=hyper_params["WEIGHT_DECAY"],
+        weight_decay=hyper_params["LAMDA2"],
     )
     critic_optim2 = optim.Adam(
         critic_2.parameters(),
         lr=hyper_params["LR_CRITIC_2"],
-        weight_decay=hyper_params["WEIGHT_DECAY"],
+        weight_decay=hyper_params["LAMDA2"],
     )
 
     # noise instance to make randomness of action

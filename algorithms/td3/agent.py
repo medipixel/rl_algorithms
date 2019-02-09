@@ -269,7 +269,7 @@ class Agent(AbstractAgent):
 
             # training
             if len(self.memory) >= self.hyper_params["BATCH_SIZE"]:
-                for _ in range(self.args.epoches):
+                for _ in range(self.hyper_params["EPOCH"]):
                     experiences = self.memory.sample()
                     loss = self.update_model(experiences)
                     loss_episode.append(loss)  # for logging
