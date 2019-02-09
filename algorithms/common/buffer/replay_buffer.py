@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """Replay buffer for baselines."""
 
-from collections import deque
 from typing import Tuple
 
 import numpy as np
@@ -18,21 +17,21 @@ class ReplayBuffer:
     ddpg-pendulum/ddpg_agent.py
 
     Attributes:
-        buffer (list): deque of replay buffer
+        buffer (list): list of replay buffer
         batch_size (int): size of a batched sampled from replay buffer for training
 
     """
 
-    def __init__(self, buffer_size: int, batch_size: int, demo: deque = None):
+    def __init__(self, buffer_size: int, batch_size: int, demo: list = None):
         """Initialize a ReplayBuffer object.
 
         Args:
             buffer_size (int): size of replay buffer for experience
             batch_size (int): size of a batched sampled from replay buffer for training
-            demo (deque) : demonstration deque
+            demo (list) : demonstration list
 
         """
-        self.buffer = list() if not demo else list(demo)
+        self.buffer = list() if not demo else demo
         self.buffer_size = buffer_size
         self.batch_size = batch_size
         self.idx = 0
@@ -72,7 +71,7 @@ class ReplayBuffer:
             actions.append(np.array(a, copy=False))
             rewards.append(np.array(r, copy=False))
             next_states.append(np.array(n_s, copy=False))
-            dones.append(np.array(d, copy=False))
+            dones.append(np.array(float(d), copy=False))
 
         states = torch.FloatTensor(np.array(states)).to(device)
         actions = torch.FloatTensor(np.array(actions)).to(device)

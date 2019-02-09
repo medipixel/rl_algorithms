@@ -91,7 +91,7 @@ class Agent(AbstractAgent):
         self.memory = PrioritizedReplayBufferfD(
             hyper_params["BUFFER_SIZE"],
             hyper_params["BATCH_SIZE"],
-            demo=demo,
+            demo=list(demo),
             alpha=hyper_params["PER_ALPHA"],
         )
 
@@ -320,22 +320,22 @@ class Agent(AbstractAgent):
                 action = self.select_action(state)
                 next_state, reward, done = self.step(action)
 
-                if len(self.memory) >= self.hyper_params["BATCH_SIZE"]:
-                    loss_multiple_learn = []
-                    for _ in range(self.hyper_params["MULTIPLE_LEARN"]):
-                        experiences = self.memory.sample(self.beta)
-                        loss = self.update_model(experiences)
-                        loss_multiple_learn.append(loss)
-                    # for logging
-                    loss_episode.append(np.vstack(loss_multiple_learn).mean(axis=0))
-
-                # increase beta
-                fraction = min(float(i_episode) / self.args.max_episode_steps, 1.0)
-                self.beta = self.beta + fraction * (1.0 - self.beta)
-
                 state = next_state
                 score += reward
                 self.n_step += 1
+
+            # training
+            if len(self.memory) >= self.hyper_params["BATCH_SIZE"]:
+                for _ in range(
+                    self.hyper_params["EPOCH"] * self.hyper_params["MULTIPLE_LEARN"]
+                ):
+                    experiences = self.memory.sample(self.beta)
+                    loss = self.update_model(experiences)
+                    loss_episode.append(loss)  # for logging
+
+            # increase beta
+            fraction = min(float(i_episode) / self.args.max_episode_steps, 1.0)
+            self.beta = self.beta + fraction * (1.0 - self.beta)
 
             # logging
             if loss_episode:

@@ -42,7 +42,7 @@ hyper_params = {
     "PER_ALPHA": 0.5,
     "PER_BETA": 0.4,
     "PER_EPS": 1e-6,
-    "WEIGHT_DECAY": 0.0,
+    "EPOCH": 128,
 }
 
 
@@ -89,22 +89,20 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
     actor_optim = optim.Adam(
         actor.parameters(),
         lr=hyper_params["LR_ACTOR"],
-        weight_decay=hyper_params["WEIGHT_DECAY"],
+        weight_decay=hyper_params["LAMDA2"],
     )
     vf_optim = optim.Adam(
-        vf.parameters(),
-        lr=hyper_params["LR_VF"],
-        weight_decay=hyper_params["WEIGHT_DECAY"],
+        vf.parameters(), lr=hyper_params["LR_VF"], weight_decay=hyper_params["LAMDA2"]
     )
     qf_1_optim = optim.Adam(
         qf_1.parameters(),
         lr=hyper_params["LR_QF1"],
-        weight_decay=hyper_params["WEIGHT_DECAY"],
+        weight_decay=hyper_params["LAMDA2"],
     )
     qf_2_optim = optim.Adam(
         qf_2.parameters(),
         lr=hyper_params["LR_QF2"],
-        weight_decay=hyper_params["WEIGHT_DECAY"],
+        weight_decay=hyper_params["LAMDA2"],
     )
 
     # make tuples to create an agent

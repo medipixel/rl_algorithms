@@ -85,7 +85,7 @@ class Agent(AbstractAgent):
         self.memory = PrioritizedReplayBufferfD(
             self.hyper_params["BUFFER_SIZE"],
             self.hyper_params["BATCH_SIZE"],
-            demo=demo,
+            demo=list(demo),
             alpha=self.hyper_params["PER_ALPHA"],
         )
 
@@ -259,12 +259,12 @@ class Agent(AbstractAgent):
                     # for logging
                     loss_episode.append(np.vstack(loss_multiple_learn).mean(axis=0))
 
-                # increase beta
-                fraction = min(float(i_episode) / self.args.max_episode_steps, 1.0)
-                self.beta = self.beta + fraction * (1.0 - self.beta)
-
                 state = next_state
                 score += reward
+
+            # increase beta
+            fraction = min(float(i_episode) / self.args.max_episode_steps, 1.0)
+            self.beta = self.beta + fraction * (1.0 - self.beta)
 
             # logging
             if loss_episode:

@@ -232,12 +232,12 @@ class Agent(AbstractAgent):
                     loss = self.update_model(experiences)
                     loss_episode.append(loss)  # for logging
 
-                # increase beta
-                fraction = min(float(i_episode) / self.args.max_episode_steps, 1.0)
-                self.beta = self.beta + fraction * (1.0 - self.beta)
-
                 state = next_state
                 score += reward
+
+            # increase beta
+            fraction = min(float(i_episode) / self.args.max_episode_steps, 1.0)
+            self.beta = self.beta + fraction * (1.0 - self.beta)
 
             # logging
             if loss_episode:
