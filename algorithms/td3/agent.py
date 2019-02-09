@@ -263,14 +263,16 @@ class Agent(AbstractAgent):
                 action = self.select_action(state)
                 next_state, reward, done = self.step(action)
 
-                if len(self.memory) >= self.hyper_params["BATCH_SIZE"]:
-                    experiences = self.memory.sample()
-                    loss = self.update_model(experiences)
-                    loss_episode.append(loss)  # for logging
-
                 state = next_state
                 score += reward
                 self.n_step += 1
+
+            # training
+            if len(self.memory) >= self.hyper_params["BATCH_SIZE"]:
+                for _ in range(self.args.epoches):
+                    experiences = self.memory.sample()
+                    loss = self.update_model(experiences)
+                    loss_episode.append(loss)  # for logging
 
             # logging
             if loss_episode:
