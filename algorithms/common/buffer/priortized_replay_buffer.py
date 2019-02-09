@@ -114,27 +114,25 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         p_min = self.min_tree.min() / self.sum_tree.sum()
         max_weight = (p_min * len(self.buffer)) ** (-beta)
 
-        for idx in indices:
-            s = self.buffer[idx]
-
-            # append transition info
-            states.append(np.expand_dims(s[0], axis=0))
-            actions.append(s[1])
-            rewards.append(s[2])
-            next_states.append(np.expand_dims(s[3], axis=0))
-            dones.append(s[4])
+        for i in indices:
+            s, a, r, n_s, d = self.buffer[i]
+            states.append(np.array(s, copy=False))
+            actions.append(np.array(a, copy=False))
+            rewards.append(np.array(r, copy=False))
+            next_states.append(np.array(n_s, copy=False))
+            dones.append(np.array(d, copy=False))
 
             # calculate weights
-            p_sample = self.sum_tree[idx] / self.sum_tree.sum()
+            p_sample = self.sum_tree[i] / self.sum_tree.sum()
             weight = (p_sample * len(self.buffer)) ** (-beta)
             weights.append(weight / max_weight)
 
-        states = torch.from_numpy(np.vstack(states)).float().to(device)
-        actions = torch.from_numpy(np.vstack(actions)).float().to(device)
-        rewards = torch.from_numpy(np.vstack(rewards)).float().to(device)
-        next_states = torch.from_numpy(np.vstack(next_states)).float().to(device)
-        dones = torch.from_numpy(np.vstack(dones).astype(np.uint8)).float().to(device)
-        weights = torch.Tensor(np.reshape(weights, [self.batch_size, 1])).to(device)
+        states = torch.FloatTensor(np.array(states)).to(device)
+        actions = torch.FloatTensor(np.array(actions)).to(device)
+        rewards = torch.FloatTensor(np.array(rewards).reshape(-1, 1)).to(device)
+        next_states = torch.FloatTensor(np.array(next_states)).to(device)
+        dones = torch.FloatTensor(np.array(dones).reshape(-1, 1)).to(device)
+        weights = torch.FloatTensor(np.array(weights).reshape(-1, 1)).to(device)
 
         experiences = (states, actions, rewards, next_states, dones, weights, indices)
 
@@ -271,33 +269,33 @@ class PrioritizedReplayBufferfD(ReplayBuffer):
         p_min = self.min_tree.min() / self.sum_tree.sum()
         max_weight = (p_min * self.total_size) ** (-beta)
 
-        for idx in indices:
+        for i in indices:
             # sample from buffer
-            if idx < self.demo_size:
-                s = self.demo[idx]
+            if i < self.demo_size:
+                s, a, r, n_s, d = self.demo[i]
                 eps_d.append(self.epsilon_d)
             else:
-                s = self.buffer[idx - self.demo_size]
+                s, a, r, n_s, d = self.buffer[i - self.demo_size]
                 eps_d.append(0.0)
 
             # append transition info
-            states.append(np.expand_dims(s[0], axis=0))
-            actions.append(s[1])
-            rewards.append(s[2])
-            next_states.append(np.expand_dims(s[3], axis=0))
-            dones.append(s[4])
+            states.append(np.array(s, copy=False))
+            actions.append(np.array(a, copy=False))
+            rewards.append(np.array(r, copy=False))
+            next_states.append(np.array(n_s, copy=False))
+            dones.append(np.array(d, copy=False))
 
             # calculate weights
-            p_sample = self.sum_tree[idx] / self.sum_tree.sum()
+            p_sample = self.sum_tree[i] / self.sum_tree.sum()
             weight = (p_sample * self.total_size) ** (-beta)
             weights.append(weight / max_weight)
 
-        states = torch.from_numpy(np.vstack(states)).float().to(device)
-        actions = torch.from_numpy(np.vstack(actions)).float().to(device)
-        rewards = torch.from_numpy(np.vstack(rewards)).float().to(device)
-        next_states = torch.from_numpy(np.vstack(next_states)).float().to(device)
-        dones = torch.from_numpy(np.vstack(dones).astype(np.uint8)).float().to(device)
-        weights = torch.Tensor(np.reshape(weights, [self.batch_size, 1])).to(device)
+        states = torch.FloatTensor(np.array(states)).to(device)
+        actions = torch.FloatTensor(np.array(actions)).to(device)
+        rewards = torch.FloatTensor(np.array(rewards).reshape(-1, 1)).to(device)
+        next_states = torch.FloatTensor(np.array(next_states)).to(device)
+        dones = torch.FloatTensor(np.array(dones).reshape(-1, 1)).to(device)
+        weights = torch.FloatTensor(np.array(weights).reshape(-1, 1)).to(device)
 
         experiences = (
             states,
