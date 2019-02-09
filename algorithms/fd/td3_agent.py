@@ -273,14 +273,12 @@ class Agent(AbstractAgent):
     def pretrain(self):
         """Pretraining steps."""
         # pre-training by demo
-        self.n_step = 0
         pretrain_loss = list()
         print("[INFO] Pre-Train %d step." % self.hyper_params["PRETRAIN_STEP"])
         for i_step in range(1, self.hyper_params["PRETRAIN_STEP"] + 1):
             experiences = self.memory.sample()
             loss = self.update_model(experiences)
             pretrain_loss.append(loss)  # for logging
-            self.n_step += 1
 
             # logging
             if i_step == 1 or i_step % 100 == 0:
@@ -306,7 +304,6 @@ class Agent(AbstractAgent):
 
         # train
         print("[INFO] Train Start.")
-        self.n_step = 0
         for i_episode in range(1, self.args.episode_num + 1):
             state = self.env.reset()
             done = False
@@ -322,19 +319,19 @@ class Agent(AbstractAgent):
 
                 state = next_state
                 score += reward
-                self.n_step += 1
 
             # training
             if len(self.memory) >= self.hyper_params["BATCH_SIZE"]:
                 for _ in range(
                     self.hyper_params["EPOCH"] * self.hyper_params["MULTIPLE_LEARN"]
                 ):
+                    self.n_step += 1
                     experiences = self.memory.sample(self.beta)
                     loss = self.update_model(experiences)
                     loss_episode.append(loss)  # for logging
 
             # increase beta
-            fraction = min(float(i_episode) / self.args.max_episode_steps, 1.0)
+            fraction = min(float(i_episode) / self.args.episode_num, 1.0)
             self.beta = self.beta + fraction * (1.0 - self.beta)
 
             # logging

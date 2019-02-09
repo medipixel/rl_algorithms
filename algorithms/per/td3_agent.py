@@ -255,7 +255,6 @@ class Agent(AbstractAgent):
             wandb.config.update(self.hyper_params)
             wandb.watch([self.actor, self.critic_1, self.critic_2], log="parameters")
 
-        step = 0
         for i_episode in range(1, self.args.episode_num + 1):
             state = self.env.reset()
             done = False
@@ -271,17 +270,17 @@ class Agent(AbstractAgent):
 
                 state = next_state
                 score += reward
-                step += 1
 
             # training
             if len(self.memory) >= self.hyper_params["BATCH_SIZE"]:
                 for _ in range(self.hyper_params["EPOCH"]):
+                    self.n_step += 1
                     experiences = self.memory.sample(self.beta)
                     loss = self.update_model(experiences)
                     loss_episode.append(loss)  # for logging
 
             # increase beta
-            fraction = min(float(i_episode) / self.args.max_episode_steps, 1.0)
+            fraction = min(float(i_episode) / self.args.episode_num, 1.0)
             self.beta = self.beta + fraction * (1.0 - self.beta)
 
             # logging
