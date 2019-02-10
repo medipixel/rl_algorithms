@@ -81,10 +81,11 @@ class Agent(AbstractAgent):
         if args.load_from is not None and os.path.exists(args.load_from):
             self.load_params(args.load_from)
 
-        # replay memory
-        self.memory = ReplayBuffer(
-            hyper_params["BUFFER_SIZE"], hyper_params["BATCH_SIZE"]
-        )
+        if not self.args.test:
+            # replay memory
+            self.memory = ReplayBuffer(
+                hyper_params["BUFFER_SIZE"], hyper_params["BATCH_SIZE"]
+            )
 
     def select_action(self, state: np.ndarray) -> torch.Tensor:
         """Select an action from the input space."""
@@ -107,7 +108,8 @@ class Agent(AbstractAgent):
         action = action.detach().cpu().numpy()
         next_state, reward, done, _ = self.env.step(action)
 
-        self.memory.add(self.curr_state, action, reward, next_state, done)
+        if not self.args.test:
+            self.memory.add(self.curr_state, action, reward, next_state, done)
 
         return next_state, reward, done
 

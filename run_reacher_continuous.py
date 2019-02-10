@@ -35,7 +35,7 @@ parser.add_argument(
 )
 parser.add_argument("--log", dest="log", action="store_true", help="turn on logging")
 parser.add_argument("--save-period", type=int, default=200, help="save model period")
-parser.add_argument("--episode-num", type=int, default=3000, help="total episode num")
+parser.add_argument("--episode-num", type=int, default=20000, help="total episode num")
 parser.add_argument(
     "--max-episode-steps", type=int, default=-1, help="max episode step"
 )
@@ -64,7 +64,7 @@ def main():
     common_utils.set_random_seed(args.seed, env)
 
     # run
-    module_path = "examples.Reacher-v2." + args.algo
+    module_path = "examples.reacher-v2." + args.algo
     example = importlib.import_module(module_path)
     example.run(env, args, state_dim, action_dim)
 
