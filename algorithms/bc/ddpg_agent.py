@@ -74,6 +74,10 @@ class Agent(AbstractAgent):
         self.curr_state = np.zeros((1,))
         self.noise = noise
 
+        # load the optimizer and model parameters
+        if args.load_from is not None and os.path.exists(args.load_from):
+            self.load_params(args.load_from)
+
         # load demo replay memory
         with open(self.args.demo_path, "rb") as f:
             demo = pickle.load(f)
@@ -85,22 +89,19 @@ class Agent(AbstractAgent):
             self.desired_state = np.zeros((1,))
             demo = self.her.generate_demo_transitions(demo)
 
-        # Replay buffers
-        self.demo_memory = ReplayBuffer(
-            len(demo), hyper_params["DEMO_BATCH_SIZE"], demo
-        )
+        if not self.args.test:
+            # Replay buffers
+            self.demo_memory = ReplayBuffer(
+                len(demo), hyper_params["DEMO_BATCH_SIZE"], demo
+            )
 
-        self.memory = ReplayBuffer(
-            hyper_params["BUFFER_SIZE"], hyper_params["BATCH_SIZE"]
-        )
+            self.memory = ReplayBuffer(
+                hyper_params["BUFFER_SIZE"], hyper_params["BATCH_SIZE"]
+            )
 
-        # set hyper parameters
-        self.lambda1 = hyper_params["LAMBDA1"]
-        self.lambda2 = hyper_params["LAMBDA2"] / hyper_params["DEMO_BATCH_SIZE"]
-
-        # load the optimizer and model parameters
-        if args.load_from is not None and os.path.exists(args.load_from):
-            self.load_params(args.load_from)
+            # set hyper parameters
+            self.lambda1 = hyper_params["LAMBDA1"]
+            self.lambda2 = hyper_params["LAMBDA2"] / hyper_params["DEMO_BATCH_SIZE"]
 
     def select_action(self, state: np.ndarray) -> torch.Tensor:
         """Select an action from the input space."""
@@ -125,20 +126,21 @@ class Agent(AbstractAgent):
         action = action.detach().cpu().numpy()
         next_state, reward, done, _ = self.env.step(action)
 
-        e = (self.curr_state, action, reward, next_state, done)
+        if not self.args.test:
+            e = (self.curr_state, action, reward, next_state, done)
 
-        # HER
-        if self.hyper_params["USE_HER"]:
-            self.transitions_epi.append(e)
+            # HER
+            if self.hyper_params["USE_HER"]:
+                self.transitions_epi.append(e)
 
-            # insert generated transitions if the episode is done
-            if done:
-                transitions = self.her.generate_transitions(
-                    self.transitions_epi, self.desired_state
-                )
-                self.memory.extend(transitions)
-        else:
-            self.memory.add(*e)
+                # insert generated transitions if the episode is done
+                if done:
+                    transitions = self.her.generate_transitions(
+                        self.transitions_epi, self.desired_state
+                    )
+                    self.memory.extend(transitions)
+            else:
+                self.memory.add(*e)
 
         return next_state, reward, done
 

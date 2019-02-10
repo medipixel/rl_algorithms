@@ -76,18 +76,19 @@ class Agent(AbstractAgent):
         if args.load_from is not None and os.path.exists(args.load_from):
             self.load_params(args.load_from)
 
-        # load demo replay memory
-        with open(self.args.demo_path, "rb") as f:
-            demo = pickle.load(f)
+        if not self.args.test:
+            # load demo replay memory
+            with open(self.args.demo_path, "rb") as f:
+                demo = pickle.load(f)
 
-        # replay memory
-        self.beta = self.hyper_params["PER_BETA"]
-        self.memory = PrioritizedReplayBufferfD(
-            self.hyper_params["BUFFER_SIZE"],
-            self.hyper_params["BATCH_SIZE"],
-            demo=list(demo),
-            alpha=self.hyper_params["PER_ALPHA"],
-        )
+            # replay memory
+            self.beta = self.hyper_params["PER_BETA"]
+            self.memory = PrioritizedReplayBufferfD(
+                self.hyper_params["BUFFER_SIZE"],
+                self.hyper_params["BATCH_SIZE"],
+                demo=list(demo),
+                alpha=self.hyper_params["PER_ALPHA"],
+            )
 
     def select_action(self, state: np.ndarray) -> torch.Tensor:
         """Select an action from the input space."""
@@ -107,7 +108,8 @@ class Agent(AbstractAgent):
         action = action.detach().cpu().numpy()
         next_state, reward, done, _ = self.env.step(action)
 
-        self.memory.add(self.curr_state, action, reward, next_state, done)
+        if not self.args.test:
+            self.memory.add(self.curr_state, action, reward, next_state, done)
 
         return next_state, reward, done
 
