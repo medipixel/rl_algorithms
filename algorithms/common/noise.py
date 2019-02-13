@@ -29,7 +29,7 @@ class GaussianNoise:
         sigma = self.max_sigma - (self.max_sigma - self.min_sigma) * min(
             1.0, t / self.decay_period
         )
-        return np.random.normal(size=action_size) * sigma
+        return np.random.normal(0, sigma, size=action_size)
 
 
 class OUNoise:

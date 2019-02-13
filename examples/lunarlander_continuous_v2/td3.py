@@ -33,7 +33,8 @@ hyper_params = {
     "GAUSSIAN_NOISE_MAX_SIGMA": 0.1,
     "GAUSSIAN_NOISE_DECAY_PERIOD": 1000000,
     "WEIGHT_DECAY": 1e-6,
-    "EPOCH": 128,
+    "EPOCH": 256,
+    "INITIAL_RANDOM_ACTION": int(1e4),
 }
 
 
