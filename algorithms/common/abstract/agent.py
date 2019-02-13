@@ -14,6 +14,7 @@ from typing import Tuple
 import gym
 import numpy as np
 import torch
+import wandb
 
 
 class AbstractAgent(ABC):
@@ -88,6 +89,10 @@ class AbstractAgent(ABC):
 
     def test(self):
         """Test the agent."""
+        # logger
+        if self.args.log:
+            wandb.init()
+
         for i_episode in range(self.args.episode_num):
             state = self.env.reset()
             done = False
@@ -109,6 +114,9 @@ class AbstractAgent(ABC):
                 "[INFO] episode %d\tstep: %d\ttotal score: %d"
                 % (i_episode, step, score)
             )
+
+            if self.args.log:
+                wandb.log({"score": score})
 
         # termination
         self.env.close()
