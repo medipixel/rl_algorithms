@@ -75,8 +75,8 @@ class Agent(AbstractAgent):
         self.hyper_params = hyper_params
         self.curr_state = np.zeros((1,))
         self.noise = noise
-        self.total_step = 0
-        self.train_step = 0
+        self.total_step = 1
+        self.train_step = 1
         self.episode_step = 0
 
         # load the optimizer and model parameters
@@ -91,7 +91,7 @@ class Agent(AbstractAgent):
 
     def select_action(self, state: np.ndarray) -> torch.Tensor:
         """Select an action from the input space."""
-        random_action_count = self.hyper_params["RANDOM_ACTION_COUNT"]
+        random_action_count = self.hyper_params["INITIAL_RANDOM_ACTION"]
         if self.args.test:
             random_action_count = 0
         self.curr_state = state
@@ -123,6 +123,8 @@ class Agent(AbstractAgent):
         if not self.args.test:
             self.memory.add(self.curr_state, action, reward, next_state, done_bool)
 
+        self.total_step += 1
+
         return next_state, reward, done
 
     def update_model(
@@ -141,8 +143,8 @@ class Agent(AbstractAgent):
             self.hyper_params["TARGET_SMOOTHING_NOISE_CLIP"],
         )
         next_actions = self.actor_target(next_states)
-        # noise = next_actions.data.normal_(0, noise_std).to(device)
-        noise = torch.normal(torch.zeros(next_actions.size()), noise_std).to(device)
+        noise = next_actions.data.normal_(0, noise_std).to(device)
+        # noise = torch.normal(torch.zeros(next_actions.size()), noise_std).to(device)
         noise = noise.clamp(-noise_clip, noise_clip)
         next_actions += noise
         next_actions = next_actions.clamp(-1.0, 1.0)
@@ -190,6 +192,8 @@ class Agent(AbstractAgent):
             common_utils.soft_update(self.actor, self.actor_target, tau)
         else:
             actor_loss = torch.zeros(1)
+
+        self.train_step += 1
 
         return actor_loss.data, critic_loss1.data, critic_loss2.data
 
@@ -273,7 +277,6 @@ class Agent(AbstractAgent):
 
             while not done:
                 self.episode_step += 1
-                self.total_step += 1
 
                 if self.args.render and i_episode >= self.args.render_after:
                     self.env.render()
@@ -287,7 +290,6 @@ class Agent(AbstractAgent):
             # training
             if len(self.memory) >= self.hyper_params["BATCH_SIZE"]:
                 for _ in range(self.hyper_params["EPOCH"]):
-                    self.train_step += 1
                     experiences = self.memory.sample()
                     loss = self.update_model(experiences)
                     loss_episode.append(loss)  # for logging
