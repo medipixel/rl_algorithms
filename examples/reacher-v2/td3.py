@@ -24,8 +24,8 @@ hyper_params = {
     "TARGET_SMOOTHING_NOISE_STD": 0.2,
     "TARGET_SMOOTHING_NOISE_CLIP": 0.5,
     "DELAYED_UPDATE": 2,
-    "BUFFER_SIZE": int(1e5),
-    "BATCH_SIZE": 128,
+    "BUFFER_SIZE": int(1e6),
+    "BATCH_SIZE": 100,
     "LR_ACTOR": 1e-3,
     "LR_CRITIC_1": 1e-3,
     "LR_CRITIC_2": 1e-3,
@@ -33,6 +33,8 @@ hyper_params = {
     "GAUSSIAN_NOISE_MAX_SIGMA": 0.1,
     "GAUSSIAN_NOISE_DECAY_PERIOD": 1000000,
     "WEIGHT_DECAY": 1e-6,
+    "EPOCH": 50,
+    "RANDOM_ACTION_COUNT": int(1e4),
 }
 
 

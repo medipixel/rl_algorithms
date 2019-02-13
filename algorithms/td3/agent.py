@@ -75,7 +75,9 @@ class Agent(AbstractAgent):
         self.hyper_params = hyper_params
         self.curr_state = np.zeros((1,))
         self.noise = noise
-        self.n_step = 0
+        self.total_step = 0
+        self.train_step = 0
+        self.episode_step = 0
 
         # load the optimizer and model parameters
         if args.load_from is not None and os.path.exists(args.load_from):
@@ -89,15 +91,22 @@ class Agent(AbstractAgent):
 
     def select_action(self, state: np.ndarray) -> torch.Tensor:
         """Select an action from the input space."""
+        random_action_count = self.hyper_params["RANDOM_ACTION_COUNT"]
+        if self.args.test:
+            random_action_count = 0
         self.curr_state = state
 
-        state = torch.FloatTensor(state).to(device)
-        selected_action = self.actor(state)
+        if self.total_step < random_action_count:
+            action = self.env.action_space.sample()
+            selected_action = torch.FloatTensor(action).to(device)
+        else:
+            state = torch.FloatTensor(state).to(device)
+            selected_action = self.actor(state)
 
         if not self.args.test:
             action_size = selected_action.size()
             selected_action += torch.FloatTensor(
-                self.noise.sample(action_size, self.n_step)
+                self.noise.sample(action_size, self.total_step)
             ).to(device)
             selected_action = torch.clamp(selected_action, -1.0, 1.0)
 
@@ -107,9 +116,12 @@ class Agent(AbstractAgent):
         """Take an action and return the response of the env."""
         action = action.detach().cpu().numpy()
         next_state, reward, done, _ = self.env.step(action)
+        done_bool = (
+            0.0 if self.episode_step == self.args.max_episode_steps else float(done)
+        )
 
         if not self.args.test:
-            self.memory.add(self.curr_state, action, reward, next_state, done)
+            self.memory.add(self.curr_state, action, reward, next_state, done_bool)
 
         return next_state, reward, done
 
@@ -129,10 +141,11 @@ class Agent(AbstractAgent):
             self.hyper_params["TARGET_SMOOTHING_NOISE_CLIP"],
         )
         next_actions = self.actor_target(next_states)
+        # noise = next_actions.data.normal_(0, noise_std).to(device)
         noise = torch.normal(torch.zeros(next_actions.size()), noise_std).to(device)
-        noise = torch.clamp(noise, -noise_clip, noise_clip)
+        noise = noise.clamp(-noise_clip, noise_clip)
         next_actions += noise
-        next_actions = torch.clamp(next_actions, -1.0, 1.0)
+        next_actions = next_actions.clamp(-1.0, 1.0)
 
         # min (Q_1', Q_2')
         next_states_actions = torch.cat((next_states, next_actions), dim=-1)
@@ -161,7 +174,7 @@ class Agent(AbstractAgent):
         critic_loss2.backward()
         self.critic_optimizer2.step()
 
-        if self.n_step % self.hyper_params["DELAYED_UPDATE"] == 0:
+        if self.train_step % self.hyper_params["DELAYED_UPDATE"] == 0:
             # train actor
             actions = self.actor(states)
             states_actions = torch.cat((states, actions), dim=-1)
@@ -256,8 +269,12 @@ class Agent(AbstractAgent):
             done = False
             score = 0
             loss_episode = list()
+            self.episode_step = 0
 
             while not done:
+                self.episode_step += 1
+                self.total_step += 1
+
                 if self.args.render and i_episode >= self.args.render_after:
                     self.env.render()
 
@@ -270,12 +287,13 @@ class Agent(AbstractAgent):
             # training
             if len(self.memory) >= self.hyper_params["BATCH_SIZE"]:
                 for _ in range(self.hyper_params["EPOCH"]):
-                    self.n_step += 1
+                    self.train_step += 1
                     experiences = self.memory.sample()
                     loss = self.update_model(experiences)
                     loss_episode.append(loss)  # for logging
 
             # logging
+            print("total_step: ", self.total_step)
             if loss_episode:
                 avg_loss = np.vstack(loss_episode).mean(axis=0)
                 self.write_log(
