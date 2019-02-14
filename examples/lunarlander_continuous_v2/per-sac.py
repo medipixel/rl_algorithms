@@ -38,6 +38,7 @@ hyper_params = {
     "PER_BETA": 0.4,
     "PER_EPS": 1e-6,
     "WEIGHT_DECAY": 0.0,
+    "INITIAL_RANDOM_ACTION": 10000,
 }
 
 

@@ -42,11 +42,12 @@ class Agent(AbstractAgent):
         critic_optimizer1 (Optimizer): optimizer for training critic_1
         critic_optimizer2 (Optimizer): optimizer for training critic_2
         curr_state (np.ndarray): temporary storage of the current state
-        n_step (int): iteration number of the current episode
         target_entropy (int): desired entropy used for the inequality constraint
         alpha (torch.Tensor): weight for entropy
         alpha_optimizer (Optimizer): optimizer for alpha
         hyper_params (dict): hyper-parameters
+        total_step (int): total step numbers
+        episode_step (int): step number of the current episode
 
     """
 
@@ -77,7 +78,8 @@ class Agent(AbstractAgent):
         self.qf_1_optimizer, self.qf_2_optimizer = optims[2:4]
         self.hyper_params = hyper_params
         self.curr_state = np.zeros((1,))
-        self.n_step = 0
+        self.total_step = 0
+        self.episode_step = 0
 
         # automatic entropy tuning
         if hyper_params["AUTO_ENTROPY_TUNING"]:
@@ -105,26 +107,39 @@ class Agent(AbstractAgent):
                 alpha=hyper_params["PER_ALPHA"],
             )
 
-    def select_action(self, state: np.ndarray) -> torch.Tensor:
+    def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""
         self.curr_state = state
 
-        state = torch.FloatTensor(state).to(device)
+        # if initial random action should be conducted
+        if (
+            self.total_step < self.hyper_params["INITIAL_RANDOM_ACTION"]
+            and not self.args.test
+        ):
+            return self.env.action_space.sample()
 
+        state = torch.FloatTensor(state).to(device)
         if self.args.test:
             _, _, _, selected_action, _ = self.actor(state)
         else:
             selected_action, _, _, _, _ = self.actor(state)
 
-        return selected_action
+        return selected_action.detach().cpu().numpy()
 
-    def step(self, action: torch.Tensor) -> Tuple[np.ndarray, np.float64, bool]:
+    def step(self, action: np.ndarray) -> Tuple[np.ndarray, np.float64, bool]:
         """Take an action and return the response of the env."""
-        action = action.detach().cpu().numpy()
+        self.total_step += 1
+        self.episode_step += 1
+
         next_state, reward, done, _ = self.env.step(action)
 
+        # if the last state is not a terminal state, store done as false
+        done_bool = (
+            0.0 if self.episode_step == self.args.max_episode_steps else float(done)
+        )
+
         if not self.args.test:
-            self.memory.add(self.curr_state, action, reward, next_state, done)
+            self.memory.add(self.curr_state, action, reward, next_state, done_bool)
 
         return next_state, reward, done
 
@@ -183,7 +198,7 @@ class Agent(AbstractAgent):
         vf_loss.backward()
         self.vf_optimizer.step()
 
-        if self.n_step % self.hyper_params["DELAYED_UPDATE"] == 0:
+        if self.total_step % self.hyper_params["DELAYED_UPDATE"] == 0:
             # actor loss
             advantage = q_pred - v_pred.detach()
             actor_loss_element_wise = alpha * log_prob - advantage
@@ -264,26 +279,19 @@ class Agent(AbstractAgent):
         AbstractAgent.save_params(self, params, n_episode)
 
     def write_log(
-        self,
-        i: int,
-        loss: np.ndarray,
-        score: float = 0.0,
-        delayed_update: int = 1,
-        is_step: bool = False,
+        self, i: int, loss: np.ndarray, score: float = 0.0, delayed_update: int = 1
     ):
         """Write log about loss and score"""
         total_loss = loss.sum()
 
-        message = "episode"
-        if is_step:
-            message = "step"
-
         print(
-            "[INFO] " + message + " %d total score: %d, total loss: %f\n"
-            "actor_loss: %.3f qf_1_loss: %.3f qf_2_loss: %.3f "
+            "[INFO] episode %d, episode_step %d, total step %d, total score: %d\n"
+            "total loss: %.3f actor_loss: %.3f qf_1_loss: %.3f qf_2_loss: %.3f"
             "vf_loss: %.3f alpha_loss: %.3f\n"
             % (
                 i,
+                self.episode_step,
+                self.total_step,
                 score,
                 total_loss,
                 loss[0] * delayed_update,  # actor loss
@@ -293,6 +301,19 @@ class Agent(AbstractAgent):
                 loss[4],  # alpha loss
             )
         )
+
+        if self.args.log:
+            wandb.log(
+                {
+                    "score": score,
+                    "total loss": total_loss,
+                    "actor loss": loss[0] * delayed_update,
+                    "qf_1 loss": loss[1],
+                    "qf_2 loss": loss[2],
+                    "vf loss": loss[3],
+                    "alpha loss": loss[4],
+                }
+            )
 
         if self.args.log:
             wandb.log(
@@ -321,10 +342,7 @@ class Agent(AbstractAgent):
                 avg_loss = np.vstack(pretrain_loss).mean(axis=0)
                 pretrain_loss.clear()
                 self.write_log(
-                    i_step,
-                    avg_loss,
-                    delayed_update=self.hyper_params["DELAYED_UPDATE"],
-                    is_step=True,
+                    i_step, avg_loss, delayed_update=self.hyper_params["DELAYED_UPDATE"]
                 )
 
     def train(self):
@@ -344,6 +362,7 @@ class Agent(AbstractAgent):
             state = self.env.reset()
             done = False
             score = 0
+            self.episode_step = 0
             loss_episode = list()
 
             while not done:
@@ -359,7 +378,6 @@ class Agent(AbstractAgent):
                 # training
                 if len(self.memory) >= self.hyper_params["BATCH_SIZE"]:
                     for _ in range(self.hyper_params["MULTIPLE_LEARN"]):
-                        self.n_step += 1
                         experiences = self.memory.sample(self.beta)
                         loss = self.update_model(experiences)
                         loss_episode.append(loss)  # for logging
