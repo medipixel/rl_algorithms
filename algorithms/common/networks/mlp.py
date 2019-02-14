@@ -169,16 +169,6 @@ class GaussianDist(MLP):
         return action, dist
 
 
-class GaussianDistParams(GaussianDist):
-    """Multilayer perceptron with Gaussian distribution params output."""
-
-    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, ...]:
-        """Forward method implementation."""
-        mu, log_std, std = super(GaussianDistParams, self).get_dist_params(x)
-
-        return mu, log_std, std
-
-
 class TanhGaussianDistParams(GaussianDist):
     """Multilayer perceptron with Gaussian distribution output."""
 
