@@ -36,14 +36,13 @@ class Agent(AbstractAgent):
         critic_target1 (nn.Module): target critic model to predict state values
         critic_target2 (nn.Module): target critic model to predict state values
         actor_target (nn.Module): target actor model to select actions
-        critic_optimizer1 (Optimizer): optimizer for training critic_1
-        critic_optimizer2 (Optimizer): optimizer for training critic_2
+        critic_optimizer (Optimizer): optimizer for training critic
         actor_optimizer (Optimizer): optimizer for training actor
         hyper_params (dict): hyper-parameters
         curr_state (np.ndarray): temporary storage of the current state
-        total_step (int): iteration number of the current episode
-        update_step (int): iteration number of training for delayed update
-        episode_step (int): iteration number of one episode
+        total_step (int): total step numbers
+        update_step (int): train step numbers
+        episode_step (int): step number of the current episode
 
     """
 
@@ -73,7 +72,7 @@ class Agent(AbstractAgent):
         self.critic_1, self.critic_2 = models[2:4]
         self.critic_target1, self.critic_target2 = models[4:6]
         self.actor_optimizer = optims[0]
-        self.critic_optimizer1, self.critic_optimizer2 = optims[1:3]
+        self.critic_optimizer = optims[1]
         self.hyper_params = hyper_params
         self.curr_state = np.zeros((1,))
         self.noise = noise
@@ -91,20 +90,18 @@ class Agent(AbstractAgent):
                 hyper_params["BUFFER_SIZE"], hyper_params["BATCH_SIZE"]
             )
 
-    def select_action(self, state: np.ndarray) -> torch.Tensor:
+    def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""
         # initial training step, try random action for exploration
         random_action_count = self.hyper_params["INITIAL_RANDOM_ACTION"]
-        if self.args.test:
-            random_action_count = 0
+
         self.curr_state = state
 
-        if self.total_step + 1 < random_action_count:
-            action = self.env.action_space.sample()
-            selected_action = torch.FloatTensor(action).to(device)
-        else:
-            state = torch.FloatTensor(state).to(device)
-            selected_action = self.actor(state)
+        if self.total_step < random_action_count and not self.args.test:
+            return self.env.action_space.sample()
+
+        state = torch.FloatTensor(state).to(device)
+        selected_action = self.actor(state)
 
         if not self.args.test:
             action_size = selected_action.size()
@@ -113,11 +110,13 @@ class Agent(AbstractAgent):
             ).to(device)
             selected_action = torch.clamp(selected_action, -1.0, 1.0)
 
-        return selected_action
+        return selected_action.detach().cpu().numpy()
 
-    def step(self, action: torch.Tensor) -> Tuple[np.ndarray, np.float64, bool]:
+    def step(self, action: np.ndarray) -> Tuple[np.ndarray, np.float64, bool]:
         """Take an action and return the response of the env."""
-        action = action.detach().cpu().numpy()
+        self.total_step += 1
+        self.episode_step += 1
+
         next_state, reward, done, _ = self.env.step(action)
         # if last state is not terminal state in episode, done is false
         done_bool = (
@@ -126,8 +125,6 @@ class Agent(AbstractAgent):
 
         if not self.args.test:
             self.memory.add(self.curr_state, action, reward, next_state, done_bool)
-
-        self.total_step += 1
 
         return next_state, reward, done
 
@@ -138,6 +135,8 @@ class Agent(AbstractAgent):
         ],
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Train the model after each episode."""
+        self.update_step += 1
+
         states, actions, rewards, next_states, dones = experiences
         masks = 1 - dones
 
@@ -169,17 +168,14 @@ class Agent(AbstractAgent):
         values2 = self.critic_2(states_actions)
         critic_loss1 = F.mse_loss(values1, curr_returns)
         critic_loss2 = F.mse_loss(values2, curr_returns)
+        critic_loss = critic_loss1 + critic_loss2
 
         # train critic
-        self.critic_optimizer1.zero_grad()
-        critic_loss1.backward()
-        self.critic_optimizer1.step()
+        self.critic_optimizer.zero_grad()
+        critic_loss.backward()
+        self.critic_optimizer.step()
 
-        self.critic_optimizer2.zero_grad()
-        critic_loss2.backward()
-        self.critic_optimizer2.step()
-
-        if self.update_step + 1 % self.hyper_params["DELAYED_UPDATE"] == 0:
+        if self.update_step % self.hyper_params["DELAYED_UPDATE"] == 0:
             # train actor
             actions = self.actor(states)
             states_actions = torch.cat((states, actions), dim=-1)
@@ -196,8 +192,6 @@ class Agent(AbstractAgent):
         else:
             actor_loss = torch.zeros(1)
 
-        self.update_step += 1
-
         return actor_loss.data, critic_loss1.data, critic_loss2.data
 
     def load_params(self, path: str):
@@ -211,8 +205,7 @@ class Agent(AbstractAgent):
         self.critic_2.load_state_dict(params["critic_2"])
         self.critic_target1.load_state_dict(params["critic_target1"])
         self.critic_target2.load_state_dict(params["critic_target2"])
-        self.critic_optimizer1.load_state_dict(params["critic_optim1"])
-        self.critic_optimizer2.load_state_dict(params["critic_optim2"])
+        self.critic_optimizer.load_state_dict(params["critic_optim"])
         self.actor.load_state_dict(params["actor"])
         self.actor_target.load_state_dict(params["actor_target"])
         self.actor_optimizer.load_state_dict(params["actor_optim"])
@@ -228,8 +221,7 @@ class Agent(AbstractAgent):
             "critic_2": self.critic_2.state_dict(),
             "critic_target1": self.critic_target1.state_dict(),
             "critic_target2": self.critic_target2.state_dict(),
-            "critic_optim1": self.critic_optimizer1.state_dict(),
-            "critic_optim2": self.critic_optimizer2.state_dict(),
+            "critic_optim": self.critic_optimizer.state_dict(),
         }
 
         AbstractAgent.save_params(self, params, n_episode)
@@ -280,8 +272,6 @@ class Agent(AbstractAgent):
             self.episode_step = 0
 
             while not done:
-                self.episode_step += 1
-
                 if self.args.render and i_episode >= self.args.render_after:
                     self.env.render()
 
