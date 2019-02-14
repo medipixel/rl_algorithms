@@ -35,19 +35,16 @@ class PrioritizedReplayBuffer(ReplayBuffer):
 
         """
 
-    def __init__(
-        self, buffer_size: int, batch_size: int, demo: list = None, alpha: float = 0.6
-    ):
+    def __init__(self, buffer_size: int, batch_size: int, alpha: float = 0.6):
         """Initialization.
 
         Args:
             buffer_size (int): size of replay buffer for experience
             batch_size (int): size of a batched sampled from replay buffer for training
-            demo (list): demonstration
             alpha (float): alpha parameter for prioritized replay buffer
 
         """
-        super(PrioritizedReplayBuffer, self).__init__(buffer_size, batch_size, demo)
+        super(PrioritizedReplayBuffer, self).__init__(buffer_size, batch_size)
         assert alpha >= 0
         self.buffer_size = buffer_size
         self.alpha = alpha
@@ -61,13 +58,6 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self.sum_tree = SumSegmentTree(tree_capacity)
         self.min_tree = MinSegmentTree(tree_capacity)
         self.init_priority = 1.0
-
-        # for init priority of demo
-        if demo:
-            for _ in range(len(demo)):
-                self.sum_tree[self.tree_idx] = self.init_priority ** self.alpha
-                self.min_tree[self.tree_idx] = self.init_priority ** self.alpha
-                self.tree_idx += 1
 
     def add(
         self,
@@ -84,10 +74,6 @@ class PrioritizedReplayBuffer(ReplayBuffer):
 
         self.sum_tree[idx] = self.init_priority ** self.alpha
         self.min_tree[idx] = self.init_priority ** self.alpha
-
-    def extend(self, transitions: list):
-        """Add experiences to memory."""
-        raise NotImplementedError
 
     def _sample_proportional(self, batch_size: int) -> list:
         """Sample indices based on proportional."""
@@ -190,7 +176,7 @@ class PrioritizedReplayBufferfD(ReplayBuffer):
             epsilon_d (float) : epsilon_d parameter to update priority using demo
 
         """
-        super(PrioritizedReplayBufferfD, self).__init__(buffer_size, batch_size, demo)
+        super(PrioritizedReplayBufferfD, self).__init__(buffer_size, batch_size)
         assert alpha >= 0
         self.buffer: list = list()
         self.demo = demo
@@ -238,10 +224,6 @@ class PrioritizedReplayBufferfD(ReplayBuffer):
 
         # update current total size
         self.total_size = self.demo_size + len(self.buffer)
-
-    def extend(self, transitions: list):
-        """Add experiences to memory."""
-        raise NotImplementedError
 
     def _sample_proportional(self, batch_size: int) -> list:
         """Sample indices based on proportional."""

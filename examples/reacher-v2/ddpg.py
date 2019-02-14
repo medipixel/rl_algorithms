@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Run module for DDPG with PER on LunarLanderContinuous-v2.
+"""Run module for DDPG on Reacher-v2.
 
 - Author: Curt Park
 - Contact: curt.park@medipixel.io
@@ -13,7 +13,7 @@ import torch.optim as optim
 
 from algorithms.common.networks.mlp import MLP
 from algorithms.common.noise import OUNoise
-from algorithms.per.ddpg_agent import Agent
+from algorithms.ddpg.agent import Agent
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -23,13 +23,10 @@ hyper_params = {
     "TAU": 1e-3,
     "BUFFER_SIZE": int(1e5),
     "BATCH_SIZE": 128,
-    "LR_ACTOR": 1e-4,
+    "LR_ACTOR": 1e-3,
     "LR_CRITIC": 1e-3,
     "OU_NOISE_THETA": 0.0,
     "OU_NOISE_SIGMA": 0.0,
-    "PER_ALPHA": 0.5,
-    "PER_BETA": 0.4,
-    "PER_EPS": 1e-6,
     "WEIGHT_DECAY": 1e-6,
     "INITIAL_RANDOM_ACTION": 10000,
 }

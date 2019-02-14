@@ -133,12 +133,11 @@ class Agent(AbstractAgent):
 
         next_state, reward, done, _ = self.env.step(action)
 
-        # if the last state is not a terminal state, store done as false
-        done_bool = (
-            0.0 if self.episode_step == self.args.max_episode_steps else float(done)
-        )
-
         if not self.args.test:
+            # if the last state is not a terminal state, store done as false
+            done_bool = (
+                False if self.episode_step == self.args.max_episode_steps else done
+            )
             self.memory.add(self.curr_state, action, reward, next_state, done_bool)
 
         return next_state, reward, done
@@ -279,14 +278,14 @@ class Agent(AbstractAgent):
         AbstractAgent.save_params(self, params, n_episode)
 
     def write_log(
-        self, i: int, loss: np.ndarray, score: float = 0.0, delayed_update: int = 1
+        self, i: int, loss: np.ndarray, score: int = 0, delayed_update: int = 1
     ):
         """Write log about loss and score"""
         total_loss = loss.sum()
 
         print(
             "[INFO] episode %d, episode_step %d, total step %d, total score: %d\n"
-            "total loss: %.3f actor_loss: %.3f qf_1_loss: %.3f qf_2_loss: %.3f"
+            "total loss: %.3f actor_loss: %.3f qf_1_loss: %.3f qf_2_loss: %.3f "
             "vf_loss: %.3f alpha_loss: %.3f\n"
             % (
                 i,
@@ -342,7 +341,7 @@ class Agent(AbstractAgent):
                 avg_loss = np.vstack(pretrain_loss).mean(axis=0)
                 pretrain_loss.clear()
                 self.write_log(
-                    i_step, avg_loss, delayed_update=self.hyper_params["DELAYED_UPDATE"]
+                    0, avg_loss, 0, delayed_update=self.hyper_params["DELAYED_UPDATE"]
                 )
 
     def train(self):

@@ -7,7 +7,7 @@
 
 """
 
-from typing import Callable, Deque
+from typing import Callable
 
 import numpy as np
 
@@ -50,7 +50,7 @@ class HER:
         """Sample one of the desired states."""
         return np.random.choice(self.desired_states, 1)[0]
 
-    def generate_demo_transitions(self, demo: Deque) -> list:
+    def generate_demo_transitions(self, demo: list) -> list:
         """Return generated demo transitions for HER."""
         new_demo: list = list()
 
@@ -88,6 +88,7 @@ class HER:
         """Get a single transition concatenated with a goal state."""
         state, action, _, next_state, done = transition
 
+        done = np.array_equal(state, goal_state)
         reward = self.reward_func(state, action, goal_state)
         state = np.concatenate((state, goal_state), axis=-1)
         next_state = np.concatenate((next_state, goal_state), axis=-1)

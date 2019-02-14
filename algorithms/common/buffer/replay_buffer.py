@@ -22,16 +22,15 @@ class ReplayBuffer:
 
     """
 
-    def __init__(self, buffer_size: int, batch_size: int, demo: list = None):
+    def __init__(self, buffer_size: int, batch_size: int):
         """Initialize a ReplayBuffer object.
 
         Args:
             buffer_size (int): size of replay buffer for experience
             batch_size (int): size of a batched sampled from replay buffer for training
-            demo (list) : demonstration list
 
         """
-        self.buffer = list() if not demo else demo
+        self.buffer: list = list()
         self.buffer_size = buffer_size
         self.batch_size = batch_size
         self.idx = 0
@@ -55,7 +54,8 @@ class ReplayBuffer:
 
     def extend(self, transitions: list):
         """Add experiences to memory."""
-        self.buffer.extend(transitions)
+        for transition in transitions:
+            self.add(*transition)
 
     def sample(
         self
