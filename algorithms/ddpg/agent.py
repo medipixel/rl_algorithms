@@ -38,6 +38,8 @@ class Agent(AbstractAgent):
         actor_optimizer (Optimizer): optimizer for training actor
         critic_optimizer (Optimizer): optimizer for training critic
         curr_state (np.ndarray): temporary storage of the current state
+        total_step (int): total step numbers
+        episode_step (int): step number of the current episode
 
     """
 
@@ -68,6 +70,8 @@ class Agent(AbstractAgent):
         self.hyper_params = hyper_params
         self.curr_state = np.zeros((1,))
         self.noise = noise
+        self.total_step = 0
+        self.episode_step = 0
 
         # load the optimizer and model parameters
         if args.load_from is not None and os.path.exists(args.load_from):
@@ -79,9 +83,16 @@ class Agent(AbstractAgent):
                 hyper_params["BUFFER_SIZE"], hyper_params["BATCH_SIZE"]
             )
 
-    def select_action(self, state: np.ndarray) -> torch.Tensor:
+    def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""
         self.curr_state = state
+
+        # if initial random action should be conducted
+        if (
+            self.total_step < self.hyper_params["INITIAL_RANDOM_ACTION"]
+            and not self.args.test
+        ):
+            return self.env.action_space.sample()
 
         state = torch.FloatTensor(state).to(device)
         selected_action = self.actor(state)
@@ -90,15 +101,21 @@ class Agent(AbstractAgent):
             selected_action += torch.FloatTensor(self.noise.sample()).to(device)
             selected_action = torch.clamp(selected_action, -1.0, 1.0)
 
-        return selected_action
+        return selected_action.detach().cpu().numpy()
 
-    def step(self, action: torch.Tensor) -> Tuple[np.ndarray, np.float64, bool]:
+    def step(self, action: np.ndarray) -> Tuple[np.ndarray, np.float64, bool]:
         """Take an action and return the response of the env."""
-        action = action.detach().cpu().numpy()
+        self.total_step += 1
+        self.episode_step += 1
+
         next_state, reward, done, _ = self.env.step(action)
 
         if not self.args.test:
-            self.memory.add(self.curr_state, action, reward, next_state, done)
+            # if the last state is not a terminal state, store done as false
+            done_bool = (
+                False if self.episode_step == self.args.max_episode_steps else done
+            )
+            self.memory.add(self.curr_state, action, reward, next_state, done_bool)
 
         return next_state, reward, done
 
@@ -173,9 +190,17 @@ class Agent(AbstractAgent):
         total_loss = loss.sum()
 
         print(
-            "[INFO] episode %d total score: %d, total loss: %f\n"
-            "actor_loss: %.3f critic_loss: %.3f\n"
-            % (i, score, total_loss, loss[0], loss[1])  # actor loss  # critic loss
+            "[INFO] episode %d, episode step: %d, total step: %d, total score: %d\n"
+            "total loss: %f actor_loss: %.3f critic_loss: %.3f\n"
+            % (
+                i,
+                self.episode_step,
+                self.total_step,
+                score,
+                total_loss,
+                loss[0],
+                loss[1],
+            )  # actor loss  # critic loss
         )
 
         if self.args.log:
@@ -200,6 +225,7 @@ class Agent(AbstractAgent):
             state = self.env.reset()
             done = False
             score = 0
+            self.episode_step = 0
             loss_episode = list()
 
             while not done:

@@ -28,6 +28,7 @@ hyper_params = {
     "OU_NOISE_THETA": 0.0,
     "OU_NOISE_SIGMA": 0.0,
     "WEIGHT_DECAY": 1e-6,
+    "INITIAL_RANDOM_ACTION": 10000,
 }
 
 

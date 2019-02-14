@@ -30,8 +30,9 @@ hyper_params = {
     "OU_NOISE_SIGMA": 0.0,
     "LAMBDA1": 1e-3,
     "LAMBDA2": 1.0,
-    "USE_HER": False,
+    "USE_HER": True,
     "WEIGHT_DECAY": 1e-6,
+    "INITIAL_RANDOM_ACTION": 10000,
 }
 
 

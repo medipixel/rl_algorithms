@@ -9,7 +9,7 @@ import argparse
 import os
 import subprocess
 from abc import ABC, abstractmethod
-from typing import Tuple
+from typing import Tuple, Union
 
 import gym
 import numpy as np
@@ -52,15 +52,17 @@ class AbstractAgent(ABC):
         )
 
     @abstractmethod
-    def select_action(self, state: np.ndarray):
+    def select_action(self, state: np.ndarray) -> Union[torch.Tensor, np.ndarray]:
         pass
 
     @abstractmethod
-    def step(self, action: torch.Tensor) -> Tuple[np.ndarray, np.float64, bool]:
+    def step(
+        self, action: Union[torch.Tensor, np.ndarray]
+    ) -> Tuple[np.ndarray, np.float64, bool]:
         pass
 
     @abstractmethod
-    def update_model(self, *args):
+    def update_model(self, *args) -> Tuple[torch.Tensor, ...]:
         pass
 
     @abstractmethod
