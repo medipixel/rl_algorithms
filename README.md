@@ -12,5 +12,6 @@ RL key algorithms with [LunarLanderContinuous-v2](https://gym.openai.com/envs/Lu
 6. Twin Delayed Deep Deterministic Policy Gradient Algorithm (TD3)
 7. Soft Actor Critic Algorithm (SAC)
 8. Behaviour Cloning (BC with DDPG)
-9. Prioritized Experience Replay (PER with DDPG, TD3, SAC)
+9. Prioritized Experience Replay (PER with DDPG, SAC)
 10. From Demonstrations (DDPGfD, TD3fD, SACfD)
+

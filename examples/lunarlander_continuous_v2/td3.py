@@ -96,14 +96,10 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
         lr=hyper_params["LR_ACTOR"],
         weight_decay=hyper_params["WEIGHT_DECAY"],
     )
-    critic_optim1 = optim.Adam(
-        critic_1.parameters(),
+    critic_parameter = list(critic_1.parameters()) + list(critic_2.parameters())
+    critic_optim = optim.Adam(
+        critic_parameter,
         lr=hyper_params["LR_CRITIC_1"],
-        weight_decay=hyper_params["WEIGHT_DECAY"],
-    )
-    critic_optim2 = optim.Adam(
-        critic_2.parameters(),
-        lr=hyper_params["LR_CRITIC_2"],
         weight_decay=hyper_params["WEIGHT_DECAY"],
     )
 
@@ -116,7 +112,7 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
 
     # make tuples to create an agent
     models = (actor, actor_target, critic_1, critic_2, critic_target1, critic_target2)
-    optims = (actor_optim, critic_optim1, critic_optim2)
+    optims = (actor_optim, critic_optim)
 
     # create an agent
     agent = Agent(env, args, hyper_params, models, optims, noise)

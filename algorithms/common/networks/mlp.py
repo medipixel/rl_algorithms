@@ -98,7 +98,6 @@ class GaussianDist(MLP):
 
     Attributes:
         mu_activation (function): bounding function for mean
-        log_std_clamping (bool): whether or not to clamp log std
         log_std_min (float): lower bound of log std
         log_std_max (float): upper bound of log std
         mu_layer (nn.Linear): output layer for mean
