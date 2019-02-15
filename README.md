@@ -1,5 +1,6 @@
 # Reinforcement Learning by Examples
-![Build Status](https://travis-ci.org/medipixel/rl_algorithms.svg?branch=master)  
+![Build Status](https://travis-ci.org/medipixel/rl_algorithms.svg?branch=master)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
 RL key algorithms with [LunarLanderContinuous-v2](https://gym.openai.com/envs/LunarLanderContinuous-v2/).
 
