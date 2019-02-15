@@ -1,8 +1,9 @@
-# Reinforcement Learning by Examples
+![medipixel_ci](https://user-images.githubusercontent.com/17582508/52845370-4a930200-314a-11e9-9889-e00007043872.jpg)  
+
 ![Build Status](https://travis-ci.org/medipixel/rl_algorithms.svg?branch=master)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-RL key algorithms with [LunarLanderContinuous-v2](https://gym.openai.com/envs/LunarLanderContinuous-v2/).
+RL key algorithms with [LunarLanderContinuous-v2](https://gym.openai.com/envs/LunarLanderContinuous-v2/) and [Reacher-v2](https://gym.openai.com/envs/Reacher-v2/).
 
 ![lunarlander](https://user-images.githubusercontent.com/17582508/52840582-18c76e80-313d-11e9-9752-3d6138f39a15.gif)
 
@@ -66,3 +67,4 @@ make dev
 - HER: https://arxiv.org/pdf/1707.01495.pdf
 - Behavior Cloning: https://arxiv.org/pdf/1709.10089.pdf
 - DDPGfD: https://arxiv.org/pdf/1707.08817.pdf
+# Reinforcement Learning by Examples
