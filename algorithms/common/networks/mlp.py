@@ -277,6 +277,6 @@ class CategoricalDistParams(CategoricalDist):
         if self.compatible_with_tanh_normal:
             # in order to prevent from using the unavailable return values
             nan = float("nan")
-            return action, log_prob, nan, action, nan
+            return action, log_prob, nan, nan, nan
         else:
             return action, log_prob

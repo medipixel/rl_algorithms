@@ -28,6 +28,7 @@ class AbstractAgent(ABC):
         sha (str): sha code of current git commit
         state_dim (int): dimension of states
         action_dim (int): dimension of actions
+        is_discrete (bool): shows whether the action is discrete
 
     """
 
@@ -43,8 +44,10 @@ class AbstractAgent(ABC):
 
         if isinstance(env.action_space, Discrete):
             self.env = env
+            self.is_discrete = True
         else:
             self.env = NormalizedActions(env)
+            self.is_discrete = False
 
         if self.args.max_episode_steps > 0:
             env._max_episode_steps = self.args.max_episode_steps

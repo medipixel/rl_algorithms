@@ -8,7 +8,6 @@
 import argparse
 
 import gym
-import numpy as np
 import torch
 import torch.optim as optim
 
@@ -19,19 +18,18 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # hyper parameters
 hyper_params = {
-    "GAMMA": 0.95,
-    "LAMBDA": 0.9,
+    "GAMMA": 0.99,
+    "LAMBDA": 0.95,
     "EPSILON": 0.2,
     "W_VALUE": 0.5,
     "W_ENTROPY": 1e-3,
     "LR_ACTOR": 3e-4,
-    "LR_CRITIC": 3e-4,
-    "LR_ENTROPY": 1e-6,
-    "EPOCH": 4,
-    "BATCH_SIZE": 3,
-    "ROLLOUT_LEN": 12,
-    "WEIGHT_DECAY": 0.0,
-    "AUTO_ENTROPY_TUNING": True,
+    "LR_CRITIC": 1e-3,
+    "EPOCH": 10,
+    "BATCH_SIZE": 64,
+    "ROLLOUT_LEN": 2048,
+    "GRADIENT_CLIP": 0.5,
+    "WEIGHT_DECAY": 0,
 }
 
 
@@ -45,19 +43,22 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
         action_dim (int): dimension of actions
 
     """
-    hidden_sizes_actor = [256]
-    hidden_sizes_critic = [256]
-
-    # target entropy
-    target_entropy = -np.prod((action_dim,)).item()  # heuristic
+    hidden_sizes_actor = [256, 256]
+    hidden_sizes_critic = [256, 256]
 
     # create models
     actor = GaussianDist(
-        input_size=state_dim, output_size=action_dim, hidden_sizes=hidden_sizes_actor
+        input_size=state_dim,
+        output_size=action_dim,
+        hidden_sizes=hidden_sizes_actor,
+        hidden_activation=torch.tanh,
     ).to(device)
 
     critic = MLP(
-        input_size=state_dim, output_size=1, hidden_sizes=hidden_sizes_critic
+        input_size=state_dim,
+        output_size=1,
+        hidden_sizes=hidden_sizes_critic,
+        hidden_activation=torch.tanh,
     ).to(device)
 
     # create optimizer
@@ -78,7 +79,7 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
     optims = (actor_optim, critic_optim)
 
     # create an agent
-    agent = Agent(env, args, hyper_params, models, optims, target_entropy)
+    agent = Agent(env, args, hyper_params, models, optims)
 
     # run
     if args.test:

@@ -109,7 +109,7 @@ class Agent(AbstractAgent):
             return self.env.action_space.sample()
 
         state = torch.FloatTensor(state).to(device)
-        if self.args.test:
+        if self.args.test and not self.is_discrete:
             _, _, _, selected_action, _ = self.actor(state)
         else:
             selected_action, _, _, _, _ = self.actor(state)

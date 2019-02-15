@@ -43,7 +43,7 @@ def ppo_iter(
     batch_size = states.size(0)
     for _ in range(epoch):
         for _ in range(batch_size // mini_batch_size):
-            rand_ids = np.random.randint(0, batch_size, mini_batch_size)
+            rand_ids = np.random.choice(batch_size, mini_batch_size)
             yield states[rand_ids, :], log_probs[rand_ids, :], actions[
                 rand_ids, :
             ], returns[rand_ids, :], advantages[rand_ids, :]
