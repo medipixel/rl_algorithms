@@ -4,6 +4,8 @@
 
 RL key algorithms with [LunarLanderContinuous-v2](https://gym.openai.com/envs/LunarLanderContinuous-v2/).
 
+![lunarlander](https://user-images.githubusercontent.com/17582508/52840582-18c76e80-313d-11e9-9752-3d6138f39a15.gif)
+
 ## Contents
 
 1. [REINFORCE with baseline](https://github.com/medipixel/rl_algorithms/blob/master/algorithms/reinforce)
