@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Prioritized Replay buffer for baselines.
+"""Prioritized Replay buffer for algorithms.
 
 - Author: Kh Kim
 - Contact: kh.kim@medipixel.io

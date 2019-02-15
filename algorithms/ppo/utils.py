@@ -8,8 +8,6 @@ This module has PPO util functions.
 - Paper: https://arxiv.org/abs/1707.06347
 """
 
-from typing import Deque
-
 import numpy as np
 import torch
 
@@ -17,7 +15,7 @@ import torch
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-def decompose_memory(memory: Deque):
+def decompose_memory(memory: list):
     """Decompose states, log_probs, actions, rewards, dones from the memory."""
     memory_np: np.ndarray = np.array(memory)
 

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Train or test baselines on LunarLanderContinuous-v2.
+"""Train or test algorithms on LunarLanderContinuous-v2.
 
 - Author: Curt Park
 - Contact: curt.park@medipixel.io
@@ -13,7 +13,7 @@ import gym
 import algorithms.common.helper_functions as common_utils
 
 # configurations
-parser = argparse.ArgumentParser(description="Pytorch RL baselines")
+parser = argparse.ArgumentParser(description="Pytorch RL algorithms")
 parser.add_argument(
     "--seed", type=int, default=777, help="random seed for reproducibility"
 )

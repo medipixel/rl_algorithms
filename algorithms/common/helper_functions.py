@@ -14,6 +14,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 
 # taken and modified from https://github.com/ikostrikov/pytorch-trpo
 def normal_log_density(
@@ -53,3 +55,10 @@ def set_random_seed(seed: int, env: gym.Env):
     torch.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
+
+
+def make_one_hot(labels: torch.Tensor, c: int):
+    """Converts an integer label to a one-hot Variable."""
+    y = torch.eye(c).to(device)
+    labels = labels.type(torch.LongTensor)
+    return y[labels]

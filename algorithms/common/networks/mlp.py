@@ -10,9 +10,21 @@ from typing import Callable, Tuple
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.distributions import Normal
+from torch.distributions import Categorical, Normal
 
-from algorithms.common.helper_functions import identity
+from algorithms.common.helper_functions import identity, make_one_hot
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+
+def concat(
+    states: torch.Tensor, actions: torch.Tensor, n_category: int = -1
+) -> torch.Tensor:
+    """Concatenate state and action tensors properly depending on the action."""
+    actions = make_one_hot(actions, n_category) if n_category > 0 else actions
+    states_actions = torch.cat((states, actions), dim=-1)
+
+    return states_actions
 
 
 class MLP(nn.Module):
@@ -26,6 +38,7 @@ class MLP(nn.Module):
         output_activation (function): activation function of output layer
         hidden_layers (list): list containing linear layers
         use_output_layer (bool): whether or not to use the last layer
+        n_category (int): category number (-1 if the action is continuous)
 
     """
 
@@ -37,6 +50,7 @@ class MLP(nn.Module):
         hidden_activation: Callable = F.relu,
         output_activation: Callable = identity,
         use_output_layer: bool = True,
+        n_category: int = -1,
         init_w: float = 3e-3,
     ):
         """Initialization.
@@ -48,6 +62,7 @@ class MLP(nn.Module):
             hidden_activation (function): activation function of hidden layers
             output_activation (function): activation function of output layer
             use_output_layer (bool): whether or not to use the last layer
+            n_category (int): category number (-1 if the action is continuous)
             init_w (float): weight initialization bound for the last layer
 
         """
@@ -59,6 +74,7 @@ class MLP(nn.Module):
         self.hidden_activation = hidden_activation
         self.output_activation = output_activation
         self.use_output_layer = use_output_layer
+        self.n_category = n_category
 
         # set hidden layers
         self.hidden_layers: list = []
@@ -93,6 +109,16 @@ class MLP(nn.Module):
         return output
 
 
+class FlattenMLP(MLP):
+    """Baseline of Multilayer perceptron for Flatten input."""
+
+    def forward(self, *args: torch.Tensor) -> torch.Tensor:
+        """Forward method implementation."""
+        states, actions = args
+        flat_inputs = concat(states, actions, self.n_category)
+        return super(FlattenMLP, self).forward(flat_inputs)
+
+
 class GaussianDist(MLP):
     """Multilayer perceptron with Gaussian distribution output.
 
@@ -115,9 +141,7 @@ class GaussianDist(MLP):
         log_std_max: float = 2,
         init_w: float = 3e-3,
     ):
-        """Initialization.
-
-        """
+        """Initialization."""
         super(GaussianDist, self).__init__(
             input_size=input_size,
             output_size=output_size,
@@ -192,3 +216,67 @@ class TanhGaussianDistParams(GaussianDist):
         log_prob = log_prob.sum(-1, keepdim=True)
 
         return action, log_prob, z, mu, std
+
+
+class CategoricalDist(MLP):
+    """Multilayer perceptron with categorial distribution output.
+
+    Attributes:
+        last_layer (nn.Linear): output layer for softmax
+    """
+
+    def __init__(
+        self,
+        input_size: int,
+        output_size: int,
+        hidden_sizes: list,
+        hidden_activation: Callable = F.relu,
+        init_w: float = 3e-3,
+    ):
+        """Initialization."""
+        super(CategoricalDist, self).__init__(
+            input_size=input_size,
+            output_size=output_size,
+            hidden_sizes=hidden_sizes,
+            hidden_activation=hidden_activation,
+            use_output_layer=False,
+        )
+
+        in_size = hidden_sizes[-1]
+
+        # set log_std layer
+        self.last_layer = nn.Linear(in_size, output_size)
+        self.last_layer.weight.data.uniform_(-init_w, init_w)
+        self.last_layer.bias.data.uniform_(-init_w, init_w)
+
+    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, ...]:
+        """Forward method implementation."""
+        hidden = super(CategoricalDist, self).get_last_activation(x)
+        action_probs = F.softmax(self.last_layer(hidden), dim=-1)
+
+        dist = Categorical(action_probs)
+        selected_action = dist.sample()
+
+        return selected_action, dist
+
+
+class CategoricalDistParams(CategoricalDist):
+    """Multilayer perceptron with Categorical distribution output."""
+
+    def __init__(self, compatible_with_tanh_normal=False, **kwargs):
+        """Initialization."""
+        super(CategoricalDistParams, self).__init__(**kwargs)
+
+        self.compatible_with_tanh_normal = compatible_with_tanh_normal
+
+    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, ...]:
+        """Forward method implementation."""
+        action, dist = super(CategoricalDistParams, self).forward(x)
+        log_prob = dist.log_prob(action).sum(dim=-1, keepdim=True)
+
+        if self.compatible_with_tanh_normal:
+            # in order to prevent from using the unavailable return values
+            nan = float("nan")
+            return action, log_prob, nan, action, nan
+        else:
+            return action, log_prob

@@ -8,6 +8,7 @@
 import argparse
 
 import gym
+import numpy as np
 import torch
 import torch.optim as optim
 
@@ -21,14 +22,16 @@ hyper_params = {
     "GAMMA": 0.95,
     "LAMBDA": 0.9,
     "EPSILON": 0.2,
-    "W_VALUE": 1e-2,
+    "W_VALUE": 0.5,
     "W_ENTROPY": 1e-3,
-    "LR_ACTOR": 1e-3,
-    "LR_CRITIC": 1e-3,
+    "LR_ACTOR": 3e-4,
+    "LR_CRITIC": 3e-4,
+    "LR_ENTROPY": 1e-6,
     "EPOCH": 4,
-    "BATCH_SIZE": 32,
-    "MIN_ROLLOUT_LEN": 512,
+    "BATCH_SIZE": 3,
+    "ROLLOUT_LEN": 12,
     "WEIGHT_DECAY": 0.0,
+    "AUTO_ENTROPY_TUNING": True,
 }
 
 
@@ -42,8 +45,11 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
         action_dim (int): dimension of actions
 
     """
-    hidden_sizes_actor = [256, 256]
-    hidden_sizes_critic = [256, 256]
+    hidden_sizes_actor = [256]
+    hidden_sizes_critic = [256]
+
+    # target entropy
+    target_entropy = -np.prod((action_dim,)).item()  # heuristic
 
     # create models
     actor = GaussianDist(
@@ -72,7 +78,7 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
     optims = (actor_optim, critic_optim)
 
     # create an agent
-    agent = Agent(env, args, hyper_params, models, optims)
+    agent = Agent(env, args, hyper_params, models, optims, target_entropy)
 
     # run
     if args.test:
