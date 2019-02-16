@@ -11,6 +11,7 @@ import gym
 import torch
 import torch.optim as optim
 
+from algorithms.common.env.utils import env_generator, make_envs
 from algorithms.common.networks.mlp import MLP, GaussianDist
 from algorithms.ppo.agent import Agent
 
@@ -30,6 +31,7 @@ hyper_params = {
     "ROLLOUT_LEN": 2048,
     "GRADIENT_CLIP": 0.5,
     "WEIGHT_DECAY": 0,
+    "N_WORKERS": 8,
 }
 
 
@@ -43,6 +45,11 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
         action_dim (int): dimension of actions
 
     """
+    # create multiple envs
+    env_test = env
+    env_gen = env_generator("LunarLanderContinuous-v2")
+    envs_train = make_envs(env_gen, n_envs=hyper_params["N_WORKERS"])
+
     hidden_sizes_actor = [256, 256]
     hidden_sizes_critic = [256, 256]
 
@@ -79,7 +86,7 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
     optims = (actor_optim, critic_optim)
 
     # create an agent
-    agent = Agent(env, args, hyper_params, models, optims)
+    agent = Agent(env_test, envs_train, args, hyper_params, models, optims)
 
     # run
     if args.test:

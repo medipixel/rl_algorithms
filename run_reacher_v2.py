@@ -11,6 +11,7 @@ import importlib
 import gym
 
 import algorithms.common.helper_functions as common_utils
+from algorithms.common.env.normalizers import ActionNormalizer
 
 # configurations
 parser = argparse.ArgumentParser(description="Pytorch RL algorithms")
@@ -57,6 +58,7 @@ def main():
     """Main."""
     # env initialization
     env = gym.make("Reacher-v2")
+    env = ActionNormalizer(env)
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.shape[0]
 

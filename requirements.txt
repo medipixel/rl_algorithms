@@ -4,6 +4,7 @@ gym
 box2d-py
 scipy
 typing
+cloudpickle
 wandb
 
 # mujoco

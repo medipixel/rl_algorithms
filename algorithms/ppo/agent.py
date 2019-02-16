@@ -19,6 +19,7 @@ import wandb
 
 import algorithms.ppo.utils as ppo_utils
 from algorithms.common.abstract.agent import AbstractAgent
+from algorithms.common.multiprocessing_env import SubprocVecEnv
 from algorithms.gae import GAE
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -28,6 +29,7 @@ class Agent(AbstractAgent):
     """PPO Agent.
 
     Attributes:
+        envs (SubprocVecEnv): Gym env with multiprocessing for training
         memory (list): memory for on-policy training
         transition (list): list for storing a transition
         gae (GAE): calculator for generalized advantage estimation
@@ -42,7 +44,8 @@ class Agent(AbstractAgent):
 
     def __init__(
         self,
-        env: gym.Env,
+        env: gym.Env,  # for testing
+        envs: SubprocVecEnv,  # for training
         args: argparse.Namespace,
         hyper_params: dict,
         models: tuple,
@@ -51,7 +54,8 @@ class Agent(AbstractAgent):
         """Initialization.
 
         Args:
-            env (gym.Env): openAI Gym environment
+            env (gym.Env): openAI Gym environment for testing
+            envs (SubprocVecEnv): Gym env with multiprocessing for training
             args (argparse.Namespace): arguments including hyperparameters and training settings
             hyper_params (dict): hyper-parameters
             models (tuple): models including actor and critic
@@ -60,6 +64,7 @@ class Agent(AbstractAgent):
         """
         AbstractAgent.__init__(self, env, args)
 
+        self.envs = envs
         self.actor, self.critic = models
         self.actor_optimizer, self.critic_optimizer = optims
         self.hyper_params = hyper_params
@@ -92,7 +97,7 @@ class Agent(AbstractAgent):
         self.episode_step += 1
 
         action = action.detach().cpu().numpy()
-        next_state, reward, done, _ = self.env.step(action)
+        next_state, reward, done, _ = self.envs.step(action)
 
         if not self.args.test:
             # if the last state is not a terminal state, store done as false
@@ -241,7 +246,7 @@ class Agent(AbstractAgent):
             wandb.watch([self.actor, self.critic], log="parameters")
 
         for i_episode in range(1, self.args.episode_num + 1):
-            state = self.env.reset()
+            state = self.envs.reset()
             done = False
             score = 0
             loss_episode = list()
@@ -249,7 +254,7 @@ class Agent(AbstractAgent):
 
             while not done:
                 if self.args.render and i_episode >= self.args.render_after:
-                    self.env.render()
+                    self.envs.render()
 
                 action = self.select_action(state)
                 next_state, reward, done = self.step(action)
@@ -271,4 +276,4 @@ class Agent(AbstractAgent):
                 self.save_params(i_episode)
 
         # termination
-        self.env.close()
+        self.envs.close()
