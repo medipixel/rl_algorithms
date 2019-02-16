@@ -204,7 +204,7 @@ class Agent(AbstractAgent):
             actor_loss = torch.mean(actor_loss_element_wise * weights)
 
             # regularization
-            if self.c == -1:  # iff the action is continuous
+            if not self.is_discrete:  # iff the action is continuous
                 mean_reg = self.hyper_params["W_MEAN_REG"] * mu.pow(2).mean()
                 std_reg = self.hyper_params["W_STD_REG"] * std.pow(2).mean()
                 pre_activation_reg = self.hyper_params["W_PRE_ACTIVATION_REG"] * (
