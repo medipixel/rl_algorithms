@@ -21,11 +21,11 @@ RL key algorithms with [LunarLanderContinuous-v2](https://gym.openai.com/envs/Lu
 
 ## Getting started
 RL algorithms can be run locally with gym environments. Currently our implemented run codes are
-- [LunarLanderContinuous-v2](https://gym.openai.com/envs/LunarLanderContinuous-v2/)
-- [Reacher-v2](https://gym.openai.com/envs/Reacher-v2/)
+- [LunarLanderContinuous-v2](https://github.com/medipixel/rl_algorithms/tree/feature/readme/examples/lunarlander_continuous_v2)
+- [Reacher-v2](https://github.com/medipixel/rl_algorithms/tree/feature/readme/examples/reacher-v2)
 
 ### Prerequisites
-Mujoco environment contained `Reacher-v2` require a [Mujoco](https://www.roboti.us/license.html) license.
+Mujoco environments(e.g. `Reacher-v2`) require a [Mujoco](https://www.roboti.us/license.html) license.
 
 ### Installation
 First, clone this repository  
@@ -58,13 +58,14 @@ make dev
 ```
 
 ## References
-- DDPG: https://arxiv.org/pdf/1509.02971.pdf
-- PPO: https://arxiv.org/abs/1707.06347
-- TD3: https://arxiv.org/pdf/1802.09477.pdf
-- SAC: https://arxiv.org/pdf/1801.01290.pdf
-       https://arxiv.org/pdf/1812.05905.pdf
-- PER: https://arxiv.org/pdf/1511.05952.pdf
-- HER: https://arxiv.org/pdf/1707.01495.pdf
-- Behavior Cloning: https://arxiv.org/pdf/1709.10089.pdf
-- DDPGfD: https://arxiv.org/pdf/1707.08817.pdf
+- DDPG: [T. P. Lillicrap et al., Continuous control with deep reinforcement learning. arXiv preprint arXiv:1509.02971, 2015.](https://arxiv.org/pdf/1509.02971.pdf)
+- PPO: [J. Schulman et al., Proximal Policy Optimization Algorithms, arXiv preprint arXiv:1707.06347, 2017.](https://arxiv.org/abs/1707.06347.pdf)
+- TD3: [S. Fujimoto et al., Addressing function approximation error in actor-critic methods. arXiv preprint arXiv:1802.09477, 2018.](https://arxiv.org/pdf/1802.09477.pdf)
+- SAC: 
+    - [T.  Haarnoja et al., Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement Learning with a Stochastic Actor. arXiv preprint arXiv:1801.01290, 2018.](https://arxiv.org/pdf/1801.01290.pdf)  
+    - [T. Haarnoja et al., Soft Actor-Critic Algorithms and Applications. arXiv preprint arXiv:1812.05905, 2018.](https://arxiv.org/pdf/1812.05905.pdf)
+- PER: [T. Schaul et al., Prioritized Experience Replay. arXiv preprint arXiv:1511.05952, 2015.](https://arxiv.org/pdf/1511.05952.pdf)
+- HER: [M. Andrychowicz et al., Hindsight Experience Replay. arXiv preprint arXiv:1707.01495, 2017.](https://arxiv.org/pdf/1707.01495.pdf)
+- Behavior Cloning: [A. Nair et al., Overcoming Exploration in Reinforcement Learning with Demonstrations. arXiv preprint arXiv:1709.10089, 2017.](https://arxiv.org/pdf/1709.10089.pdf)
+- DDPGfD: [M. Vecerik et al., Leveraging Demonstrations for Deep Reinforcement Learning on Robotics Problems with Sparse Rewards. arXiv preprint arXiv:1707.08817, 2017](https://arxiv.org/pdf/1707.08817.pdf)
 # Reinforcement Learning by Examples
