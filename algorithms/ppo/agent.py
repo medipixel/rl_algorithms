@@ -14,7 +14,6 @@ import gym
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import wandb
 
 import algorithms.ppo.utils as ppo_utils
@@ -68,10 +67,14 @@ class Agent(AbstractAgent):
         self.actor, self.critic = models
         self.actor_optimizer, self.critic_optimizer = optims
         self.hyper_params = hyper_params
-        self.memory: list = []
         self.gae = GAE()
-        self.transition: list = []
         self.episode_step = 0
+        self.states: list = []
+        self.actions: list = []
+        self.rewards: list = []
+        self.values: list = []
+        self.masks: list = []
+        self.log_probs: list = []
 
         # load model parameters
         if self.args.load_from is not None and os.path.exists(self.args.load_from):
@@ -79,25 +82,25 @@ class Agent(AbstractAgent):
 
     def select_action(self, state: np.ndarray) -> torch.Tensor:
         """Select an action from the input space."""
-        state_ft = torch.FloatTensor(state).to(device)
-        selected_action, dist = self.actor(state_ft)
+        state = torch.FloatTensor(state).to(device)
+        selected_action, dist = self.actor(state)
+        value = self.critic(state)
 
         if self.args.test and not self.is_discrete:
             selected_action = dist.mean
 
         if not self.args.test:
-            self.transition += [
-                state,
-                dist.log_prob(selected_action).detach().cpu().numpy(),
-            ]
+            self.states.append(state)
+            self.actions.append(selected_action)
+            self.values.append(value)
+            self.log_probs.append(dist.log_prob(selected_action))
 
         return selected_action
 
     def step(self, action: torch.Tensor) -> Tuple[np.ndarray, np.float64, bool]:
         self.episode_step += 1
 
-        action = action.detach().cpu().numpy()
-        next_state, reward, done, _ = self.envs.step(action)
+        next_state, reward, done, _ = self.envs.step(action.detach().cpu().numpy())
 
         if not self.args.test:
             # if the last state is not a terminal state, store done as false
@@ -105,43 +108,47 @@ class Agent(AbstractAgent):
                 False if self.episode_step == self.args.max_episode_steps else done
             )
 
-            self.transition += [action, reward, done_bool]
-            self.memory.append(self.transition)
-            self.transition = []
+            self.rewards.append(torch.FloatTensor(reward).unsqueeze(1).to(device))
+            self.masks.append(torch.FloatTensor(1 - done_bool).unsqueeze(1).to(device))
 
         return next_state, reward, done
 
-    def update_model(self) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def update_model(
+        self, next_state: np.ndarray
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Train the model after every N episodes."""
-        states, log_probs, actions, rewards, dones = ppo_utils.decompose_memory(
-            self.memory
+
+        next_state = torch.FloatTensor(next_state).to(device)
+        next_value = self.critic(next_state)
+
+        returns = ppo_utils.compute_gae(
+            next_value, self.rewards, self.masks, self.values
         )
 
-        # calculate returns and gae
-        values = self.critic(states)
-        returns, advantages = self.gae.get_gae(
-            rewards,
-            values,
-            dones,
-            self.hyper_params["GAMMA"],
-            self.hyper_params["LAMBDA"],
-        )
+        returns = torch.cat(returns).detach()
+        log_probs = torch.cat(self.log_probs).detach()
+        values = torch.cat(self.values).detach()
+        states = torch.cat(self.states)
+        actions = torch.cat(self.actions)
+        advantages = returns - values
+
+        if self.hyper_params["NORMALIZE_ADVANTAGE"]:
+            advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-7)
 
         actor_losses, critic_losses, total_losses = [], [], []
 
-        for state, old_log_prob, action, return_, adv in ppo_utils.ppo_iter(
+        for state, action, old_value, old_log_prob, return_, adv in ppo_utils.ppo_iter(
             self.hyper_params["EPOCH"],
             self.hyper_params["BATCH_SIZE"],
             states,
-            log_probs,
             actions,
+            values,
+            log_probs,
             returns,
             advantages,
         ):
-            value = self.critic(state)
-            _, dist = self.actor(state)
-
             # calculate ratios
+            _, dist = self.actor(state)
             log_prob = dist.log_prob(action)
             ratio = (log_prob - old_log_prob).exp()
 
@@ -152,7 +159,16 @@ class Agent(AbstractAgent):
             actor_loss = -torch.min(surr_loss, clipped_surr_loss).mean()
 
             # critic_loss
-            critic_loss = F.mse_loss(value, return_)
+            value = self.critic(state)
+            if self.hyper_params["USE_CLIPPED_VALUE_LOSS"]:
+                value_pred_clipped = old_value + torch.clamp(
+                    (value - old_value), -epsilon, epsilon
+                )
+                value_loss_clipped = (return_ - value_pred_clipped).pow(2)
+                value_loss = (return_ - value).pow(2)
+                critic_loss = 0.5 * torch.max(value_loss, value_loss_clipped).mean()
+            else:
+                critic_loss = 0.5 * (return_ - value).pow(2).mean()
 
             # entropy
             entropy = dist.entropy().mean()
@@ -183,6 +199,9 @@ class Agent(AbstractAgent):
             actor_losses.append(actor_loss.data)
             critic_losses.append(critic_loss.data)
             total_losses.append(total_loss.data)
+
+        self.states, self.actions, self.rewards = [], [], []
+        self.values, self.masks, self.log_probs = [], [], []
 
         actor_loss = sum(actor_losses) / len(actor_losses)
         critic_loss = sum(critic_losses) / len(critic_losses)
@@ -215,7 +234,8 @@ class Agent(AbstractAgent):
 
     def write_log(
         self,
-        i: int,
+        i_episode: int,
+        steps: int,
         actor_loss: float,
         critic_loss: float,
         total_loss: float,
@@ -224,7 +244,7 @@ class Agent(AbstractAgent):
         print(
             "[INFO] episode %d\tepisode steps: %d\ttotal score: %d\n"
             "total loss: %f\tActor loss: %f\tCritic loss: %f\n"
-            % (i, self.episode_step, score, total_loss, actor_loss, critic_loss)
+            % (i_episode, steps, score, total_loss, actor_loss, critic_loss)
         )
 
         if self.args.log:
@@ -237,6 +257,28 @@ class Agent(AbstractAgent):
                 }
             )
 
+    def run_test_env(self, render: bool) -> Tuple[int, int]:
+        """Run the agent on the test env for evaluation."""
+        state = self.env.reset()
+
+        done = False
+        score = 0
+        steps = 0
+        while not done:
+            if render:
+                self.env.render()
+
+            _, dist = self.actor(torch.FloatTensor(state).to(device))
+            next_state, reward, done, _ = self.env.step(
+                dist.mean.detach().cpu().numpy()
+            )
+
+            state = next_state
+            score += reward
+            steps += 1
+
+        return steps, score
+
     def train(self):
         """Train the agent."""
         # logger
@@ -245,35 +287,31 @@ class Agent(AbstractAgent):
             wandb.config.update(self.hyper_params)
             wandb.watch([self.actor, self.critic], log="parameters")
 
-        for i_episode in range(1, self.args.episode_num + 1):
-            state = self.envs.reset()
-            done = False
-            score = 0
-            loss_episode = list()
-            self.episode_step = 0
+        i_episode = 1
+        local_rollout_len = (
+            self.hyper_params["ROLLOUT_LEN"] // self.hyper_params["N_WORKERS"]
+        )
 
-            while not done:
-                if self.args.render and i_episode >= self.args.render_after:
-                    self.envs.render()
-
+        state = self.envs.reset()
+        while i_episode < self.args.episode_num:
+            for _ in range(local_rollout_len):
                 action = self.select_action(state)
-                next_state, reward, done = self.step(action)
+                next_state, _, done = self.step(action)
 
                 state = next_state
-                score += reward
+                if done[0]:
+                    i_episode += 1
+                    self.episode_step = 0
 
-                if len(self.memory) == self.hyper_params["ROLLOUT_LEN"]:
-                    loss = self.update_model()
-                    loss_episode.append(loss)
-                    self.memory.clear()
-
-            # logging
-            if loss_episode:
-                avg_loss = np.vstack(loss_episode).mean(axis=0)
-                self.write_log(i_episode, avg_loss[0], avg_loss[1], avg_loss[2], score)
+            loss = self.update_model(next_state)
+            steps, score = self.run_test_env(
+                self.args.render and i_episode >= self.args.render_after
+            )
+            self.write_log(i_episode, steps, loss[0], loss[1], loss[2], score)
 
             if i_episode % self.args.save_period == 0:
                 self.save_params(i_episode)
 
         # termination
+        self.env.close()
         self.envs.close()

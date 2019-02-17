@@ -51,6 +51,7 @@ def main():
     """Main."""
     # env initialization
     env = gym.make("LunarLander-v2")
+    common_utils.set_env(env, args)
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.n
 

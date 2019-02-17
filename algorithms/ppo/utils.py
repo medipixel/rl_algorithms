@@ -11,31 +11,28 @@ This module has PPO util functions.
 import numpy as np
 import torch
 
-# device selection: cpu / gpu
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+def compute_gae(next_value, rewards, masks, values, gamma=0.99, tau=0.95):
+    """Compute gae."""
+    values = values + [next_value]
+    gae = 0
+    returns = []
 
-def decompose_memory(memory: list):
-    """Decompose states, log_probs, actions, rewards, dones from the memory."""
-    memory_np: np.ndarray = np.array(memory)
+    for step in reversed(range(len(rewards))):
+        delta = rewards[step] + gamma * values[step + 1] * masks[step] - values[step]
+        gae = delta + gamma * tau * masks[step] * gae
+        returns.insert(0, gae + values[step])
 
-    states = torch.from_numpy(np.vstack(memory_np[:, 0])).float().to(device)
-    log_probs = torch.from_numpy(np.vstack(memory_np[:, 1])).float().to(device)
-    actions = torch.from_numpy(np.vstack(memory_np[:, 2])).float().to(device)
-    rewards = torch.from_numpy(np.vstack(memory_np[:, 3])).float().to(device)
-    dones = (
-        torch.from_numpy(np.vstack(memory_np[:, 4]).astype(np.uint8)).float().to(device)
-    )
-
-    return states, log_probs, actions, rewards, dones
+    return returns
 
 
 def ppo_iter(
     epoch: int,
     mini_batch_size: int,
     states: torch.Tensor,
-    log_probs: torch.Tensor,
     actions: torch.Tensor,
+    values: torch.Tensor,
+    log_probs: torch.Tensor,
     returns: torch.Tensor,
     advantages: torch.Tensor,
 ):
@@ -44,6 +41,6 @@ def ppo_iter(
     for _ in range(epoch):
         for _ in range(batch_size // mini_batch_size):
             rand_ids = np.random.choice(batch_size, mini_batch_size)
-            yield states[rand_ids, :], log_probs[rand_ids, :], actions[
+            yield states[rand_ids, :], actions[rand_ids, :], values[
                 rand_ids, :
-            ], returns[rand_ids, :], advantages[rand_ids, :]
+            ], log_probs[rand_ids, :], returns[rand_ids, :], advantages[rand_ids, :]

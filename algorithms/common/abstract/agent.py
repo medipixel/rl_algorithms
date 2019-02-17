@@ -48,11 +48,6 @@ class AbstractAgent(ABC):
         else:
             self.is_discrete = False
 
-        if self.args.max_episode_steps > 0:
-            env._max_episode_steps = self.args.max_episode_steps
-        else:
-            self.args.max_episode_steps = env._max_episode_steps
-
         # for logging
         self.env_name = str(self.env.env).split("<")[2].replace(">>", "")
         self.sha = (

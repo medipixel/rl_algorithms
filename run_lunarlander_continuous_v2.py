@@ -58,7 +58,8 @@ def main():
     """Main."""
     # env initialization
     env = gym.make("LunarLanderContinuous-v2")
-    env = ActionNormalizer(env)
+    normalizers = [ActionNormalizer]
+    common_utils.set_env(env, args, normalizers)
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.shape[0]
 
