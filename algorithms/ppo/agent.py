@@ -132,6 +132,9 @@ class Agent(AbstractAgent):
         log_probs = torch.cat(self.log_probs).detach()
         advantages = returns - values
 
+        if self.hyper_params["STANDARDIZE_ADVANTAGE"]:
+            advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-7)
+
         actor_losses, critic_losses, total_losses = [], [], []
 
         for state, action, old_value, old_log_prob, return_, adv in ppo_utils.ppo_iter(

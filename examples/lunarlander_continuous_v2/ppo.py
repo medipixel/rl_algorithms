@@ -34,6 +34,7 @@ hyper_params = {
     "WEIGHT_DECAY": 0,
     "N_WORKERS": 16,
     "USE_CLIPPED_VALUE_LOSS": True,
+    "STANDARDIZE_ADVANTAGE": True,
 }
 
 
