@@ -28,12 +28,11 @@ hyper_params = {
     "LR_ACTOR": 3e-4,
     "LR_CRITIC": 1e-3,
     "EPOCH": 10,
-    "BATCH_SIZE": 64,
-    "ROLLOUT_LEN": 8192,
+    "BATCH_SIZE": 32,
+    "ROLLOUT_LEN": 128,
     "GRADIENT_CLIP": 0.5,
     "WEIGHT_DECAY": 0,
     "N_WORKERS": 16,
-    "NORMALIZE_ADVANTAGE": True,
     "USE_CLIPPED_VALUE_LOSS": True,
 }
 

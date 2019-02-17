@@ -19,7 +19,6 @@ import wandb
 import algorithms.ppo.utils as ppo_utils
 from algorithms.common.abstract.agent import AbstractAgent
 from algorithms.common.multiprocessing_env import SubprocVecEnv
-from algorithms.gae import GAE
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -29,15 +28,18 @@ class Agent(AbstractAgent):
 
     Attributes:
         envs (SubprocVecEnv): Gym env with multiprocessing for training
-        memory (list): memory for on-policy training
-        transition (list): list for storing a transition
-        gae (GAE): calculator for generalized advantage estimation
         actor (nn.Module): policy gradient model to select actions
         critic (nn.Module): policy gradient model to predict values
         actor_optimizer (Optimizer): optimizer for training actor
         critic_optimizer (Optimizer): optimizer for training critic
         hyper_params (dict): hyper-parameters
         episode_step (int): step number of the current episode
+        states (list): memory for experienced states
+        actions (list): memory for experienced actions
+        rewards (list): memory for experienced rewards
+        values (list): memory for experienced values
+        masks (list): memory for masks
+        log_probs (list): memory for log_probs
 
     """
 
@@ -67,7 +69,6 @@ class Agent(AbstractAgent):
         self.actor, self.critic = models
         self.actor_optimizer, self.critic_optimizer = optims
         self.hyper_params = hyper_params
-        self.gae = GAE()
         self.episode_step = 0
         self.states: list = []
         self.actions: list = []
@@ -84,12 +85,12 @@ class Agent(AbstractAgent):
         """Select an action from the input space."""
         state = torch.FloatTensor(state).to(device)
         selected_action, dist = self.actor(state)
-        value = self.critic(state)
 
         if self.args.test and not self.is_discrete:
             selected_action = dist.mean
 
         if not self.args.test:
+            value = self.critic(state)
             self.states.append(state)
             self.actions.append(selected_action)
             self.values.append(value)
@@ -107,7 +108,6 @@ class Agent(AbstractAgent):
             done_bool = (
                 False if self.episode_step == self.args.max_episode_steps else done
             )
-
             self.rewards.append(torch.FloatTensor(reward).unsqueeze(1).to(device))
             self.masks.append(torch.FloatTensor(1 - done_bool).unsqueeze(1).to(device))
 
@@ -125,15 +125,12 @@ class Agent(AbstractAgent):
             next_value, self.rewards, self.masks, self.values
         )
 
-        returns = torch.cat(returns).detach()
-        log_probs = torch.cat(self.log_probs).detach()
-        values = torch.cat(self.values).detach()
         states = torch.cat(self.states)
         actions = torch.cat(self.actions)
+        returns = torch.cat(returns).detach()
+        values = torch.cat(self.values).detach()
+        log_probs = torch.cat(self.log_probs).detach()
         advantages = returns - values
-
-        if self.hyper_params["NORMALIZE_ADVANTAGE"]:
-            advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-7)
 
         actor_losses, critic_losses, total_losses = [], [], []
 
@@ -288,30 +285,33 @@ class Agent(AbstractAgent):
             wandb.watch([self.actor, self.critic], log="parameters")
 
         i_episode = 1
-        local_rollout_len = (
-            self.hyper_params["ROLLOUT_LEN"] // self.hyper_params["N_WORKERS"]
-        )
-
+        print_log = False
         state = self.envs.reset()
-        while i_episode < self.args.episode_num:
-            for _ in range(local_rollout_len):
+
+        while i_episode <= self.args.episode_num:
+            for _ in range(self.hyper_params["ROLLOUT_LEN"]):
                 action = self.select_action(state)
                 next_state, _, done = self.step(action)
 
                 state = next_state
                 if done[0]:
                     i_episode += 1
+                    print_log = True
                     self.episode_step = 0
 
-            loss = self.update_model(next_state)
-            steps, score = self.run_test_env(
-                self.args.render and i_episode >= self.args.render_after
-            )
-            self.write_log(i_episode, steps, loss[0], loss[1], loss[2], score)
+                    if i_episode % self.args.save_period == 0:
+                        self.save_params(i_episode)
 
-            if i_episode % self.args.save_period == 0:
-                self.save_params(i_episode)
+            loss = self.update_model(next_state)
+
+            if print_log:
+                steps, score = self.run_test_env(
+                    self.args.render and i_episode >= self.args.render_after
+                )
+                self.write_log(i_episode, steps, loss[0], loss[1], loss[2], score)
+                print_log = False
 
         # termination
         self.env.close()
         self.envs.close()
+        self.save_params(i_episode)

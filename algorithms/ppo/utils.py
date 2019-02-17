@@ -8,22 +8,32 @@ This module has PPO util functions.
 - Paper: https://arxiv.org/abs/1707.06347
 """
 
+from collections import deque
+from typing import List
+
 import numpy as np
 import torch
 
 
-def compute_gae(next_value, rewards, masks, values, gamma=0.99, tau=0.95):
+def compute_gae(
+    next_value: list,
+    rewards: list,
+    masks: list,
+    values: list,
+    gamma: float = 0.99,
+    tau: float = 0.95,
+) -> List:
     """Compute gae."""
     values = values + [next_value]
     gae = 0
-    returns = []
+    returns: deque = deque()
 
     for step in reversed(range(len(rewards))):
         delta = rewards[step] + gamma * values[step + 1] * masks[step] - values[step]
         gae = delta + gamma * tau * masks[step] * gae
-        returns.insert(0, gae + values[step])
+        returns.appendleft(gae + values[step])
 
-    return returns
+    return list(returns)
 
 
 def ppo_iter(
