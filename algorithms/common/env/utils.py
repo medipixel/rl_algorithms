@@ -10,8 +10,21 @@ from typing import Callable, List
 
 import gym
 
-import algorithms.common.helper_functions as common_utils
-from algorithms.common.multiprocessing_env import SubprocVecEnv
+from algorithms.common.env.multiprocessing_env import SubprocVecEnv
+
+
+def set_env(
+    env: gym.Env, args: argparse.Namespace, normalizers: List[gym.Wrapper] = None
+):
+    """Set environment according to user's config."""
+    if args.max_episode_steps > 0:
+        env._max_episode_steps = args.max_episode_steps
+    else:
+        args.max_episode_steps = env._max_episode_steps
+
+    if normalizers:
+        for normalizer in normalizers:
+            env = normalizer(env)
 
 
 def env_generator(
@@ -22,7 +35,7 @@ def env_generator(
     def _thunk(rank: int):
         env = gym.make(env_name)
         env.seed(args.seed + rank + 1)
-        common_utils.set_env(env, args, normalizers)
+        set_env(env, args, normalizers)
         return env
 
     return _thunk

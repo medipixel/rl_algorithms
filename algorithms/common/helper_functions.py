@@ -5,10 +5,8 @@
 - Contact: curt.park@medipixel.io
 """
 
-import argparse
 import pickle
 import random
-from typing import List
 
 import gym
 import numpy as np
@@ -47,20 +45,6 @@ def set_random_seed(seed: int, env: gym.Env):
     torch.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
-
-
-def set_env(
-    env: gym.Env, args: argparse.Namespace, normalizers: List[gym.Wrapper] = None
-):
-    """Set environment according to user's config."""
-    if args.max_episode_steps > 0:
-        env._max_episode_steps = args.max_episode_steps
-    else:
-        args.max_episode_steps = env._max_episode_steps
-
-    if normalizers:
-        for normalizer in normalizers:
-            env = normalizer(env)
 
 
 def make_one_hot(labels: torch.Tensor, c: int):

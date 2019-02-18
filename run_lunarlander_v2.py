@@ -10,6 +10,7 @@ import importlib
 
 import gym
 
+import algorithms.common.env.utils as env_utils
 import algorithms.common.helper_functions as common_utils
 
 # configurations
@@ -51,7 +52,7 @@ def main():
     """Main."""
     # env initialization
     env = gym.make("LunarLander-v2")
-    common_utils.set_env(env, args)
+    env_utils.set_env(env, args)
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.n
 

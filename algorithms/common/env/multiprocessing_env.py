@@ -2,6 +2,7 @@
 https://github.com/openai/baselines/tree/master/baselines/common/vec_env
 """
 
+from abc import ABC, abstractmethod
 from multiprocessing import Pipe, Process
 
 import numpy as np
@@ -9,49 +10,63 @@ import numpy as np
 
 def worker(remote, parent_remote, env_fn_wrapper):
     parent_remote.close()
-    env = env_fn_wrapper.x()
-    while True:
-        cmd, data = remote.recv()
-        if cmd == "step":
-            ob, reward, done, info = env.step(data)
-            if done:
+    env = env_fn_wrapper.x
+    try:
+        while True:
+            cmd, data = remote.recv()
+            if cmd == "step":
+                ob, reward, done, info = env.step(data)
+                if done:
+                    ob = env.reset()
+                remote.send((ob, reward, done, info))
+            elif cmd == "reset":
                 ob = env.reset()
-            remote.send((ob, reward, done, info))
-        elif cmd == "reset":
-            ob = env.reset()
-            remote.send(ob)
-        elif cmd == "reset_task":
-            ob = env.reset_task()
-            remote.send(ob)
-        elif cmd == "close":
-            remote.close()
-            break
-        elif cmd == "get_spaces":
-            remote.send((env.observation_space, env.action_space))
-        else:
-            raise NotImplementedError
+                remote.send(ob)
+            elif cmd == "render":
+                remote.send(env.render(mode="rgb_array"))
+            elif cmd == "close":
+                remote.close()
+                break
+            elif cmd == "get_spaces":
+                remote.send((env.observation_space, env.action_space))
+            else:
+                raise NotImplementedError
+    except KeyboardInterrupt:
+        print("SubprocVecEnv worker: got KeyboardInterrupt")
+    finally:
+        env.close()
 
 
-class VecEnv:
+class VecEnv(ABC):
+    """An abstract asynchronous, vectorized environment.
+
+    Used to batch data from multiple copies of an environment, so that
+    each observation becomes an batch of observations, and expected action
+    is a batch of actions to be applied per-environment.
     """
-    An abstract asynchronous, vectorized environment.
-    """
+
+    closed = False
+    viewer = None
+
+    metadata = {"render.modes": ["human", "rgb_array"]}
 
     def __init__(self, num_envs, observation_space, action_space):
         self.num_envs = num_envs
         self.observation_space = observation_space
         self.action_space = action_space
 
+    @abstractmethod
     def reset(self):
         """
         Reset all the environments and return an array of
-        observations, or a tuple of observation arrays.
+        observations, or a dict of observation arrays.
         If step_async is still doing work, that work will
         be cancelled and step_wait() should not be called
         until step_async() is invoked again.
         """
         raise NotImplementedError
 
+    @abstractmethod
     def step_async(self, actions):
         """
         Tell all the environments to start taking a step
@@ -62,11 +77,12 @@ class VecEnv:
         """
         raise NotImplementedError
 
+    @abstractmethod
     def step_wait(self):
-        """Wait for the step taken with step_async().
-
+        """
+        Wait for the step taken with step_async().
         Returns (obs, rews, dones, infos):
-         - obs: an array of observations, or a tuple of
+         - obs: an array of observations, or a dict of
                 arrays of observations.
          - rews: an array of rewards
          - dones: an array of "episode done" booleans
@@ -74,13 +90,84 @@ class VecEnv:
         """
         raise NotImplementedError
 
-    def close(self):
-        """Clean up the environments' resources."""
+    def close_extras(self):
+        """
+        Clean up the  extra resources, beyond what's in this base class.
+        Only runs when not self.closed.
+        """
         raise NotImplementedError
 
+    def close(self):
+        if self.closed:
+            return
+        if self.viewer is not None:
+            self.viewer.close()
+        self.close_extras()
+        self.closed = True
+
     def step(self, actions):
+        """
+        Step the environments synchronously.
+        This is available for backwards compatibility.
+        """
         self.step_async(actions)
         return self.step_wait()
+
+    def get_images(self):
+        """
+        Return RGB images from each environment
+        """
+        raise NotImplementedError
+
+    @property
+    def unwrapped(self):
+        if isinstance(self, VecEnvWrapper):
+            return self.venv.unwrapped
+        else:
+            return self
+
+    def get_viewer(self):
+        if self.viewer is None:
+            from gym.envs.classic_control import rendering
+
+            self.viewer = rendering.SimpleImageViewer()
+        return self.viewer
+
+
+class VecEnvWrapper(VecEnv):
+    """
+    An environment wrapper that applies to an entire batch
+    of environments at once.
+    """
+
+    def __init__(self, venv, observation_space=None, action_space=None):
+        self.venv = venv
+        VecEnv.__init__(
+            self,
+            num_envs=venv.num_envs,
+            observation_space=observation_space or venv.observation_space,
+            action_space=action_space or venv.action_space,
+        )
+
+    def step_async(self, actions):
+        self.venv.step_async(actions)
+
+    @abstractmethod
+    def reset(self):
+        pass
+
+    @abstractmethod
+    def step_wait(self):
+        pass
+
+    def close(self):
+        return self.venv.close()
+
+    def render(self, mode="human"):
+        return self.venv.render(mode=mode)
+
+    def get_images(self):
+        return self.venv.get_images()
 
 
 class CloudpickleWrapper:
@@ -104,12 +191,20 @@ class CloudpickleWrapper:
 
 
 class SubprocVecEnv(VecEnv):
+    """VecEnv that runs multiple environments in parallel in subproceses
+    and communicates with them via pipes.
+    Recommended to use when num_envs > 1 and step() can be a bottleneck.
+    """
+
     def __init__(self, env_fns):
-        """envs: list of gym environments to run in subprocesses."""
+        """
+        Arguments:
+        env_fns: iterable of callables -  functions that create environments to run
+        in subprocesses. Need to be cloud-pickleable
+        """
         self.waiting = False
         self.closed = False
         nenvs = len(env_fns)
-        self.nenvs = nenvs
         self.remotes, self.work_remotes = zip(*[Pipe() for _ in range(nenvs)])
         self.ps = [
             Process(
@@ -129,32 +224,30 @@ class SubprocVecEnv(VecEnv):
 
         self.remotes[0].send(("get_spaces", None))
         observation_space, action_space = self.remotes[0].recv()
+        self.viewer = None
         VecEnv.__init__(self, len(env_fns), observation_space, action_space)
 
     def step_async(self, actions):
+        self._assert_not_closed()
         for remote, action in zip(self.remotes, actions):
             remote.send(("step", action))
         self.waiting = True
 
     def step_wait(self):
+        self._assert_not_closed()
         results = [remote.recv() for remote in self.remotes]
         self.waiting = False
         obs, rews, dones, infos = zip(*results)
         return np.stack(obs), np.stack(rews), np.stack(dones), infos
 
     def reset(self):
+        self._assert_not_closed()
         for remote in self.remotes:
             remote.send(("reset", None))
         return np.stack([remote.recv() for remote in self.remotes])
 
-    def reset_task(self):
-        for remote in self.remotes:
-            remote.send(("reset_task", None))
-        return np.stack([remote.recv() for remote in self.remotes])
-
-    def close(self):
-        if self.closed:
-            return
+    def close_extras(self):
+        self.closed = True
         if self.waiting:
             for remote in self.remotes:
                 remote.recv()
@@ -162,7 +255,15 @@ class SubprocVecEnv(VecEnv):
             remote.send(("close", None))
         for p in self.ps:
             p.join()
-            self.closed = True
 
-    def __len__(self):
-        return self.nenvs
+    def get_images(self):
+        self._assert_not_closed()
+        for pipe in self.remotes:
+            pipe.send(("render", None))
+        imgs = [pipe.recv() for pipe in self.remotes]
+        return imgs
+
+    def _assert_not_closed(self):
+        assert (
+            not self.closed
+        ), "Trying to operate on a SubprocVecEnv after calling close()"

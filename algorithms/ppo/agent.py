@@ -18,7 +18,7 @@ import wandb
 
 import algorithms.ppo.utils as ppo_utils
 from algorithms.common.abstract.agent import AbstractAgent
-from algorithms.common.multiprocessing_env import SubprocVecEnv
+from algorithms.common.env.multiprocessing_env import SubprocVecEnv
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
