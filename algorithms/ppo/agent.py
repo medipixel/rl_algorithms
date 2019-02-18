@@ -133,6 +133,10 @@ class Agent(AbstractAgent):
         log_probs = torch.cat(self.log_probs).detach()
         advantages = returns - values
 
+        if self.is_discrete:
+            actions = actions.unsqueeze(1)
+            log_probs = log_probs.unsqueeze(1)
+
         if self.hyper_params["STANDARDIZE_ADVANTAGE"]:
             advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-7)
 

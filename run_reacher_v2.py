@@ -18,7 +18,7 @@ parser = argparse.ArgumentParser(description="Pytorch RL algorithms")
 parser.add_argument(
     "--seed", type=int, default=777, help="random seed for reproducibility"
 )
-parser.add_argument("--algo", type=str, default="ddpg", help="choose an algorithm")
+parser.add_argument("--algo", type=str, default="sac", help="choose an algorithm")
 parser.add_argument(
     "--test", dest="test", action="store_true", help="test mode (no training)"
 )
