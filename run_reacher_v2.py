@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Train or test baselines on Reacher-v2 of Mujoco.
+"""Train or test algorithms on Reacher-v2 of Mujoco.
 
 - Author: Kh Kim
 - Contact: kh.kim@medipixel.io
@@ -10,10 +10,12 @@ import importlib
 
 import gym
 
+import algorithms.common.env.utils as env_utils
 import algorithms.common.helper_functions as common_utils
+from algorithms.common.env.normalizers import ActionNormalizer
 
 # configurations
-parser = argparse.ArgumentParser(description="Pytorch RL baselines")
+parser = argparse.ArgumentParser(description="Pytorch RL algorithms")
 parser.add_argument(
     "--seed", type=int, default=777, help="random seed for reproducibility"
 )
@@ -57,6 +59,8 @@ def main():
     """Main."""
     # env initialization
     env = gym.make("Reacher-v2")
+    normalizers = [ActionNormalizer]
+    env_utils.set_env(env, args, normalizers)
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.shape[0]
 

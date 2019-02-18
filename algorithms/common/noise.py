@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Noise classes for baselines."""
+"""Noise classes for algorithms."""
 
 import copy
 import random

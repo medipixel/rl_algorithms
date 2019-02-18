@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Run module for SAC on Reacher-v2.
+"""Run module for SAC on LunarLander-v2.
 
 - Author: Curt Park
 - Contact: curt.park@medipixel.io
@@ -12,7 +12,7 @@ import numpy as np
 import torch
 import torch.optim as optim
 
-from algorithms.common.networks.mlp import MLP, FlattenMLP, TanhGaussianDistParams
+from algorithms.common.networks.mlp import MLP, CategoricalDistParams, FlattenMLP
 from algorithms.sac.agent import Agent
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -22,20 +22,20 @@ hyper_params = {
     "GAMMA": 0.99,
     "TAU": 5e-3,
     "W_ENTROPY": 1e-3,
-    "W_MEAN_REG": 1e-3,
-    "W_STD_REG": 1e-3,
+    "W_MEAN_REG": 0.0,
+    "W_STD_REG": 0.0,
     "W_PRE_ACTIVATION_REG": 0.0,
-    "LR_ACTOR": 3e-4,
-    "LR_VF": 3e-4,
-    "LR_QF1": 3e-4,
-    "LR_QF2": 3e-4,
-    "LR_ENTROPY": 3e-4,
+    "LR_ACTOR": 1e-3,
+    "LR_VF": 1e-3,
+    "LR_QF1": 1e-3,
+    "LR_QF2": 1e-3,
+    "LR_ENTROPY": 1e-3,
     "DELAYED_UPDATE": 2,
     "BUFFER_SIZE": int(1e6),
     "BATCH_SIZE": 512,
     "AUTO_ENTROPY_TUNING": True,
     "WEIGHT_DECAY": 0.0,
-    "INITIAL_RANDOM_ACTION": 20000,
+    "INITIAL_RANDOM_ACTION": 0,
 }
 
 
@@ -49,7 +49,7 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
         action_dim (int): dimension of actions
 
     """
-    hidden_sizes_actor = [256, 256]
+    hidden_sizes_actor = [256]
     hidden_sizes_vf = [256, 256]
     hidden_sizes_qf = [256, 256]
 
@@ -57,8 +57,11 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
     target_entropy = -np.prod((action_dim,)).item()  # heuristic
 
     # create actor
-    actor = TanhGaussianDistParams(
-        input_size=state_dim, output_size=action_dim, hidden_sizes=hidden_sizes_actor
+    actor = CategoricalDistParams(
+        compatible_with_tanh_normal=True,
+        input_size=state_dim,
+        output_size=action_dim,
+        hidden_sizes=hidden_sizes_actor,
     ).to(device)
 
     # create v_critic
@@ -72,10 +75,16 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
 
     # create q_critic
     qf_1 = FlattenMLP(
-        input_size=state_dim + action_dim, output_size=1, hidden_sizes=hidden_sizes_qf
+        input_size=state_dim + action_dim,
+        output_size=1,
+        hidden_sizes=hidden_sizes_qf,
+        n_category=action_dim,  # category number is required for discrete actions!
     ).to(device)
     qf_2 = FlattenMLP(
-        input_size=state_dim + action_dim, output_size=1, hidden_sizes=hidden_sizes_qf
+        input_size=state_dim + action_dim,
+        output_size=1,
+        hidden_sizes=hidden_sizes_qf,
+        n_category=action_dim,  # category number is required for discrete actions!
     ).to(device)
 
     # create optimizers

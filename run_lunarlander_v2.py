@@ -12,7 +12,6 @@ import gym
 
 import algorithms.common.env.utils as env_utils
 import algorithms.common.helper_functions as common_utils
-from algorithms.common.env.normalizers import ActionNormalizer
 
 # configurations
 parser = argparse.ArgumentParser(description="Pytorch RL algorithms")
@@ -41,12 +40,6 @@ parser.add_argument("--episode-num", type=int, default=1500, help="total episode
 parser.add_argument(
     "--max-episode-steps", type=int, default=300, help="max episode step"
 )
-parser.add_argument(
-    "--demo-path",
-    type=str,
-    default="data/lunarlander_continuous_demo.pkl",
-    help="demonstration path",
-)
 
 parser.set_defaults(test=False)
 parser.set_defaults(load_from=None)
@@ -58,17 +51,16 @@ args = parser.parse_args()
 def main():
     """Main."""
     # env initialization
-    env = gym.make("LunarLanderContinuous-v2")
-    normalizers = [ActionNormalizer]
-    env_utils.set_env(env, args, normalizers)
+    env = gym.make("LunarLander-v2")
+    env_utils.set_env(env, args)
     state_dim = env.observation_space.shape[0]
-    action_dim = env.action_space.shape[0]
+    action_dim = env.action_space.n
 
     # set a random seed
     common_utils.set_random_seed(args.seed, env)
 
     # run
-    module_path = "examples.lunarlander_continuous_v2." + args.algo
+    module_path = "examples.lunarlander_v2." + args.algo
     example = importlib.import_module(module_path)
     example.run(env, args, state_dim, action_dim)
 

@@ -12,7 +12,7 @@ import numpy as np
 import torch
 import torch.optim as optim
 
-from algorithms.common.networks.mlp import MLP, TanhGaussianDistParams
+from algorithms.common.networks.mlp import MLP, FlattenMLP, TanhGaussianDistParams
 from algorithms.sac.agent import Agent
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -71,10 +71,10 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
     vf_target.load_state_dict(vf.state_dict())
 
     # create q_critic
-    qf_1 = MLP(
+    qf_1 = FlattenMLP(
         input_size=state_dim + action_dim, output_size=1, hidden_sizes=hidden_sizes_qf
     ).to(device)
-    qf_2 = MLP(
+    qf_2 = FlattenMLP(
         input_size=state_dim + action_dim, output_size=1, hidden_sizes=hidden_sizes_qf
     ).to(device)
 
