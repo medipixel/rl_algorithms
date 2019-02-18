@@ -29,7 +29,7 @@ hyper_params = {
     "LR_CRITIC": 1e-3,
     "EPOCH": 10,
     "BATCH_SIZE": 32,
-    "ROLLOUT_LEN": 128,
+    "ROLLOUT_LEN": 2048 // 16,
     "GRADIENT_CLIP": 0.5,
     "WEIGHT_DECAY": 0,
     "N_WORKERS": 16,
