@@ -54,7 +54,7 @@ def main():
     env = gym.make("LunarLander-v2")
     env_utils.set_env(env, args)
     state_dim = env.observation_space.shape[0]
-    action_dim = env.action_space.n
+    action_dim = env.action_space.n  # 0: none 1: left 2: engine 3: right
 
     # set a random seed
     common_utils.set_random_seed(args.seed, env)
