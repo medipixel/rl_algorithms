@@ -83,7 +83,6 @@ class CNN(nn.Module):
         # set hidden layers
         self.hidden_layers: list = []
         in_size = cnn_output_size
-        print(in_size)
         for i, next_size in enumerate(hidden_sizes):
             fc = nn.Linear(in_size, next_size)
             in_size = next_size
