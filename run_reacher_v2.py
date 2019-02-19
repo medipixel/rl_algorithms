@@ -12,14 +12,13 @@ import gym
 
 import algorithms.common.env.utils as env_utils
 import algorithms.common.helper_functions as common_utils
-from algorithms.common.env.normalizers import ActionNormalizer
 
 # configurations
 parser = argparse.ArgumentParser(description="Pytorch RL algorithms")
 parser.add_argument(
     "--seed", type=int, default=777, help="random seed for reproducibility"
 )
-parser.add_argument("--algo", type=str, default="ddpg", help="choose an algorithm")
+parser.add_argument("--algo", type=str, default="sac", help="choose an algorithm")
 parser.add_argument(
     "--test", dest="test", action="store_true", help="test mode (no training)"
 )
@@ -59,8 +58,7 @@ def main():
     """Main."""
     # env initialization
     env = gym.make("Reacher-v2")
-    normalizers = [ActionNormalizer]
-    env_utils.set_env(env, args, normalizers)
+    env_utils.set_env(env, args)
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.shape[0]
 

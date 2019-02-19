@@ -68,6 +68,7 @@ class Agent(AbstractAgent):
         self.envs = envs
         self.actor, self.critic = models
         self.actor_optimizer, self.critic_optimizer = optims
+        self.epsilon = hyper_params["EPSILON"]
         self.hyper_params = hyper_params
         self.episode_step = 0
         self.states: list = []
@@ -132,6 +133,10 @@ class Agent(AbstractAgent):
         log_probs = torch.cat(self.log_probs).detach()
         advantages = returns - values
 
+        if self.is_discrete:
+            actions = actions.unsqueeze(1)
+            log_probs = log_probs.unsqueeze(1)
+
         if self.hyper_params["STANDARDIZE_ADVANTAGE"]:
             advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-7)
 
@@ -153,16 +158,17 @@ class Agent(AbstractAgent):
             ratio = (log_prob - old_log_prob).exp()
 
             # actor_loss
-            epsilon = self.hyper_params["EPSILON"]
             surr_loss = ratio * adv
-            clipped_surr_loss = torch.clamp(ratio, 1.0 - epsilon, 1.0 + epsilon) * adv
+            clipped_surr_loss = (
+                torch.clamp(ratio, 1.0 - self.epsilon, 1.0 + self.epsilon) * adv
+            )
             actor_loss = -torch.min(surr_loss, clipped_surr_loss).mean()
 
             # critic_loss
             value = self.critic(state)
             if self.hyper_params["USE_CLIPPED_VALUE_LOSS"]:
                 value_pred_clipped = old_value + torch.clamp(
-                    (value - old_value), -epsilon, epsilon
+                    (value - old_value), -self.epsilon, self.epsilon
                 )
                 value_loss_clipped = (return_ - value_pred_clipped).pow(2)
                 value_loss = (return_ - value).pow(2)
@@ -209,6 +215,16 @@ class Agent(AbstractAgent):
 
         return actor_loss, critic_loss, total_loss
 
+    def decay_epsilon(self, t: int = 0):
+        """Decay epsilon until reaching the minimum value."""
+        max_epsilon = self.hyper_params["EPSILON"]
+        min_epsilon = self.hyper_params["MIN_EPSILON"]
+        epsilon_decay_period = self.hyper_params["EPSILON_DECAY_PERIOD"]
+
+        self.epsilon = max_epsilon - (max_epsilon - min_epsilon) * min(
+            1.0, t / (epsilon_decay_period + 1e-7)
+        )
+
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
         if not os.path.exists(path):
@@ -233,18 +249,22 @@ class Agent(AbstractAgent):
         AbstractAgent.save_params(self, params, n_episode)
 
     def write_log(
-        self,
-        i_episode: int,
-        steps: int,
-        actor_loss: float,
-        critic_loss: float,
-        total_loss: float,
-        score: int,
+        self, i_episode: int, actor_loss: float, critic_loss: float, total_loss: float
     ):
+        n_test = self.hyper_params["N_TEST"]
+        avg_step, avg_score = 0.0, 0.0
+
+        for _ in range(n_test):
+            step, score = self.run_test_env(
+                self.args.render and i_episode >= self.args.render_after
+            )
+            avg_step += step / n_test
+            avg_score += score / n_test
+
         print(
             "[INFO] episode %d\tepisode steps: %d\ttotal score: %d\n"
             "total loss: %f\tActor loss: %f\tCritic loss: %f\n"
-            % (i_episode, steps, score, total_loss, actor_loss, critic_loss)
+            % (i_episode, avg_step, avg_score, total_loss, actor_loss, critic_loss)
         )
 
         if self.args.log:
@@ -253,7 +273,7 @@ class Agent(AbstractAgent):
                     "total loss": total_loss,
                     "actor loss": actor_loss,
                     "critic loss": critic_loss,
-                    "score": score,
+                    "score": avg_score,
                 }
             )
 
@@ -263,21 +283,23 @@ class Agent(AbstractAgent):
 
         done = False
         score = 0
-        steps = 0
+        step = 0
         while not done:
             if render:
                 self.env.render()
 
-            _, dist = self.actor(torch.FloatTensor(state).to(device))
-            next_state, reward, done, _ = self.env.step(
-                dist.mean.detach().cpu().numpy()
-            )
+            action, dist = self.actor(torch.FloatTensor(state).to(device))
+
+            if not self.is_discrete:
+                action = dist.mean
+
+            next_state, reward, done, _ = self.env.step(action.detach().cpu().numpy())
 
             state = next_state
             score += reward
-            steps += 1
+            step += 1
 
-        return steps, score
+        return step, score
 
     def train(self):
         """Train the agent."""
@@ -306,15 +328,32 @@ class Agent(AbstractAgent):
                         self.save_params(i_episode)
 
             loss = self.update_model(next_state)
+            self.decay_epsilon(i_episode)
 
             if print_log:
-                steps, score = self.run_test_env(
-                    self.args.render and i_episode >= self.args.render_after
-                )
-                self.write_log(i_episode, steps, loss[0], loss[1], loss[2], score)
+                self.write_log(i_episode, loss[0], loss[1], loss[2])
                 print_log = False
 
         # termination
-        self.env.close()
         self.envs.close()
+        self.env.close()
         self.save_params(i_episode)
+
+    def test(self):
+        """Train the agent."""
+        # logger
+        if self.args.log:
+            wandb.init()
+
+        for i_episode in range(1, self.args.episode_num + 1):
+            step, score = self.run_test_env(
+                self.args.render and i_episode >= self.args.render_after
+            )
+
+            print(
+                "[INFO] episode %d\tstep: %d\ttotal score: %d"
+                % (i_episode, step, score)
+            )
+
+            if self.args.log:
+                wandb.log({"score": score})

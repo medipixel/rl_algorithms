@@ -12,7 +12,6 @@ import gym
 
 import algorithms.common.env.utils as env_utils
 import algorithms.common.helper_functions as common_utils
-from algorithms.common.env.normalizers import ActionNormalizer
 
 # configurations
 parser = argparse.ArgumentParser(description="Pytorch RL algorithms")
@@ -59,8 +58,7 @@ def main():
     """Main."""
     # env initialization
     env = gym.make("LunarLanderContinuous-v2")
-    normalizers = [ActionNormalizer]
-    env_utils.set_env(env, args, normalizers)
+    env_utils.set_env(env, args)
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.shape[0]
 

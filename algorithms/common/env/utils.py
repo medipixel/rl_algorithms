@@ -9,8 +9,10 @@ import argparse
 from typing import Callable, List
 
 import gym
+from gym.spaces import Discrete
 
 from algorithms.common.env.multiprocessing_env import SubprocVecEnv
+from algorithms.common.env.normalizers import ActionNormalizer
 
 
 def set_env(
@@ -21,6 +23,9 @@ def set_env(
         env._max_episode_steps = args.max_episode_steps
     else:
         args.max_episode_steps = env._max_episode_steps
+
+    if not isinstance(env.action_space, Discrete):
+        env = ActionNormalizer(env)
 
     if normalizers:
         for normalizer in normalizers:
