@@ -4,6 +4,8 @@
 - Author: Kh Kim
 - Contact: kh.kim@medipixel.io
 - Paper: https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf
+         https://arxiv.org/pdf/1509.06461.pdf
+         https://arxiv.org/pdf/1511.05952.pdf
 """
 
 import argparse
@@ -15,7 +17,7 @@ import numpy as np
 import torch
 import wandb
 
-# import algorithms.common.helper_functions as common_utils
+import algorithms.common.helper_functions as common_utils
 from algorithms.common.abstract.agent import AbstractAgent
 from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
 
@@ -24,6 +26,18 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 class Agent(AbstractAgent):
     """DQN interacting with environment.
+
+    Attribute:
+        memory (PrioritizedReplayBuffer): replay memory
+        dqn (nn.Module): actor model to select actions
+        dqn_target (nn.Module): target actor model to select actions
+        dqn_optimizer (Optimizer): optimizer for training actor
+        hyper_params (dict): hyper-parameters
+        beta (float): beta parameter for prioritized replay buffer
+        curr_state (np.ndarray): temporary storage of the current state
+        total_step (int): total step numbers
+        episode_step (int): step number of the current episode
+        epsilon (float): parameter for epsilon greedy policy
 
     """
 
@@ -53,7 +67,7 @@ class Agent(AbstractAgent):
         self.curr_state = np.zeros((1,))
         self.total_step = 0
         self.episode_step = 0
-        self.epsilon = self.hyper_params["MAX_EPSILON"]
+        self.epsilon = self.hyper_params["MAX_EPSILON"] if not self.args.test else 0
 
         # load the optimizer and model parameters
         if args.load_from is not None and os.path.exists(args.load_from):
@@ -85,11 +99,14 @@ class Agent(AbstractAgent):
         state = torch.FloatTensor(state).to(device)
 
         # epsilon greedy policy
-        if not self.args.test and self.epsilon > np.random.random():  # random action
+        if self.epsilon > np.random.random():  # random action
             return self.env.action_space.sample()
 
         else:
+            print(self.dqn(state))
             selected_action = self.dqn(state).argmax()
+            print(selected_action)
+            input()
             return selected_action.detach().cpu().numpy()
 
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, np.float64, bool]:
@@ -126,20 +143,24 @@ class Agent(AbstractAgent):
             1, next_q_values.argmax(1).unsqueeze(1)
         )
 
-        curr_returns = rewards + self.hyper_params["GAMMA"] * next_q_value * masks
-        curr_returns = curr_returns.to(device)
+        target = rewards + self.hyper_params["GAMMA"] * next_q_value * masks
+        target = target.to(device)
 
-        loss = torch.mean((curr_q_value - curr_returns).pow(2) * weights)
+        loss = torch.mean((target - curr_q_value).pow(2) * weights)
 
         self.dqn_optimizer.zero_grad()
         loss.backward()
         self.dqn_optimizer.step()
 
-        if self.hyper_params["UPDATE_TARGET"] % self.total_step == 0:
-            self.dqn_target.load_state_dict(self.dqn.state_dict())
+        # if self.hyper_params["UPDATE_TARGET"] % self.total_step == 0:
+        #     self.dqn_target.load_state_dict(self.dqn.state_dict())
+
+        # update target networks
+        tau = self.hyper_params["TAU"]
+        common_utils.soft_update(self.dqn, self.dqn_target, tau)
 
         # update priorities in PER
-        new_priorities = (curr_q_value - curr_returns).pow(2)
+        new_priorities = (target - curr_q_value).pow(2)
         new_priorities = (
             new_priorities.data.cpu().numpy() + self.hyper_params["PER_EPS"]
         )
@@ -202,7 +223,7 @@ class Agent(AbstractAgent):
                 action = self.select_action(state)
                 next_state, reward, done = self.step(action)
 
-                if len(self.memory) >= self.hyper_params["BATCH_SIZE"]:
+                if len(self.memory) >= self.hyper_params["UPDATE_START"]:
                     experiences = self.memory.sample(self.beta)
                     loss = self.update_model(experiences)
                     loss_episode.append(loss)  # for logging
