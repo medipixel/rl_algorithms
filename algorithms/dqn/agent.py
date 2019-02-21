@@ -67,7 +67,7 @@ class Agent(AbstractAgent):
         self.curr_state = np.zeros((1,))
         self.total_step = 0
         self.episode_step = 0
-        self.epsilon = self.hyper_params["MAX_EPSILON"] if not self.args.test else 0
+        self.epsilon = self.hyper_params["MAX_EPSILON"]
 
         # load the optimizer and model parameters
         if args.load_from is not None and os.path.exists(args.load_from):
