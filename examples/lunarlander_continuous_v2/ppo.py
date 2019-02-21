@@ -22,19 +22,18 @@ hyper_params = {
     "GAMMA": 0.99,
     "LAMBDA": 0.95,
     "EPSILON": 0.2,
-    "MIN_EPSILON": 0.01,
+    "MIN_EPSILON": 0.1,
     "EPSILON_DECAY_PERIOD": 1000,
     "W_VALUE": 0.5,
     "W_ENTROPY": 1e-3,
     "LR_ACTOR": 3e-4,
     "LR_CRITIC": 1e-3,
-    "EPOCH": 10,
-    "BATCH_SIZE": 64,
-    "ROLLOUT_LEN": 2048,
+    "EPOCH": 8,
+    "BATCH_SIZE": 16,
+    "ROLLOUT_LEN": 128,
     "GRADIENT_CLIP": 0.5,
     "WEIGHT_DECAY": 0,
-    "N_WORKERS": 8,
-    "N_TEST": 3,
+    "N_WORKERS": 16,
     "USE_CLIPPED_VALUE_LOSS": True,
     "STANDARDIZE_ADVANTAGE": True,
 }
@@ -51,9 +50,9 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
 
     """
     # create multiple envs
-    env_test = env
+    env_single = env
     env_gen = env_generator("LunarLanderContinuous-v2", args)
-    envs_train = make_envs(env_gen, n_envs=hyper_params["N_WORKERS"])
+    env_multi = make_envs(env_gen, n_envs=hyper_params["N_WORKERS"])
 
     # create models
     hidden_sizes_actor = [256, 256]
@@ -91,7 +90,7 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
     optims = (actor_optim, critic_optim)
 
     # create an agent
-    agent = Agent(env_test, envs_train, args, hyper_params, models, optims)
+    agent = Agent(env_single, env_multi, args, hyper_params, models, optims)
 
     # run
     if args.test:

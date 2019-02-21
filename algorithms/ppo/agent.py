@@ -27,13 +27,13 @@ class Agent(AbstractAgent):
     """PPO Agent.
 
     Attributes:
-        envs (SubprocVecEnv): Gym env with multiprocessing for training
+        env (gym.Env or SubprocVecEnv): Gym env with multiprocessing for training
         actor (nn.Module): policy gradient model to select actions
         critic (nn.Module): policy gradient model to predict values
         actor_optimizer (Optimizer): optimizer for training actor
         critic_optimizer (Optimizer): optimizer for training critic
         hyper_params (dict): hyper-parameters
-        episode_step (int): step number of the current episode
+        episode_steps (np.ndarray): step numbers of the current episode
         states (list): memory for experienced states
         actions (list): memory for experienced actions
         rewards (list): memory for experienced rewards
@@ -45,8 +45,8 @@ class Agent(AbstractAgent):
 
     def __init__(
         self,
-        env: gym.Env,  # for testing
-        envs: SubprocVecEnv,  # for training
+        env_single: gym.Env,  # for testing
+        env_multi: SubprocVecEnv,  # for training
         args: argparse.Namespace,
         hyper_params: dict,
         models: tuple,
@@ -55,22 +55,23 @@ class Agent(AbstractAgent):
         """Initialization.
 
         Args:
-            env (gym.Env): openAI Gym environment for testing
-            envs (SubprocVecEnv): Gym env with multiprocessing for training
+            env_single (gym.Env): openAI Gym environment for testing
+            env_multi (SubprocVecEnv): Gym env with multiprocessing for training
             args (argparse.Namespace): arguments including hyperparameters and training settings
             hyper_params (dict): hyper-parameters
             models (tuple): models including actor and critic
             optims (tuple): optimizers for actor and critic
 
         """
-        AbstractAgent.__init__(self, env, args)
+        AbstractAgent.__init__(self, env_single, args)
 
-        self.envs = envs
+        if not self.args.test:
+            self.env = env_multi
         self.actor, self.critic = models
         self.actor_optimizer, self.critic_optimizer = optims
         self.epsilon = hyper_params["EPSILON"]
         self.hyper_params = hyper_params
-        self.episode_step = 0
+        self.episode_steps = np.zeros(hyper_params["N_WORKERS"], dtype=np.int)
         self.states: list = []
         self.actions: list = []
         self.rewards: list = []
@@ -100,15 +101,17 @@ class Agent(AbstractAgent):
         return selected_action
 
     def step(self, action: torch.Tensor) -> Tuple[np.ndarray, np.float64, bool]:
-        self.episode_step += 1
+        self.episode_steps += 1
 
-        next_state, reward, done, _ = self.envs.step(action.detach().cpu().numpy())
+        next_state, reward, done, _ = self.env.step(action.detach().cpu().numpy())
 
         if not self.args.test:
             # if the last state is not a terminal state, store done as false
-            done_bool = (
-                False if self.episode_step == self.args.max_episode_steps else done
-            )
+            done_bool = done
+            done_bool[
+                np.where(self.episode_steps == self.args.max_episode_steps)
+            ] = False
+
             self.rewards.append(torch.FloatTensor(reward).unsqueeze(1).to(device))
             self.masks.append(torch.FloatTensor(1 - done_bool).unsqueeze(1).to(device))
 
@@ -249,22 +252,18 @@ class Agent(AbstractAgent):
         AbstractAgent.save_params(self, params, n_episode)
 
     def write_log(
-        self, i_episode: int, actor_loss: float, critic_loss: float, total_loss: float
+        self,
+        i_episode: int,
+        n_step: int,
+        score: int,
+        actor_loss: float,
+        critic_loss: float,
+        total_loss: float,
     ):
-        n_test = self.hyper_params["N_TEST"]
-        avg_step, avg_score = 0.0, 0.0
-
-        for _ in range(n_test):
-            step, score = self.run_test_env(
-                self.args.render and i_episode >= self.args.render_after
-            )
-            avg_step += step / n_test
-            avg_score += score / n_test
-
         print(
             "[INFO] episode %d\tepisode steps: %d\ttotal score: %d\n"
             "total loss: %f\tActor loss: %f\tCritic loss: %f\n"
-            % (i_episode, avg_step, avg_score, total_loss, actor_loss, critic_loss)
+            % (i_episode, n_step, score, total_loss, actor_loss, critic_loss)
         )
 
         if self.args.log:
@@ -273,33 +272,9 @@ class Agent(AbstractAgent):
                     "total loss": total_loss,
                     "actor loss": actor_loss,
                     "critic loss": critic_loss,
-                    "score": avg_score,
+                    "score": score,
                 }
             )
-
-    def run_test_env(self, render: bool) -> Tuple[int, int]:
-        """Run the agent on the test env for evaluation."""
-        state = self.env.reset()
-
-        done = False
-        score = 0
-        step = 0
-        while not done:
-            if render:
-                self.env.render()
-
-            action, dist = self.actor(torch.FloatTensor(state).to(device))
-
-            if not self.is_discrete:
-                action = dist.mean
-
-            next_state, reward, done, _ = self.env.step(action.detach().cpu().numpy())
-
-            state = next_state
-            score += reward
-            step += 1
-
-        return step, score
 
     def train(self):
         """Train the agent."""
@@ -309,51 +284,36 @@ class Agent(AbstractAgent):
             wandb.config.update(self.hyper_params)
             wandb.watch([self.actor, self.critic], log="parameters")
 
+        score = 0
         i_episode = 1
-        print_log = False
-        state = self.envs.reset()
+        loss = [0.0, 0.0, 0.0]
+        state = self.env.reset()
 
         while i_episode <= self.args.episode_num:
             for _ in range(self.hyper_params["ROLLOUT_LEN"]):
                 action = self.select_action(state)
-                next_state, _, done = self.step(action)
+                next_state, reward, done = self.step(action)
 
                 state = next_state
-                if done[0]:
-                    i_episode += 1
-                    print_log = True
-                    self.episode_step = 0
+                score += reward[0]
+                i_episode += done.sum()
 
+                if done[0]:
+                    n_step = self.episode_steps[0]
+                    self.write_log(
+                        i_episode, n_step, score, loss[0], loss[1], loss[2]
+                    )
                     if i_episode % self.args.save_period == 0:
                         self.save_params(i_episode)
+
+                    score = 0
+                    i_episode += 1
+
+                self.episode_steps[np.where(done)] = 0
 
             loss = self.update_model(next_state)
             self.decay_epsilon(i_episode)
 
-            if print_log:
-                self.write_log(i_episode, loss[0], loss[1], loss[2])
-                print_log = False
-
         # termination
-        self.envs.close()
         self.env.close()
         self.save_params(i_episode)
-
-    def test(self):
-        """Train the agent."""
-        # logger
-        if self.args.log:
-            wandb.init()
-
-        for i_episode in range(1, self.args.episode_num + 1):
-            step, score = self.run_test_env(
-                self.args.render and i_episode >= self.args.render_after
-            )
-
-            print(
-                "[INFO] episode %d\tstep: %d\ttotal score: %d"
-                % (i_episode, step, score)
-            )
-
-            if self.args.log:
-                wandb.log({"score": score})
