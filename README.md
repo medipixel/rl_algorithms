@@ -42,14 +42,26 @@ make dep
 If you want to train model with `DDPG` in `LunarLanderContinuous-v2` environment,
 ```
 python run_lunarlander_continuous_v2.py --algo ddpg
+``` 
+If you change **hyper parameters** any algorithms, check the [examples/<env-name> directory](https://github.com/medipixel/rl_algorithms/tree/master/examples). If `examples/<env-name>/<algorithm-name>` path exists, you can run
 ```
-If you check the other options to run file you should command `python run_lunarlander_continuous_v2.py -h`  
-If you change **hyper parameters** any algorithms, check the `examples/<env-name>/<algorithm-name>`.
+python <run-file> --algo <algorithm-name>
+```
 You can make new example python file(e.g. `ddpg-custom`), and you can run
 ```
-python run_lunarlander_continuous_v2.py --algo ddpg-custom
+python <run-file> --algo ddpg-custom
 ```
-You can see to run the algorithm with customized hyper parameters for that you want.
+You can see to run the algorithm with customized hyper parameters for that you want.  
+
+In addition, there are various argument settings for running algorithms. If you check the options to run file you should command 
+```
+python <run-file> -h
+```
+- `--save-period`
+- `--test`
+- `--load-from`
+- `--max-episode-step`
+- `--off-render`
 
 ### Development setup
 Describe how to install all development dependencies and how to run an automated check of python code.
@@ -68,4 +80,3 @@ make dev
 - HER: [M. Andrychowicz et al., Hindsight Experience Replay. arXiv preprint arXiv:1707.01495, 2017.](https://arxiv.org/pdf/1707.01495.pdf)
 - Behavior Cloning: [A. Nair et al., Overcoming Exploration in Reinforcement Learning with Demonstrations. arXiv preprint arXiv:1709.10089, 2017.](https://arxiv.org/pdf/1709.10089.pdf)
 - DDPGfD: [M. Vecerik et al., Leveraging Demonstrations for Deep Reinforcement Learning on Robotics Problems with Sparse Rewards. arXiv preprint arXiv:1707.08817, 2017](https://arxiv.org/pdf/1707.08817.pdf)
-# Reinforcement Learning by Examples
