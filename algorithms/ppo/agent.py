@@ -299,16 +299,14 @@ class Agent(AbstractAgent):
                 i_episode += done.sum()
 
                 if done[0]:
-                    if loss:
-                        n_step = self.episode_steps[0]
-                        self.write_log(
-                            i_episode, n_step, score, loss[0], loss[1], loss[2]
-                        )
+                    n_step = self.episode_steps[0]
+                    self.write_log(
+                        i_episode, n_step, score, loss[0], loss[1], loss[2]
+                    )
                     if i_episode % self.args.save_period == 0:
                         self.save_params(i_episode)
 
                     score = 0
-                    loss = None
                     i_episode += 1
 
                 self.episode_steps[np.where(done)] = 0
