@@ -5,7 +5,7 @@ box2d-py
 scipy
 typing
 cloudpickle
-skimage
+scikit-image
 wandb
 
 # mujoco
