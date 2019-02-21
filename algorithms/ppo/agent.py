@@ -27,7 +27,7 @@ class Agent(AbstractAgent):
     """PPO Agent.
 
     Attributes:
-        envs_train (SubprocVecEnv): Gym env with multiprocessing for training
+        env (gym.Env or SubprocVecEnv): Gym env with multiprocessing for training
         actor (nn.Module): policy gradient model to select actions
         critic (nn.Module): policy gradient model to predict values
         actor_optimizer (Optimizer): optimizer for training actor
