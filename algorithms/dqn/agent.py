@@ -96,17 +96,13 @@ class Agent(AbstractAgent):
         self.epsilon = max(
             self.epsilon - (max_epsilon - min_epsilon) * epsilon_decay, min_epsilon
         )
-        state = torch.FloatTensor(state).to(device)
 
         # epsilon greedy policy
-        if self.epsilon > np.random.random():  # random action
+        if not self.args.test and self.epsilon > np.random.random():  # random action
             return self.env.action_space.sample()
-
         else:
-            print(self.dqn(state))
+            state = torch.FloatTensor(state).to(device)
             selected_action = self.dqn(state).argmax()
-            print(selected_action)
-            input()
             return selected_action.detach().cpu().numpy()
 
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, np.float64, bool]:
@@ -129,20 +125,18 @@ class Agent(AbstractAgent):
         """Train the model after each episode."""
         states, actions, rewards, next_states, dones, weights, indexes = experiences
 
-        # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
-        #       = r                       otherwise
-        masks = 1 - dones
-
         q_values = self.dqn(states)
         next_q_values = self.dqn(next_states)
         next_target_q_values = self.dqn_target(next_states)
 
         curr_q_value = q_values.gather(1, actions.long().unsqueeze(1))
-        # next_q_value = next_target_q_values.max(1)[0].unsqueeze(1)
         next_q_value = next_target_q_values.gather(
             1, next_q_values.argmax(1).unsqueeze(1)
         )
 
+        # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
+        #       = r                       otherwise
+        masks = 1 - dones
         target = rewards + self.hyper_params["GAMMA"] * next_q_value * masks
         target = target.to(device)
 
@@ -151,9 +145,6 @@ class Agent(AbstractAgent):
         self.dqn_optimizer.zero_grad()
         loss.backward()
         self.dqn_optimizer.step()
-
-        # if self.hyper_params["UPDATE_TARGET"] % self.total_step == 0:
-        #     self.dqn_target.load_state_dict(self.dqn.state_dict())
 
         # update target networks
         tau = self.hyper_params["TAU"]
@@ -223,7 +214,7 @@ class Agent(AbstractAgent):
                 action = self.select_action(state)
                 next_state, reward, done = self.step(action)
 
-                if len(self.memory) >= self.hyper_params["UPDATE_START"]:
+                if len(self.memory) >= self.hyper_params["UPDATE_STARTS_FROM"]:
                     experiences = self.memory.sample(self.beta)
                     loss = self.update_model(experiences)
                     loss_episode.append(loss)  # for logging

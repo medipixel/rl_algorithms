@@ -1,18 +1,21 @@
 # -*- coding: utf-8 -*-
-"""Run module for DQN on LunarLander-v2.
+"""Run module for DQN on CarRacing-v0.
 
-- Author: Kh Kim
-- Contact: kh.kim@medipixel.io
+- Author: Curt Park
+- Contact: curt.park@medipixel.io
 """
 
 import argparse
 
 import gym
 import torch
+import torch.nn as nn
 import torch.optim as optim
 
+from algorithms.common.networks.cnn import CNN, CNNLayer
 from algorithms.common.networks.mlp import MLP
 from algorithms.dqn.agent import Agent
+from examples.car_racing_v0.wrappers import Continuous2Discrete, PreprocessedObservation
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -34,7 +37,7 @@ hyper_params = {
 }
 
 
-def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int):
+def run(env: gym.Env, args: argparse.Namespace, action_dim: int):
     """Run training or test.
 
     Args:
@@ -44,16 +47,38 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
         action_dim (int): dimension of actions
 
     """
-    hidden_sizes = [128, 64]
+    # configure environment so that it works for discrete actions
+    env = Continuous2Discrete(PreprocessedObservation(env))
+    action_dim = env.action_dim  # get discrete action dimension
 
-    # create model
-    dqn = MLP(
-        input_size=state_dim, output_size=action_dim, hidden_sizes=hidden_sizes
-    ).to(device)
+    # create a model
+    def get_cnn_model():
+        fc_hidden_sizes = [256, 256]
 
-    dqn_target = MLP(
-        input_size=state_dim, output_size=action_dim, hidden_sizes=hidden_sizes
-    ).to(device)
+        cnn_model = CNN(
+            cnn_layers=[
+                CNNLayer(
+                    input_size=1,
+                    output_size=8,
+                    kernel_size=7,
+                    stride=3,
+                    pulling_fn=nn.MaxPool2d(2, 2),
+                ),
+                CNNLayer(
+                    input_size=8,
+                    output_size=16,
+                    kernel_size=3,
+                    pulling_fn=nn.MaxPool2d(2, 2),
+                ),
+            ],
+            fc_layers=MLP(
+                input_size=576, output_size=action_dim, hidden_sizes=fc_hidden_sizes
+            ),
+        ).to(device)
+        return cnn_model
+
+    dqn = get_cnn_model()
+    dqn_target = get_cnn_model()
     dqn_target.load_state_dict(dqn.state_dict())
 
     # create optimizer
