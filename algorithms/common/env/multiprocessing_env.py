@@ -24,6 +24,8 @@ def worker(remote, parent_remote, env_fn_wrapper):
                 remote.send(ob)
             elif cmd == "render":
                 remote.send(env.render(mode="rgb_array"))
+            elif cmd == "sample":
+                remote.send(env.action_space.sample())
             elif cmd == "close":
                 remote.close()
                 break
@@ -244,6 +246,12 @@ class SubprocVecEnv(VecEnv):
         self._assert_not_closed()
         for remote in self.remotes:
             remote.send(("reset", None))
+        return np.stack([remote.recv() for remote in self.remotes])
+
+    def sample(self):
+        self._assert_not_closed()
+        for remote in self.remotes:
+            remote.send(("sample", None))
         return np.stack([remote.recv() for remote in self.remotes])
 
     def close_extras(self):
