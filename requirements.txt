@@ -6,6 +6,7 @@ scipy
 typing
 cloudpickle
 scikit-image
+opencv-python
 wandb
 
 # mujoco

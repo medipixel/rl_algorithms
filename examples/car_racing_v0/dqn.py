@@ -53,7 +53,7 @@ def run(env: gym.Env, args: argparse.Namespace, action_dim: int):
 
     # create a model
     def get_cnn_model():
-        fc_hidden_sizes = [256, 256]
+        fc_hidden_sizes = [256, 128]
 
         cnn_model = CNN(
             cnn_layers=[
@@ -72,7 +72,7 @@ def run(env: gym.Env, args: argparse.Namespace, action_dim: int):
                 ),
             ],
             fc_layers=MLP(
-                input_size=576, output_size=action_dim, hidden_sizes=fc_hidden_sizes
+                input_size=256, output_size=action_dim, hidden_sizes=fc_hidden_sizes
             ),
         ).to(device)
         return cnn_model
