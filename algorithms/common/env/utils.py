@@ -16,8 +16,8 @@ from algorithms.common.env.normalizers import ActionNormalizer
 
 
 def set_env(
-    env: gym.Env, args: argparse.Namespace, normalizers: List[gym.Wrapper] = None
-):
+    env: gym.Env, args: argparse.Namespace, env_wrappers: List[gym.Wrapper] = None
+) -> gym.Env:
     """Set environment according to user's config."""
     if args.max_episode_steps > 0:
         env._max_episode_steps = args.max_episode_steps
@@ -27,20 +27,22 @@ def set_env(
     if not isinstance(env.action_space, Discrete):
         env = ActionNormalizer(env)
 
-    if normalizers:
-        for normalizer in normalizers:
-            env = normalizer(env)
+    if env_wrappers:
+        for env_wrapper in env_wrappers:
+            env = env_wrapper(env)
+
+    return env
 
 
 def env_generator(
-    env_name: str, args: argparse.Namespace, normalizers: List[gym.Wrapper] = None
+    env_name: str, args: argparse.Namespace, env_wrappers: List[gym.Wrapper] = None
 ) -> Callable:
     """Return env creating function (with normalizers)."""
 
     def _thunk(rank: int):
         env = gym.make(env_name)
         env.seed(args.seed + rank + 1)
-        set_env(env, args, normalizers)
+        env = set_env(env, args, env_wrappers)
         return env
 
     return _thunk

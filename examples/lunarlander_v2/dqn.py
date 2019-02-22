@@ -11,6 +11,7 @@ import gym
 import torch
 import torch.optim as optim
 
+from algorithms.common.env.utils import env_generator, make_envs
 from algorithms.common.networks.mlp import MLP
 from algorithms.dqn.agent import Agent
 
@@ -30,7 +31,8 @@ hyper_params = {
     "PER_ALPHA": 0.5,
     "PER_BETA": 0.4,
     "PER_EPS": 1e-6,
-    "UPDATE_STARTS_FROM": 5000,
+    "UPDATE_STARTS_FROM": 0,
+    "N_WORKERS": 16,
 }
 
 
@@ -44,9 +46,14 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
         action_dim (int): dimension of actions
 
     """
-    hidden_sizes = [128, 64]
+    # create multiple envs
+    env_single = env
+    env_gen = env_generator("LunarLander-v2", args)
+    env_multi = make_envs(env_gen, n_envs=hyper_params["N_WORKERS"])
 
     # create model
+    hidden_sizes = [128, 64]
+
     dqn = MLP(
         input_size=state_dim, output_size=action_dim, hidden_sizes=hidden_sizes
     ).to(device)
@@ -67,7 +74,7 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
     models = (dqn, dqn_target)
 
     # create an agent
-    agent = Agent(env, args, hyper_params, models, dqn_optim)
+    agent = Agent(env_single, env_multi, args, hyper_params, models, dqn_optim)
 
     # run
     if args.test:

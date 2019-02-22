@@ -107,7 +107,7 @@ class Agent(AbstractAgent):
 
         if not self.args.test:
             # if the last state is not a terminal state, store done as false
-            done_bool = done
+            done_bool = done.copy()
             done_bool[
                 np.where(self.episode_steps == self.args.max_episode_steps)
             ] = False
@@ -285,27 +285,33 @@ class Agent(AbstractAgent):
             wandb.watch([self.actor, self.critic], log="parameters")
 
         score = 0
-        i_episode = 1
+        i_episode = 0
+        i_episode_prev = 0
         loss = [0.0, 0.0, 0.0]
         state = self.env.reset()
 
         while i_episode <= self.args.episode_num:
             for _ in range(self.hyper_params["ROLLOUT_LEN"]):
+                if self.args.render and i_episode >= self.args.render_after:
+                    self.env.render()
+
                 action = self.select_action(state)
                 next_state, reward, done = self.step(action)
 
                 state = next_state
                 score += reward[0]
+                i_episode_prev = i_episode
                 i_episode += done.sum()
+
+                if (i_episode // self.args.save_period) != (
+                    i_episode_prev // self.args.save_period
+                ):
+                    self.save_params(i_episode)
 
                 if done[0]:
                     n_step = self.episode_steps[0]
                     self.write_log(i_episode, n_step, score, loss[0], loss[1], loss[2])
-                    if i_episode % self.args.save_period == 0:
-                        self.save_params(i_episode)
-
                     score = 0
-                    i_episode += 1
 
                 self.episode_steps[np.where(done)] = 0
 
