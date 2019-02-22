@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Train or test baselines on LunarLanderContinuous-v2.
+"""Train or test algorithms on LunarLanderContinuous-v2.
 
 - Author: Curt Park
 - Contact: curt.park@medipixel.io
@@ -10,10 +10,11 @@ import importlib
 
 import gym
 
+import algorithms.common.env.utils as env_utils
 import algorithms.common.helper_functions as common_utils
 
 # configurations
-parser = argparse.ArgumentParser(description="Pytorch RL baselines")
+parser = argparse.ArgumentParser(description="Pytorch RL algorithms")
 parser.add_argument(
     "--seed", type=int, default=777, help="random seed for reproducibility"
 )
@@ -57,6 +58,7 @@ def main():
     """Main."""
     # env initialization
     env = gym.make("LunarLanderContinuous-v2")
+    env_utils.set_env(env, args)
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.shape[0]
 

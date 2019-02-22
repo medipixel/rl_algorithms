@@ -61,7 +61,7 @@ class ReplayBuffer:
         self
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """Randomly sample a batch of experiences from memory."""
-        idxs = np.random.randint(0, len(self.buffer), size=self.batch_size)
+        idxs = np.random.choice(len(self.buffer), size=self.batch_size, replace=False)
 
         states, actions, rewards, next_states, dones = [], [], [], [], []
 

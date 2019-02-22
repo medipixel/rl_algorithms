@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-"""Train or test algorithms on Reacher-v2 of Mujoco.
+"""Train or test algorithms on LunarLander-v2.
 
-- Author: Kh Kim
-- Contact: kh.kim@medipixel.io
+- Author: Curt Park
+- Contact: curt.park@medipixel.io
 """
 
 import argparse
@@ -18,7 +18,7 @@ parser = argparse.ArgumentParser(description="Pytorch RL algorithms")
 parser.add_argument(
     "--seed", type=int, default=777, help="random seed for reproducibility"
 )
-parser.add_argument("--algo", type=str, default="sac", help="choose an algorithm")
+parser.add_argument("--algo", type=str, default="dqn", help="choose an algorithm")
 parser.add_argument(
     "--test", dest="test", action="store_true", help="test mode (no training)"
 )
@@ -35,16 +35,10 @@ parser.add_argument(
     help="start rendering after the input number of episode",
 )
 parser.add_argument("--log", dest="log", action="store_true", help="turn on logging")
-parser.add_argument("--save-period", type=int, default=200, help="save model period")
-parser.add_argument("--episode-num", type=int, default=20000, help="total episode num")
+parser.add_argument("--save-period", type=int, default=100, help="save model period")
+parser.add_argument("--episode-num", type=int, default=1500, help="total episode num")
 parser.add_argument(
-    "--max-episode-steps", type=int, default=-1, help="max episode step"
-)
-parser.add_argument(
-    "--demo-path",
-    type=str,
-    default="data/lunarlander_continuous_demo.pkl",
-    help="demonstration path",
+    "--max-episode-steps", type=int, default=300, help="max episode step"
 )
 
 parser.set_defaults(test=False)
@@ -57,16 +51,16 @@ args = parser.parse_args()
 def main():
     """Main."""
     # env initialization
-    env = gym.make("Reacher-v2")
+    env = gym.make("LunarLander-v2")
     env_utils.set_env(env, args)
     state_dim = env.observation_space.shape[0]
-    action_dim = env.action_space.shape[0]
+    action_dim = env.action_space.n  # 0: none 1: left 2: engine 3: right
 
     # set a random seed
     common_utils.set_random_seed(args.seed, env)
 
     # run
-    module_path = "examples.reacher-v2." + args.algo
+    module_path = "examples.lunarlander_v2." + args.algo
     example = importlib.import_module(module_path)
     example.run(env, args, state_dim, action_dim)
 
