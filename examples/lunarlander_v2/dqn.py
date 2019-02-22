@@ -31,7 +31,7 @@ hyper_params = {
     "PER_ALPHA": 0.5,
     "PER_BETA": 0.4,
     "PER_EPS": 1e-6,
-    "UPDATE_STARTS_FROM": 0,
+    "UPDATE_STARTS_FROM": int(1e4),
     "N_WORKERS": 16,
 }
 
