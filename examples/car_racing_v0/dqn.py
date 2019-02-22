@@ -12,6 +12,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+from algorithms.common.env.utils import env_generator, make_envs
 from algorithms.common.networks.cnn import CNN, CNNLayer
 from algorithms.common.networks.mlp import MLP
 from algorithms.dqn.agent import Agent
@@ -33,7 +34,8 @@ hyper_params = {
     "PER_ALPHA": 0.5,
     "PER_BETA": 0.4,
     "PER_EPS": 1e-6,
-    "UPDATE_STARTS_FROM": 5000,
+    "UPDATE_STARTS_FROM": 1000,
+    "N_WORKERS": 16,
 }
 
 
@@ -47,9 +49,14 @@ def run(env: gym.Env, args: argparse.Namespace, action_dim: int):
         action_dim (int): dimension of actions
 
     """
+    # create multiple envs
     # configure environment so that it works for discrete actions
-    env = Continuous2Discrete(PreprocessedObservation(env))
-    action_dim = env.action_dim  # get discrete action dimension
+    env_single = Continuous2Discrete(PreprocessedObservation(env))
+    env_wrappers = [PreprocessedObservation, Continuous2Discrete]
+    env_gen = env_generator("CarRacing-v0", args, env_wrappers)
+    env_multi = make_envs(env_gen, n_envs=hyper_params["N_WORKERS"])
+
+    action_dim = env_single.action_dim  # get discrete action dimension
 
     # create a model
     def get_cnn_model():
@@ -92,7 +99,7 @@ def run(env: gym.Env, args: argparse.Namespace, action_dim: int):
     models = (dqn, dqn_target)
 
     # create an agent
-    agent = Agent(env, args, hyper_params, models, dqn_optim)
+    agent = Agent(env_single, env_multi, args, hyper_params, models, dqn_optim)
 
     # run
     if args.test:
