@@ -5,7 +5,10 @@
 
 RL key algorithms with [LunarLanderContinuous-v2](https://gym.openai.com/envs/LunarLanderContinuous-v2/) and [Reacher-v2](https://gym.openai.com/envs/Reacher-v2/).
 
-![lunarlander](https://user-images.githubusercontent.com/17582508/52840582-18c76e80-313d-11e9-9752-3d6138f39a15.gif)
+<img src="https://user-images.githubusercontent.com/17582508/52840582-18c76e80-313d-11e9-9752-3d6138f39a15.gif" width="1000"/>
+[BC agent in LunarLanderContinuous-v2]
+<img src="https://media.giphy.com/media/1mikGEln2lArKMQ6Pt/giphy.gif" width="1000"/>
+[SAC agent in Reacher-v2]
 
 ## Contents
 
@@ -53,21 +56,42 @@ python <run-file> --algo ddpg-custom
 ```
 You can see to run the algorithm with customized hyper parameters for that you want.  
 
+### Argument for run file
+
 In addition, there are various argument settings for running algorithms. If you check the options to run file you should command 
 ```
 python <run-file> -h
 ```
-- `--save-period`
 - `--test`
-- `--load-from`
-- `--max-episode-step`
+    - Set test mode (no training).
 - `--off-render`
+    - Turn off rendering.
+- `--log`
+    - Turn on logging using [WanDB](https://www.wandb.com/).
+- `--seed <int>`
+    - Set random seed.
+- `--save-period <int>`
+    - Set period of save model.
+- `--max-episode-steps <int>`
+    - Set max episode steps of the environment. If input is number under 1, set default max steps of the environment.
+- `--episode-num <int>`
+    - Set number of episode for training.
+- `--render-after <int>`
+    - Start rendering after the input number of steps.
+- `--load-from <save-file-path>`
+    - Load the saved model and optimizer at the beginning. When testing a specific saved model that you want, use this argument.
+- `--demo-path <demo-file-path(.pkl)>`
+    - Set demonstration path for algorithm using demonstration such as Behavior cloning.
 
 ### Development setup
 Describe how to install all development dependencies and how to run an automated check of python code.
 ```
 make dev
 ```
+
+### Wandb log
+We use [WanDB](https://www.wandb.com/) to log network parameters and other variables. You should read a [wandb manual](https://docs.wandb.com/docs/started.html) if you want to log.
+
 
 ## References
 - DDPG: [T. P. Lillicrap et al., Continuous control with deep reinforcement learning. arXiv preprint arXiv:1509.02971, 2015.](https://arxiv.org/pdf/1509.02971.pdf)
