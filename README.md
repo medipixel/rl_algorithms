@@ -5,10 +5,9 @@
 
 RL key algorithms with [LunarLanderContinuous-v2](https://gym.openai.com/envs/LunarLanderContinuous-v2/) and [Reacher-v2](https://gym.openai.com/envs/Reacher-v2/).
 
-<img src="https://user-images.githubusercontent.com/17582508/52840582-18c76e80-313d-11e9-9752-3d6138f39a15.gif" width="1000"/>
-[BC agent in LunarLanderContinuous-v2]
-<img src="https://media.giphy.com/media/1mikGEln2lArKMQ6Pt/giphy.gif" width="1000"/>
-[SAC agent in Reacher-v2]
+|<img src="https://user-images.githubusercontent.com/17582508/52840582-18c76e80-313d-11e9-9752-3d6138f39a15.gif" width="400"/>|<img src="https://media.giphy.com/media/1mikGEln2lArKMQ6Pt/giphy.gif" width="400"/>|
+|---|---|
+|BC agent in LunarLanderContinuous-v2|SAC agent in Reacher-v2|
 
 ## Contents
 
