@@ -84,7 +84,7 @@ python run_env_name.py --algo ddpg-custom
 ```
 You will see the agent run with hyper parameter and model settings you configured.
 
-### Argument for run file
+### Arguments for run-files
 
 In addition, there are various argument settings for running algorithms. If you check the options to run file you should command 
 ```

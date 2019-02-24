@@ -135,17 +135,19 @@ class Agent(AbstractAgent):
         next_target_q_values = self.dqn_target(next_states)
 
         curr_q_value = q_values.gather(1, actions.long().unsqueeze(1))
-        next_q_value = next_target_q_values.gather(
+        next_q_value = next_target_q_values.gather(  # Double DQN
             1, next_q_values.argmax(1).unsqueeze(1)
         )
 
         # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
         #       = r                       otherwise
         masks = 1 - dones
+
         target = rewards + self.hyper_params["GAMMA"] * next_q_value * masks
         target = target.to(device)
 
         loss = torch.mean((target - curr_q_value).pow(2) * weights)
+        loss += torch.norm(q_values, 2).mean() * 1e-7  # regularization
 
         self.dqn_optimizer.zero_grad()
         loss.backward()
