@@ -29,7 +29,7 @@ hyper_params = {
     "W_ENTROPY": 1e-3,
     "LR_ACTOR": 3e-4,
     "LR_CRITIC": 1e-3,
-    "EPOCH": 12,
+    "EPOCH": 16,
     "BATCH_SIZE": 32,
     "ROLLOUT_LEN": 256,
     "GRADIENT_CLIP": 0.6,
