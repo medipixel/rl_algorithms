@@ -21,16 +21,15 @@ We are warmly welcoming external contributors! :)
 
 ## Contents
 
-1. [REINFORCE](https://github.com/medipixel/rl_algorithms/blob/master/algorithms/reinforce)
-2. [Advantage Actor-Critic (A2C)](https://github.com/medipixel/rl_algorithms/blob/master/algorithms/a2c)
-3. [Deep Deterministic Policy Gradient (DDPG)](https://github.com/medipixel/rl_algorithms/blob/master/algorithms/ddpg)
-4. [Proximal Policy Optimization Algorithms (PPO)](https://github.com/medipixel/rl_algorithms/blob/master/algorithms/ppo)
-5. [Twin Delayed Deep Deterministic Policy Gradient Algorithm (TD3)](https://github.com/medipixel/rl_algorithms/blob/master/algorithms/td3)
-6. [Soft Actor Critic Algorithm (SAC)](https://github.com/medipixel/rl_algorithms/blob/master/algorithms/sac/agent.py)
-7. [Behaviour Cloning (BC with DDPG)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/bc)
-8. [Prioritized Experience Replay (PER with DDPG)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/per)
-9. [From Demonstrations (DDPGfD, SACfD)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/fd)
-10. [Deep Q-Network (DDQN)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/dqn)
+1. [Advantage Actor-Critic (A2C)](https://github.com/medipixel/rl_algorithms/blob/master/algorithms/a2c)
+2. [Deep Deterministic Policy Gradient (DDPG)](https://github.com/medipixel/rl_algorithms/blob/master/algorithms/ddpg)
+3. [Proximal Policy Optimization Algorithms (PPO)](https://github.com/medipixel/rl_algorithms/blob/master/algorithms/ppo)
+4. [Twin Delayed Deep Deterministic Policy Gradient Algorithm (TD3)](https://github.com/medipixel/rl_algorithms/blob/master/algorithms/td3)
+5. [Soft Actor Critic Algorithm (SAC)](https://github.com/medipixel/rl_algorithms/blob/master/algorithms/sac/agent.py)
+6. [Behaviour Cloning (BC with DDPG)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/bc)
+7. [Prioritized Experience Replay (PER with DDPG)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/per)
+8. [From Demonstrations (DDPGfD, SACfD)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/fd)
+9. [Deep Q-Network (DDQN)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/dqn)
 
 ## Getting started
 We have tested each algorithm on some of the following environments.
