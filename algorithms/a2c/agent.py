@@ -12,6 +12,7 @@ from typing import Tuple
 import gym
 import numpy as np
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 import wandb
 
@@ -30,6 +31,8 @@ class Agent(AbstractAgent):
         actor_optimizer (Optimizer): optimizer for actor
         critic_optimizer (Optimizer): optimizer for critic
         optimizer (Optimizer): optimizer for training
+        episode_step (int): step number of the current episode
+        transition (list): recent transition information
 
     """
 
@@ -58,6 +61,8 @@ class Agent(AbstractAgent):
         self.hyper_params = hyper_params
         self.log_prob = torch.zeros((1,))
         self.predicted_value = torch.zeros((1,))
+        self.transition: list = list()
+        self.episode_step = 0
 
         if args.load_from is not None and os.path.exists(args.load_from):
             self.load_params(args.load_from)
@@ -67,24 +72,34 @@ class Agent(AbstractAgent):
         state = torch.FloatTensor(state).to(device)
 
         selected_action, dist = self.actor(state)
-        predicted_value = self.critic(state)
 
-        self.log_prob = dist.log_prob(selected_action).sum(dim=-1)
-        self.predicted_value = predicted_value
+        if self.args.test:
+            selected_action = dist.mean
+        else:
+            predicted_value = self.critic(state)
+            log_prob = dist.log_prob(selected_action).sum(dim=-1)
+            self.transition = []
+            self.transition.extend([log_prob, predicted_value])
 
         return selected_action
 
     def step(self, action: torch.Tensor) -> Tuple[np.ndarray, np.float64, bool]:
         """Take an action and return the response of the env."""
+        self.episode_step += 1
+
         action = action.detach().cpu().numpy()
         next_state, reward, done, _ = self.env.step(action)
 
+        if not self.args.test:
+            done_bool = done
+            if self.episode_step == self.args.max_episode_steps:
+                done_bool = False
+            self.transition.extend([next_state, reward, done_bool])
+
         return next_state, reward, done
 
-    def update_model(
-        self, experience: Tuple[torch.Tensor, torch.Tensor, torch.Tensor]
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
-        reward, next_state, done = experience
+    def update_model(self) -> Tuple[torch.Tensor, torch.Tensor]:
+        log_prob, pred_value, next_state, reward, done = self.transition
         next_state = torch.FloatTensor(next_state).to(device)
 
         # Q_t   = r + gamma * V(s_{t+1})  if state != Terminal
@@ -95,19 +110,26 @@ class Agent(AbstractAgent):
         q_value = q_value.to(device)
 
         # advantage = Q_t - V(s_t)
-        advantage = q_value - self.predicted_value
+        advantage = q_value - pred_value
 
         # calculate loss at the current step
-        policy_loss = -advantage.detach() * self.log_prob  # adv. is not backpropagated
-        value_loss = F.mse_loss(self.predicted_value, q_value.detach())
+        policy_loss = -advantage.detach() * log_prob  # adv. is not backpropagated
+        policy_loss += self.hyper_params["W_ENTROPY"] * -log_prob  # entropy
+        value_loss = F.smooth_l1_loss(pred_value, q_value.detach())
 
         # train
         self.actor_optimizer.zero_grad()
         policy_loss.backward()
+        nn.utils.clip_grad_norm_(
+            self.actor.parameters(), self.hyper_params["GRADIENT_CLIP_AC"]
+        )
         self.actor_optimizer.step()
 
         self.critic_optimizer.zero_grad()
         value_loss.backward()
+        nn.utils.clip_grad_norm_(
+            self.critic.parameters(), self.hyper_params["GRADIENT_CLIP_CR"]
+        )
         self.critic_optimizer.step()
 
         return policy_loss.data, value_loss.data
@@ -140,9 +162,9 @@ class Agent(AbstractAgent):
         total_loss = policy_loss + value_loss
 
         print(
-            "[INFO] episode %d\ttotal score: %d\ttotal loss: %f\n"
-            "policy loss: %f\tvalue loss: %f\n"
-            % (i, score, total_loss, policy_loss, value_loss)
+            "[INFO] episode %d\tepisode step: %d\ttotal score: %d\n"
+            "total loss: %.4f\tpolicy loss: %.4f\tvalue loss: %.4f\n"
+            % (i, self.episode_step, score, total_loss, policy_loss, value_loss)
         )
 
         if self.args.log:
@@ -169,6 +191,7 @@ class Agent(AbstractAgent):
             score = 0
             policy_loss_episode = list()
             value_loss_episode = list()
+            self.episode_step = 0
 
             while not done:
                 if self.args.render and i_episode >= self.args.render_after:
@@ -176,8 +199,8 @@ class Agent(AbstractAgent):
 
                 action = self.select_action(state)
                 next_state, reward, done = self.step(action)
+                policy_loss, value_loss = self.update_model()
 
-                policy_loss, value_loss = self.update_model((reward, next_state, done))
                 policy_loss_episode.append(policy_loss)
                 value_loss_episode.append(value_loss)
 
