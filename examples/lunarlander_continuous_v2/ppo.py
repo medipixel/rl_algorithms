@@ -6,6 +6,7 @@
 """
 
 import argparse
+import multiprocessing
 
 import gym
 import torch
@@ -23,7 +24,7 @@ hyper_params = {
     "LAMBDA": 0.95,
     "EPSILON": 0.2,
     "MIN_EPSILON": 0.2,
-    "EPSILON_DECAY_PERIOD": 1000,
+    "EPSILON_DECAY_PERIOD": 1500,
     "W_VALUE": 0.5,
     "W_ENTROPY": 1e-3,
     "LR_ACTOR": 3e-4,
@@ -31,9 +32,9 @@ hyper_params = {
     "EPOCH": 16,
     "BATCH_SIZE": 32,
     "ROLLOUT_LEN": 256,
-    "GRADIENT_CLIP": 0.5,
+    "GRADIENT_CLIP": 0.6,
     "WEIGHT_DECAY": 0,
-    "N_WORKERS": 16,
+    "N_WORKERS": multiprocessing.cpu_count(),
     "USE_CLIPPED_VALUE_LOSS": True,
     "STANDARDIZE_ADVANTAGE": True,
 }
