@@ -193,7 +193,7 @@ class Agent(AbstractAgent):
             self.critic_optimizer.zero_grad()
             total_loss.backward(retain_graph=True)
             nn.utils.clip_grad_norm_(
-                self.critic.parameters(), self.hyper_params["GRADIENT_CLIP"]
+                self.critic.parameters(), self.hyper_params["GRADIENT_CLIP_AC"]
             )
             self.critic_optimizer.step()
 
@@ -201,7 +201,7 @@ class Agent(AbstractAgent):
             self.actor_optimizer.zero_grad()
             total_loss.backward()
             nn.utils.clip_grad_norm_(
-                self.critic.parameters(), self.hyper_params["GRADIENT_CLIP"]
+                self.critic.parameters(), self.hyper_params["GRADIENT_CLIP_CR"]
             )
             self.actor_optimizer.step()
 

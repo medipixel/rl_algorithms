@@ -21,7 +21,8 @@ hyper_params = {
     "GAMMA": 0.99,
     "LR_ACTOR": 3e-4,
     "LR_CRITIC": 1e-3,
-    "GRADIENT_CLIP": 1.0,
+    "GRADIENT_CLIP_AC": 0.5,
+    "GRADIENT_CLIP_CR": 0.75,
     "W_ENTROPY": 0,
     "WEIGHT_DECAY": 0,
 }

@@ -121,14 +121,14 @@ class Agent(AbstractAgent):
         self.actor_optimizer.zero_grad()
         policy_loss.backward()
         nn.utils.clip_grad_norm_(
-            self.actor.parameters(), self.hyper_params["GRADIENT_CLIP"]
+            self.actor.parameters(), self.hyper_params["GRADIENT_CLIP_AC"]
         )
         self.actor_optimizer.step()
 
         self.critic_optimizer.zero_grad()
         value_loss.backward()
         nn.utils.clip_grad_norm_(
-            self.critic.parameters(), self.hyper_params["GRADIENT_CLIP"]
+            self.critic.parameters(), self.hyper_params["GRADIENT_CLIP_CR"]
         )
         self.critic_optimizer.step()
 
