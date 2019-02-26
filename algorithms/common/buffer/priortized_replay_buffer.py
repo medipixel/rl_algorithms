@@ -31,7 +31,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         tree_idx (int): next index of tree
         sum_tree (SumSegmentTree): sum tree for prior
         min_tree (MinSegmentTree): min tree for min prior to get max weight
-        init_priority (float): lower bound of priority
+        _max_priority (float): max priority
 
         """
 
@@ -57,7 +57,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
 
         self.sum_tree = SumSegmentTree(tree_capacity)
         self.min_tree = MinSegmentTree(tree_capacity)
-        self.init_priority = 1.0
+        self._max_priority = 1.0
 
     def add(
         self,
@@ -72,8 +72,8 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         self.tree_idx = (self.tree_idx + 1) % self.buffer_size
         super().add(state, action, reward, next_state, done)
 
-        self.sum_tree[idx] = self.init_priority ** self.alpha
-        self.min_tree[idx] = self.init_priority ** self.alpha
+        self.sum_tree[idx] = self._max_priority ** self.alpha
+        self.min_tree[idx] = self._max_priority ** self.alpha
 
     def _sample_proportional(self, batch_size: int) -> list:
         """Sample indices based on proportional."""
@@ -134,7 +134,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             self.sum_tree[idx] = priority ** self.alpha
             self.min_tree[idx] = priority ** self.alpha
 
-            self.init_priority = max(self.init_priority, priority)
+            self._max_priority = max(self._max_priority, priority)
 
 
 class PrioritizedReplayBufferfD(ReplayBuffer):
@@ -154,7 +154,7 @@ class PrioritizedReplayBufferfD(ReplayBuffer):
         tree_idx (int): next index of tree
         sum_tree (SumSegmentTree): sum tree for prior
         min_tree (MinSegmentTree): min tree for min prior to get max weight
-        init_priority (float): lower bound of priority
+        _max_priority (float): max priority
 
         """
 
@@ -194,12 +194,12 @@ class PrioritizedReplayBufferfD(ReplayBuffer):
 
         self.sum_tree = SumSegmentTree(tree_capacity)
         self.min_tree = MinSegmentTree(tree_capacity)
-        self.init_priority = 1.0
+        self._max_priority = 1.0
 
         # for init priority of demo
         for _ in range(self.demo_size):
-            self.sum_tree[self.tree_idx] = self.init_priority ** self.alpha
-            self.min_tree[self.tree_idx] = self.init_priority ** self.alpha
+            self.sum_tree[self.tree_idx] = self._max_priority ** self.alpha
+            self.min_tree[self.tree_idx] = self._max_priority ** self.alpha
             self.tree_idx += 1
 
     def add(
@@ -219,8 +219,8 @@ class PrioritizedReplayBufferfD(ReplayBuffer):
             self.tree_idx = self.tree_idx + 1
         super().add(state, action, reward, next_state, done)
 
-        self.sum_tree[idx] = self.init_priority ** self.alpha
-        self.min_tree[idx] = self.init_priority ** self.alpha
+        self.sum_tree[idx] = self._max_priority ** self.alpha
+        self.min_tree[idx] = self._max_priority ** self.alpha
 
         # update current total size
         self.total_size = self.demo_size + len(self.buffer)
@@ -302,7 +302,7 @@ class PrioritizedReplayBufferfD(ReplayBuffer):
             self.sum_tree[idx] = priority ** self.alpha
             self.min_tree[idx] = priority ** self.alpha
 
-            self.init_priority = max(self.init_priority, priority)
+            self._max_priority = max(self._max_priority, priority)
 
     def __len__(self) -> int:
         """Return the current size of internal memory."""

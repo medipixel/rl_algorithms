@@ -6,6 +6,7 @@
 """
 
 import argparse
+import multiprocessing
 
 import gym
 import torch
@@ -19,14 +20,16 @@ from algorithms.dqn.agent import Agent
 from examples.car_racing_v0.wrappers import Continuous2Discrete, PreprocessedObservation
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+n_cpu = multiprocessing.cpu_count()
 
 # hyper parameters
 hyper_params = {
-    "GAMMA": 0.999,
+    "GAMMA": 0.99,
     "TAU": 5e-3,
-    "BUFFER_SIZE": int(1e5),
-    "BATCH_SIZE": 32,
-    "LR_DQN": 1e-5,
+    "W_Q_REG": 1e-7,
+    "BUFFER_SIZE": int(4e5),
+    "BATCH_SIZE": 128,
+    "LR_DQN": 1e-3,
     "WEIGHT_DECAY": 1e-6,
     "MAX_EPSILON": 1.0,
     "MIN_EPSILON": 0.01,
@@ -34,8 +37,9 @@ hyper_params = {
     "PER_ALPHA": 0.5,
     "PER_BETA": 0.4,
     "PER_EPS": 1e-6,
-    "UPDATE_STARTS_FROM": 1000,
-    "N_WORKERS": 16,
+    "UPDATE_STARTS_FROM": int(1e4),
+    "MULTIPLE_LEARN": n_cpu // 2 if n_cpu >= 2 else 1,
+    "N_WORKERS": n_cpu,
 }
 
 
@@ -60,7 +64,7 @@ def run(env: gym.Env, args: argparse.Namespace, action_dim: int):
 
     # create a model
     def get_cnn_model():
-        fc_hidden_sizes = [256, 128]
+        fc_hidden_sizes = [256, 256]
 
         cnn_model = CNN(
             cnn_layers=[
@@ -79,7 +83,7 @@ def run(env: gym.Env, args: argparse.Namespace, action_dim: int):
                 ),
             ],
             fc_layers=MLP(
-                input_size=256, output_size=action_dim, hidden_sizes=fc_hidden_sizes
+                input_size=576, output_size=action_dim, hidden_sizes=fc_hidden_sizes
             ),
         ).to(device)
         return cnn_model

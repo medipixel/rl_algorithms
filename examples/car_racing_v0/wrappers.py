@@ -6,6 +6,7 @@
 """
 
 import itertools as it
+from typing import Union
 
 import gym
 import numpy as np
@@ -27,9 +28,9 @@ class Continuous2Discrete(gym.ActionWrapper):
 
         super(Continuous2Discrete, self).__init__(env)
 
-    def action(self, idx: int) -> np.ndarray:
+    def action(self, idx: Union[np.int64, np.ndarray]) -> np.ndarray:
         """Change discrete actions to continuous."""
-        return self.all_actions[idx]
+        return self.all_actions[idx].squeeze()
 
     def reverse_action(self, action: np.ndarray) -> np.ndarray:
         """Change continuous actions to discrete."""
