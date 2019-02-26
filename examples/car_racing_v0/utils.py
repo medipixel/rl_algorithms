@@ -11,6 +11,8 @@ import numpy as np
 
 def process_image(obs: np.ndarray):
     """Preprocessing function."""
-    gray_obs = 2 * cv2.cvtColor(obs, cv2.COLOR_RGB2GRAY) - 1.0
-    gray_obs_resized = cv2.resize(gray_obs, dsize=(64, 64))
-    return gray_obs_resized.reshape(-1, 64, 64)
+    gray_obs = cv2.cvtColor(obs, cv2.COLOR_BGR2GRAY)
+    mean, std = cv2.meanStdDev(gray_obs)
+    std_obs = (gray_obs - mean) / (std + 1e-7)
+    std_obs = np.expand_dims(std_obs, axis=0)
+    return std_obs

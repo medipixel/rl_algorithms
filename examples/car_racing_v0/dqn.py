@@ -27,8 +27,8 @@ hyper_params = {
     "GAMMA": 0.99,
     "TAU": 5e-3,
     "W_Q_REG": 1e-7,
-    "BUFFER_SIZE": int(1e5),
-    "BATCH_SIZE": 64,
+    "BUFFER_SIZE": int(4e5),
+    "BATCH_SIZE": 128,
     "LR_DQN": 1e-3,
     "WEIGHT_DECAY": 1e-6,
     "MAX_EPSILON": 1.0,
@@ -64,7 +64,7 @@ def run(env: gym.Env, args: argparse.Namespace, action_dim: int):
 
     # create a model
     def get_cnn_model():
-        fc_hidden_sizes = [256, 128]
+        fc_hidden_sizes = [256, 256]
 
         cnn_model = CNN(
             cnn_layers=[
@@ -83,7 +83,7 @@ def run(env: gym.Env, args: argparse.Namespace, action_dim: int):
                 ),
             ],
             fc_layers=MLP(
-                input_size=256, output_size=action_dim, hidden_sizes=fc_hidden_sizes
+                input_size=576, output_size=action_dim, hidden_sizes=fc_hidden_sizes
             ),
         ).to(device)
         return cnn_model
