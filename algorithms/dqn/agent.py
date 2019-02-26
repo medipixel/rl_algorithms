@@ -98,7 +98,6 @@ class Agent(AbstractAgent):
             state = torch.FloatTensor(state).to(device)
             selected_action = self.dqn(state).argmax(dim=-1)
             selected_action = selected_action.detach().cpu().numpy()
-
         return selected_action
 
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, np.float64, bool]:
