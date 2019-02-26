@@ -6,6 +6,7 @@
 """
 
 import argparse
+import multiprocessing
 
 import gym
 import torch
@@ -19,23 +20,26 @@ from algorithms.dqn.agent import Agent
 from examples.car_racing_v0.wrappers import Continuous2Discrete, PreprocessedObservation
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+n_cpu = multiprocessing.cpu_count()
 
 # hyper parameters
 hyper_params = {
-    "GAMMA": 0.999,
+    "GAMMA": 0.99,
     "TAU": 5e-3,
+    "W_Q_REG": 1e-7,
     "BUFFER_SIZE": int(1e5),
-    "BATCH_SIZE": 32,
-    "LR_DQN": 1e-5,
+    "BATCH_SIZE": 128,
+    "LR_DQN": 1e-3,
     "WEIGHT_DECAY": 1e-6,
     "MAX_EPSILON": 1.0,
     "MIN_EPSILON": 0.01,
-    "EPSILON_DECAY": 1e-5,
+    "EPSILON_DECAY": 1e-4,
     "PER_ALPHA": 0.5,
     "PER_BETA": 0.4,
     "PER_EPS": 1e-6,
-    "UPDATE_STARTS_FROM": 1000,
-    "N_WORKERS": 16,
+    "UPDATE_STARTS_FROM": 10000,
+    "MULTIPLE_LEARN": n_cpu // 2 if n_cpu >= 2 else 1,
+    "N_WORKERS": n_cpu,
 }
 
 

@@ -147,7 +147,7 @@ class Agent(AbstractAgent):
         target = target.to(device)
 
         loss = torch.mean((target - curr_q_value).pow(2) * weights)
-        loss += torch.norm(q_values, 2).mean() * 1e-7  # regularization
+        loss += torch.norm(q_values, 2).mean() * self.hyper_params["W_Q_REG"]
 
         self.dqn_optimizer.zero_grad()
         loss.backward()
@@ -163,16 +163,6 @@ class Agent(AbstractAgent):
             new_priorities.data.cpu().numpy() + self.hyper_params["PER_EPS"]
         )
         self.memory.update_priorities(indexes, new_priorities)
-
-        # decrease epsilon
-        max_epsilon, min_epsilon, epsilon_decay = (
-            self.hyper_params["MAX_EPSILON"],
-            self.hyper_params["MIN_EPSILON"],
-            self.hyper_params["EPSILON_DECAY"],
-        )
-        self.epsilon = max(
-            self.epsilon - (max_epsilon - min_epsilon) * epsilon_decay, min_epsilon
-        )
 
         return loss.data
 
@@ -257,9 +247,21 @@ class Agent(AbstractAgent):
             self.episode_steps[np.where(done)] = 0
 
             if len(self.memory) >= self.hyper_params["UPDATE_STARTS_FROM"]:
-                experiences = self.memory.sample(self.beta)
-                loss = self.update_model(experiences)
-                losses.append(loss)  # for logging
+                for _ in range(self.hyper_params["MULTIPLE_LEARN"]):
+                    experiences = self.memory.sample(self.beta)
+                    loss = self.update_model(experiences)
+                    losses.append(loss)  # for logging
+
+                # decrease epsilon
+                max_epsilon, min_epsilon, epsilon_decay = (
+                    self.hyper_params["MAX_EPSILON"],
+                    self.hyper_params["MIN_EPSILON"],
+                    self.hyper_params["EPSILON_DECAY"],
+                )
+                self.epsilon = max(
+                    self.epsilon - (max_epsilon - min_epsilon) * epsilon_decay,
+                    min_epsilon,
+                )
 
             # increase beta
             fraction = min(float(i_episode) / self.args.max_episode_steps, 1.0)
