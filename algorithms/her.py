@@ -48,7 +48,7 @@ class HER:
 
     def sample_desired_state(self) -> np.ndarray:
         """Sample one of the desired states."""
-        return np.random.choice(self.desired_states, 1)[0]
+        return np.random.choice(self.desired_states, 1).item()
 
     def generate_demo_transitions(self, demo: list) -> list:
         """Return generated demo transitions for HER."""
