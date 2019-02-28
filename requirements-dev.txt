@@ -10,12 +10,13 @@ mypy
 flake8
 flake8-bugbear
 flake8-docstrings
-pluggy
-pytest
-pytest-pylint
-pytest-flake8
+pluggy == 0.8.1
+pytest == 4.2.0
+pytest-pylint == 0.14.0
+pytest-flake8 == 0.3.2
 pytest-mypy
 pytest-cov
+py == 1.8.0
 
 # generating requirements
 pipreqs
