@@ -171,7 +171,6 @@ class Agent(AbstractAgent):
         new_priorities += self.hyper_params["LAMDA3"] * actor_loss_element_wise.pow(2)
         new_priorities += self.hyper_params["PER_EPS"]
         new_priorities = new_priorities.data.cpu().numpy().squeeze()
-
         new_priorities += eps_d
         self.memory.update_priorities(indexes, new_priorities)
 
