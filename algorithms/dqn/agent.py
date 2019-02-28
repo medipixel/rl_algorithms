@@ -15,12 +15,12 @@ from typing import Tuple
 import gym
 import numpy as np
 import torch
-import wandb
 
-import algorithms.common.helper_functions as common_utils
 from algorithms.common.abstract.agent import AbstractAgent
 from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
 from algorithms.common.env.multiprocessing_env import SubprocVecEnv
+import algorithms.common.helper_functions as common_utils
+import wandb
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -92,11 +92,12 @@ class Agent(AbstractAgent):
         self.curr_state = state
 
         # epsilon greedy policy
-        if not self.args.test and self.epsilon > np.random.random():  # random action
+        # pylint: disable=comparison-with-callable
+        if not self.args.test and self.epsilon > np.random.random():
             selected_action = self.env.sample()
         else:
             state = torch.FloatTensor(state).to(device)
-            selected_action = self.dqn(state).argmax(dim=-1)
+            selected_action = self.dqn(state, self.epsilon).argmax(dim=-1)
             selected_action = selected_action.detach().cpu().numpy()
         return selected_action
 
@@ -129,9 +130,9 @@ class Agent(AbstractAgent):
         """Train the model after each episode."""
         states, actions, rewards, next_states, dones, weights, indexes = experiences
 
-        q_values = self.dqn(states)
-        next_q_values = self.dqn(next_states)
-        next_target_q_values = self.dqn_target(next_states)
+        q_values = self.dqn(states, self.epsilon)
+        next_q_values = self.dqn(next_states, self.epsilon)
+        next_target_q_values = self.dqn_target(next_states, self.epsilon)
 
         curr_q_value = q_values.gather(1, actions.long().unsqueeze(1))
         next_q_value = next_target_q_values.gather(  # Double DQN
@@ -146,6 +147,7 @@ class Agent(AbstractAgent):
         target = target.to(device)
 
         loss = torch.mean((target - curr_q_value).pow(2) * weights)
+        # regularization
         loss += torch.norm(q_values, 2).mean() * self.hyper_params["W_Q_REG"]
 
         self.dqn_optimizer.zero_grad()
@@ -162,6 +164,16 @@ class Agent(AbstractAgent):
             new_priorities.data.cpu().numpy() + self.hyper_params["PER_EPS"]
         )
         self.memory.update_priorities(indexes, new_priorities)
+
+        # decrease epsilon
+        max_epsilon, min_epsilon, epsilon_decay = (
+            self.hyper_params["MAX_EPSILON"],
+            self.hyper_params["MIN_EPSILON"],
+            self.hyper_params["EPSILON_DECAY"],
+        )
+        self.epsilon = max(
+            self.epsilon - (max_epsilon - min_epsilon) * epsilon_decay, min_epsilon
+        )
 
         return loss.data
 

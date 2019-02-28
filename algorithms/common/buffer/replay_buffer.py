@@ -65,7 +65,7 @@ class ReplayBuffer:
 
         states, actions, rewards, next_states, dones = [], [], [], [], []
 
-        for i in idxs:
+        for i in np.nditer(idxs):
             s, a, r, n_s, d = self.buffer[i]
             states.append(np.array(s, copy=False))
             actions.append(np.array(a, copy=False))

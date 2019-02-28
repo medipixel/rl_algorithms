@@ -48,7 +48,7 @@ class HER:
 
     def sample_desired_state(self) -> np.ndarray:
         """Sample one of the desired states."""
-        return np.random.choice(self.desired_states, 1)[0]
+        return np.random.choice(self.desired_states, 1).item()
 
     def generate_demo_transitions(self, demo: list) -> list:
         """Return generated demo transitions for HER."""
@@ -93,4 +93,4 @@ class HER:
         state = np.concatenate((state, goal_state), axis=-1)
         next_state = np.concatenate((next_state, goal_state), axis=-1)
 
-        return (state, action, reward, next_state, done)
+        return state, action, reward, next_state, done

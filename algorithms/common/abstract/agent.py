@@ -5,17 +5,18 @@
 - Contact: curt.park@medipixel.io
 """
 
+from abc import ABC, abstractmethod
 import argparse
 import os
 import subprocess
-from abc import ABC, abstractmethod
 from typing import Tuple, Union
 
 import gym
+from gym.spaces import Discrete
 import numpy as np
 import torch
+
 import wandb
-from gym.spaces import Discrete
 
 
 class AbstractAgent(ABC):

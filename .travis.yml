@@ -2,7 +2,7 @@ dist: xenial
 
 language: python
 python:
-    - "3.6"
+    - "3.7.2"
 
 install:
      - make dep
@@ -10,6 +10,7 @@ install:
 
 script:
     # run static analysis and format check
+    - pip list | grep numpy
     - make test
 
 cache:
