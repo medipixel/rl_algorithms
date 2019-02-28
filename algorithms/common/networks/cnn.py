@@ -6,14 +6,14 @@
             curt.park@medipixel.io
 """
 
-from typing import Callable, List
+from typing import Any, Callable, List
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from algorithms.common.helper_functions import identity
-from algorithms.common.networks.mlp import MLP, LateFusionMLP
+from algorithms.common.networks.mlp import MLP
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -63,30 +63,24 @@ class CNN(nn.Module):
         """Forward method implementation."""
         if len(x.size()) == 3:
             x = x.unsqueeze(0)
-        x = self.cnn(x).squeeze()
+        x = self.cnn(x)
         x = x.view(x.size(0), -1)
         x = self.fc_layers(x)
         return x
 
 
-class LateFusionCNN(nn.Module):
+class LateFusionCNN(CNN):
     """Convolution neural network with late fusion inputs."""
 
-    def __init__(self, cnn_layers: List[CNNLayer], fc_layers: LateFusionMLP):
-        super(LateFusionCNN, self).__init__()
-
-        self.cnn_layers = cnn_layers
-        self.fc_layers = fc_layers
-
-        self.cnn = nn.Sequential()
-        for i, cnn_layer in enumerate(self.cnn_layers):
-            self.cnn.add_module("cnn_{}".format(i), cnn_layer)
-
-    def forward(self, x: torch.Tensor, late_in: list) -> torch.Tensor:
+    def forward(self, *args: Any) -> torch.Tensor:
         """Forward method implementation."""
+        x: torch.Tensor = args[0]
+        late_in: list = args[1]
+
         if len(x.size()) == 3:
             x = x.unsqueeze(0)
-        x = self.cnn(x).squeeze()
+
+        x = self.cnn(x)
         x = x.view(x.size(0), -1)
         x = self.fc_layers(x, late_in)
         return x

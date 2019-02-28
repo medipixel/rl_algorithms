@@ -10,13 +10,14 @@ import multiprocessing
 
 import gym
 import torch
+import torch.nn as nn
 import torch.optim as optim
 
 import algorithms.common.env.utils as env_utils
 from algorithms.common.env.utils import env_generator, make_envs
-from algorithms.common.helper_functions import identity
-from algorithms.common.networks.cnn import CNN, CNNLayer
+from algorithms.common.networks.cnn import CNNLayer
 from algorithms.dqn.agent import Agent
+from algorithms.dqn.networks import DuelingCNN, DuelingMLP
 from examples.pong_v0.wrappers import WRAPPERS
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -61,24 +62,33 @@ def run(env: gym.Env, args: argparse.Namespace):
 
     # create a model
     action_dim = env.action_space.n
+    hidden_sizes = [256, 256]
 
     def get_cnn_model():
-        # it consists of only cnn layers
-        cnn_model = CNN(
+        cnn_model = DuelingCNN(
             cnn_layers=[
-                CNNLayer(input_size=4, output_size=32, kernel_size=8, stride=4),
-                CNNLayer(input_size=32, output_size=64, kernel_size=4, stride=2),
-                CNNLayer(input_size=64, output_size=64, kernel_size=3, stride=1),
-                CNNLayer(input_size=64, output_size=512, kernel_size=7, stride=4),
                 CNNLayer(
-                    input_size=512,
-                    output_size=action_dim,
-                    kernel_size=1,
-                    stride=1,
-                    activation_fn=identity,
+                    input_size=4,
+                    output_size=32,
+                    kernel_size=5,
+                    pulling_fn=nn.MaxPool2d(3),
+                ),
+                CNNLayer(
+                    input_size=32,
+                    output_size=32,
+                    kernel_size=3,
+                    pulling_fn=nn.MaxPool2d(3),
+                ),
+                CNNLayer(
+                    input_size=32,
+                    output_size=64,
+                    kernel_size=2,
+                    pulling_fn=nn.MaxPool2d(3),
                 ),
             ],
-            fc_layers=identity,
+            fc_layers=DuelingMLP(
+                input_size=256, output_size=action_dim, hidden_sizes=hidden_sizes
+            ),
         ).to(device)
         return cnn_model
 

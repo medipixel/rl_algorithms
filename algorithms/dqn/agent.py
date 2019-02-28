@@ -97,9 +97,8 @@ class Agent(AbstractAgent):
         if not self.args.test and self.epsilon > np.random.random():
             selected_action = self.env.sample()
         else:
-            dim = 0 if self.args.test else 1
             state = torch.FloatTensor(state).to(device)
-            selected_action = self.dqn(state, self.epsilon).argmax(dim=dim)
+            selected_action = self.dqn(state, self.epsilon).argmax(dim=-1)
             selected_action = selected_action.detach().cpu().numpy()
         return selected_action
 
