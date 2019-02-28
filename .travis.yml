@@ -10,8 +10,8 @@ install:
 
 script:
     # run static analysis and format check
-    - make test
     - pip list | grep numpy
+    - make test
 
 cache:
   directories:

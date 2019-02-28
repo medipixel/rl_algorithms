@@ -93,4 +93,4 @@ class HER:
         state = np.concatenate((state, goal_state), axis=-1)
         next_state = np.concatenate((next_state, goal_state), axis=-1)
 
-        return (state, action, reward, next_state, done)
+        return state, action, reward, next_state, done

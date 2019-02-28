@@ -15,13 +15,13 @@ import gym
 import numpy as np
 import torch
 import torch.nn.functional as F
+import wandb
 
 from algorithms.common.abstract.agent import AbstractAgent
 from algorithms.common.buffer.replay_buffer import ReplayBuffer
 import algorithms.common.helper_functions as common_utils
 from algorithms.common.noise import OUNoise
 from algorithms.her import HER
-import wandb
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
