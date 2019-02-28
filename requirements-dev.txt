@@ -5,13 +5,13 @@ black
 isort
 
 # testing
-pylint == 2.2.2
+pylint
 mypy
 flake8 == 3.6.0
 flake8-bugbear
 flake8-docstrings
 pytest >= 4.0.0
-pytest-pylint
+pytest-pylint == 0.14.0
 pytest-flake8
 pytest-mypy
 pytest-cov
