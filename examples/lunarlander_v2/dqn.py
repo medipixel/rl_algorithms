@@ -30,7 +30,7 @@ hyper_params = {
     "WEIGHT_DECAY": 1e-6,
     "MAX_EPSILON": 1.0,
     "MIN_EPSILON": 0.01,
-    "EPSILON_DECAY": 1e-4,
+    "EPSILON_DECAY": 1e-5,
     "PER_ALPHA": 0.5,
     "PER_BETA": 0.4,
     "PER_EPS": 1e-6,

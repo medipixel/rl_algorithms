@@ -6,7 +6,7 @@
             curt.park@medipixel.io
 """
 
-from typing import Callable, List
+from typing import Any, Callable, List
 
 import torch
 import torch.nn as nn
@@ -43,7 +43,7 @@ class CNNLayer(nn.Module):
         self.pulling_fn = pulling_fn
 
     def forward(self, x):
-        return self.pulling_fn(self.activation_fn(self.cnn(x), inplace=True))
+        return self.pulling_fn(self.activation_fn(self.cnn(x)))
 
 
 class CNN(nn.Module):
@@ -59,22 +59,28 @@ class CNN(nn.Module):
         for i, cnn_layer in enumerate(self.cnn_layers):
             self.cnn.add_module("cnn_{}".format(i), cnn_layer)
 
-    def get_last_activation_cnn(self, x: torch.Tensor) -> torch.Tensor:
-        """Get the activation of the last cnn layer."""
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward method implementation."""
         if len(x.size()) == 3:
             x = x.unsqueeze(0)
         x = self.cnn(x)
         x = x.view(x.size(0), -1)
-        return x
-
-    def get_last_activation(self, x: torch.Tensor) -> torch.Tensor:
-        """Get the activation of the last hidden layer."""
-        x = self.get_last_activation_cnn(x)
-        x = self.fc_layers.get_last_activation(x)
-        return x
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward method implementation."""
-        x = self.get_last_activation_cnn(x)
         x = self.fc_layers(x)
+        return x
+
+
+class LateFusionCNN(CNN):
+    """Convolution neural network with late fusion inputs."""
+
+    def forward(self, *args: Any) -> torch.Tensor:
+        """Forward method implementation."""
+        x: torch.Tensor = args[0]
+        late_in: list = args[1]
+
+        if len(x.size()) == 3:
+            x = x.unsqueeze(0)
+
+        x = self.cnn(x)
+        x = x.view(x.size(0), -1)
+        x = self.fc_layers(x, late_in)
         return x

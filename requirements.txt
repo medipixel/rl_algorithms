@@ -1,6 +1,7 @@
 numpy==1.16.2
 torch==0.4.1
 gym
+gym[atari]
 box2d-py
 scipy
 typing
