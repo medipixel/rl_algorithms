@@ -8,9 +8,9 @@
 from typing import Callable, Tuple
 
 import torch
+from torch.distributions import Categorical, Normal
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.distributions import Categorical, Normal
 
 from algorithms.common.helper_functions import identity, make_one_hot
 

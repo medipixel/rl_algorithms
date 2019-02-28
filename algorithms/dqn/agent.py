@@ -15,12 +15,12 @@ from typing import Tuple
 import gym
 import numpy as np
 import torch
-import wandb
 
-import algorithms.common.helper_functions as common_utils
 from algorithms.common.abstract.agent import AbstractAgent
 from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
 from algorithms.common.env.multiprocessing_env import SubprocVecEnv
+import algorithms.common.helper_functions as common_utils
+import wandb
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -92,7 +92,8 @@ class Agent(AbstractAgent):
         self.curr_state = state
 
         # epsilon greedy policy
-        if not self.args.test and self.epsilon > np.random.random():  # random action
+        # pylint: disable=comparison-with-callable
+        if not self.args.test and self.epsilon > np.random.random():
             selected_action = self.env.sample()
         else:
             state = torch.FloatTensor(state).to(device)

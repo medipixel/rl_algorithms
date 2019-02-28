@@ -14,11 +14,11 @@ import gym
 import numpy as np
 import torch
 import torch.nn as nn
-import wandb
 
-import algorithms.ppo.utils as ppo_utils
 from algorithms.common.abstract.agent import AbstractAgent
 from algorithms.common.env.multiprocessing_env import SubprocVecEnv
+import algorithms.ppo.utils as ppo_utils
+import wandb
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
