@@ -14,12 +14,12 @@ from typing import List, Tuple
 import gym
 import numpy as np
 import torch
-import wandb
 
 from algorithms.common.abstract.agent import AbstractAgent
 from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
 import algorithms.common.helper_functions as common_utils
 from algorithms.common.noise import OUNoise
+import wandb
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 

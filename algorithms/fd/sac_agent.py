@@ -18,11 +18,11 @@ import gym
 import numpy as np
 import torch
 import torch.optim as optim
-import wandb
 
 from algorithms.common.abstract.agent import AbstractAgent
 from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBufferfD
 import algorithms.common.helper_functions as common_utils
+import wandb
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
