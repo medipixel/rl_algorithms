@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""DQN agent for episodic tasks in OpenAI Gym.
+"""DQfD agent using demo agent for episodic tasks in OpenAI Gym.
 
 - Author: Kh Kim
 - Contact: kh.kim@medipixel.io
@@ -7,11 +7,12 @@
          https://arxiv.org/pdf/1509.06461.pdf (Double DQN)
          https://arxiv.org/pdf/1511.05952.pdf (PER)
          https://arxiv.org/pdf/1511.06581.pdf (Dueling)
+         https://arxiv.org/pdf/1704.03732.pdf (DQfD)
 """
 
 import argparse
-import datetime
 import os
+import pickle
 from typing import Tuple
 
 import gym
@@ -20,7 +21,7 @@ import torch
 import wandb
 
 from algorithms.common.abstract.agent import AbstractAgent
-from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
+from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBufferfD
 from algorithms.common.env.multiprocessing_env import SubprocVecEnv
 import algorithms.common.helper_functions as common_utils
 
@@ -81,11 +82,16 @@ class Agent(AbstractAgent):
             self.load_params(args.load_from)
 
         if not self.args.test:
+            # load demo replay memory
+            with open(self.args.demo_path, "rb") as f:
+                demo = pickle.load(f)
+
             # replay memory
             self.beta = self.hyper_params["PER_BETA"]
-            self.memory = PrioritizedReplayBuffer(
+            self.memory = PrioritizedReplayBufferfD(
                 self.hyper_params["BUFFER_SIZE"],
                 self.hyper_params["BATCH_SIZE"],
+                demo=list(demo),
                 alpha=self.hyper_params["PER_ALPHA"],
             )
 
@@ -130,7 +136,9 @@ class Agent(AbstractAgent):
 
     def update_model(self, experiences: Tuple[torch.Tensor, ...]) -> torch.Tensor:
         """Train the model after each episode."""
-        states, actions, rewards, next_states, dones, weights, indexes = experiences
+        states, actions, rewards, next_states, dones, weights, indexes, eps_d = (
+            experiences
+        )
 
         q_values = self.dqn(states, self.epsilon)
         next_q_values = self.dqn(next_states, self.epsilon)
@@ -148,7 +156,23 @@ class Agent(AbstractAgent):
         target = rewards + self.hyper_params["GAMMA"] * next_q_value * masks
         target = target.to(device)
 
-        loss = torch.mean((target - curr_q_value).pow(2) * weights)
+        # supervised loss using demo - when pretrain
+        if np.sum(eps_d) == self.hyper_params["BATCH_SIZE"]:
+            margin_value = self.hyper_params["MARGIN"]
+            margin = np.zeros([self.hyper_params["BATCH_SIZE"], 1])
+            pred_actions = torch.argmax(q_values, dim=1)
+            margin[np.where(actions != pred_actions.float())] = margin_value
+
+            pred_q = self.dqn(states, self.epsilon)
+            pred_q_value = pred_q.gather(1, pred_actions.unsqueeze(1))
+            max_pred_q_value = pred_q_value + torch.FloatTensor(margin).to(device)
+            supervised_loss = max_pred_q_value - curr_q_value
+
+        else:
+            supervised_loss = torch.zeros(self.hyper_params["BATCH_SIZE"]).to(device)
+
+        loss = ((target - curr_q_value).pow(2) + supervised_loss) * weights
+        loss = torch.mean(loss)
         # regularization
         loss += torch.norm(q_values, 2).mean() * self.hyper_params["W_Q_REG"]
 
@@ -163,8 +187,9 @@ class Agent(AbstractAgent):
         # update priorities in PER
         new_priorities = (target - curr_q_value).pow(2)
         new_priorities = (
-            new_priorities.data.cpu().numpy() + self.hyper_params["PER_EPS"]
+            new_priorities.data.cpu().numpy().squeeze() + self.hyper_params["PER_EPS"]
         )
+        new_priorities += eps_d
         self.memory.update_priorities(indexes, new_priorities)
 
         # decrease epsilon
@@ -201,11 +226,11 @@ class Agent(AbstractAgent):
 
         AbstractAgent.save_params(self, params, n_episode)
 
-    def write_log(self, i: int, loss: float, score: int):
+    def write_log(self, i: int, loss: float, score: int = 0):
         """Write log about loss and score"""
         print(
             "[INFO] episode %d, episode step: %d, total step: %d, total score: %d\n"
-            "epsilon: %f, loss: %f, at %s\n"
+            "epsilon: %.3f, loss: %.3f\n"
             % (
                 i,
                 self.episode_steps[0],
@@ -213,12 +238,26 @@ class Agent(AbstractAgent):
                 score,
                 self.epsilon,
                 loss,
-                datetime.datetime.now(),
             )
         )
 
         if self.args.log:
             wandb.log({"score": score, "dqn loss": loss})
+
+    def pretrain(self):
+        """Pretraining steps."""
+        pretrain_loss = list()
+        print("[INFO] Pre-Train %d step." % self.hyper_params["PRETRAIN_STEP"])
+        for i_step in range(1, self.hyper_params["PRETRAIN_STEP"] + 1):
+            experiences = self.memory.sample()
+            loss = self.update_model(experiences)
+            pretrain_loss.append(loss)  # for logging
+
+            # logging
+            if i_step == 1 or i_step % 100 == 0:
+                avg_loss = np.vstack(pretrain_loss).mean(axis=0)
+                pretrain_loss.clear()
+                self.write_log(0, avg_loss)
 
     def train(self):
         """Train the agent."""
@@ -227,6 +266,9 @@ class Agent(AbstractAgent):
             wandb.init()
             wandb.config.update(self.hyper_params)
             wandb.watch([self.dqn], log="parameters")
+
+        # pre-training by demo
+        self.pretrain()
 
         state = self.env.reset()
         i_episode_prev = 0
@@ -254,10 +296,8 @@ class Agent(AbstractAgent):
             if done[0]:
                 if losses:
                     avg_loss = np.array(losses).mean()
+                    self.write_log(i_episode, avg_loss, score)
                     losses.clear()
-                else:
-                    avg_loss = 0.0
-                self.write_log(i_episode, avg_loss, score)
                 score = 0
 
             self.episode_steps[np.where(done)] = 0
@@ -269,15 +309,13 @@ class Agent(AbstractAgent):
                     losses.append(loss)  # for logging
 
                 # decrease epsilon
-                max_epsilon, min_epsilon, epsilon_decay, n_workers = (
+                max_epsilon, min_epsilon, epsilon_decay = (
                     self.hyper_params["MAX_EPSILON"],
                     self.hyper_params["MIN_EPSILON"],
                     self.hyper_params["EPSILON_DECAY"],
-                    self.hyper_params["N_WORKERS"],
                 )
                 self.epsilon = max(
-                    self.epsilon
-                    - (max_epsilon - min_epsilon) * epsilon_decay * n_workers,
+                    self.epsilon - (max_epsilon - min_epsilon) * epsilon_decay,
                     min_epsilon,
                 )
 

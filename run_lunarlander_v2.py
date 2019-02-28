@@ -40,6 +40,12 @@ parser.add_argument("--episode-num", type=int, default=1500, help="total episode
 parser.add_argument(
     "--max-episode-steps", type=int, default=300, help="max episode step"
 )
+parser.add_argument(
+    "--demo-path",
+    type=str,
+    default="data/lunarlander_discrete_demo.pkl",
+    help="demonstration path",
+)
 
 parser.set_defaults(test=False)
 parser.set_defaults(load_from=None)
