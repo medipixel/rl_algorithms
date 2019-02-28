@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Train or test algorithms on CarRacing-v0.
+"""Train or test algorithms on Pong-v0.
 
 - Author: Curt Park
 - Contact: curt.park@medipixel.io
@@ -10,7 +10,6 @@ import importlib
 
 import gym
 
-import algorithms.common.env.utils as env_utils
 import algorithms.common.helper_functions as common_utils
 
 # configurations
@@ -35,8 +34,8 @@ parser.add_argument(
     help="start rendering after the input number of episode",
 )
 parser.add_argument("--log", dest="log", action="store_true", help="turn on logging")
-parser.add_argument("--save-period", type=int, default=50, help="save model period")
-parser.add_argument("--episode-num", type=int, default=1500, help="total episode num")
+parser.add_argument("--save-period", type=int, default=25, help="save model period")
+parser.add_argument("--episode-num", type=int, default=500, help="total episode num")
 parser.add_argument(
     "--max-episode-steps", type=int, default=-1, help="max episode step"
 )
@@ -51,17 +50,15 @@ args = parser.parse_args()
 def main():
     """Main."""
     # env initialization
-    env = gym.make("CarRacing-v0")
-    env_utils.set_env(env, args)
-    action_dim = env.action_space.shape[0]
+    env = gym.make("Pong-v0")
 
     # set a random seed
     common_utils.set_random_seed(args.seed, env)
 
     # run
-    module_path = "examples.car_racing_v0." + args.algo
+    module_path = "examples.pong_v0." + args.algo
     example = importlib.import_module(module_path)
-    example.run(env, args, action_dim)
+    example.run(env, args)
 
 
 if __name__ == "__main__":

@@ -16,11 +16,11 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
+import wandb
 
 from algorithms.common.abstract.agent import AbstractAgent
 from algorithms.common.buffer.replay_buffer import ReplayBuffer
 import algorithms.common.helper_functions as common_utils
-import wandb
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 

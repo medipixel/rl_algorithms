@@ -5,7 +5,7 @@ black
 isort
 
 # testing
-pylint
+pylint==2.2.2
 mypy
 flake8
 flake8-bugbear

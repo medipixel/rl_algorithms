@@ -9,18 +9,19 @@
 """
 
 import argparse
+import datetime
 import os
 from typing import Tuple
 
 import gym
 import numpy as np
 import torch
+import wandb
 
 from algorithms.common.abstract.agent import AbstractAgent
 from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
 from algorithms.common.env.multiprocessing_env import SubprocVecEnv
 import algorithms.common.helper_functions as common_utils
-import wandb
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -96,8 +97,9 @@ class Agent(AbstractAgent):
         if not self.args.test and self.epsilon > np.random.random():
             selected_action = self.env.sample()
         else:
+            dim = 0 if self.args.test else 1
             state = torch.FloatTensor(state).to(device)
-            selected_action = self.dqn(state, self.epsilon).argmax(dim=-1)
+            selected_action = self.dqn(state, self.epsilon).argmax(dim=dim)
             selected_action = selected_action.detach().cpu().numpy()
         return selected_action
 
@@ -203,7 +205,7 @@ class Agent(AbstractAgent):
         """Write log about loss and score"""
         print(
             "[INFO] episode %d, episode step: %d, total step: %d, total score: %d\n"
-            "epsilon: %.3f, loss: %.3f\n"
+            "epsilon: %f, loss: %f, at %s\n"
             % (
                 i,
                 self.episode_steps[0],
@@ -211,6 +213,7 @@ class Agent(AbstractAgent):
                 score,
                 self.epsilon,
                 loss,
+                datetime.datetime.now(),
             )
         )
 
@@ -251,8 +254,10 @@ class Agent(AbstractAgent):
             if done[0]:
                 if losses:
                     avg_loss = np.array(losses).mean()
-                    self.write_log(i_episode, avg_loss, score)
                     losses.clear()
+                else:
+                    avg_loss = 0.0
+                self.write_log(i_episode, avg_loss, score)
                 score = 0
 
             self.episode_steps[np.where(done)] = 0
@@ -264,13 +269,15 @@ class Agent(AbstractAgent):
                     losses.append(loss)  # for logging
 
                 # decrease epsilon
-                max_epsilon, min_epsilon, epsilon_decay = (
+                max_epsilon, min_epsilon, epsilon_decay, n_workers = (
                     self.hyper_params["MAX_EPSILON"],
                     self.hyper_params["MIN_EPSILON"],
                     self.hyper_params["EPSILON_DECAY"],
+                    self.hyper_params["N_WORKERS"],
                 )
                 self.epsilon = max(
-                    self.epsilon - (max_epsilon - min_epsilon) * epsilon_decay,
+                    self.epsilon
+                    - (max_epsilon - min_epsilon) * epsilon_decay * n_workers,
                     min_epsilon,
                 )
 

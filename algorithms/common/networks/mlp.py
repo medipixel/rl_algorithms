@@ -5,7 +5,8 @@
 - Contact: kh.kim@medipixel.io
 """
 
-from typing import Callable, Tuple
+from collections import defaultdict
+from typing import Any, Callable, DefaultDict, Dict, Tuple
 
 import torch
 from torch.distributions import Categorical, Normal
@@ -18,13 +19,13 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 def concat(
-    states: torch.Tensor, actions: torch.Tensor, n_category: int = -1
+    in_1: torch.Tensor, in_2: torch.Tensor, n_category: int = -1
 ) -> torch.Tensor:
     """Concatenate state and action tensors properly depending on the action."""
-    actions = make_one_hot(actions, n_category) if n_category > 0 else actions
-    states_actions = torch.cat((states, actions), dim=-1)
+    in_2 = make_one_hot(in_2, n_category) if n_category > 0 else in_2
+    in_concat = torch.cat((in_1, in_2), dim=-1)
 
-    return states_actions
+    return in_concat
 
 
 class MLP(nn.Module):
@@ -80,6 +81,7 @@ class MLP(nn.Module):
         self.hidden_layers: list = []
         in_size = self.input_size
         for i, next_size in enumerate(hidden_sizes):
+            in_size += self._late_fusion_dim(i)
             fc = nn.Linear(in_size, next_size)
             in_size = next_size
             self.__setattr__("hidden_fc{}".format(i), fc)
@@ -90,33 +92,90 @@ class MLP(nn.Module):
             self.output_layer = nn.Linear(in_size, output_size)
             self.output_layer.weight.data.uniform_(-init_w, init_w)
             self.output_layer.bias.data.uniform_(-init_w, init_w)
-
-    def get_last_activation(self, x: torch.Tensor) -> torch.Tensor:
-        """Get the activation of the last hidden layer."""
-        for hidden_layer in self.hidden_layers:
-            x = self.hidden_activation(hidden_layer(x))
-        return x
+        else:
+            self.output_layer = identity
+            self.output_activation = identity
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method implementation."""
-        assert self.use_output_layer
+        for hidden_layer in self.hidden_layers:
+            x = self.hidden_activation(hidden_layer(x))
+        x = self.output_activation(self.output_layer(x))
 
-        x = self.get_last_activation(x)
+        return x
 
-        output = self.output_layer(x)
-        output = self.output_activation(output)
-
-        return output
+    def _late_fusion_dim(  # pylint: disable=no-self-use
+        self, idx: int  # pylint: disable=unused-argument
+    ) -> int:
+        """Return the dimension for late fusion."""
+        return 0
 
 
 class FlattenMLP(MLP):
-    """Baseline of Multilayer perceptron for Flatten input."""
+    """Baseline of Multilayered perceptron for Flatten input."""
 
     def forward(self, *args: torch.Tensor) -> torch.Tensor:
         """Forward method implementation."""
         states, actions = args
         flat_inputs = concat(states, actions, self.n_category)
         return super(FlattenMLP, self).forward(flat_inputs)
+
+
+class LateFusionMLP(MLP):
+    """Multilayered perceptron with late input fusion.
+
+    Attributes:
+        _late_fusion_info (DefaultDict): information of late fusion inputs
+    """
+
+    def __init__(
+        self,
+        input_size: int,
+        output_size: int,
+        hidden_sizes: list,
+        late_fusion_info: Dict,  # newly added
+        hidden_activation: Callable = F.relu,
+        output_activation: Callable = identity,
+        use_output_layer: bool = True,
+        n_category: int = -1,
+        init_w: float = 3e-3,
+    ):
+        """Initialization."""
+        self._late_fusion_info: DefaultDict = defaultdict(lambda: 0)
+        for i in late_fusion_info:
+            # 1st index has 0th hidden layer info
+            self._late_fusion_info[i] = late_fusion_info[i]
+
+        super(LateFusionMLP, self).__init__(
+            input_size=input_size,
+            output_size=output_size,
+            hidden_sizes=hidden_sizes,
+            hidden_activation=hidden_activation,
+            output_activation=output_activation,
+            use_output_layer=use_output_layer,
+            n_category=n_category,
+            init_w=init_w,
+        )
+
+    def forward(self, *args: Any) -> torch.Tensor:
+        """Forward method implementation."""
+        x: torch.Tensor = args[0]
+        late_in: list = args[1]
+
+        idx_late_in = 0
+        for i, hidden_layer in enumerate(self.hidden_layers):
+            if self.late_fusion_info[i] > 0:
+                x = concat(x, late_in[idx_late_in])
+                idx_late_in += 1
+            x = self.hidden_activation(hidden_layer(x))
+
+        x = self.output_activation(self.output_layer(x))
+
+        return x
+
+    def _late_fusion_dim(self, idx: int) -> int:
+        """Return the dimension for late fusion."""
+        return self._late_fusion_info[idx]
 
 
 class GaussianDist(MLP):
@@ -167,7 +226,7 @@ class GaussianDist(MLP):
 
     def get_dist_params(self, x: torch.Tensor) -> Tuple[torch.Tensor, ...]:
         """Return gausian distribution parameters."""
-        hidden = super(GaussianDist, self).get_last_activation(x)
+        hidden = super(GaussianDist, self).forward(x)
 
         # get mean
         mu = self.mu_activation(self.mu_layer(hidden))
@@ -251,7 +310,7 @@ class CategoricalDist(MLP):
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, ...]:
         """Forward method implementation."""
-        hidden = super(CategoricalDist, self).get_last_activation(x)
+        hidden = super(CategoricalDist, self).forward(x)
         action_probs = F.softmax(self.last_layer(hidden), dim=-1)
 
         dist = Categorical(action_probs)
