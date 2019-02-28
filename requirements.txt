@@ -1,4 +1,4 @@
-numpy==1.16.2
+numpy
 torch==0.4.1
 gym
 box2d-py
