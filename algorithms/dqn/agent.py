@@ -129,9 +129,9 @@ class Agent(AbstractAgent):
         """Train the model after each episode."""
         states, actions, rewards, next_states, dones, weights, indexes = experiences
 
-        q_values = self.dqn(states)
-        next_q_values = self.dqn(next_states)
-        next_target_q_values = self.dqn_target(next_states)
+        q_values = self.dqn(states, self.epsilon)
+        next_q_values = self.dqn(next_states, self.epsilon)
+        next_target_q_values = self.dqn_target(next_states, self.epsilon)
 
         curr_q_value = q_values.gather(1, actions.long().unsqueeze(1))
         next_q_value = next_target_q_values.gather(  # Double DQN
@@ -146,6 +146,7 @@ class Agent(AbstractAgent):
         target = target.to(device)
 
         loss = torch.mean((target - curr_q_value).pow(2) * weights)
+        # regularization
         loss += torch.norm(q_values, 2).mean() * self.hyper_params["W_Q_REG"]
 
         self.dqn_optimizer.zero_grad()
@@ -162,6 +163,16 @@ class Agent(AbstractAgent):
             new_priorities.data.cpu().numpy() + self.hyper_params["PER_EPS"]
         )
         self.memory.update_priorities(indexes, new_priorities)
+
+        # decrease epsilon
+        max_epsilon, min_epsilon, epsilon_decay = (
+            self.hyper_params["MAX_EPSILON"],
+            self.hyper_params["MIN_EPSILON"],
+            self.hyper_params["EPSILON_DECAY"],
+        )
+        self.epsilon = max(
+            self.epsilon - (max_epsilon - min_epsilon) * epsilon_decay, min_epsilon
+        )
 
         return loss.data
 
