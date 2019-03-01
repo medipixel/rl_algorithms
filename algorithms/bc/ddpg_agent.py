@@ -292,7 +292,7 @@ class Agent(AbstractAgent):
         if self.args.log:
             wandb.init()
             wandb.config.update(self.hyper_params)
-            wandb.watch([self.actor, self.critic], log="parameters")
+            # wandb.watch([self.actor, self.critic], log="parameters")
 
         for i_episode in range(1, self.args.episode_num + 1):
             state = self.env.reset()

@@ -169,8 +169,8 @@ class Agent(AbstractAgent):
         common_utils.soft_update(self.critic, self.critic_target, tau)
 
         # update priorities
-        new_priorities = (values - curr_returns).pow(2)
-        new_priorities += self.hyper_params["LAMDA3"] * actor_loss_element_wise.pow(2)
+        new_priorities = critic_loss_element_wise
+        new_priorities += self.hyper_params["LAMBDA3"] * actor_loss_element_wise.pow(2)
         new_priorities += self.hyper_params["PER_EPS"]
         new_priorities = new_priorities.data.cpu().numpy().squeeze()
         new_priorities += eps_d
@@ -255,7 +255,7 @@ class Agent(AbstractAgent):
         if self.args.log:
             wandb.init()
             wandb.config.update(self.hyper_params)
-            wandb.watch([self.actor, self.critic], log="parameters")
+            # wandb.watch([self.actor, self.critic], log="parameters")
 
         # pre-training by demo
         self.pretrain()

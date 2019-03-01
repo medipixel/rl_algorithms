@@ -145,36 +145,39 @@ class Agent(AbstractAgent):
         next_q_values = self.dqn(next_states, self.epsilon)
         next_target_q_values = self.dqn_target(next_states, self.epsilon)
 
-        curr_q_value = q_values.gather(1, actions.long().unsqueeze(1))
-        next_q_value = next_target_q_values.gather(  # Double DQN
+        curr_q_values = q_values.gather(1, actions.long().unsqueeze(1))
+        next_q_values = next_target_q_values.gather(  # Double DQN
             1, next_q_values.argmax(1).unsqueeze(1)
         )
 
         # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
         #       = r                       otherwise
         masks = 1 - dones
-
-        target = rewards + self.hyper_params["GAMMA"] * next_q_value * masks
+        target = rewards + self.hyper_params["GAMMA"] * next_q_values * masks
         target = target.to(device)
 
-        # supervised loss using demo - when pretrain
-        if np.sum(eps_d) == self.hyper_params["BATCH_SIZE"]:
-            margin_value = self.hyper_params["MARGIN"]
-            margin = np.zeros([self.hyper_params["BATCH_SIZE"], 1])
-            pred_actions = torch.argmax(q_values, dim=1)
-            margin[np.where(actions != pred_actions.float())] = margin_value
+        # supervised loss using demo for only demo transitions
+        # get margin for each demo transition
+        margin = torch.ones(q_values.size()) * self.hyper_params["MARGIN"]
+        demo_idxs = np.where(eps_d != 0.0)
+        action_idxs = actions[demo_idxs].long()
+        margin[demo_idxs, action_idxs] = 0.0  # demo actions have 0 margins
+        margin = margin.to(device)
 
-            pred_q = self.dqn(states, self.epsilon)
-            pred_q_value = pred_q.gather(1, pred_actions.unsqueeze(1))
-            max_pred_q_value = pred_q_value + torch.FloatTensor(margin).to(device)
-            supervised_loss = max_pred_q_value - curr_q_value
+        # calculate supervised loss
+        lambda3 = torch.zeros(self.hyper_params["BATCH_SIZE"]).to(device)
+        lambda3[demo_idxs] = self.hyper_params["LAMBDA3"]
+        supervised_loss = torch.max(q_values + margin, dim=-1)[0]
+        demo_q_values = q_values[demo_idxs, action_idxs].squeeze()
+        supervised_loss[demo_idxs] -= demo_q_values
+        supervised_loss *= lambda3
 
-        else:
-            supervised_loss = torch.zeros(self.hyper_params["BATCH_SIZE"]).to(device)
+        # calculate total loss
+        loss_element_wise = (target - curr_q_values).pow(2).squeeze()
+        loss_element_wise += supervised_loss  # add supervised loss
+        loss = torch.mean(loss_element_wise * weights)
 
-        loss = ((target - curr_q_value).pow(2) + supervised_loss) * weights
-        loss = torch.mean(loss)
-        # regularization
+        # q_value regularization
         loss += torch.norm(q_values, 2).mean() * self.hyper_params["W_Q_REG"]
 
         self.dqn_optimizer.zero_grad()
@@ -186,14 +189,14 @@ class Agent(AbstractAgent):
         common_utils.soft_update(self.dqn, self.dqn_target, tau)
 
         # update priorities in PER
-        new_priorities = (target - curr_q_value).pow(2)
+        new_priorities = loss_element_wise
         new_priorities = (
             new_priorities.data.cpu().numpy().squeeze() + self.hyper_params["PER_EPS"]
         )
         new_priorities += eps_d
         self.memory.update_priorities(indexes, new_priorities)
 
-        return loss.data
+        return loss.data, supervised_loss[demo_idxs].mean().data
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
@@ -217,23 +220,30 @@ class Agent(AbstractAgent):
 
         AbstractAgent.save_params(self, params, n_episode)
 
-    def write_log(self, i: int, loss: float, score: int = 0):
+    def write_log(self, i: int, avg_loss: dict, score: int = 0):
         """Write log about loss and score"""
         print(
             "[INFO] episode %d, episode step: %d, total step: %d, total score: %d\n"
-            "epsilon: %.3f, loss: %.3f\n"
+            "epsilon: %f, total loss: %f, supervised loss: %f\n"
             % (
                 i,
                 self.episode_steps[0],
                 self.total_steps.sum(),
                 score,
                 self.epsilon,
-                loss,
+                avg_loss[0],
+                avg_loss[1],
             )
         )
 
         if self.args.log:
-            wandb.log({"score": score, "dqn loss": loss})
+            wandb.log(
+                {
+                    "score": score,
+                    "total loss": avg_loss[0],
+                    "supervised loss": avg_loss[1],
+                }
+            )
 
     def pretrain(self):
         """Pretraining steps."""
@@ -256,7 +266,7 @@ class Agent(AbstractAgent):
         if self.args.log:
             wandb.init()
             wandb.config.update(self.hyper_params)
-            wandb.watch([self.dqn], log="parameters")
+            # wandb.watch([self.dqn], log="parameters")
 
         # pre-training by demo
         self.pretrain()
@@ -286,7 +296,7 @@ class Agent(AbstractAgent):
 
             if done[0]:
                 if losses:
-                    avg_loss = np.array(losses).mean()
+                    avg_loss = np.vstack(losses).mean(axis=0)
                     self.write_log(i_episode, avg_loss, score)
                     losses.clear()
                 score = 0

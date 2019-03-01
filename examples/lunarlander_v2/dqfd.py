@@ -25,22 +25,22 @@ hyper_params = {
     "TAU": 5e-3,
     "W_Q_REG": 1e-7,
     "BUFFER_SIZE": int(1e6),
-    "BATCH_SIZE": 128,
-    "LR_DQN": 1e-3,
+    "BATCH_SIZE": 64,
+    "LR_DQN": 1e-4,
     "MAX_EPSILON": 1.0,
     "MIN_EPSILON": 0.01,
-    "EPSILON_DECAY": 1e-4,
-    "PER_ALPHA": 0.5,
-    "PER_BETA": 0.4,
-    "PER_EPS": 1e-6,
+    "EPSILON_DECAY": 2e-5,
+    "PER_ALPHA": 0.4,
+    "PER_BETA": 0.6,
+    "PER_EPS": 1e-3,
     "PER_EPS_DEMO": 1.0,
-    "UPDATE_STARTS_FROM": int(1e4),
-    "MULTIPLE_LEARN": n_cpu // 2 if n_cpu >= 2 else 1,
-    "N_WORKERS": n_cpu,
-    "PRETRAIN_STEP": 100,
-    "LAMDA1": 1.0,  # N-step return weight
-    "LAMDA2": 1.0,  # Supervised loss weight
-    "LAMDA3": 1e-5,  # l2 regularization weight
+    "UPDATE_STARTS_FROM": int(1e3),
+    "MULTIPLE_LEARN": 2,  # n_cpu // 2 if n_cpu >= 2 else 1,
+    "N_WORKERS": 1,  # n_cpu,
+    "PRETRAIN_STEP": int(1e2),
+    "LAMBDA1": 1.0,  # N-step return weight
+    "LAMBDA2": 1e2,  # Supervised loss weight
+    "LAMBDA3": 1e-5,  # l2 regularization weight
     "MARGIN": 0.8,  # margin for supervised loss
 }
 
@@ -74,7 +74,9 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
 
     # create optimizer
     dqn_optim = optim.Adam(
-        dqn.parameters(), lr=hyper_params["LR_DQN"], weight_decay=hyper_params["LAMDA3"]
+        dqn.parameters(),
+        lr=hyper_params["LR_DQN"],
+        weight_decay=hyper_params["LAMBDA3"],
     )
 
     # make tuples to create an agent
