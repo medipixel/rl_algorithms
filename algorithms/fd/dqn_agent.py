@@ -168,9 +168,11 @@ class Agent(AbstractAgent):
 
         # calculate supervised loss
         demo_q_values = q_values[demo_idxs, action_idxs].squeeze()
-        supervised_loss_element_wise = torch.max(q_values + margin, dim=-1)[0]
-        supervised_loss_element_wise[demo_idxs] -= demo_q_values
-        supervised_loss = torch.mean(supervised_loss_element_wise[demo_idxs])
+        supervised_loss_element_wise = torch.max(q_values + margin, dim=-1)[0][
+            demo_idxs
+        ]
+        supervised_loss_element_wise -= demo_q_values
+        supervised_loss = torch.mean(supervised_loss_element_wise)
         supervised_loss *= self.hyper_params["LAMBDA3"]
 
         # calculate dq loss
@@ -244,6 +246,7 @@ class Agent(AbstractAgent):
             wandb.log(
                 {
                     "score": score,
+                    "epsilon": self.epsilon,
                     "total loss": avg_loss[0],
                     "dq loss": avg_loss[1],
                     "supervised loss": avg_loss[2],
