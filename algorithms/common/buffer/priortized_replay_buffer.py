@@ -137,24 +137,18 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             self._max_priority = max(self._max_priority, priority)
 
 
-class PrioritizedReplayBufferfD(ReplayBuffer):
+class PrioritizedReplayBufferfD(PrioritizedReplayBuffer):
     """Create Prioritized Replay buffer with demo.
 
     Taken from OpenAI baselines github repository:
     https://github.com/openai/baselines/blob/master/baselines/deepq/replay_buffer.py
 
     Attributes:
-        buffer (list): list of experience replay buffer
         demo (list): list of demo replay buffer
         buffer_size (int): size of replay buffer for experience
         demo_size (int): size of replay buffer for demonstration
         total_size (int): sum of demo size and number of samples of experience
-        alpha (float): alpha parameter for prioritized replay buffer
         epsilon_d (float) : epsilon_d parameter to update priority using demo
-        tree_idx (int): next index of tree
-        sum_tree (SumSegmentTree): sum tree for prior
-        min_tree (MinSegmentTree): min tree for min prior to get max weight
-        _max_priority (float): max priority
 
         """
 
@@ -176,25 +170,11 @@ class PrioritizedReplayBufferfD(ReplayBuffer):
             epsilon_d (float) : epsilon_d parameter to update priority using demo
 
         """
-        super(PrioritizedReplayBufferfD, self).__init__(buffer_size, batch_size)
-        assert alpha >= 0
-        self.buffer: list = list()
+        super(PrioritizedReplayBufferfD, self).__init__(buffer_size, batch_size, alpha)
         self.demo = demo
-        self.buffer_size = buffer_size
         self.demo_size = len(demo)
         self.total_size = self.demo_size + len(self.buffer)
-        self.alpha = alpha
         self.epsilon_d = epsilon_d
-        self.tree_idx = 0
-
-        # capacity must be positive and a power of 2.
-        tree_capacity = 1
-        while tree_capacity < self.buffer_size + self.demo_size:
-            tree_capacity *= 2
-
-        self.sum_tree = SumSegmentTree(tree_capacity)
-        self.min_tree = MinSegmentTree(tree_capacity)
-        self._max_priority = 1.0
 
         # for init priority of demo
         for _ in range(self.demo_size):
@@ -224,19 +204,6 @@ class PrioritizedReplayBufferfD(ReplayBuffer):
 
         # update current total size
         self.total_size = self.demo_size + len(self.buffer)
-
-    def _sample_proportional(self, batch_size: int) -> list:
-        """Sample indices based on proportional."""
-        indices = []
-        p_total = self.sum_tree.sum(0, self.total_size - 1)
-        segment = p_total / batch_size
-        for i in range(batch_size):
-            a = segment * i
-            b = segment * (i + 1)
-            upperbound = random.uniform(a, b)
-            idx = self.sum_tree.retrieve(upperbound)
-            indices.append(idx)
-        return indices
 
     def sample(self, beta: float = 0.4) -> Tuple[torch.Tensor, ...]:
         """Sample a batch of experiences."""
@@ -277,6 +244,7 @@ class PrioritizedReplayBufferfD(ReplayBuffer):
         next_states = torch.FloatTensor(np.array(next_states)).to(device)
         dones = torch.FloatTensor(np.array(dones).reshape(-1, 1)).to(device)
         weights = torch.FloatTensor(np.array(weights).reshape(-1, 1)).to(device)
+        eps_d = np.array(eps_d)
 
         experiences = (
             states,
@@ -303,7 +271,3 @@ class PrioritizedReplayBufferfD(ReplayBuffer):
             self.min_tree[idx] = priority ** self.alpha
 
             self._max_priority = max(self._max_priority, priority)
-
-    def __len__(self) -> int:
-        """Return the current size of internal memory."""
-        return self.total_size

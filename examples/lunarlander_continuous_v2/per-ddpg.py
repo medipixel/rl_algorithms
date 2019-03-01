@@ -27,7 +27,7 @@ hyper_params = {
     "LR_CRITIC": 1e-3,
     "OU_NOISE_THETA": 0.0,
     "OU_NOISE_SIGMA": 0.0,
-    "PER_ALPHA": 0.5,
+    "PER_ALPHA": 0.6,
     "PER_BETA": 0.4,
     "PER_EPS": 1e-6,
     "WEIGHT_DECAY": 1e-6,

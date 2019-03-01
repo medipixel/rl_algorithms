@@ -105,6 +105,7 @@ class Agent(AbstractAgent):
                 hyper_params["BATCH_SIZE"],
                 demo=list(demo),
                 alpha=hyper_params["PER_ALPHA"],
+                epsilon_d=self.hyper_params["PER_EPS_DEMO"],
             )
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
@@ -181,7 +182,8 @@ class Agent(AbstractAgent):
             self.qf_1(states, new_actions), self.qf_2(states, new_actions)
         )
         v_target = (q_pred - alpha * log_prob).detach()
-        vf_loss = torch.mean((v_pred - v_target).pow(2) * weights)
+        vf_loss_element_wise = (v_pred - v_target).pow(2)
+        vf_loss = torch.mean(vf_loss_element_wise * weights)
 
         # train Q functions
         self.qf_1_optimizer.zero_grad()
@@ -224,10 +226,10 @@ class Agent(AbstractAgent):
             common_utils.soft_update(self.vf, self.vf_target, self.hyper_params["TAU"])
 
             # update priorities
-            new_priorities = (v_pred - v_target).pow(2)
-            new_priorities += self.hyper_params["LAMDA3"] * actor_loss_element_wise.pow(
-                2
-            )
+            new_priorities = vf_loss_element_wise
+            new_priorities += self.hyper_params[
+                "LAMBDA3"
+            ] * actor_loss_element_wise.pow(2)
             new_priorities += self.hyper_params["PER_EPS"]
             new_priorities = new_priorities.data.cpu().numpy().squeeze()
             new_priorities += eps_d
@@ -357,7 +359,7 @@ class Agent(AbstractAgent):
         if self.args.log:
             wandb.init()
             wandb.config.update(self.hyper_params)
-            wandb.watch([self.actor, self.vf, self.qf_1, self.qf_2], log="parameters")
+            # wandb.watch([self.actor, self.vf, self.qf_1, self.qf_2], log="parameters")
 
         # pre-training by demo
         self.pretrain()

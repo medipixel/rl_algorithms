@@ -282,7 +282,7 @@ class Agent(AbstractAgent):
         if self.args.log:
             wandb.init()
             wandb.config.update(self.hyper_params)
-            wandb.watch([self.actor, self.critic], log="parameters")
+            # wandb.watch([self.actor, self.critic], log="parameters")
 
         score = 0
         i_episode = 0

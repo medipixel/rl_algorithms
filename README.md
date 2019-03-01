@@ -3,6 +3,7 @@
 <img src="https://user-images.githubusercontent.com/17582508/52845370-4a930200-314a-11e9-9889-e00007043872.jpg" align="center">
 
 ![Build Status](https://travis-ci.org/medipixel/rl_algorithms.svg?branch=master)
+[![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/medipixel/rl_algorithms.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/medipixel/rl_algorithms/context:python)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
 </p>
@@ -28,7 +29,7 @@ We are warmly welcoming external contributors! :)
 5. [Soft Actor Critic Algorithm (SAC)](https://github.com/medipixel/rl_algorithms/blob/master/algorithms/sac/agent.py)
 6. [Behaviour Cloning (BC with DDPG)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/bc)
 7. [Prioritized Experience Replay (PER with DDPG)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/per)
-8. [From Demonstrations (DDPGfD, SACfD)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/fd)
+8. [From Demonstrations (DDPGfD, SACfD, DQfD)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/fd)
 9. [Deep Q-Network (DDQN)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/dqn)
 
 ## Getting started
@@ -124,3 +125,5 @@ We use [W&B](https://www.wandb.com/) for logging of network parameters and other
 10. [V. Mnih et al., "Human-level control through deep reinforcement learning." Nature, 518
 (7540):529–533, 2015.](https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf)
 11. [van Hasselt et al., "Deep Reinforcement Learning with Double Q-learning." arXiv preprint arXiv:1509.06461, 2015.](https://arxiv.org/pdf/1509.06461.pdf)
+12. [Z. Wang et al., "Dueling Network Architectures for Deep Reinforcement Learning." arXiv preprint arXiv:1511.06581, 2015.](https://arxiv.org/pdf/1511.06581.pdf)
+13. [T. Hester et al., "Deep Q-learning from Demonstrations." arXiv preprint arXiv:1704.03732, 2017.](https://arxiv.org/pdf/1704.03732.pdf)
