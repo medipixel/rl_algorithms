@@ -23,7 +23,6 @@ n_cpu = multiprocessing.cpu_count()
 hyper_params = {
     "GAMMA": 0.99,
     "TAU": 5e-3,
-    "W_Q_REG": 1e-7,
     "BUFFER_SIZE": int(1e5),
     "BATCH_SIZE": 64,
     "LR_DQN": 1e-3,
@@ -41,7 +40,9 @@ hyper_params = {
     "LAMBDA1": 1.0,  # N-step return weight
     "LAMBDA2": 1.0,  # Supervised loss weight
     "LAMBDA3": 1e-5,  # l2 regularization weight
+    "W_Q_REG": 1e-7,  # Q value regularization
     "MARGIN": 0.8,  # margin for supervised loss
+    "GRADIENT_CLIP": 0.5,
 }
 
 

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """DQfD agent using demo agent for episodic tasks in OpenAI Gym.
 
-- Author: Kh Kim
-- Contact: kh.kim@medipixel.io
+- Author: Kh Kim, Curt Park
+- Contact: kh.kim@medipixel.io, curt.park@medipixel.io
 - Paper: https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf (DQN)
          https://arxiv.org/pdf/1509.06461.pdf (Double DQN)
          https://arxiv.org/pdf/1511.05952.pdf (PER)
@@ -18,6 +18,7 @@ from typing import Tuple
 import gym
 import numpy as np
 import torch
+from torch.nn.utils import clip_grad_norm_
 import wandb
 
 from algorithms.common.abstract.agent import AbstractAgent
@@ -158,35 +159,37 @@ class Agent(AbstractAgent):
         target = rewards + self.hyper_params["GAMMA"] * next_q_values * masks
         target = target.to(device)
 
-        # supervised loss using demo for only demo transitions
-        # get margin for each demo transition
-        demo_idxs = np.where(eps_d != 0.0)
-        action_idxs = actions[demo_idxs].long()
-        margin = torch.ones(q_values.size()) * self.hyper_params["MARGIN"]
-        margin[demo_idxs, action_idxs] = 0.0  # demo actions have 0 margins
-        margin = margin.to(device)
-
-        # calculate supervised loss
-        demo_q_values = q_values[demo_idxs, action_idxs].squeeze()
-        supervised_loss_element_wise = torch.max(q_values + margin, dim=-1)[0][
-            demo_idxs
-        ]
-        supervised_loss_element_wise -= demo_q_values
-        supervised_loss = torch.mean(supervised_loss_element_wise)
-        supervised_loss *= self.hyper_params["LAMBDA3"]
-
         # calculate dq loss
         dq_loss_element_wise = (target - curr_q_values).pow(2)
         dq_loss = torch.mean(dq_loss_element_wise * weights)
 
-        # total loss
-        loss = dq_loss + supervised_loss
+        # supervised loss using demo for only demo transitions
+        demo_idxs = np.where(eps_d != 0.0)
+        if demo_idxs[0].size != 0:  # if 1 or more demos are sampled
+            # get margin for each demo transition
+            action_idxs = actions[demo_idxs].long()
+            margin = torch.ones(q_values.size()) * self.hyper_params["MARGIN"]
+            margin[demo_idxs, action_idxs] = 0.0  # demo actions have 0 margins
+            margin = margin.to(device)
+
+            # calculate supervised loss
+            demo_q_values = q_values[demo_idxs, action_idxs].squeeze()
+            supervised_loss = torch.max(q_values + margin, dim=-1)[0]
+            supervised_loss = supervised_loss[demo_idxs] - demo_q_values
+            supervised_loss = torch.mean(supervised_loss) * self.hyper_params["LAMBDA2"]
+        else:  # no demo sampled
+            supervised_loss = torch.zeros(1).to(device)
 
         # q_value regularization
-        loss += torch.norm(q_values, 2).mean() * self.hyper_params["W_Q_REG"]
+        q_regular = torch.norm(q_values, 2).mean() * self.hyper_params["W_Q_REG"]
 
+        # total loss
+        loss = dq_loss + supervised_loss + q_regular
+
+        # train dqn
         self.dqn_optimizer.zero_grad()
         loss.backward()
+        clip_grad_norm_(self.dqn.parameters(), self.hyper_params["GRADIENT_CLIP"])
         self.dqn_optimizer.step()
 
         # update target networks
@@ -194,10 +197,8 @@ class Agent(AbstractAgent):
         common_utils.soft_update(self.dqn, self.dqn_target, tau)
 
         # update priorities in PER
-        new_priorities = dq_loss_element_wise
-        new_priorities = (
-            new_priorities.data.cpu().numpy().squeeze() + self.hyper_params["PER_EPS"]
-        )
+        loss_for_prior = dq_loss_element_wise.detach().cpu().numpy().squeeze()
+        new_priorities = loss_for_prior + self.hyper_params["PER_EPS"]
         new_priorities += eps_d
         self.memory.update_priorities(indexes, new_priorities)
 
