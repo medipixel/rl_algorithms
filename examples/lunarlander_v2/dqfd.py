@@ -39,7 +39,7 @@ hyper_params = {
     "N_WORKERS": 1,  # n_cpu,
     "PRETRAIN_STEP": int(1e2),
     "LAMBDA1": 1.0,  # N-step return weight
-    "LAMBDA2": 1e2,  # Supervised loss weight
+    "LAMBDA2": 1.0,  # Supervised loss weight
     "LAMBDA3": 1e-5,  # l2 regularization weight
     "MARGIN": 0.8,  # margin for supervised loss
 }

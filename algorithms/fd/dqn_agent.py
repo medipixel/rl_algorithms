@@ -135,7 +135,9 @@ class Agent(AbstractAgent):
 
         return next_state, reward, done
 
-    def update_model(self, experiences: Tuple[torch.Tensor, ...]) -> torch.Tensor:
+    def update_model(
+        self, experiences: Tuple[torch.Tensor, ...]
+    ) -> Tuple[torch.Tensor, ...]:
         """Train the model after each episode."""
         states, actions, rewards, next_states, dones, weights, indexes, eps_d = (
             experiences
@@ -158,24 +160,25 @@ class Agent(AbstractAgent):
 
         # supervised loss using demo for only demo transitions
         # get margin for each demo transition
-        margin = torch.ones(q_values.size()) * self.hyper_params["MARGIN"]
         demo_idxs = np.where(eps_d != 0.0)
         action_idxs = actions[demo_idxs].long()
+        margin = torch.ones(q_values.size()) * self.hyper_params["MARGIN"]
         margin[demo_idxs, action_idxs] = 0.0  # demo actions have 0 margins
         margin = margin.to(device)
 
         # calculate supervised loss
-        lambda3 = torch.zeros(self.hyper_params["BATCH_SIZE"]).to(device)
-        lambda3[demo_idxs] = self.hyper_params["LAMBDA3"]
-        supervised_loss = torch.max(q_values + margin, dim=-1)[0]
         demo_q_values = q_values[demo_idxs, action_idxs].squeeze()
-        supervised_loss[demo_idxs] -= demo_q_values
-        supervised_loss *= lambda3
+        supervised_loss_element_wise = torch.max(q_values + margin, dim=-1)[0]
+        supervised_loss_element_wise[demo_idxs] -= demo_q_values
+        supervised_loss = torch.mean(supervised_loss_element_wise[demo_idxs])
+        supervised_loss *= self.hyper_params["LAMBDA3"]
 
-        # calculate total loss
-        loss_element_wise = (target - curr_q_values).pow(2).squeeze()
-        loss_element_wise += supervised_loss  # add supervised loss
-        loss = torch.mean(loss_element_wise * weights)
+        # calculate dq loss
+        dq_loss_element_wise = (target - curr_q_values).pow(2)
+        dq_loss = torch.mean(dq_loss_element_wise * weights)
+
+        # total loss
+        loss = dq_loss + supervised_loss
 
         # q_value regularization
         loss += torch.norm(q_values, 2).mean() * self.hyper_params["W_Q_REG"]
@@ -189,14 +192,14 @@ class Agent(AbstractAgent):
         common_utils.soft_update(self.dqn, self.dqn_target, tau)
 
         # update priorities in PER
-        new_priorities = loss_element_wise
+        new_priorities = dq_loss_element_wise
         new_priorities = (
             new_priorities.data.cpu().numpy().squeeze() + self.hyper_params["PER_EPS"]
         )
         new_priorities += eps_d
         self.memory.update_priorities(indexes, new_priorities)
 
-        return loss.data, supervised_loss[demo_idxs].mean().data
+        return loss.data, dq_loss.data, supervised_loss.data
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
@@ -224,7 +227,7 @@ class Agent(AbstractAgent):
         """Write log about loss and score"""
         print(
             "[INFO] episode %d, episode step: %d, total step: %d, total score: %d\n"
-            "epsilon: %f, total loss: %f, supervised loss: %f\n"
+            "epsilon: %f, total loss: %f, dq loss: %f, supervised loss: %f\n"
             % (
                 i,
                 self.episode_steps[0],
@@ -233,6 +236,7 @@ class Agent(AbstractAgent):
                 self.epsilon,
                 avg_loss[0],
                 avg_loss[1],
+                avg_loss[2],
             )
         )
 
@@ -241,7 +245,8 @@ class Agent(AbstractAgent):
                 {
                     "score": score,
                     "total loss": avg_loss[0],
-                    "supervised loss": avg_loss[1],
+                    "dq loss": avg_loss[1],
+                    "supervised loss": avg_loss[2],
                 }
             )
 
