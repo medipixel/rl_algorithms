@@ -92,6 +92,7 @@ class Agent(AbstractAgent):
                 self.hyper_params["BATCH_SIZE"],
                 demo=list(demo),
                 alpha=self.hyper_params["PER_ALPHA"],
+                epsilon_d=self.hyper_params["PER_EPS_DEMO"],
             )
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
@@ -148,7 +149,8 @@ class Agent(AbstractAgent):
 
         # train critic
         values = self.critic(torch.cat((states, actions), dim=-1))
-        critic_loss = torch.mean((values - curr_returns).pow(2) * weights)
+        critic_loss_element_wise = (values - curr_returns).pow(2)
+        critic_loss = torch.mean(critic_loss_element_wise * weights)
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
         self.critic_optimizer.step()

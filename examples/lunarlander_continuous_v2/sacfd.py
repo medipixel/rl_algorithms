@@ -21,28 +21,29 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 hyper_params = {
     "GAMMA": 0.99,
     "TAU": 1e-3,
-    "W_ENTROPY": 1e-3,
-    "W_MEAN_REG": 1e-3,
-    "W_STD_REG": 1e-3,
-    "W_PRE_ACTIVATION_REG": 0.0,
+    "BUFFER_SIZE": int(1e5),
+    "BATCH_SIZE": 64,
+    "AUTO_ENTROPY_TUNING": True,
     "LR_ACTOR": 3e-4,
     "LR_VF": 3e-4,
     "LR_QF1": 3e-4,
     "LR_QF2": 3e-4,
     "LR_ENTROPY": 3e-4,
+    "W_ENTROPY": 1e-3,
+    "W_MEAN_REG": 1e-3,
+    "W_STD_REG": 1e-3,
+    "W_PRE_ACTIVATION_REG": 0.0,
     "DELAYED_UPDATE": 2,
-    "BUFFER_SIZE": int(1e6),
-    "BATCH_SIZE": 128,
-    "AUTO_ENTROPY_TUNING": True,
     "PRETRAIN_STEP": 100,
-    "MULTIPLE_LEARN": 1,  # multiple learning updates
+    "MULTIPLE_LEARN": 2,  # multiple learning updates
     "LAMDA1": 1.0,  # N-step return weight
     "LAMDA2": 1e-5,  # l2 regularization weight
     "LAMDA3": 1.0,  # actor loss contribution of prior weight
-    "PER_ALPHA": 0.5,
+    "PER_ALPHA": 0.6,
     "PER_BETA": 0.4,
     "PER_EPS": 1e-6,
-    "INITIAL_RANDOM_ACTION": 5000,
+    "PER_EPS_DEMO": 1.0,
+    "INITIAL_RANDOM_ACTION": int(5e3),
 }
 
 

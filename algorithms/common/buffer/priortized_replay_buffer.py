@@ -244,6 +244,7 @@ class PrioritizedReplayBufferfD(PrioritizedReplayBuffer):
         next_states = torch.FloatTensor(np.array(next_states)).to(device)
         dones = torch.FloatTensor(np.array(dones).reshape(-1, 1)).to(device)
         weights = torch.FloatTensor(np.array(weights).reshape(-1, 1)).to(device)
+        eps_d = np.array(eps_d)
 
         experiences = (
             states,

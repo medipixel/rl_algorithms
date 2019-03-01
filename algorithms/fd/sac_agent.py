@@ -105,6 +105,7 @@ class Agent(AbstractAgent):
                 hyper_params["BATCH_SIZE"],
                 demo=list(demo),
                 alpha=hyper_params["PER_ALPHA"],
+                epsilon_d=self.hyper_params["PER_EPS_DEMO"],
             )
 
     def select_action(self, state: np.ndarray) -> np.ndarray:

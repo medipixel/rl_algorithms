@@ -167,16 +167,6 @@ class Agent(AbstractAgent):
         )
         self.memory.update_priorities(indexes, new_priorities)
 
-        # decrease epsilon
-        max_epsilon, min_epsilon, epsilon_decay = (
-            self.hyper_params["MAX_EPSILON"],
-            self.hyper_params["MIN_EPSILON"],
-            self.hyper_params["EPSILON_DECAY"],
-        )
-        self.epsilon = max(
-            self.epsilon - (max_epsilon - min_epsilon) * epsilon_decay, min_epsilon
-        )
-
         return loss.data
 
     def load_params(self, path: str):

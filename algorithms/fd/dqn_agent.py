@@ -93,6 +93,7 @@ class Agent(AbstractAgent):
                 self.hyper_params["BATCH_SIZE"],
                 demo=list(demo),
                 alpha=self.hyper_params["PER_ALPHA"],
+                epsilon_d=self.hyper_params["PER_EPS_DEMO"],
             )
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
@@ -191,16 +192,6 @@ class Agent(AbstractAgent):
         )
         new_priorities += eps_d
         self.memory.update_priorities(indexes, new_priorities)
-
-        # decrease epsilon
-        max_epsilon, min_epsilon, epsilon_decay = (
-            self.hyper_params["MAX_EPSILON"],
-            self.hyper_params["MIN_EPSILON"],
-            self.hyper_params["EPSILON_DECAY"],
-        )
-        self.epsilon = max(
-            self.epsilon - (max_epsilon - min_epsilon) * epsilon_decay, min_epsilon
-        )
 
         return loss.data
 
@@ -309,13 +300,15 @@ class Agent(AbstractAgent):
                     losses.append(loss)  # for logging
 
                 # decrease epsilon
-                max_epsilon, min_epsilon, epsilon_decay = (
+                max_epsilon, min_epsilon, epsilon_decay, n_workers = (
                     self.hyper_params["MAX_EPSILON"],
                     self.hyper_params["MIN_EPSILON"],
                     self.hyper_params["EPSILON_DECAY"],
+                    self.hyper_params["N_WORKERS"],
                 )
                 self.epsilon = max(
-                    self.epsilon - (max_epsilon - min_epsilon) * epsilon_decay,
+                    self.epsilon
+                    - (max_epsilon - min_epsilon) * epsilon_decay * n_workers,
                     min_epsilon,
                 )
 
