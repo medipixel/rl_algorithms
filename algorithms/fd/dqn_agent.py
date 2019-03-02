@@ -10,6 +10,7 @@
          https://arxiv.org/pdf/1704.03732.pdf (DQfD)
 """
 
+import datetime
 import pickle
 from typing import Tuple
 
@@ -115,11 +116,12 @@ class Agent(DQNAgent):
 
         return loss.data, dq_loss.data, supervised_loss.data
 
-    def write_log(self, i: int, avg_loss: dict, score: int = 0):
+    def write_log(self, i: int, avg_loss: np.ndarray, score: int = 0):
         """Write log about loss and score"""
         print(
             "[INFO] episode %d, episode step: %d, total step: %d, total score: %d\n"
             "epsilon: %f, total loss: %f, dq loss: %f, supervised loss: %f\n"
+            "at %s\n"
             % (
                 i,
                 self.episode_steps[0],
@@ -129,6 +131,7 @@ class Agent(DQNAgent):
                 avg_loss[0],
                 avg_loss[1],
                 avg_loss[2],
+                datetime.datetime.now(),
             )
         )
 

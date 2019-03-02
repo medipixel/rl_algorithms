@@ -201,7 +201,7 @@ class Agent(AbstractAgent):
 
         AbstractAgent.save_params(self, params, n_episode)
 
-    def write_log(self, i: int, loss: float, score: int):
+    def write_log(self, i: int, loss: np.ndarray, score: int):
         """Write log about loss and score"""
         print(
             "[INFO] episode %d, episode step: %d, total step: %d, total score: %d\n"
@@ -264,7 +264,7 @@ class Agent(AbstractAgent):
                     avg_loss = np.vstack(losses).mean(axis=0)
                     losses.clear()
                 else:
-                    avg_loss = 0.0
+                    avg_loss = np.array([0.0])
                 self.write_log(i_episode, avg_loss, score)
                 score = 0
 
