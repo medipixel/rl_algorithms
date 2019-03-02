@@ -156,7 +156,7 @@ class Agent(AbstractAgent):
         target = rewards + self.hyper_params["GAMMA"] * next_q_value * masks
         target = target.to(device)
 
-        # calculatte dq loss
+        # calculate dq loss
         dq_loss_element_wise = (target - curr_q_value).pow(2)
         dq_loss = torch.mean(dq_loss_element_wise * weights)
 
