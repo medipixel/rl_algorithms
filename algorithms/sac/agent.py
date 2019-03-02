@@ -41,11 +41,15 @@ class Agent(AbstractAgent):
         critic_optimizer2 (Optimizer): optimizer for training critic_2
         curr_state (np.ndarray): temporary storage of the current state
         target_entropy (int): desired entropy used for the inequality constraint
+        beta (float): beta parameter for prioritized replay buffer
         alpha (torch.Tensor): weight for entropy
         alpha_optimizer (Optimizer): optimizer for alpha
         hyper_params (dict): hyper-parameters
         total_step (int): total step numbers
         episode_step (int): step number of the current episode
+        i_episode (int): current episode number
+        hook_transition (bool): hook a transition in step() if it's True
+        hooked_transition (dict): hooked transition hooked in step()
 
     """
 
@@ -78,6 +82,9 @@ class Agent(AbstractAgent):
         self.curr_state = np.zeros((1,))
         self.total_step = 0
         self.episode_step = 0
+        self.i_episode = 0
+        self.hook_transition = False
+        self.hooked_transition: Tuple = tuple()
 
         # automatic entropy tuning
         if self.hyper_params["AUTO_ENTROPY_TUNING"]:
@@ -91,10 +98,15 @@ class Agent(AbstractAgent):
         if args.load_from is not None and os.path.exists(args.load_from):
             self.load_params(args.load_from)
 
+        self._initialize()
+
+    # pylint: disable=attribute-defined-outside-init
+    def _initialize(self):
+        """Initialize non-common things."""
         if not self.args.test:
             # replay memory
             self.memory = ReplayBuffer(
-                hyper_params["BUFFER_SIZE"], hyper_params["BATCH_SIZE"]
+                self.hyper_params["BUFFER_SIZE"], self.hyper_params["BATCH_SIZE"]
             )
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
@@ -128,17 +140,18 @@ class Agent(AbstractAgent):
             done_bool = (
                 False if self.episode_step == self.args.max_episode_steps else done
             )
-            self.memory.add(self.curr_state, action, reward, next_state, done_bool)
+            transition = (self.curr_state, action, reward, next_state, done_bool)
+
+            if self.hook_transition:  # used for HER
+                self.hooked_transition = transition
+            else:
+                self.memory.add(*transition)
 
         return next_state, reward, done
 
-    def update_model(
-        self,
-        experiences: Tuple[
-            torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor
-        ],
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    def update_model(self) -> Tuple[torch.Tensor, ...]:
         """Train the model after each episode."""
+        experiences = self.memory.sample()
         states, actions, rewards, next_states, dones = experiences
         new_actions, log_prob, pre_tanh_value, mu, std = self.actor(states)
 
@@ -301,6 +314,11 @@ class Agent(AbstractAgent):
                 }
             )
 
+    # pylint: disable=no-self-use, unnecessary-pass
+    def pretrain(self):
+        """Pretraining steps."""
+        pass
+
     def train(self):
         """Train the agent."""
         # logger
@@ -309,7 +327,11 @@ class Agent(AbstractAgent):
             wandb.config.update(self.hyper_params)
             # wandb.watch([self.actor, self.vf, self.qf_1, self.qf_2], log="parameters")
 
+        # pre-training if needed
+        self.pretrain()
+
         for i_episode in range(1, self.args.episode_num + 1):
+            self.i_episode = i_episode
             state = self.env.reset()
             done = False
             score = 0
@@ -328,9 +350,9 @@ class Agent(AbstractAgent):
 
                 # training
                 if len(self.memory) >= self.hyper_params["BATCH_SIZE"]:
-                    experiences = self.memory.sample()
-                    loss = self.update_model(experiences)
-                    loss_episode.append(loss)  # for logging
+                    for _ in range(self.hyper_params["MULTIPLE_LEARN"]):
+                        loss = self.update_model()
+                        loss_episode.append(loss)  # for logging
 
             # logging
             if loss_episode:

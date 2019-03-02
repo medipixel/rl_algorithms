@@ -9,9 +9,7 @@
 
 from typing import Tuple
 
-import numpy as np
 import torch
-import wandb
 
 from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
 import algorithms.common.helper_functions as common_utils
@@ -87,31 +85,3 @@ class Agent(DDPGAgent):
         self.beta = self.beta + fraction * (1.0 - self.beta)
 
         return actor_loss.data, critic_loss.data
-
-    def write_log(self, i: int, loss: np.ndarray, score: int):
-        """Write log about loss and score"""
-        total_loss = loss.sum()
-
-        print(
-            "[INFO] episode %d, episode step: %d, total step: %d, total score: %d\n"
-            "total loss: %f actor_loss: %.3f critic_loss: %.3f\n"
-            % (
-                i,
-                self.episode_step,
-                self.total_step,
-                score,
-                total_loss,
-                loss[0],
-                loss[1],
-            )  # actor loss  # critic loss
-        )
-
-        if self.args.log:
-            wandb.log(
-                {
-                    "score": score,
-                    "total loss": total_loss,
-                    "actor loss": loss[0],
-                    "critic loss": loss[1],
-                }
-            )

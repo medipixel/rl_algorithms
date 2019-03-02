@@ -12,7 +12,6 @@ from typing import Tuple
 import numpy as np
 import torch
 import torch.nn.functional as F
-import wandb
 
 from algorithms.common.buffer.replay_buffer import ReplayBuffer
 import algorithms.common.helper_functions as common_utils
@@ -67,12 +66,13 @@ class Agent(DDPGAgent):
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""
+        state_ = state
         if self.hyper_params["USE_HER"]:
             self.desired_state = self.her.sample_desired_state()
-            state_cat = np.concatenate((state, self.desired_state), axis=-1)
+            state = np.concatenate((state, self.desired_state), axis=-1)
 
-        selected_action = DDPGAgent.select_action(self, state_cat)
-        self.curr_state = state
+        selected_action = DDPGAgent.select_action(self, state)
+        self.curr_state = state_
 
         return selected_action
 
@@ -154,31 +154,3 @@ class Agent(DDPGAgent):
         common_utils.soft_update(self.critic, self.critic_target, tau)
 
         return actor_loss.data, critic_loss.data
-
-    def write_log(self, i_episode: int, loss: np.ndarray, score: float = 0.0):
-        """Write log about loss and score"""
-        total_loss = loss.sum()
-
-        print(
-            "[INFO] episode %d, episode step: %d, total step: %d, total score: %d\n"
-            "total loss: %f actor_loss: %.3f critic_loss: %.3f\n"
-            % (
-                i_episode,
-                self.episode_step,
-                self.total_step,
-                score,
-                total_loss,
-                loss[0],
-                loss[1],
-            )  # actor loss  # critic loss
-        )
-
-        if self.args.log:
-            wandb.log(
-                {
-                    "score": score,
-                    "total loss": total_loss,
-                    "actor loss": loss[0],
-                    "critic loss": loss[1],
-                }
-            )

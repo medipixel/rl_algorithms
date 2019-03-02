@@ -36,6 +36,7 @@ hyper_params = {
     "AUTO_ENTROPY_TUNING": True,
     "WEIGHT_DECAY": 0.0,
     "INITIAL_RANDOM_ACTION": 20000,
+    "MULTIPLE_LEARN": 1,
 }
 
 
