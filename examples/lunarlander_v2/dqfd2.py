@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-"""Run module for DQN on LunarLander-v2.
+"""Run module for DQfD2 on LunarLander-v2.
 
-- Author: Kh Kim
-- Contact: kh.kim@medipixel.io
+- Author: Curt Park
+- Contact: curt.park@medipixel.io
 """
 
 import argparse
@@ -14,7 +14,7 @@ import torch.optim as optim
 
 from algorithms.common.env.utils import env_generator, make_envs
 from algorithms.dqn.networks import DuelingMLP
-from algorithms.fd.dqn_agent import Agent
+from algorithms.fd.dqn_agent2 import Agent
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 n_cpu = multiprocessing.cpu_count()
@@ -30,12 +30,12 @@ hyper_params = {
     "MAX_EPSILON": 1.0,
     "MIN_EPSILON": 0.01,
     "EPSILON_DECAY": 2e-5,
-    "LAMBDA1": 1e-3,
-    "LAMBDA2": 1.0,
-    "WEIGHT_DECAY": 1e-6,
+    "MARGIN": 0.8,
+    "LAMBDA1": 1.0,  # dq loss weight
+    "LAMBDA2": 1.0,  # supervised loss weight
+    "LAMBDA3": 1e-6,  # weight decay
     "W_Q_REG": 1e-7,  # Q value regularization
     "GRADIENT_CLIP": 0.5,
-    "PRETRAIN_STEP": int(5e3),
     "UPDATE_STARTS_FROM": int(1e4),
     "MULTIPLE_LEARN": n_cpu,
     "N_WORKERS": n_cpu,
@@ -73,7 +73,7 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
     dqn_optim = optim.Adam(
         dqn.parameters(),
         lr=hyper_params["LR_DQN"],
-        weight_decay=hyper_params["WEIGHT_DECAY"],
+        weight_decay=hyper_params["LAMBDA3"],
     )
 
     # make tuples to create an agent
