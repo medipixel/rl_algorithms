@@ -42,6 +42,7 @@ class Agent(AbstractAgent):
         total_steps (np.ndarray): total step numbers
         episode_steps (np.ndarray): step number of the current episode
         epsilon (float): parameter for epsilon greedy policy
+        i_episode (int): current episode number
 
     """
 
@@ -76,18 +77,20 @@ class Agent(AbstractAgent):
         self.total_steps = np.zeros(hyper_params["N_WORKERS"], dtype=np.int)
         self.episode_steps = np.zeros(hyper_params["N_WORKERS"], dtype=np.int)
         self.epsilon = self.hyper_params["MAX_EPSILON"]
+        self.i_episode = 0
 
         # load the optimizer and model parameters
         if args.load_from is not None and os.path.exists(args.load_from):
             self.load_params(args.load_from)
 
         if not self.args.test:
-            self.beta = self.hyper_params["PER_BETA"]
             self._init_replay_buffer()
 
+    # pylint: disable=attribute-defined-outside-init
     def _init_replay_buffer(self):
         """Initialize replay buffer."""
         # replay memory
+        self.beta = self.hyper_params["PER_BETA"]
         self.memory = PrioritizedReplayBuffer(
             self.hyper_params["BUFFER_SIZE"],
             self.hyper_params["BATCH_SIZE"],
@@ -177,6 +180,10 @@ class Agent(AbstractAgent):
         new_priorities = loss_for_prior + self.hyper_params["PER_EPS"]
         self.memory.update_priorities(indexes, new_priorities)
 
+        # increase beta
+        fraction = min(float(self.i_episode) / self.args.max_episode_steps, 1.0)
+        self.beta = self.beta + fraction * (1.0 - self.beta)
+
         return loss.data
 
     def load_params(self, path: str):
@@ -253,6 +260,7 @@ class Agent(AbstractAgent):
             score += reward[0]
             i_episode_prev = i_episode
             i_episode += done.sum()
+            self.i_episode = i_episode
 
             if (i_episode // self.args.save_period) != (
                 i_episode_prev // self.args.save_period
@@ -262,10 +270,8 @@ class Agent(AbstractAgent):
             if done[0]:
                 if losses:
                     avg_loss = np.vstack(losses).mean(axis=0)
+                    self.write_log(i_episode, avg_loss, score)
                     losses.clear()
-                else:
-                    avg_loss = np.array([0.0])
-                self.write_log(i_episode, avg_loss, score)
                 score = 0
 
             self.episode_steps[np.where(done)] = 0
@@ -287,10 +293,6 @@ class Agent(AbstractAgent):
                     - (max_epsilon - min_epsilon) * epsilon_decay * n_workers,
                     min_epsilon,
                 )
-
-            # increase beta
-            fraction = min(float(i_episode) / self.args.max_episode_steps, 1.0)
-            self.beta = self.beta + fraction * (1.0 - self.beta)
 
         # termination
         self.env.close()

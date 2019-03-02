@@ -34,6 +34,7 @@ class Agent(DQNAgent):
 
     """
 
+    # pylint: disable=attribute-defined-outside-init
     def _init_replay_buffer(self):
         """Initialize replay buffer."""
         # load demo replay memory
@@ -41,6 +42,7 @@ class Agent(DQNAgent):
             demo = pickle.load(f)
 
         # replay memory
+        self.beta = self.hyper_params["PER_BETA"]
         self.memory = PrioritizedReplayBufferfD(
             self.hyper_params["BUFFER_SIZE"],
             self.hyper_params["BATCH_SIZE"],
@@ -113,6 +115,10 @@ class Agent(DQNAgent):
         new_priorities = loss_for_prior + self.hyper_params["PER_EPS"]
         new_priorities += eps_d
         self.memory.update_priorities(indexes, new_priorities)
+
+        # increase beta
+        fraction = min(float(self.i_episode) / self.args.max_episode_steps, 1.0)
+        self.beta = self.beta + fraction * (1.0 - self.beta)
 
         return loss.data, dq_loss.data, supervised_loss.data
 

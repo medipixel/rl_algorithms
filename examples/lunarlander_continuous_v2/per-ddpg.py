@@ -32,6 +32,7 @@ hyper_params = {
     "PER_EPS": 1e-6,
     "WEIGHT_DECAY": 1e-6,
     "INITIAL_RANDOM_ACTION": 10000,
+    "MULTIPLE_LEARN": 1,  # multiple learning updates
 }
 
 
