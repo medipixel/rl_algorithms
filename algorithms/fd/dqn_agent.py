@@ -37,19 +37,20 @@ class Agent(DQNAgent):
     # pylint: disable=attribute-defined-outside-init
     def _init_replay_buffer(self):
         """Initialize replay buffer."""
-        # load demo replay memory
-        with open(self.args.demo_path, "rb") as f:
-            demo = pickle.load(f)
+        if not self.args.test:
+            # load demo replay memory
+            with open(self.args.demo_path, "rb") as f:
+                demo = pickle.load(f)
 
-        # replay memory
-        self.beta = self.hyper_params["PER_BETA"]
-        self.memory = PrioritizedReplayBufferfD(
-            self.hyper_params["BUFFER_SIZE"],
-            self.hyper_params["BATCH_SIZE"],
-            demo=list(demo),
-            alpha=self.hyper_params["PER_ALPHA"],
-            epsilon_d=self.hyper_params["PER_EPS_DEMO"],
-        )
+            # replay memory
+            self.beta = self.hyper_params["PER_BETA"]
+            self.memory = PrioritizedReplayBufferfD(
+                self.hyper_params["BUFFER_SIZE"],
+                self.hyper_params["BATCH_SIZE"],
+                demo=list(demo),
+                alpha=self.hyper_params["PER_ALPHA"],
+                epsilon_d=self.hyper_params["PER_EPS_DEMO"],
+            )
 
     def update_model(self) -> Tuple[torch.Tensor, ...]:
         """Train the model after each episode."""

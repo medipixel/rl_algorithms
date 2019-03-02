@@ -51,26 +51,27 @@ class Agent(DDPGAgent):
             self.hook_transition = True
             demo = self.her.generate_demo_transitions(demo)
 
-        # Replay buffers
-        demo_batch_size = self.hyper_params["DEMO_BATCH_SIZE"]
-        self.demo_memory = ReplayBuffer(len(demo), demo_batch_size)
-        self.demo_memory.extend(demo)
+        if not self.args.test:
+            # Replay buffers
+            demo_batch_size = self.hyper_params["DEMO_BATCH_SIZE"]
+            self.demo_memory = ReplayBuffer(len(demo), demo_batch_size)
+            self.demo_memory.extend(demo)
 
-        self.memory = ReplayBuffer(
-            self.hyper_params["BUFFER_SIZE"], self.hyper_params["BATCH_SIZE"]
-        )
+            self.memory = ReplayBuffer(
+                self.hyper_params["BUFFER_SIZE"], self.hyper_params["BATCH_SIZE"]
+            )
 
-        # set hyper parameters
-        self.lambda1 = self.hyper_params["LAMBDA1"]
-        self.lambda2 = self.hyper_params["LAMBDA2"] / demo_batch_size
+            # set hyper parameters
+            self.lambda1 = self.hyper_params["LAMBDA1"]
+            self.lambda2 = self.hyper_params["LAMBDA2"] / demo_batch_size
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""
         if self.hyper_params["USE_HER"]:
             self.desired_state = self.her.sample_desired_state()
-            state = np.concatenate((state, self.desired_state), axis=-1)
+            state_cat = np.concatenate((state, self.desired_state), axis=-1)
 
-        selected_action = DDPGAgent.select_action(self, state)
+        selected_action = DDPGAgent.select_action(self, state_cat)
         self.curr_state = state
 
         return selected_action

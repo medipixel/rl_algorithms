@@ -32,13 +32,14 @@ class Agent(DDPGAgent):
     # pylint: disable=attribute-defined-outside-init
     def _init_replay_buffer(self):
         """Initialize replay buffer."""
-        # replay memory
-        self.beta = self.hyper_params["PER_BETA"]
-        self.memory = PrioritizedReplayBuffer(
-            self.hyper_params["BUFFER_SIZE"],
-            self.hyper_params["BATCH_SIZE"],
-            alpha=self.hyper_params["PER_ALPHA"],
-        )
+        if not self.args.test:
+            # replay memory
+            self.beta = self.hyper_params["PER_BETA"]
+            self.memory = PrioritizedReplayBuffer(
+                self.hyper_params["BUFFER_SIZE"],
+                self.hyper_params["BATCH_SIZE"],
+                alpha=self.hyper_params["PER_ALPHA"],
+            )
 
     def update_model(self) -> Tuple[torch.Tensor, ...]:
         """Train the model after each episode."""

@@ -83,19 +83,19 @@ class Agent(AbstractAgent):
         if args.load_from is not None and os.path.exists(args.load_from):
             self.load_params(args.load_from)
 
-        if not self.args.test:
-            self._init_replay_buffer()
+        self._init_replay_buffer()
 
     # pylint: disable=attribute-defined-outside-init
     def _init_replay_buffer(self):
         """Initialize replay buffer."""
-        # replay memory
-        self.beta = self.hyper_params["PER_BETA"]
-        self.memory = PrioritizedReplayBuffer(
-            self.hyper_params["BUFFER_SIZE"],
-            self.hyper_params["BATCH_SIZE"],
-            alpha=self.hyper_params["PER_ALPHA"],
-        )
+        if not self.args.test:
+            # replay memory
+            self.beta = self.hyper_params["PER_BETA"]
+            self.memory = PrioritizedReplayBuffer(
+                self.hyper_params["BUFFER_SIZE"],
+                self.hyper_params["BATCH_SIZE"],
+                alpha=self.hyper_params["PER_ALPHA"],
+            )
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""
