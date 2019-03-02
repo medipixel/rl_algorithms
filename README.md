@@ -27,10 +27,10 @@ We are warmly welcoming external contributors! :)
 3. [Proximal Policy Optimization Algorithms (PPO)](https://github.com/medipixel/rl_algorithms/blob/master/algorithms/ppo)
 4. [Twin Delayed Deep Deterministic Policy Gradient Algorithm (TD3)](https://github.com/medipixel/rl_algorithms/blob/master/algorithms/td3)
 5. [Soft Actor Critic Algorithm (SAC)](https://github.com/medipixel/rl_algorithms/blob/master/algorithms/sac/agent.py)
-6. [Behaviour Cloning (BC with DDPG)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/bc)
+6. [Behaviour Cloning (BC with DDPG, SAC)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/bc)
 7. [Prioritized Experience Replay (PER with DDPG)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/per)
 8. [From Demonstrations (DDPGfD, SACfD, DQfD)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/fd)
-9. [Deep Q-Network (DDQN)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/dqn)
+9. [Dueling Deep Q-Network (Dueling DQN)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/dqn)
 
 ## Getting started
 We have tested each algorithm on some of the following environments.

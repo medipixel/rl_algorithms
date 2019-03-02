@@ -13,8 +13,8 @@ import torch
 import torch.optim as optim
 
 from algorithms.common.env.utils import env_generator, make_envs
-from algorithms.dqn.agent import Agent
 from algorithms.dqn.networks import DuelingMLP
+from algorithms.fd.dqn_agent import Agent
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 n_cpu = multiprocessing.cpu_count()
@@ -23,19 +23,20 @@ n_cpu = multiprocessing.cpu_count()
 hyper_params = {
     "GAMMA": 0.99,
     "TAU": 5e-3,
-    "W_Q_REG": 1e-7,
-    "BUFFER_SIZE": int(1e6),
-    "BATCH_SIZE": 64,
+    "BUFFER_SIZE": int(1e5),
+    "BATCH_SIZE": 512,
+    "DEMO_BATCH_SIZE": 64,
     "LR_DQN": 1e-3,
-    "WEIGHT_DECAY": 1e-6,
     "MAX_EPSILON": 1.0,
     "MIN_EPSILON": 0.01,
     "EPSILON_DECAY": 2e-5,
-    "PER_ALPHA": 0.6,
-    "PER_BETA": 0.4,
-    "PER_EPS": 1e-6,
+    "LAMBDA1": 1e-3,
+    "LAMBDA2": 1.0,
+    "WEIGHT_DECAY": 1e-6,
+    "W_Q_REG": 1e-7,  # Q value regularization
     "GRADIENT_CLIP": 0.5,
-    "UPDATE_STARTS_FROM": int(1e3),
+    "PRETRAIN_STEP": int(5e3),
+    "UPDATE_STARTS_FROM": int(1e4),
     "MULTIPLE_LEARN": n_cpu,
     "N_WORKERS": n_cpu,
 }

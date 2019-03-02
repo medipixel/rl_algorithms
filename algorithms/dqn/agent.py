@@ -17,6 +17,7 @@ from typing import Tuple
 import gym
 import numpy as np
 import torch
+from torch.nn.utils import clip_grad_norm_
 import wandb
 
 from algorithms.common.abstract.agent import AbstractAgent
@@ -41,6 +42,7 @@ class Agent(AbstractAgent):
         total_steps (np.ndarray): total step numbers
         episode_steps (np.ndarray): step number of the current episode
         epsilon (float): parameter for epsilon greedy policy
+        i_episode (int): current episode number
 
     """
 
@@ -75,11 +77,17 @@ class Agent(AbstractAgent):
         self.total_steps = np.zeros(hyper_params["N_WORKERS"], dtype=np.int)
         self.episode_steps = np.zeros(hyper_params["N_WORKERS"], dtype=np.int)
         self.epsilon = self.hyper_params["MAX_EPSILON"]
+        self.i_episode = 0
 
         # load the optimizer and model parameters
         if args.load_from is not None and os.path.exists(args.load_from):
             self.load_params(args.load_from)
 
+        self._initialize()
+
+    # pylint: disable=attribute-defined-outside-init
+    def _initialize(self):
+        """Initialize non-common things."""
         if not self.args.test:
             # replay memory
             self.beta = self.hyper_params["PER_BETA"]
@@ -128,8 +136,9 @@ class Agent(AbstractAgent):
 
         return next_state, reward, done
 
-    def update_model(self, experiences: Tuple[torch.Tensor, ...]) -> torch.Tensor:
+    def update_model(self) -> Tuple[torch.Tensor, ...]:
         """Train the model after each episode."""
+        experiences = self.memory.sample(self.beta)
         states, actions, rewards, next_states, dones, weights, indexes = experiences
 
         q_values = self.dqn(states, self.epsilon)
@@ -144,16 +153,22 @@ class Agent(AbstractAgent):
         # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
         #       = r                       otherwise
         masks = 1 - dones
-
         target = rewards + self.hyper_params["GAMMA"] * next_q_value * masks
         target = target.to(device)
 
-        loss = torch.mean((target - curr_q_value).pow(2) * weights)
-        # regularization
-        loss += torch.norm(q_values, 2).mean() * self.hyper_params["W_Q_REG"]
+        # calculate dq loss
+        dq_loss_element_wise = (target - curr_q_value).pow(2)
+        dq_loss = torch.mean(dq_loss_element_wise * weights)
+
+        # q_value regularization
+        q_regular = torch.norm(q_values, 2).mean() * self.hyper_params["W_Q_REG"]
+
+        # total loss
+        loss = dq_loss + q_regular
 
         self.dqn_optimizer.zero_grad()
         loss.backward()
+        clip_grad_norm_(self.dqn.parameters(), self.hyper_params["GRADIENT_CLIP"])
         self.dqn_optimizer.step()
 
         # update target networks
@@ -161,11 +176,13 @@ class Agent(AbstractAgent):
         common_utils.soft_update(self.dqn, self.dqn_target, tau)
 
         # update priorities in PER
-        new_priorities = (target - curr_q_value).pow(2)
-        new_priorities = (
-            new_priorities.data.cpu().numpy() + self.hyper_params["PER_EPS"]
-        )
+        loss_for_prior = dq_loss_element_wise.detach().cpu().numpy().squeeze()
+        new_priorities = loss_for_prior + self.hyper_params["PER_EPS"]
         self.memory.update_priorities(indexes, new_priorities)
+
+        # increase beta
+        fraction = min(float(self.i_episode) / self.args.max_episode_steps, 1.0)
+        self.beta = self.beta + fraction * (1.0 - self.beta)
 
         return loss.data
 
@@ -191,7 +208,7 @@ class Agent(AbstractAgent):
 
         AbstractAgent.save_params(self, params, n_episode)
 
-    def write_log(self, i: int, loss: float, score: int):
+    def write_log(self, i: int, loss: np.ndarray, score: int):
         """Write log about loss and score"""
         print(
             "[INFO] episode %d, episode step: %d, total step: %d, total score: %d\n"
@@ -208,7 +225,12 @@ class Agent(AbstractAgent):
         )
 
         if self.args.log:
-            wandb.log({"score": score, "dqn loss": loss})
+            wandb.log({"score": score, "dqn loss": loss, "epsilon": self.epsilon})
+
+    # pylint: disable=no-self-use, unnecessary-pass
+    def pretrain(self):
+        """Pretraining steps."""
+        pass
 
     def train(self):
         """Train the agent."""
@@ -217,6 +239,9 @@ class Agent(AbstractAgent):
             wandb.init()
             wandb.config.update(self.hyper_params)
             # wandb.watch([self.dqn], log="parameters")
+
+        # pre-training if needed
+        self.pretrain()
 
         state = self.env.reset()
         i_episode_prev = 0
@@ -235,6 +260,7 @@ class Agent(AbstractAgent):
             score += reward[0]
             i_episode_prev = i_episode
             i_episode += done.sum()
+            self.i_episode = i_episode
 
             if (i_episode // self.args.save_period) != (
                 i_episode_prev // self.args.save_period
@@ -243,19 +269,16 @@ class Agent(AbstractAgent):
 
             if done[0]:
                 if losses:
-                    avg_loss = np.array(losses).mean()
+                    avg_loss = np.vstack(losses).mean(axis=0)
+                    self.write_log(i_episode, avg_loss, score)
                     losses.clear()
-                else:
-                    avg_loss = 0.0
-                self.write_log(i_episode, avg_loss, score)
                 score = 0
 
             self.episode_steps[np.where(done)] = 0
 
             if len(self.memory) >= self.hyper_params["UPDATE_STARTS_FROM"]:
                 for _ in range(self.hyper_params["MULTIPLE_LEARN"]):
-                    experiences = self.memory.sample(self.beta)
-                    loss = self.update_model(experiences)
+                    loss = self.update_model()
                     losses.append(loss)  # for logging
 
                 # decrease epsilon
@@ -270,10 +293,6 @@ class Agent(AbstractAgent):
                     - (max_epsilon - min_epsilon) * epsilon_decay * n_workers,
                     min_epsilon,
                 )
-
-            # increase beta
-            fraction = min(float(i_episode) / self.args.max_episode_steps, 1.0)
-            self.beta = self.beta + fraction * (1.0 - self.beta)
 
         # termination
         self.env.close()

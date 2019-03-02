@@ -40,6 +40,7 @@ hyper_params = {
     "USE_HER": False,
     "WEIGHT_DECAY": 0.0,
     "INITIAL_RANDOM_ACTION": 10000,
+    "MULTIPLE_LEARN": 1,
 }
 
 

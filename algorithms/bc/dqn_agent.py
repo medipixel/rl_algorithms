@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-
-"""DQfD agent using demo agent for episodic tasks in OpenAI Gym.
+"""DQN with Behaviour Cloning agent (w/o HER) for episodic tasks in OpenAI Gym.
 
-- Author: Kh Kim, Curt Park
-- Contact: kh.kim@medipixel.io, curt.park@medipixel.io
+- Author: Curt Park
+- Contact: curt.park@medipixel.io
 - Paper: https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf (DQN)
          https://arxiv.org/pdf/1509.06461.pdf (Double DQN)
-         https://arxiv.org/pdf/1511.05952.pdf (PER)
-         https://arxiv.org/pdf/1511.06581.pdf (Dueling)
-         https://arxiv.org/pdf/1704.03732.pdf (DQfD)
+         https://arxiv.org/pdf/1709.10089.pdf (Behaviour Cloning)
 """
 
 import datetime
@@ -19,7 +17,7 @@ import torch
 from torch.nn.utils import clip_grad_norm_
 import wandb
 
-from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBufferfD
+from algorithms.common.buffer.replay_buffer import ReplayBuffer
 import algorithms.common.helper_functions as common_utils
 from algorithms.dqn.agent import Agent as DQNAgent
 
@@ -30,34 +28,42 @@ class Agent(DQNAgent):
     """DQN interacting with environment.
 
     Attribute:
-        memory (PrioritizedReplayBufferfD): replay memory
+        memory (ReplayBuffer): replay memory
+        demo_memory (ReplayBuffer): replay memory for demo
 
     """
 
     # pylint: disable=attribute-defined-outside-init
     def _initialize(self):
-        """Initialize non-common things."""
+        # load demo replay memory
         if not self.args.test:
-            # load demo replay memory
             with open(self.args.demo_path, "rb") as f:
-                demo = pickle.load(f)
+                demo = list(pickle.load(f))
 
-            # replay memory
-            self.beta = self.hyper_params["PER_BETA"]
-            self.memory = PrioritizedReplayBufferfD(
-                self.hyper_params["BUFFER_SIZE"],
-                self.hyper_params["BATCH_SIZE"],
-                demo=list(demo),
-                alpha=self.hyper_params["PER_ALPHA"],
-                epsilon_d=self.hyper_params["PER_EPS_DEMO"],
+            # Replay buffers
+            demo_batch_size = self.hyper_params["DEMO_BATCH_SIZE"]
+            self.demo_memory = ReplayBuffer(len(demo), demo_batch_size)
+            self.demo_memory.extend(demo)
+
+            self.memory = ReplayBuffer(
+                self.hyper_params["BUFFER_SIZE"], self.hyper_params["BATCH_SIZE"]
             )
+
+            # set hyper parameters
+            self.lambda1 = self.hyper_params["LAMBDA1"]
+            self.lambda2 = self.hyper_params["LAMBDA2"] / demo_batch_size
 
     def update_model(self) -> Tuple[torch.Tensor, ...]:
         """Train the model after each episode."""
         experiences = self.memory.sample()
-        states, actions, rewards, next_states, dones, weights, indexes, eps_d = (
-            experiences
-        )
+        demos = self.demo_memory.sample()
+        exp_states, exp_actions, exp_rewards, exp_next_states, exp_dones = experiences
+        demo_states, demo_actions, demo_rewards, demo_next_states, demo_dones = demos
+        states = torch.cat((exp_states, demo_states), dim=0)
+        actions = torch.cat((exp_actions, demo_actions), dim=0)
+        rewards = torch.cat((exp_rewards, demo_rewards), dim=0)
+        next_states = torch.cat((exp_next_states, demo_next_states), dim=0)
+        dones = torch.cat((exp_dones, demo_dones), dim=0)
 
         q_values = self.dqn(states, self.epsilon)
         next_q_values = self.dqn(next_states, self.epsilon)
@@ -75,31 +81,31 @@ class Agent(DQNAgent):
         target = target.to(device)
 
         # calculate dq loss
-        dq_loss_element_wise = (target - curr_q_values).pow(2)
-        dq_loss = torch.mean(dq_loss_element_wise * weights)
+        dq_loss = (target - curr_q_values).pow(2)
 
-        # supervised loss using demo for only demo transitions
-        demo_idxs = np.where(eps_d != 0.0)
-        if demo_idxs[0].size != 0:  # if 1 or more demos are sampled
-            # get margin for each demo transition
-            action_idxs = actions[demo_idxs].long()
-            margin = torch.ones(q_values.size()) * self.hyper_params["MARGIN"]
-            margin[demo_idxs, action_idxs] = 0.0  # demo actions have 0 margins
-            margin = margin.to(device)
+        # calculate bc loss
+        pred_actions = self.actor(demo_states)
+        qf_mask = torch.gt(
+            self.critic(torch.cat((demo_states, demo_actions), dim=-1)),
+            self.critic(torch.cat((demo_states, pred_actions), dim=-1)),
+        ).to(device)
+        qf_mask = qf_mask.float()
+        n_qf_mask = int(qf_mask.sum().item())
 
-            # calculate supervised loss
-            demo_q_values = q_values[demo_idxs, action_idxs].squeeze()
-            supervised_loss = torch.max(q_values + margin, dim=-1)[0]
-            supervised_loss = supervised_loss[demo_idxs] - demo_q_values
-            supervised_loss = torch.mean(supervised_loss) * self.hyper_params["LAMBDA2"]
-        else:  # no demo sampled
-            supervised_loss = torch.zeros(1).to(device)
+        if n_qf_mask == 0:
+            bc_loss = torch.zeros(1, device=device)
+        else:
+            bc_loss = (
+                torch.mul(pred_actions, qf_mask) - torch.mul(demo_actions, qf_mask)
+            ).pow(2).sum() / n_qf_mask
+
+        bc_loss *= self.lambda2
 
         # q_value regularization
         q_regular = torch.norm(q_values, 2).mean() * self.hyper_params["W_Q_REG"]
 
         # total loss
-        loss = dq_loss + supervised_loss + q_regular
+        loss = dq_loss + bc_loss + q_regular
 
         # train dqn
         self.dqn_optimizer.zero_grad()
@@ -111,17 +117,7 @@ class Agent(DQNAgent):
         tau = self.hyper_params["TAU"]
         common_utils.soft_update(self.dqn, self.dqn_target, tau)
 
-        # update priorities in PER
-        loss_for_prior = dq_loss_element_wise.detach().cpu().numpy().squeeze()
-        new_priorities = loss_for_prior + self.hyper_params["PER_EPS"]
-        new_priorities += eps_d
-        self.memory.update_priorities(indexes, new_priorities)
-
-        # increase beta
-        fraction = min(float(self.i_episode) / self.args.max_episode_steps, 1.0)
-        self.beta = self.beta + fraction * (1.0 - self.beta)
-
-        return loss.data, dq_loss.data, supervised_loss.data
+        return loss.data, dq_loss.data
 
     def write_log(self, i: int, avg_loss: np.ndarray, score: int = 0):
         """Write log about loss and score"""
