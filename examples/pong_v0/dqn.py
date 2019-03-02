@@ -35,11 +35,12 @@ hyper_params = {
     "MAX_EPSILON": 1.0,
     "MIN_EPSILON": 0.02,
     "EPSILON_DECAY": 3e-6,
-    "PER_ALPHA": 0.5,
+    "PER_ALPHA": 0.6,
     "PER_BETA": 0.4,
     "PER_EPS": 1e-6,
+    "GRADIENT_CLIP": 0.5,
     "UPDATE_STARTS_FROM": int(2e4),
-    "MULTIPLE_LEARN": n_cpu // 2 if n_cpu >= 2 else 1,
+    "MULTIPLE_LEARN": n_cpu,
     "N_WORKERS": n_cpu,
 }
 

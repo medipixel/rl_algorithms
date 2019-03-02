@@ -17,6 +17,7 @@ from typing import Tuple
 import gym
 import numpy as np
 import torch
+from torch.nn.utils import clip_grad_norm_
 import wandb
 
 from algorithms.common.abstract.agent import AbstractAgent
@@ -81,13 +82,17 @@ class Agent(AbstractAgent):
             self.load_params(args.load_from)
 
         if not self.args.test:
-            # replay memory
             self.beta = self.hyper_params["PER_BETA"]
-            self.memory = PrioritizedReplayBuffer(
-                self.hyper_params["BUFFER_SIZE"],
-                self.hyper_params["BATCH_SIZE"],
-                alpha=self.hyper_params["PER_ALPHA"],
-            )
+            self._init_replay_buffer()
+
+    def _init_replay_buffer(self):
+        """Initialize replay buffer."""
+        # replay memory
+        self.memory = PrioritizedReplayBuffer(
+            self.hyper_params["BUFFER_SIZE"],
+            self.hyper_params["BATCH_SIZE"],
+            alpha=self.hyper_params["PER_ALPHA"],
+        )
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""
@@ -128,8 +133,9 @@ class Agent(AbstractAgent):
 
         return next_state, reward, done
 
-    def update_model(self, experiences: Tuple[torch.Tensor, ...]) -> torch.Tensor:
+    def update_model(self) -> Tuple[torch.Tensor, ...]:
         """Train the model after each episode."""
+        experiences = self.memory.sample(self.beta)
         states, actions, rewards, next_states, dones, weights, indexes = experiences
 
         q_values = self.dqn(states, self.epsilon)
@@ -144,16 +150,22 @@ class Agent(AbstractAgent):
         # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
         #       = r                       otherwise
         masks = 1 - dones
-
         target = rewards + self.hyper_params["GAMMA"] * next_q_value * masks
         target = target.to(device)
 
-        loss = torch.mean((target - curr_q_value).pow(2) * weights)
-        # regularization
-        loss += torch.norm(q_values, 2).mean() * self.hyper_params["W_Q_REG"]
+        # calculatte dq loss
+        dq_loss_element_wise = (target - curr_q_value).pow(2)
+        dq_loss = torch.mean(dq_loss_element_wise * weights)
+
+        # q_value regularization
+        q_regular = torch.norm(q_values, 2).mean() * self.hyper_params["W_Q_REG"]
+
+        # total loss
+        loss = dq_loss + q_regular
 
         self.dqn_optimizer.zero_grad()
         loss.backward()
+        clip_grad_norm_(self.dqn.parameters(), self.hyper_params["GRADIENT_CLIP"])
         self.dqn_optimizer.step()
 
         # update target networks
@@ -161,10 +173,8 @@ class Agent(AbstractAgent):
         common_utils.soft_update(self.dqn, self.dqn_target, tau)
 
         # update priorities in PER
-        new_priorities = (target - curr_q_value).pow(2)
-        new_priorities = (
-            new_priorities.data.cpu().numpy() + self.hyper_params["PER_EPS"]
-        )
+        loss_for_prior = dq_loss_element_wise.detach().cpu().numpy().squeeze()
+        new_priorities = loss_for_prior + self.hyper_params["PER_EPS"]
         self.memory.update_priorities(indexes, new_priorities)
 
         return loss.data
@@ -210,6 +220,11 @@ class Agent(AbstractAgent):
         if self.args.log:
             wandb.log({"score": score, "dqn loss": loss})
 
+    # pylint: disable=no-self-use, unnecessary-pass
+    def pretrain(self):
+        """Pretraining steps."""
+        pass
+
     def train(self):
         """Train the agent."""
         # logger
@@ -217,6 +232,9 @@ class Agent(AbstractAgent):
             wandb.init()
             wandb.config.update(self.hyper_params)
             # wandb.watch([self.dqn], log="parameters")
+
+        # pre-training if needed
+        self.pretrain()
 
         state = self.env.reset()
         i_episode_prev = 0
@@ -243,7 +261,7 @@ class Agent(AbstractAgent):
 
             if done[0]:
                 if losses:
-                    avg_loss = np.array(losses).mean()
+                    avg_loss = np.vstack(losses).mean(axis=0)
                     losses.clear()
                 else:
                     avg_loss = 0.0
@@ -254,8 +272,7 @@ class Agent(AbstractAgent):
 
             if len(self.memory) >= self.hyper_params["UPDATE_STARTS_FROM"]:
                 for _ in range(self.hyper_params["MULTIPLE_LEARN"]):
-                    experiences = self.memory.sample(self.beta)
-                    loss = self.update_model(experiences)
+                    loss = self.update_model()
                     losses.append(loss)  # for logging
 
                 # decrease epsilon
