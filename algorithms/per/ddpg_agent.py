@@ -30,8 +30,8 @@ class Agent(DDPGAgent):
     """
 
     # pylint: disable=attribute-defined-outside-init
-    def _init_replay_buffer(self):
-        """Initialize replay buffer."""
+    def _initialize(self):
+        """Initialize non-common things."""
         if not self.args.test:
             # replay memory
             self.beta = self.hyper_params["PER_BETA"]

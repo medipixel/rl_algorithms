@@ -83,11 +83,11 @@ class Agent(AbstractAgent):
         if args.load_from is not None and os.path.exists(args.load_from):
             self.load_params(args.load_from)
 
-        self._init_replay_buffer()
+        self._initialize()
 
     # pylint: disable=attribute-defined-outside-init
-    def _init_replay_buffer(self):
-        """Initialize replay buffer."""
+    def _initialize(self):
+        """Initialize non-common things."""
         if not self.args.test:
             # replay memory
             self.beta = self.hyper_params["PER_BETA"]

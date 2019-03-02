@@ -35,8 +35,8 @@ class Agent(DQNAgent):
     """
 
     # pylint: disable=attribute-defined-outside-init
-    def _init_replay_buffer(self):
-        """Initialize replay buffer."""
+    def _initialize(self):
+        """Initialize non-common things."""
         if not self.args.test:
             # load demo replay memory
             with open(self.args.demo_path, "rb") as f:
