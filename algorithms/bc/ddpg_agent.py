@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""DDPG with Behavior Cloning agent for episodic tasks in OpenAI Gym.
+"""DDPG with Behaviour Cloning agent for episodic tasks in OpenAI Gym.
 
 - Author: Kh Kim
 - Contact: kh.kim@medipixel.io
