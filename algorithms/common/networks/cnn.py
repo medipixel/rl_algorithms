@@ -26,8 +26,9 @@ class CNNLayer(nn.Module):
         kernel_size: int,
         stride: int = 1,
         padding: int = 0,
+        pre_activation_fn: Callable = identity,
         activation_fn: Callable = F.relu,
-        pulling_fn: Callable = identity,
+        post_activation_fn: Callable = identity,
     ):
         super(CNNLayer, self).__init__()
 
@@ -39,11 +40,17 @@ class CNNLayer(nn.Module):
             padding=padding,
         )
 
+        self.pre_activation_fn = pre_activation_fn
         self.activation_fn = activation_fn
-        self.pulling_fn = pulling_fn
+        self.post_activation_fn = post_activation_fn
 
     def forward(self, x):
-        return self.pulling_fn(self.activation_fn(self.cnn(x)))
+        x = self.cnn(x)
+        x = self.pre_activation_fn(x)
+        x = self.activation_fn(x)
+        x = self.post_activation_fn(x)
+
+        return x
 
 
 class CNN(nn.Module):

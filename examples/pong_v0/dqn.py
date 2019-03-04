@@ -6,7 +6,6 @@
 """
 
 import argparse
-import multiprocessing
 
 import gym
 import torch
@@ -20,21 +19,24 @@ from algorithms.dqn.agent import Agent
 from algorithms.dqn.networks import DuelingCNN, DuelingMLP
 from examples.pong_v0.wrappers import WRAPPERS
 
+# import multiprocessing
+
+
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-n_cpu = multiprocessing.cpu_count()
+n_cpu = 4  # multiprocessing.cpu_count()
 
 # hyper parameters
 hyper_params = {
     "GAMMA": 0.99,
     "TAU": 5e-3,
-    "W_Q_REG": 1e-7,
-    "BUFFER_SIZE": int(2e5),
+    "BUFFER_SIZE": int(1e5),
     "BATCH_SIZE": 64,
     "LR_DQN": 1e-4,
     "WEIGHT_DECAY": 1e-6,
     "MAX_EPSILON": 1.0,
     "MIN_EPSILON": 0.02,
-    "EPSILON_DECAY": 3e-6,
+    "EPSILON_DECAY": 1e-5,
+    "W_Q_REG": 1e-7,
     "PER_ALPHA": 0.6,
     "PER_BETA": 0.4,
     "PER_EPS": 1e-6,
@@ -72,19 +74,19 @@ def run(env: gym.Env, args: argparse.Namespace):
                     input_size=4,
                     output_size=32,
                     kernel_size=5,
-                    pulling_fn=nn.MaxPool2d(3),
+                    post_activation_fn=nn.MaxPool2d(3),
                 ),
                 CNNLayer(
                     input_size=32,
                     output_size=32,
                     kernel_size=3,
-                    pulling_fn=nn.MaxPool2d(3),
+                    post_activation_fn=nn.MaxPool2d(3),
                 ),
                 CNNLayer(
                     input_size=32,
                     output_size=64,
                     kernel_size=2,
-                    pulling_fn=nn.MaxPool2d(3),
+                    post_activation_fn=nn.MaxPool2d(3),
                 ),
             ],
             fc_layers=DuelingMLP(

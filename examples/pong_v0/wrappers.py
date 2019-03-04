@@ -19,15 +19,13 @@ class ObservationPreprocessor(gym.ObservationWrapper):
         """Initialization."""
         super(ObservationPreprocessor, self).__init__(env)
         self.current_phi = np.zeros(1)
-        self.is_started = False
 
     def observation(self, obs) -> np.ndarray:
         """Preprocess Observation."""
         obs = self.rgb2gray(obs)
 
-        if not self.is_started:  # at the beginning
+        if self.current_phi.size == 1:  # at the beginning
             self.current_phi = np.stack([obs, obs, obs, obs])
-            self.is_started = True
         else:
             self.current_phi = self._phi(obs)
 
