@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Run module for DQN on Pong-v0.
+"""Run module for DQN on Pong.
 
 - Author: Curt Park
 - Contact: curt.park@medipixel.io
@@ -14,10 +14,10 @@ import torch.optim as optim
 
 import algorithms.common.env.utils as env_utils
 from algorithms.common.env.utils import env_generator, make_envs
-from algorithms.common.networks.cnn import CNNLayer
+from algorithms.common.networks.cnn import CNN, CNNLayer
 from algorithms.dqn.agent import Agent
-from algorithms.dqn.networks import DuelingCNN, DuelingMLP
-from examples.pong_v0.wrappers import WRAPPERS
+from algorithms.dqn.networks import DuelingMLP
+from examples.pong.wrappers import WRAPPERS
 
 # import multiprocessing
 
@@ -47,7 +47,7 @@ hyper_params = {
 }
 
 
-def run(env: gym.Env, args: argparse.Namespace):
+def run(env: gym.Env, env_name: str, args: argparse.Namespace):
     """Run training or test.
 
     Args:
@@ -60,7 +60,7 @@ def run(env: gym.Env, args: argparse.Namespace):
     # create multiple envs
     # configure environment so that it works for discrete actions
     env_single = env_utils.set_env(env, args, WRAPPERS)
-    env_gen = env_generator("Pong-v0", args, WRAPPERS)
+    env_gen = env_generator(env_name, args, WRAPPERS)
     env_multi = make_envs(env_gen, n_envs=hyper_params["N_WORKERS"])
 
     # create a model
@@ -68,7 +68,7 @@ def run(env: gym.Env, args: argparse.Namespace):
     hidden_sizes = [256, 256]
 
     def get_cnn_model():
-        cnn_model = DuelingCNN(
+        cnn_model = CNN(
             cnn_layers=[
                 CNNLayer(
                     input_size=4,
@@ -111,7 +111,7 @@ def run(env: gym.Env, args: argparse.Namespace):
 
     # create an agent
     agent = Agent(env_single, env_multi, args, hyper_params, models, dqn_optim)
-    agent.env_name = "Pong-v0"
+    agent.env_name = env_name
 
     # run
     if args.test:

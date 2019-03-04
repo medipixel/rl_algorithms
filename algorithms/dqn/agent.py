@@ -107,7 +107,7 @@ class Agent(AbstractAgent):
             selected_action = self.env.sample()
         else:
             state = torch.FloatTensor(state).to(device)
-            selected_action = self.dqn(state, self.epsilon).argmax(dim=-1)
+            selected_action = self.dqn(state).argmax(dim=-1)
             selected_action = selected_action.detach().cpu().numpy()
         return selected_action
 
@@ -141,9 +141,9 @@ class Agent(AbstractAgent):
         experiences = self.memory.sample(self.beta)
         states, actions, rewards, next_states, dones, weights, indexes = experiences
 
-        q_values = self.dqn(states, self.epsilon)
-        next_q_values = self.dqn(next_states, self.epsilon)
-        next_target_q_values = self.dqn_target(next_states, self.epsilon)
+        q_values = self.dqn(states)
+        next_q_values = self.dqn(next_states)
+        next_target_q_values = self.dqn_target(next_states)
 
         curr_q_value = q_values.gather(1, actions.long().unsqueeze(1))
         next_q_value = next_target_q_values.gather(  # Double DQN
@@ -184,7 +184,7 @@ class Agent(AbstractAgent):
         fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)
         self.beta = self.beta + fraction * (1.0 - self.beta)
 
-        return loss.data
+        return loss.data, q_values.mean().data
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
@@ -212,14 +212,15 @@ class Agent(AbstractAgent):
         """Write log about loss and score"""
         print(
             "[INFO] episode %d, episode step: %d, total step: %d, total score: %d\n"
-            "epsilon: %f, loss: %f, at %s\n"
+            "epsilon: %f, loss: %f, avg q-value: %f at %s\n"
             % (
                 i,
                 self.episode_steps[0],
                 self.total_steps.sum(),
                 score,
                 self.epsilon,
-                loss,
+                loss[0],
+                loss[1],
                 datetime.datetime.now(),
             )
         )
@@ -238,7 +239,7 @@ class Agent(AbstractAgent):
         if self.args.log:
             wandb.init()
             wandb.config.update(self.hyper_params)
-            # wandb.watch([self.dqn], log="parameters")
+            wandb.watch([self.dqn], log="parameters")
 
         # pre-training if needed
         self.pretrain()

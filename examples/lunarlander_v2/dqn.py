@@ -26,7 +26,7 @@ hyper_params = {
     "W_Q_REG": 1e-7,
     "BUFFER_SIZE": int(1e6),
     "BATCH_SIZE": 64,
-    "LR_DQN": 1e-3,
+    "LR_DQN": 1e-4,
     "WEIGHT_DECAY": 1e-6,
     "MAX_EPSILON": 1.0,
     "MIN_EPSILON": 0.01,

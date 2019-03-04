@@ -25,7 +25,7 @@ hyper_params = {
     "TAU": 5e-3,
     "BUFFER_SIZE": int(1e5),
     "BATCH_SIZE": 64,
-    "LR_DQN": 1e-3,
+    "LR_DQN": 1e-4,
     "MAX_EPSILON": 1.0,
     "MIN_EPSILON": 0.01,
     "EPSILON_DECAY": 2e-5,

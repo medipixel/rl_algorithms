@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Train or test algorithms on Pong-v0.
+"""Train or test algorithms on Pong.
 
 - Author: Curt Park
 - Contact: curt.park@medipixel.io
@@ -50,15 +50,19 @@ args = parser.parse_args()
 def main():
     """Main."""
     # env initialization
-    env = gym.make("Pong-v0")
+    if not args.test:
+        env_name = "Pong-v0"
+    else:
+        env_name = "Pong-v4"  # repeat_action_probability is 1.0
+    env = gym.make(env_name)
 
     # set a random seed
     common_utils.set_random_seed(args.seed, env)
 
     # run
-    module_path = "examples.pong_v0." + args.algo
+    module_path = "examples.pong." + args.algo
     example = importlib.import_module(module_path)
-    example.run(env, args)
+    example.run(env, env_name, args)
 
 
 if __name__ == "__main__":

@@ -1,28 +1,66 @@
 # -*- coding: utf-8 -*-
-"""Environment wrapper class for Pong-v0.
+"""Environment wrapper class for Pong.
 
 - Author: Curt Park
 - Contact: curt.park@medipixel.io
 """
 
-from typing import Union
+from typing import Tuple, Union
 
 import cv2
 import gym
 import numpy as np
 
+TERMINAL_SCORE = 11
 
-class ObservationPreprocessor(gym.ObservationWrapper):
+
+class EarlyTerminationWrapper(gym.Wrapper):
+    """Terminate the game if one reachs the terminal score."""
+
+    def __init__(self, env: gym.Env):
+        """Initialization."""
+        super(EarlyTerminationWrapper, self).__init__(env)
+        self.enemy_score = 0
+        self.my_score = 0
+        self.terminal_score = TERMINAL_SCORE
+
+    # pylint: disable=method-hidden
+    def step(self, action: np.ndarray) -> Tuple[np.ndarray, ...]:
+        """Counter each score."""
+        obs, reward, done, info = self.env.step(action)
+        if reward < 0:
+            self.enemy_score += 1
+        if reward > 0:
+            self.my_score += 1
+
+        if (self.enemy_score == self.terminal_score) or (
+            self.my_score == self.terminal_score
+        ):
+            done = True
+            self.enemy_score = 0
+            self.my_score = 0
+
+        return obs, reward, done, info
+
+    # pylint: disable=method-hidden
+    def reset(self) -> np.ndarray:
+        """Do nothing."""
+        return self.env.reset()
+
+
+class ObsPreprocessingWrapper(gym.ObservationWrapper):
     """Return preprocessed observations."""
 
     def __init__(self, env: gym.Env):
         """Initialization."""
-        super(ObservationPreprocessor, self).__init__(env)
+        super(ObsPreprocessingWrapper, self).__init__(env)
         self.current_phi = np.zeros(1)
 
     def observation(self, obs) -> np.ndarray:
         """Preprocess Observation."""
-        obs = self.rgb2gray(obs)
+        obs = obs.astype("float32")
+        obs = cv2.cvtColor(obs, cv2.COLOR_RGB2GRAY)
+        obs = cv2.resize(obs, (84, 84)) / 127.5 - 1.0
 
         if self.current_phi.size == 1:  # at the beginning
             self.current_phi = np.stack([obs, obs, obs, obs])
@@ -31,22 +69,13 @@ class ObservationPreprocessor(gym.ObservationWrapper):
 
         return self.current_phi
 
-    def _phi(self, x: np.ndarray) -> np.ndarray:
+    def _phi(self, obs: np.ndarray) -> np.ndarray:
         """Generate 4-channel state."""
         new_phi = np.zeros((4, 84, 84), dtype=np.float32)
         new_phi[:3] = self.current_phi[1:]
-        new_phi[-1] = x
+        new_phi[-1] = obs
 
         return new_phi
-
-    @staticmethod
-    def rgb2gray(x: np.ndarray) -> np.ndarray:
-        """Convert rgb image to gray."""
-        x = x.astype("float32")
-        x = cv2.cvtColor(x, cv2.COLOR_RGB2GRAY)
-        x = cv2.resize(x, (84, 84)) / 127.5 - 1.0
-
-        return x
 
 
 class ClippedRewardsWrapper(gym.RewardWrapper):
@@ -84,4 +113,9 @@ class ReducedActionWrapper(gym.ActionWrapper):
         return np.random.choice(self.action_dim)
 
 
-WRAPPERS = [ObservationPreprocessor, ClippedRewardsWrapper, ReducedActionWrapper]
+WRAPPERS = [
+    # EarlyTerminationWrapper,
+    ObsPreprocessingWrapper,
+    ClippedRewardsWrapper,
+    ReducedActionWrapper,
+]

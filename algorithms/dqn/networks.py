@@ -5,13 +5,12 @@
 - Contact: kh.kim@medipixel.io
 """
 
-from typing import Any, Callable
+from typing import Callable
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from algorithms.common.networks.cnn import CNN
 from algorithms.common.networks.mlp import MLP
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -50,11 +49,8 @@ class DuelingMLP(MLP):
         self.value_layer.weight.data.uniform_(-init_w, init_w)
         self.value_layer.bias.data.uniform_(-init_w, init_w)
 
-    def forward(self, *args: Any) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method implementation."""
-        x: torch.Tensor = args[0]
-        epsilon: float = args[1]
-
         x = super(DuelingMLP, self).forward(x)
 
         adv_x = self.advantage_hidden_layer(x)
@@ -62,30 +58,8 @@ class DuelingMLP(MLP):
 
         advantage = self.advantage_layer(adv_x)
         value = self.value_layer(val_x)
+        advantage_mean = advantage.mean(dim=-1, keepdim=True)
 
-        advantage_expectation = (
-            (1 - epsilon) * (epsilon / self.output_size) * advantage.max()
-        )
+        q = value + advantage - advantage_mean
 
-        advantage_expectation += (epsilon / self.output_size) * (
-            advantage.sum() - advantage.max()
-        )
-
-        return value + advantage - advantage_expectation
-
-
-class DuelingCNN(CNN):
-    """Dueling Convolution neural network."""
-
-    def forward(self, *args: Any) -> torch.Tensor:
-        """Forward method implementation."""
-        x: torch.Tensor = args[0]
-        epsilon: float = args[1]
-
-        if len(x.size()) == 3:
-            x = x.unsqueeze(0)
-
-        x = self.cnn(x)
-        x = x.view(x.size(0), -1)
-        x = self.fc_layers(x, epsilon)
-        return x
+        return q
