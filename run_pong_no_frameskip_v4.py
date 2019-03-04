@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Train or test algorithms on Pong.
+"""Train or test algorithms on PongNoFrameskip-v4.
 
 - Author: Curt Park
 - Contact: curt.park@medipixel.io
@@ -8,8 +8,7 @@
 import argparse
 import importlib
 
-import gym
-
+from algorithms.common.env.atari_wrappers import atari_env_generator
 import algorithms.common.helper_functions as common_utils
 
 # configurations
@@ -37,7 +36,7 @@ parser.add_argument("--log", dest="log", action="store_true", help="turn on logg
 parser.add_argument("--save-period", type=int, default=25, help="save model period")
 parser.add_argument("--episode-num", type=int, default=600, help="total episode num")
 parser.add_argument(
-    "--max-episode-steps", type=int, default=-1, help="max episode step"
+    "--max-episode-steps", type=int, default=None, help="max episode step"
 )
 
 parser.set_defaults(test=False)
@@ -50,17 +49,14 @@ args = parser.parse_args()
 def main():
     """Main."""
     # env initialization
-    if not args.test:
-        env_name = "Pong-v0"
-    else:
-        env_name = "Pong-v4"  # repeat_action_probability is 1.0
-    env = gym.make(env_name)
+    env_name = "PongNoFrameskip-v4"
+    env = atari_env_generator(env_name, args.max_episode_steps)
 
     # set a random seed
     common_utils.set_random_seed(args.seed, env)
 
     # run
-    module_path = "examples.pong." + args.algo
+    module_path = "examples.pong_no_frameskip_v4." + args.algo
     example = importlib.import_module(module_path)
     example.run(env, env_name, args)
 

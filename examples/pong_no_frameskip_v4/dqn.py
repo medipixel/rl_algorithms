@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Run module for DQN on Pong.
+"""Run module for DQN on PongNoFrameskip-v4.
 
 - Author: Curt Park
 - Contact: curt.park@medipixel.io
@@ -12,12 +12,11 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-import algorithms.common.env.utils as env_utils
-from algorithms.common.env.utils import env_generator, make_envs
+from algorithms.common.env.atari_wrappers import atari_env_generator
+from algorithms.common.env.multiprocessing_env import SubprocVecEnv
 from algorithms.common.networks.cnn import CNN, CNNLayer
 from algorithms.dqn.agent import Agent
 from algorithms.dqn.networks import DuelingMLP
-from examples.pong.wrappers import WRAPPERS
 
 # import multiprocessing
 
@@ -59,9 +58,11 @@ def run(env: gym.Env, env_name: str, args: argparse.Namespace):
     """
     # create multiple envs
     # configure environment so that it works for discrete actions
-    env_single = env_utils.set_env(env, args, WRAPPERS)
-    env_gen = env_generator(env_name, args, WRAPPERS)
-    env_multi = make_envs(env_gen, n_envs=hyper_params["N_WORKERS"])
+    env_single, n_envs = env, int(hyper_params["N_WORKERS"])
+    env_list = [
+        atari_env_generator(env_name, args.max_episode_steps) for _ in range(n_envs)
+    ]
+    env_multi = SubprocVecEnv(env_list)
 
     # create a model
     action_dim = env.action_space.n
