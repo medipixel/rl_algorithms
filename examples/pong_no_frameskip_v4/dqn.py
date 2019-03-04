@@ -9,7 +9,6 @@ import argparse
 
 import gym
 import torch
-import torch.nn as nn
 import torch.optim as optim
 
 from algorithms.common.env.atari_wrappers import atari_env_generator
@@ -18,31 +17,29 @@ from algorithms.common.networks.cnn import CNN, CNNLayer
 from algorithms.dqn.agent import Agent
 from algorithms.dqn.networks import DuelingMLP
 
-# import multiprocessing
-
-
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-n_cpu = 4  # multiprocessing.cpu_count()
 
 # hyper parameters
 hyper_params = {
     "GAMMA": 0.99,
     "TAU": 5e-3,
-    "BUFFER_SIZE": int(1e5),
-    "BATCH_SIZE": 64,
-    "LR_DQN": 1e-4,
+    "BUFFER_SIZE": int(1e4),  # openai baselines
+    "BATCH_SIZE": 32,  # openai baselines
+    "LR_DQN": 1e-4,  # 6.25e-5,  # from dueling
+    "ADAM_EPS": 1e-8,  # 1.5e-4,  # from rainbow
     "WEIGHT_DECAY": 1e-6,
     "MAX_EPSILON": 1.0,
-    "MIN_EPSILON": 0.02,
+    "MIN_EPSILON": 0.01,
     "EPSILON_DECAY": 1e-5,
     "W_Q_REG": 1e-7,
-    "PER_ALPHA": 0.6,
+    "PER_ALPHA": 0.6,  # openai baselines
     "PER_BETA": 0.4,
     "PER_EPS": 1e-6,
-    "GRADIENT_CLIP": 0.5,
-    "UPDATE_STARTS_FROM": int(2e4),
-    "MULTIPLE_LEARN": n_cpu,
-    "N_WORKERS": n_cpu,
+    "GRADIENT_CLIP": 10.0,  # from dueling
+    "UPDATE_STARTS_FROM": int(1e4),  # openai baselines
+    # in openai baselines, train_freq = 4
+    "MULTIPLE_LEARN": 1,
+    "N_WORKERS": 4,
 }
 
 
@@ -66,32 +63,19 @@ def run(env: gym.Env, env_name: str, args: argparse.Namespace):
 
     # create a model
     action_dim = env.action_space.n
-    hidden_sizes = [256, 256]
+    hidden_sizes = [512]
 
     def get_cnn_model():
-        cnn_model = CNN(
+        cnn_model = CNN(  # from rainbow
             cnn_layers=[
                 CNNLayer(
-                    input_size=4,
-                    output_size=32,
-                    kernel_size=5,
-                    post_activation_fn=nn.MaxPool2d(3),
+                    input_size=4, output_size=32, kernel_size=8, stride=4, padding=1
                 ),
-                CNNLayer(
-                    input_size=32,
-                    output_size=32,
-                    kernel_size=3,
-                    post_activation_fn=nn.MaxPool2d(3),
-                ),
-                CNNLayer(
-                    input_size=32,
-                    output_size=64,
-                    kernel_size=2,
-                    post_activation_fn=nn.MaxPool2d(3),
-                ),
+                CNNLayer(input_size=32, output_size=64, kernel_size=4, stride=2),
+                CNNLayer(input_size=64, output_size=64, kernel_size=3),
             ],
             fc_layers=DuelingMLP(
-                input_size=256, output_size=action_dim, hidden_sizes=hidden_sizes
+                input_size=3136, output_size=action_dim, hidden_sizes=hidden_sizes
             ),
         ).to(device)
         return cnn_model
@@ -105,6 +89,7 @@ def run(env: gym.Env, env_name: str, args: argparse.Namespace):
         dqn.parameters(),
         lr=hyper_params["LR_DQN"],
         weight_decay=hyper_params["WEIGHT_DECAY"],
+        eps=hyper_params["ADAM_EPS"],
     )
 
     # make tuples to create an agent

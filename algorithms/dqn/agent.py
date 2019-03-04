@@ -226,7 +226,7 @@ class Agent(AbstractAgent):
         )
 
         if self.args.log:
-            wandb.log({"score": score, "dqn loss": loss, "epsilon": self.epsilon})
+            wandb.log({"score": score, "dqn loss": loss[0], "epsilon": self.epsilon})
 
     # pylint: disable=no-self-use, unnecessary-pass
     def pretrain(self):
