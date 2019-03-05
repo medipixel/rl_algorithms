@@ -93,7 +93,7 @@ class Agent(DQNAgent):
             supervised_loss = supervised_loss[demo_idxs] - demo_q_values
             supervised_loss = torch.mean(supervised_loss) * self.hyper_params["LAMBDA2"]
         else:  # no demo sampled
-            supervised_loss = torch.zeros(1).to(device)
+            supervised_loss = torch.zeros(1, device=device)
 
         # q_value regularization
         q_regular = torch.norm(q_values, 2).mean() * self.hyper_params["W_Q_REG"]
