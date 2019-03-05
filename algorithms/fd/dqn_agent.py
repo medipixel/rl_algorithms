@@ -16,6 +16,7 @@ from typing import Tuple
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 from torch.nn.utils import clip_grad_norm_
 import wandb
 
@@ -75,7 +76,9 @@ class Agent(DQNAgent):
         target = target.to(device)
 
         # calculate dq loss
-        dq_loss_element_wise = (target - curr_q_values).pow(2)
+        dq_loss_element_wise = F.smooth_l1_loss(
+            curr_q_values, target.detach(), reduction="none"
+        )
         dq_loss = torch.mean(dq_loss_element_wise * weights)
 
         # supervised loss using demo for only demo transitions
@@ -131,8 +134,8 @@ class Agent(DQNAgent):
             "avg q values: %f, at %s\n"
             % (
                 i,
-                self.episode_steps[0],
-                self.total_steps.sum(),
+                self.episode_step,
+                self.total_step,
                 score,
                 self.epsilon,
                 avg_loss[0],
