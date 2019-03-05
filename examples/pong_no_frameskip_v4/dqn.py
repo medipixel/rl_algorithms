@@ -23,21 +23,21 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 hyper_params = {
     "GAMMA": 0.99,
     "TAU": 5e-3,
-    "BUFFER_SIZE": int(1e4),  # openai baselines
-    "BATCH_SIZE": 32,  # openai baselines
-    "LR_DQN": 1e-4,  # 6.25e-5,  # from dueling
-    "ADAM_EPS": 1e-8,  # 1.5e-4,  # from rainbow
-    "WEIGHT_DECAY": 1e-6,
+    "BUFFER_SIZE": int(1e5),  # openai baselines: int(1e4)
+    "BATCH_SIZE": 128,  # 32 * n_workers, openai baselines: 32
+    "LR_DQN": 1e-4,  # dueling: 6.25e-5
+    "ADAM_EPS": 1e-8,  # rainbow: 1.5e-4
+    "WEIGHT_DECAY": 0.0,  # this makes saturation in cnn weights
     "MAX_EPSILON": 1.0,
-    "MIN_EPSILON": 0.01,
+    "MIN_EPSILON": 0.02,
     "EPSILON_DECAY": 1e-5,
-    "W_Q_REG": 1e-7,
-    "PER_ALPHA": 0.6,  # openai baselines
+    "W_Q_REG": 0.0,
+    "PER_ALPHA": 0.6,  # openai baselines: 0.6
     "PER_BETA": 0.4,
     "PER_EPS": 1e-6,
-    "GRADIENT_CLIP": 10.0,  # from dueling
-    "UPDATE_STARTS_FROM": int(1e4),  # openai baselines
-    # in openai baselines, train_freq = 4
+    "GRADIENT_CLIP": 10.0,  # dueling: 10.0
+    "UPDATE_STARTS_FROM": int(1e4),  # openai baselines: int(1e4)
+    "TRAIN_FREQ": 1,  # in openai baselines, train_freq = 4
     "MULTIPLE_LEARN": 1,
     "N_WORKERS": 4,
 }

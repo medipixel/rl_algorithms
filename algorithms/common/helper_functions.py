@@ -27,6 +27,11 @@ def soft_update(local: nn.Module, target: nn.Module, tau: float):
         t_param.data.copy_(tau * l_param.data + (1.0 - tau) * t_param.data)
 
 
+def hard_update(local: nn.Module, target: nn.Module):
+    """Hard updatte: target <- local."""
+    target.load_state_dict(local.state_dict())
+
+
 def fetch_desired_states_from_demo(demo_path: str) -> np.ndarray:
     """Return desired goal states from demonstration data."""
     with open(demo_path, "rb") as f:

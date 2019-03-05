@@ -248,6 +248,7 @@ class Agent(AbstractAgent):
         i_episode_prev = 0
         losses = list()
         i_episode = 0
+        i_step = 0
         score = 0
 
         while i_episode <= self.args.episode_num:
@@ -261,6 +262,7 @@ class Agent(AbstractAgent):
             score += reward[0]
             i_episode_prev = i_episode
             i_episode += done.sum()
+            i_step += 1
             self.i_episode = i_episode
 
             if (i_episode // self.args.save_period) != (
@@ -278,9 +280,10 @@ class Agent(AbstractAgent):
             self.episode_steps[np.where(done)] = 0
 
             if len(self.memory) >= self.hyper_params["UPDATE_STARTS_FROM"]:
-                for _ in range(self.hyper_params["MULTIPLE_LEARN"]):
-                    loss = self.update_model()
-                    losses.append(loss)  # for logging
+                if i_step % self.hyper_params["TRAIN_FREQ"] == 0:
+                    for _ in range(self.hyper_params["MULTIPLE_LEARN"]):
+                        loss = self.update_model()
+                        losses.append(loss)  # for logging
 
                 # decrease epsilon
                 max_epsilon, min_epsilon, epsilon_decay, n_workers = (

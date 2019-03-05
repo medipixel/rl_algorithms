@@ -36,6 +36,7 @@ hyper_params = {
     "PER_EPS": 1e-6,
     "GRADIENT_CLIP": 0.5,
     "UPDATE_STARTS_FROM": int(1e3),
+    "TRAIN_FREQ": 1,
     "MULTIPLE_LEARN": n_cpu,
     "N_WORKERS": n_cpu,
 }
