@@ -107,7 +107,7 @@ class Agent(AbstractAgent):
             selected_action = self.env.sample()
         else:
             state = torch.FloatTensor(state).to(device)
-            selected_action = self.dqn(state, self.epsilon).argmax(dim=-1)
+            selected_action = self.dqn(state).argmax(dim=-1)
             selected_action = selected_action.detach().cpu().numpy()
         return selected_action
 
@@ -141,9 +141,9 @@ class Agent(AbstractAgent):
         experiences = self.memory.sample(self.beta)
         states, actions, rewards, next_states, dones, weights, indexes = experiences
 
-        q_values = self.dqn(states, self.epsilon)
-        next_q_values = self.dqn(next_states, self.epsilon)
-        next_target_q_values = self.dqn_target(next_states, self.epsilon)
+        q_values = self.dqn(states)
+        next_q_values = self.dqn(next_states)
+        next_target_q_values = self.dqn_target(next_states)
 
         curr_q_value = q_values.gather(1, actions.long().unsqueeze(1))
         next_q_value = next_target_q_values.gather(  # Double DQN
@@ -181,10 +181,10 @@ class Agent(AbstractAgent):
         self.memory.update_priorities(indexes, new_priorities)
 
         # increase beta
-        fraction = min(float(self.i_episode) / self.args.max_episode_steps, 1.0)
+        fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)
         self.beta = self.beta + fraction * (1.0 - self.beta)
 
-        return loss.data
+        return loss.data, q_values.mean().data
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
@@ -212,20 +212,21 @@ class Agent(AbstractAgent):
         """Write log about loss and score"""
         print(
             "[INFO] episode %d, episode step: %d, total step: %d, total score: %d\n"
-            "epsilon: %f, loss: %f, at %s\n"
+            "epsilon: %f, loss: %f, avg q-value: %f at %s\n"
             % (
                 i,
                 self.episode_steps[0],
                 self.total_steps.sum(),
                 score,
                 self.epsilon,
-                loss,
+                loss[0],
+                loss[1],
                 datetime.datetime.now(),
             )
         )
 
         if self.args.log:
-            wandb.log({"score": score, "dqn loss": loss, "epsilon": self.epsilon})
+            wandb.log({"score": score, "dqn loss": loss[0], "epsilon": self.epsilon})
 
     # pylint: disable=no-self-use, unnecessary-pass
     def pretrain(self):
@@ -247,6 +248,7 @@ class Agent(AbstractAgent):
         i_episode_prev = 0
         losses = list()
         i_episode = 0
+        i_step = 0
         score = 0
 
         while i_episode <= self.args.episode_num:
@@ -260,6 +262,7 @@ class Agent(AbstractAgent):
             score += reward[0]
             i_episode_prev = i_episode
             i_episode += done.sum()
+            i_step += 1
             self.i_episode = i_episode
 
             if (i_episode // self.args.save_period) != (
@@ -277,9 +280,10 @@ class Agent(AbstractAgent):
             self.episode_steps[np.where(done)] = 0
 
             if len(self.memory) >= self.hyper_params["UPDATE_STARTS_FROM"]:
-                for _ in range(self.hyper_params["MULTIPLE_LEARN"]):
-                    loss = self.update_model()
-                    losses.append(loss)  # for logging
+                if i_step % self.hyper_params["TRAIN_FREQ"] == 0:
+                    for _ in range(self.hyper_params["MULTIPLE_LEARN"]):
+                        loss = self.update_model()
+                        losses.append(loss)  # for logging
 
                 # decrease epsilon
                 max_epsilon, min_epsilon, epsilon_decay, n_workers = (

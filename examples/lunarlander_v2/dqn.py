@@ -26,7 +26,7 @@ hyper_params = {
     "W_Q_REG": 1e-7,
     "BUFFER_SIZE": int(1e6),
     "BATCH_SIZE": 64,
-    "LR_DQN": 1e-3,
+    "LR_DQN": 1e-4,
     "WEIGHT_DECAY": 1e-6,
     "MAX_EPSILON": 1.0,
     "MIN_EPSILON": 0.01,
@@ -36,6 +36,7 @@ hyper_params = {
     "PER_EPS": 1e-6,
     "GRADIENT_CLIP": 0.5,
     "UPDATE_STARTS_FROM": int(1e3),
+    "TRAIN_FREQ": 1,
     "MULTIPLE_LEARN": n_cpu,
     "N_WORKERS": n_cpu,
 }

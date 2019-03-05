@@ -81,7 +81,7 @@ class Agent(DDPGAgent):
         self.memory.update_priorities(indexes, new_priorities)
 
         # increase beta
-        fraction = min(float(self.i_episode) / self.args.max_episode_steps, 1.0)
+        fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)
         self.beta = self.beta + fraction * (1.0 - self.beta)
 
         return actor_loss.data, critic_loss.data

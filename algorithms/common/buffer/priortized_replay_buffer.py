@@ -112,14 +112,30 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             weight = (p_sample * len(self.buffer)) ** (-beta)
             weights.append(weight / max_weight)
 
-        states = torch.FloatTensor(np.array(states)).to(device)
-        actions = torch.FloatTensor(np.array(actions)).to(device)
-        rewards = torch.FloatTensor(np.array(rewards).reshape(-1, 1)).to(device)
-        next_states = torch.FloatTensor(np.array(next_states)).to(device)
-        dones = torch.FloatTensor(np.array(dones).reshape(-1, 1)).to(device)
-        weights = torch.FloatTensor(np.array(weights).reshape(-1, 1)).to(device)
+        states_ = torch.FloatTensor(np.array(states)).to(device)
+        actions_ = torch.FloatTensor(np.array(actions)).to(device)
+        rewards_ = torch.FloatTensor(np.array(rewards).reshape(-1, 1)).to(device)
+        next_states_ = torch.FloatTensor(np.array(next_states)).to(device)
+        dones_ = torch.FloatTensor(np.array(dones).reshape(-1, 1)).to(device)
+        weights_ = torch.FloatTensor(np.array(weights).reshape(-1, 1)).to(device)
 
-        experiences = (states, actions, rewards, next_states, dones, weights, indices)
+        if torch.cuda.is_available():
+            states_ = states_.cuda(non_blocking=True)
+            actions_ = actions_.cuda(non_blocking=True)
+            rewards_ = rewards_.cuda(non_blocking=True)
+            next_states_ = next_states_.cuda(non_blocking=True)
+            dones_ = dones_.cuda(non_blocking=True)
+            weights_ = weights_.cuda(non_blocking=True)
+
+        experiences = (
+            states_,
+            actions_,
+            rewards_,
+            next_states_,
+            dones_,
+            weights_,
+            indices,
+        )
 
         return experiences
 
@@ -238,21 +254,29 @@ class PrioritizedReplayBufferfD(PrioritizedReplayBuffer):
             weight = (p_sample * self.total_size) ** (-beta)
             weights.append(weight / max_weight)
 
-        states = torch.FloatTensor(np.array(states)).to(device)
-        actions = torch.FloatTensor(np.array(actions)).to(device)
-        rewards = torch.FloatTensor(np.array(rewards).reshape(-1, 1)).to(device)
-        next_states = torch.FloatTensor(np.array(next_states)).to(device)
-        dones = torch.FloatTensor(np.array(dones).reshape(-1, 1)).to(device)
-        weights = torch.FloatTensor(np.array(weights).reshape(-1, 1)).to(device)
+        states_ = torch.FloatTensor(np.array(states)).to(device)
+        actions_ = torch.FloatTensor(np.array(actions)).to(device)
+        rewards_ = torch.FloatTensor(np.array(rewards).reshape(-1, 1)).to(device)
+        next_states_ = torch.FloatTensor(np.array(next_states)).to(device)
+        dones_ = torch.FloatTensor(np.array(dones).reshape(-1, 1)).to(device)
+        weights_ = torch.FloatTensor(np.array(weights).reshape(-1, 1)).to(device)
         eps_d = np.array(eps_d)
 
+        if torch.cuda.is_available():
+            states_ = states_.cuda(non_blocking=True)
+            actions_ = actions_.cuda(non_blocking=True)
+            rewards_ = rewards_.cuda(non_blocking=True)
+            next_states_ = next_states_.cuda(non_blocking=True)
+            dones_ = dones_.cuda(non_blocking=True)
+            weights_ = weights_.cuda(non_blocking=True)
+
         experiences = (
-            states,
-            actions,
-            rewards,
-            next_states,
-            dones,
-            weights,
+            states_,
+            actions_,
+            rewards_,
+            next_states_,
+            dones_,
+            weights_,
             indices,
             eps_d,
         )

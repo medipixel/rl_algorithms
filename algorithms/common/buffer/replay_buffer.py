@@ -73,13 +73,20 @@ class ReplayBuffer:
             next_states.append(np.array(n_s, copy=False))
             dones.append(np.array(float(d), copy=False))
 
-        states = torch.FloatTensor(np.array(states)).to(device)
-        actions = torch.FloatTensor(np.array(actions)).to(device)
-        rewards = torch.FloatTensor(np.array(rewards).reshape(-1, 1)).to(device)
-        next_states = torch.FloatTensor(np.array(next_states)).to(device)
-        dones = torch.FloatTensor(np.array(dones).reshape(-1, 1)).to(device)
+        states_ = torch.FloatTensor(np.array(states)).to(device)
+        actions_ = torch.FloatTensor(np.array(actions)).to(device)
+        rewards_ = torch.FloatTensor(np.array(rewards).reshape(-1, 1)).to(device)
+        next_states_ = torch.FloatTensor(np.array(next_states)).to(device)
+        dones_ = torch.FloatTensor(np.array(dones).reshape(-1, 1)).to(device)
 
-        return states, actions, rewards, next_states, dones
+        if torch.cuda.is_available():
+            states_ = states_.cuda(non_blocking=True)
+            actions_ = actions_.cuda(non_blocking=True)
+            rewards_ = rewards_.cuda(non_blocking=True)
+            next_states_ = next_states_.cuda(non_blocking=True)
+            dones_ = dones_.cuda(non_blocking=True)
+
+        return states_, actions_, rewards_, next_states_, dones_
 
     def __len__(self) -> int:
         """Return the current size of internal memory."""

@@ -59,9 +59,9 @@ class Agent(DQNAgent):
             experiences
         )
 
-        q_values = self.dqn(states, self.epsilon)
-        next_q_values = self.dqn(next_states, self.epsilon)
-        next_target_q_values = self.dqn_target(next_states, self.epsilon)
+        q_values = self.dqn(states)
+        next_q_values = self.dqn(next_states)
+        next_target_q_values = self.dqn_target(next_states)
 
         curr_q_values = q_values.gather(1, actions.long().unsqueeze(1))
         next_q_values = next_target_q_values.gather(  # Double DQN
@@ -118,17 +118,17 @@ class Agent(DQNAgent):
         self.memory.update_priorities(indexes, new_priorities)
 
         # increase beta
-        fraction = min(float(self.i_episode) / self.args.max_episode_steps, 1.0)
+        fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)
         self.beta = self.beta + fraction * (1.0 - self.beta)
 
-        return loss.data, dq_loss.data, supervised_loss.data
+        return loss.data, dq_loss.data, supervised_loss.data, q_values.mean().data
 
     def write_log(self, i: int, avg_loss: np.ndarray, score: int = 0):
         """Write log about loss and score"""
         print(
             "[INFO] episode %d, episode step: %d, total step: %d, total score: %d\n"
             "epsilon: %f, total loss: %f, dq loss: %f, supervised loss: %f\n"
-            "at %s\n"
+            "avg q values: %f, at %s\n"
             % (
                 i,
                 self.episode_steps[0],
@@ -138,6 +138,7 @@ class Agent(DQNAgent):
                 avg_loss[0],
                 avg_loss[1],
                 avg_loss[2],
+                avg_loss[3],
                 datetime.datetime.now(),
             )
         )
