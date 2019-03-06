@@ -23,6 +23,10 @@ def concat(
 ) -> torch.Tensor:
     """Concatenate state and action tensors properly depending on the action."""
     in_2 = make_one_hot(in_2, n_category) if n_category > 0 else in_2
+
+    if len(in_2.size()) == 1:
+        in_2 = in_2.unsqueeze(0)
+
     in_concat = torch.cat((in_1, in_2), dim=-1)
 
     return in_concat
