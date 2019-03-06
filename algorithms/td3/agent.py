@@ -79,6 +79,7 @@ class Agent(AbstractAgent):
         self.total_step = 0
         self.update_step = 0
         self.episode_step = 0
+        self.i_episode = 0
 
         # load the optimizer and model parameters
         if args.load_from is not None and os.path.exists(args.load_from):
@@ -264,7 +265,7 @@ class Agent(AbstractAgent):
             wandb.config.update(self.hyper_params)
             # wandb.watch([self.actor, self.critic_1, self.critic_2], log="parameters")
 
-        for i_episode in range(1, self.args.episode_num + 1):
+        for self.i_episode in range(1, self.args.episode_num + 1):
             state = self.env.reset()
             done = False
             score = 0
@@ -272,7 +273,7 @@ class Agent(AbstractAgent):
             self.episode_step = 0
 
             while not done:
-                if self.args.render and i_episode >= self.args.render_after:
+                if self.args.render and self.i_episode >= self.args.render_after:
                     self.env.render()
 
                 action = self.select_action(state)
@@ -292,10 +293,13 @@ class Agent(AbstractAgent):
             if loss_episode:
                 avg_loss = np.vstack(loss_episode).mean(axis=0)
                 self.write_log(
-                    i_episode, avg_loss, score, self.hyper_params["DELAYED_UPDATE"]
+                    self.i_episode, avg_loss, score, self.hyper_params["DELAYED_UPDATE"]
                 )
-            if i_episode % self.args.save_period == 0:
-                self.save_params(i_episode)
+            if self.i_episode % self.args.save_period == 0:
+                self.save_params(self.i_episode)
+                self.interim_test()
 
         # termination
         self.env.close()
+        self.save_params(self.i_episode)
+        self.interim_test()

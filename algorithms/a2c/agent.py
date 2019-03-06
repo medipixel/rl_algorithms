@@ -33,6 +33,7 @@ class Agent(AbstractAgent):
         optimizer (Optimizer): optimizer for training
         episode_step (int): step number of the current episode
         transition (list): recent transition information
+        i_episode (int): current episode number
 
     """
 
@@ -63,6 +64,7 @@ class Agent(AbstractAgent):
         self.predicted_value = torch.zeros((1,))
         self.transition: list = list()
         self.episode_step = 0
+        self.i_episode = 0
 
         if args.load_from is not None and os.path.exists(args.load_from):
             self.load_params(args.load_from)
@@ -185,7 +187,7 @@ class Agent(AbstractAgent):
             wandb.config.update(self.hyper_params)
             # wandb.watch([self.actor, self.critic], log="parameters")
 
-        for i_episode in range(1, self.args.episode_num + 1):
+        for self.i_episode in range(1, self.args.episode_num + 1):
             state = self.env.reset()
             done = False
             score = 0
@@ -194,7 +196,7 @@ class Agent(AbstractAgent):
             self.episode_step = 0
 
             while not done:
-                if self.args.render and i_episode >= self.args.render_after:
+                if self.args.render and self.i_episode >= self.args.render_after:
                     self.env.render()
 
                 action = self.select_action(state)
@@ -210,10 +212,13 @@ class Agent(AbstractAgent):
             # logging
             policy_loss = np.array(policy_loss_episode).mean()
             value_loss = np.array(value_loss_episode).mean()
-            self.write_log(i_episode, score, policy_loss, value_loss)
+            self.write_log(self.i_episode, score, policy_loss, value_loss)
 
-            if i_episode % self.args.save_period == 0:
-                self.save_params(i_episode)
+            if self.i_episode % self.args.save_period == 0:
+                self.save_params(self.i_episode)
+                self.interim_test()
 
         # termination
         self.env.close()
+        self.save_params(self.i_episode)
+        self.interim_test()

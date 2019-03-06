@@ -38,6 +38,9 @@ parser.add_argument("--episode-num", type=int, default=1500, help="total episode
 parser.add_argument(
     "--max-episode-steps", type=int, default=None, help="max episode step"
 )
+parser.add_argument(
+    "--interim-test-num", type=int, default=10, help="interim test number"
+)
 
 parser.set_defaults(test=False)
 parser.set_defaults(load_from=None)
