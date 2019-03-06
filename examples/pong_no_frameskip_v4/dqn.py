@@ -45,9 +45,8 @@ def run(env: gym.Env, env_name: str, args: argparse.Namespace):
 
     Args:
         env (gym.Env): openAI Gym environment with continuous action space
+        env_name (str): Environment name of openAI Gym
         args (argparse.Namespace): arguments including training settings
-        state_dim (int): dimension of states
-        action_dim (int): dimension of actions
 
     """
     # create a model
