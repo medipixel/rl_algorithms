@@ -103,7 +103,7 @@ class LateFusionDuelingMLP(DuelingMLP):
 
         idx_late_in = 0
         for i, hidden_layer in enumerate(self.hidden_layers):
-            if self.late_fusion_info[i] > 0:
+            if self._late_fusion_info[i] > 0:
                 x = concat(x, late_in[idx_late_in])
                 idx_late_in += 1
             x = self.hidden_activation(hidden_layer(x))
