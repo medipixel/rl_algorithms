@@ -40,6 +40,7 @@ class Agent(AbstractAgent):
         values (list): memory for experienced values
         masks (list): memory for masks
         log_probs (list): memory for log_probs
+        i_episode (int): current episode number
 
     """
 
@@ -78,6 +79,7 @@ class Agent(AbstractAgent):
         self.values: list = []
         self.masks: list = []
         self.log_probs: list = []
+        self.i_episode = 0
 
         # load model parameters
         if self.args.load_from is not None and os.path.exists(self.args.load_from):
@@ -285,14 +287,13 @@ class Agent(AbstractAgent):
             # wandb.watch([self.actor, self.critic], log="parameters")
 
         score = 0
-        i_episode = 0
         i_episode_prev = 0
         loss = [0.0, 0.0, 0.0]
         state = self.env.reset()
 
-        while i_episode <= self.args.episode_num:
+        while self.i_episode <= self.args.episode_num:
             for _ in range(self.hyper_params["ROLLOUT_LEN"]):
-                if self.args.render and i_episode >= self.args.render_after:
+                if self.args.render and self.i_episode >= self.args.render_after:
                     self.env.render()
 
                 action = self.select_action(state)
@@ -300,24 +301,26 @@ class Agent(AbstractAgent):
 
                 state = next_state
                 score += reward[0]
-                i_episode_prev = i_episode
-                i_episode += done.sum()
+                i_episode_prev = self.i_episode
+                self.i_episode += done.sum()
 
-                if (i_episode // self.args.save_period) != (
+                if (self.i_episode // self.args.save_period) != (
                     i_episode_prev // self.args.save_period
                 ):
-                    self.save_params(i_episode)
+                    self.save_params(self.i_episode)
 
                 if done[0]:
                     n_step = self.episode_steps[0]
-                    self.write_log(i_episode, n_step, score, loss[0], loss[1], loss[2])
+                    self.write_log(
+                        self.i_episode, n_step, score, loss[0], loss[1], loss[2]
+                    )
                     score = 0
 
                 self.episode_steps[np.where(done)] = 0
 
             loss = self.update_model(next_state)
-            self.decay_epsilon(i_episode)
+            self.decay_epsilon(self.i_episode)
 
         # termination
         self.env.close()
-        self.save_params(i_episode)
+        self.save_params(self.i_episode)

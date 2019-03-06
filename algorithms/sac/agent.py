@@ -330,8 +330,7 @@ class Agent(AbstractAgent):
         # pre-training if needed
         self.pretrain()
 
-        for i_episode in range(1, self.args.episode_num + 1):
-            self.i_episode = i_episode
+        for self.i_episode in range(1, self.args.episode_num + 1):
             state = self.env.reset()
             done = False
             score = 0
@@ -339,7 +338,7 @@ class Agent(AbstractAgent):
             loss_episode = list()
 
             while not done:
-                if self.args.render and i_episode >= self.args.render_after:
+                if self.args.render and self.i_episode >= self.args.render_after:
                     self.env.render()
 
                 action = self.select_action(state)
@@ -358,11 +357,14 @@ class Agent(AbstractAgent):
             if loss_episode:
                 avg_loss = np.vstack(loss_episode).mean(axis=0)
                 self.write_log(
-                    i_episode, avg_loss, score, self.hyper_params["DELAYED_UPDATE"]
+                    self.i_episode, avg_loss, score, self.hyper_params["DELAYED_UPDATE"]
                 )
 
-            if i_episode % self.args.save_period == 0:
-                self.save_params(i_episode)
+            if self.i_episode % self.args.save_period == 0:
+                self.save_params(self.i_episode)
+                self.interim_test()
 
         # termination
         self.env.close()
+        self.save_params(self.i_episode)
+        self.interim_test()

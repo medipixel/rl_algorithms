@@ -94,20 +94,44 @@ class AbstractAgent(ABC):
     def train(self):
         pass
 
+    def interim_test(self):
+        self.args.test = True
+
+        print()
+        print("===========")
+        print("Start Test!")
+        print("===========")
+
+        self._test(self.args.interim_test_num)
+
+        print("===========")
+        print("Test done!")
+        print("===========")
+        print()
+
+        self.args.test = False
+
     def test(self):
         """Test the agent."""
         # logger
         if self.args.log:
             wandb.init()
 
-        for i_episode in range(self.args.episode_num):
+        self._test(self.args.episode_num)
+
+        # termination
+        self.env.close()
+
+    def _test(self, test_num: int):
+        """Common test routine."""
+        for i_episode in range(test_num):
             state = self.env.reset()
             done = False
             score = 0
             step = 0
 
             while not done:
-                if self.args.render and i_episode >= self.args.render_after:
+                if self.args.render:
                     self.env.render()
 
                 action = self.select_action(state)
@@ -118,12 +142,8 @@ class AbstractAgent(ABC):
                 step += 1
 
             print(
-                "[INFO] episode %d\tstep: %d\ttotal score: %d"
-                % (i_episode, step, score)
+                "[INFO] test %d\tstep: %d\ttotal score: %d" % (i_episode, step, score)
             )
 
             if self.args.log:
-                wandb.log({"score": score})
-
-        # termination
-        self.env.close()
+                wandb.log({"test score": score})
