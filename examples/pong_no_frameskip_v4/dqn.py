@@ -11,8 +11,6 @@ import gym
 import torch
 import torch.optim as optim
 
-from algorithms.common.env.atari_wrappers import atari_env_generator
-from algorithms.common.env.multiprocessing_env import SubprocVecEnv
 from algorithms.common.networks.cnn import CNN, CNNLayer
 from algorithms.dqn.agent import Agent
 from algorithms.dqn.networks import DuelingMLP
@@ -24,14 +22,14 @@ hyper_params = {
     "GAMMA": 0.99,
     "TAU": 5e-3,
     "BUFFER_SIZE": int(1e4),  # openai baselines: int(1e4)
-    "BATCH_SIZE": 32,  # 32 * n_workers, openai baselines: 32
-    "LR_DQN": 6.25e-5,  # dueling: 6.25e-5
-    "ADAM_EPS": 1.5e-4,  # rainbow: 1.5e-4
+    "BATCH_SIZE": 32,  # openai baselines: 32
+    "LR_DQN": 1e-4,  # dueling: 6.25e-5, openai baselines: 1e-4
+    "ADAM_EPS": 1e-8,  # rainbow: 1.5e-4, openai baselines: 1e-8
     "WEIGHT_DECAY": 0.0,  # this makes saturation in cnn weights
     "MAX_EPSILON": 1.0,
-    "MIN_EPSILON": 0.02,
-    "EPSILON_DECAY": 5e-6,
-    "W_Q_REG": 1e-7,
+    "MIN_EPSILON": 0.01,  # openai baselines: 0.01
+    "EPSILON_DECAY": 1e-6,  # openai baselines: 1e-7 / 1e-1
+    "W_Q_REG": 0.0,
     "PER_ALPHA": 0.6,  # openai baselines: 0.6
     "PER_BETA": 0.4,
     "PER_EPS": 1e-6,
@@ -39,7 +37,6 @@ hyper_params = {
     "UPDATE_STARTS_FROM": int(1e4),  # openai baselines: int(1e4)
     "TRAIN_FREQ": 4,  # in openai baselines, train_freq = 4
     "MULTIPLE_LEARN": 1,
-    "N_WORKERS": 1,
 }
 
 
@@ -52,14 +49,6 @@ def run(env: gym.Env, env_name: str, args: argparse.Namespace):
         args (argparse.Namespace): arguments including training settings
 
     """
-    # create multiple envs
-    # configure environment so that it works for discrete actions
-    env_single, n_envs = env, int(hyper_params["N_WORKERS"])
-    env_list = [
-        atari_env_generator(env_name, args.max_episode_steps) for _ in range(n_envs)
-    ]
-    env_multi = SubprocVecEnv(env_list)
-
     # create a model
     action_dim = env.action_space.n
     hidden_sizes = [512]
@@ -95,7 +84,7 @@ def run(env: gym.Env, env_name: str, args: argparse.Namespace):
     models = (dqn, dqn_target)
 
     # create an agent
-    agent = Agent(env_single, env_multi, args, hyper_params, models, dqn_optim)
+    agent = Agent(env, args, hyper_params, models, dqn_optim)
     agent.env_name = env_name
 
     # run

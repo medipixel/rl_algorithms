@@ -17,12 +17,12 @@ from typing import Tuple
 import gym
 import numpy as np
 import torch
+import torch.nn.functional as F
 from torch.nn.utils import clip_grad_norm_
 import wandb
 
 from algorithms.common.abstract.agent import AbstractAgent
 from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
-from algorithms.common.env.multiprocessing_env import SubprocVecEnv
 import algorithms.common.helper_functions as common_utils
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -39,8 +39,8 @@ class Agent(AbstractAgent):
         hyper_params (dict): hyper-parameters
         beta (float): beta parameter for prioritized replay buffer
         curr_state (np.ndarray): temporary storage of the current state
-        total_steps (np.ndarray): total step numbers
-        episode_steps (np.ndarray): step number of the current episode
+        total_step (int): total step number
+        episode_step (int): step number of the current episode
         epsilon (float): parameter for epsilon greedy policy
         i_episode (int): current episode number
 
@@ -48,8 +48,7 @@ class Agent(AbstractAgent):
 
     def __init__(
         self,
-        env_single: gym.Env,
-        env_multi: SubprocVecEnv,
+        env: gym.Env,
         args: argparse.Namespace,
         hyper_params: dict,
         models: tuple,
@@ -58,26 +57,23 @@ class Agent(AbstractAgent):
         """Initialization.
 
         Args:
-            env_single (gym.Env): openAI Gym environment
-            env_multi (SubprocVecEnv): Gym env with multiprocessing for training
+            env (gym.Env): openAI Gym environment
             args (argparse.Namespace): arguments including hyperparameters and training settings
             hyper_params (dict): hyper-parameters
             models (tuple): models including main network and target
             optim (torch.optim.Adam): optimizers for dqn
 
         """
-        AbstractAgent.__init__(self, env_single, args)
+        AbstractAgent.__init__(self, env, args)
 
-        if not self.args.test:
-            self.env = env_multi
         self.dqn, self.dqn_target = models
         self.dqn_optimizer = optim
         self.hyper_params = hyper_params
-        self.curr_state = np.zeros((1,))
-        self.total_steps = np.zeros(hyper_params["N_WORKERS"], dtype=np.int)
-        self.episode_steps = np.zeros(hyper_params["N_WORKERS"], dtype=np.int)
-        self.epsilon = self.hyper_params["MAX_EPSILON"]
+        self.curr_state = np.zeros(1)
+        self.episode_step = 0
+        self.total_step = 0
         self.i_episode = 0
+        self.epsilon = self.hyper_params["MAX_EPSILON"]
 
         # load the optimizer and model parameters
         if args.load_from is not None and os.path.exists(args.load_from):
@@ -104,35 +100,26 @@ class Agent(AbstractAgent):
         # epsilon greedy policy
         # pylint: disable=comparison-with-callable
         if not self.args.test and self.epsilon > np.random.random():
-            selected_action = self.env.sample()
+            selected_action = self.env.action_space.sample()
         else:
             state = torch.FloatTensor(state).to(device)
-            selected_action = self.dqn(state).argmax(dim=-1)
+            selected_action = self.dqn(state).argmax()
             selected_action = selected_action.detach().cpu().numpy()
         return selected_action
 
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, np.float64, bool]:
         """Take an action and return the response of the env."""
-        self.total_steps += 1
-        self.episode_steps += 1
+        self.total_step += 1
+        self.episode_step += 1
 
         next_state, reward, done, _ = self.env.step(action)
 
         if not self.args.test:
             # if the last state is not a terminal state, store done as false
-            done_bool = done.copy()
-            done_bool[
-                np.where(self.episode_steps == self.args.max_episode_steps)
-            ] = False
-
-            action = action.tolist()
-            reward = reward.tolist()
-            done_bool = done_bool.tolist()
-
-            for s, a, r, n_s, d in zip(
-                self.curr_state, action, reward, next_state, done_bool
-            ):
-                self.memory.add(s, a, r, n_s, d)
+            done_bool = (
+                False if self.episode_step == self.args.max_episode_steps else done
+            )
+            self.memory.add(self.curr_state, action, reward, next_state, done_bool)
 
         return next_state, reward, done
 
@@ -157,7 +144,9 @@ class Agent(AbstractAgent):
         target = target.to(device)
 
         # calculate dq loss
-        dq_loss_element_wise = (target - curr_q_value).pow(2)
+        dq_loss_element_wise = F.smooth_l1_loss(
+            curr_q_value, target.detach(), reduction="none"
+        )
         dq_loss = torch.mean(dq_loss_element_wise * weights)
 
         # q_value regularization
@@ -215,8 +204,8 @@ class Agent(AbstractAgent):
             "epsilon: %f, loss: %f, avg q-value: %f at %s\n"
             % (
                 i,
-                self.episode_steps[0],
-                self.total_steps.sum(),
+                self.episode_step,
+                self.total_step,
                 score,
                 self.epsilon,
                 loss[0],
@@ -244,60 +233,48 @@ class Agent(AbstractAgent):
         # pre-training if needed
         self.pretrain()
 
-        state = self.env.reset()
-        i_episode_prev = 0
-        losses = list()
-        i_episode = 0
-        i_step = 0
-        score = 0
+        max_epsilon, min_epsilon, epsilon_decay = (
+            self.hyper_params["MAX_EPSILON"],
+            self.hyper_params["MIN_EPSILON"],
+            self.hyper_params["EPSILON_DECAY"],
+        )
 
-        while i_episode <= self.args.episode_num:
-            if self.args.render and i_episode >= self.args.render_after:
-                self.env.render()
+        for self.i_episode in range(1, self.args.episode_num + 1):
+            state = self.env.reset()
+            self.episode_step = 0
+            losses = list()
+            done = False
+            score = 0
 
-            action = self.select_action(state)
-            next_state, reward, done = self.step(action)
+            while not done:
+                if self.args.render and self.i_episode >= self.args.render_after:
+                    self.env.render()
 
-            state = next_state
-            score += reward[0]
-            i_episode_prev = i_episode
-            i_episode += done.sum()
-            i_step += 1
-            self.i_episode = i_episode
+                action = self.select_action(state)
+                next_state, reward, done = self.step(action)
 
-            if (i_episode // self.args.save_period) != (
-                i_episode_prev // self.args.save_period
-            ):
-                self.save_params(i_episode)
+                if len(self.memory) >= self.hyper_params["UPDATE_STARTS_FROM"]:
+                    if self.total_step % self.hyper_params["TRAIN_FREQ"] == 0:
+                        for _ in range(self.hyper_params["MULTIPLE_LEARN"]):
+                            loss = self.update_model()
+                            losses.append(loss)  # for logging
 
-            if done[0]:
-                if losses:
-                    avg_loss = np.vstack(losses).mean(axis=0)
-                    self.write_log(i_episode, avg_loss, score)
-                    losses.clear()
-                score = 0
+                    # decrease epsilon
+                    self.epsilon = max(
+                        self.epsilon - (max_epsilon - min_epsilon) * epsilon_decay,
+                        min_epsilon,
+                    )
 
-            self.episode_steps[np.where(done)] = 0
+                state = next_state
+                score += reward
 
-            if len(self.memory) >= self.hyper_params["UPDATE_STARTS_FROM"]:
-                if i_step % self.hyper_params["TRAIN_FREQ"] == 0:
-                    for _ in range(self.hyper_params["MULTIPLE_LEARN"]):
-                        loss = self.update_model()
-                        losses.append(loss)  # for logging
+            if losses:
+                avg_loss = np.vstack(losses).mean(axis=0)
+                self.write_log(self.i_episode, avg_loss, score)
 
-                # decrease epsilon
-                max_epsilon, min_epsilon, epsilon_decay, n_workers = (
-                    self.hyper_params["MAX_EPSILON"],
-                    self.hyper_params["MIN_EPSILON"],
-                    self.hyper_params["EPSILON_DECAY"],
-                    self.hyper_params["N_WORKERS"],
-                )
-                self.epsilon = max(
-                    self.epsilon
-                    - (max_epsilon - min_epsilon) * epsilon_decay * n_workers,
-                    min_epsilon,
-                )
+            if self.i_episode % self.args.save_period == 0:
+                self.save_params(self.i_episode)
 
         # termination
         self.env.close()
-        self.save_params(i_episode)
+        self.save_params(self.i_episode)

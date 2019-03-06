@@ -6,18 +6,15 @@
 """
 
 import argparse
-import multiprocessing
 
 import gym
 import torch
 import torch.optim as optim
 
-from algorithms.common.env.utils import env_generator, make_envs
 from algorithms.dqn.agent import Agent
 from algorithms.dqn.networks import DuelingMLP
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-n_cpu = multiprocessing.cpu_count()
 
 # hyper parameters
 hyper_params = {
@@ -25,9 +22,10 @@ hyper_params = {
     "TAU": 5e-3,
     "W_Q_REG": 1e-7,
     "BUFFER_SIZE": int(1e6),
-    "BATCH_SIZE": 64,
-    "LR_DQN": 1e-4,
-    "WEIGHT_DECAY": 1e-6,
+    "BATCH_SIZE": 128,
+    "LR_DQN": 1e-4,  # dueling: 6.25e-5
+    "ADAM_EPS": 1e-8,  # rainbow: 1.5e-4
+    "WEIGHT_DECAY": 0.0,
     "MAX_EPSILON": 1.0,
     "MIN_EPSILON": 0.01,
     "EPSILON_DECAY": 2e-5,
@@ -36,9 +34,8 @@ hyper_params = {
     "PER_EPS": 1e-6,
     "GRADIENT_CLIP": 0.5,
     "UPDATE_STARTS_FROM": int(1e3),
-    "TRAIN_FREQ": 1,
-    "MULTIPLE_LEARN": n_cpu,
-    "N_WORKERS": n_cpu,
+    "TRAIN_FREQ": 4,
+    "MULTIPLE_LEARN": 1,
 }
 
 
@@ -52,11 +49,6 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
         action_dim (int): dimension of actions
 
     """
-    # create multiple envs
-    env_single = env
-    env_gen = env_generator("LunarLander-v2", args)
-    env_multi = make_envs(env_gen, n_envs=hyper_params["N_WORKERS"])
-
     # create model
     hidden_sizes = [128, 64]
 
@@ -80,7 +72,7 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
     models = (dqn, dqn_target)
 
     # create an agent
-    agent = Agent(env_single, env_multi, args, hyper_params, models, dqn_optim)
+    agent = Agent(env, args, hyper_params, models, dqn_optim)
 
     # run
     if args.test:
