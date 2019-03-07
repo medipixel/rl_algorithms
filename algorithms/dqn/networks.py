@@ -50,10 +50,7 @@ class DuelingMLP(MLP):
         self.value_layer.weight.data.uniform_(-init_w, init_w)
         self.value_layer.bias.data.uniform_(-init_w, init_w)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward method implementation."""
-        x = super(DuelingMLP, self).forward(x)
-
+    def _forward_dueling(self, x: torch.Tensor) -> torch.Tensor:
         adv_x = self.advantage_hidden_layer(x)
         val_x = self.value_hidden_layer(x)
 
@@ -64,6 +61,13 @@ class DuelingMLP(MLP):
         q = value + advantage - advantage_mean
 
         return q
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward method implementation."""
+        x = super(DuelingMLP, self).forward(x)
+        x = self._forward_dueling(x)
+
+        return x
 
 
 class LateFusionDuelingMLP(DuelingMLP):
@@ -108,16 +112,9 @@ class LateFusionDuelingMLP(DuelingMLP):
                 idx_late_in += 1
             x = self.hidden_activation(hidden_layer(x))
 
-        adv_x = self.advantage_hidden_layer(x)
-        val_x = self.value_hidden_layer(x)
+        x = self._forward_dueling(x)
 
-        advantage = self.advantage_layer(adv_x)
-        value = self.value_layer(val_x)
-        advantage_mean = advantage.mean(dim=-1, keepdim=True)
-
-        q = value + advantage - advantage_mean
-
-        return q
+        return x
 
     def _late_fusion_dim(self, idx: int) -> int:
         """Return the dimension for late fusion."""
