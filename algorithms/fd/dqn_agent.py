@@ -10,19 +10,20 @@
          https://arxiv.org/pdf/1704.03732.pdf (DQfD)
 """
 
+from collections import deque
 import datetime
 import pickle
-from typing import Tuple
+from typing import Deque, Tuple
 
 import numpy as np
 import torch
-import torch.nn.functional as F
 from torch.nn.utils import clip_grad_norm_
 import wandb
 
 from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBufferfD
 import algorithms.common.helper_functions as common_utils
 from algorithms.dqn.agent import Agent as DQNAgent
+import algorithms.dqn.utils as dqn_utils
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -43,43 +44,54 @@ class Agent(DQNAgent):
             with open(self.args.demo_path, "rb") as f:
                 demo = pickle.load(f)
 
+            demos_1_step, demos_n_step = dqn_utils.get_n_step_info_from_demo(
+                demo, self.hyper_params["N_STEP"], self.hyper_params["GAMMA"]
+            )
+
             # replay memory
             self.beta = self.hyper_params["PER_BETA"]
             self.memory = PrioritizedReplayBufferfD(
                 self.hyper_params["BUFFER_SIZE"],
                 self.hyper_params["BATCH_SIZE"],
-                demo=list(demo),
+                demo=demos_1_step,
                 alpha=self.hyper_params["PER_ALPHA"],
                 epsilon_d=self.hyper_params["PER_EPS_DEMO"],
             )
 
+            # replay memory for multi-steps
+            if self.use_n_step:
+                self.memory_n = dqn_utils.NStepTransitionBuffer(
+                    self.hyper_params["BUFFER_SIZE"], demo=demos_n_step
+                )
+                self.n_step_buffer: Deque = deque(maxlen=self.hyper_params["N_STEP"])
+
     def update_model(self) -> Tuple[torch.Tensor, ...]:
         """Train the model after each episode."""
-        experiences = self.memory.sample()
-        states, actions, rewards, next_states, dones, weights, indexes, eps_d = (
-            experiences
-        )
+        experiences_1 = self.memory.sample()
+        weights = experiences_1[-3]
+        indices = experiences_1[-2]
+        eps_d = experiences_1[-1]
+        actions = experiences_1[1]
 
-        q_values = self.dqn(states)
-        next_q_values = self.dqn(next_states)
-        next_target_q_values = self.dqn_target(next_states)
-
-        curr_q_values = q_values.gather(1, actions.long().unsqueeze(1))
-        next_q_values = next_target_q_values.gather(  # Double DQN
-            1, next_q_values.argmax(1).unsqueeze(1)
-        )
-
-        # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
-        #       = r                       otherwise
-        masks = 1 - dones
-        target = rewards + self.hyper_params["GAMMA"] * next_q_values * masks
-        target = target.to(device)
-
-        # calculate dq loss
-        dq_loss_element_wise = F.smooth_l1_loss(
-            curr_q_values, target.detach(), reduction="none"
-        )
+        # 1 step loss
+        gamma = self.hyper_params["GAMMA"]
+        dq_loss_element_wise, q_values = self._get_dqn_loss(experiences_1, gamma)
         dq_loss = torch.mean(dq_loss_element_wise * weights)
+
+        # n step loss
+        if self.use_n_step:
+            experiences_n = self.memory_n.sample(indices)
+            gamma = self.hyper_params["GAMMA"] ** self.hyper_params["N_STEP"]
+            dq_loss_n_element_wise, q_values_n = self._get_dqn_loss(
+                experiences_n, gamma
+            )
+
+            # to update loss and priorities
+            q_values = 0.5 * (q_values + q_values_n)
+            dq_loss_element_wise += (
+                dq_loss_n_element_wise * self.hyper_params["LAMBDA1"]
+            )
+            dq_loss = torch.mean(dq_loss_element_wise * weights)
 
         # supervised loss using demo for only demo transitions
         demo_idxs = np.where(eps_d != 0.0)
@@ -118,7 +130,7 @@ class Agent(DQNAgent):
         loss_for_prior = dq_loss_element_wise.detach().cpu().numpy().squeeze()
         new_priorities = loss_for_prior + self.hyper_params["PER_EPS"]
         new_priorities += eps_d
-        self.memory.update_priorities(indexes, new_priorities)
+        self.memory.update_priorities(indices, new_priorities)
 
         # increase beta
         fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)

@@ -8,6 +8,7 @@ This module has DQN util functions.
 - Paper: https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf (DQN)
 """
 
+from collections import deque
 from typing import Deque, List, Tuple
 
 import numpy as np
@@ -16,18 +17,44 @@ import torch
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
+def get_n_step_info_from_demo(
+    demo: List, n_step: int, gamma: float
+) -> Tuple[List, List]:
+    """Return 1 step and n step demos."""
+    assert demo
+    assert n_step > 1
+
+    demos_1_step = list()
+    demos_n_step = list()
+    n_step_buffer: Deque = deque(maxlen=n_step)
+
+    for transition in demo:
+        n_step_buffer.append(transition)
+
+        if len(n_step_buffer) == n_step:
+            # add a single step transition
+            demos_1_step.append(n_step_buffer[0])
+
+            # add a multi step transition
+            curr_state, action = transition[:2]
+            reward, next_state, done = get_n_step_info(n_step_buffer, gamma)
+            transition = (curr_state, action, reward, next_state, done)
+            demos_n_step.append(transition)
+
+    return demos_1_step, demos_n_step
+
+
 def get_n_step_info(
     transitions: Deque, gamma: float
 ) -> Tuple[np.int64, np.ndarray, bool]:
     """Return n step reward, next state, and done."""
     assert transitions
 
-    reward = 0
-    next_state = transitions[-1][-2]  # next_state of the last transition
-    done = transitions[-1][-1]  # done of the last transition
+    # info of the last transition
+    reward, next_state, done = transitions[-1][-3:]
 
-    for transition in reversed(transitions):
-        _, _, r, n_s, d = transition
+    for transition in reversed(list(transitions)[:-1]):
+        r, n_s, d = transition[-3:]
 
         reward = r + gamma * reward * (1 - d)
         next_state, done = (n_s, d) if d else (next_state, done)
@@ -83,7 +110,7 @@ class NStepTransitionBuffer:
         """Randomly sample a batch of experiences from memory."""
         states, actions, rewards, next_states, dones = [], [], [], [], []
 
-        for i in np.nditer(indices):
+        for i in indices:
             s, a, r, n_s, d = self.buffer[i]
             states.append(np.array(s, copy=False))
             actions.append(np.array(a, copy=False))
