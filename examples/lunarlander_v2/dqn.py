@@ -21,21 +21,21 @@ hyper_params = {
     "GAMMA": 0.99,
     "TAU": 5e-3,
     "W_Q_REG": 1e-7,
-    "BUFFER_SIZE": int(1e6),
-    "BATCH_SIZE": 128,
+    "BUFFER_SIZE": int(1e5),
+    "BATCH_SIZE": 64,
     "LR_DQN": 1e-4,  # dueling: 6.25e-5
     "ADAM_EPS": 1e-8,  # rainbow: 1.5e-4
-    "WEIGHT_DECAY": 0.0,
+    "WEIGHT_DECAY": 1e-7,
     "MAX_EPSILON": 1.0,
     "MIN_EPSILON": 0.01,
-    "EPSILON_DECAY": 2e-5,
+    "EPSILON_DECAY": 1e-5,
     "PER_ALPHA": 0.6,
     "PER_BETA": 0.4,
     "PER_EPS": 1e-6,
-    "GRADIENT_CLIP": 0.5,
-    "UPDATE_STARTS_FROM": int(1e3),
+    "GRADIENT_CLIP": 10,
+    "UPDATE_STARTS_FROM": int(1e4),
     "TRAIN_FREQ": 4,
-    "MULTIPLE_LEARN": 1,
+    "MULTIPLE_LEARN": 8,
 }
 
 
