@@ -57,15 +57,15 @@ class ReplayBuffer:
         for transition in transitions:
             self.add(*transition)
 
-    def sample(
-        self
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    def sample(self) -> Tuple[torch.Tensor, ...]:
         """Randomly sample a batch of experiences from memory."""
-        idxs = np.random.choice(len(self.buffer), size=self.batch_size, replace=False)
+        indices = np.random.choice(
+            len(self.buffer), size=self.batch_size, replace=False
+        )
 
         states, actions, rewards, next_states, dones = [], [], [], [], []
 
-        for i in np.nditer(idxs):
+        for i in np.nditer(indices):
             s, a, r, n_s, d = self.buffer[i]
             states.append(np.array(s, copy=False))
             actions.append(np.array(a, copy=False))

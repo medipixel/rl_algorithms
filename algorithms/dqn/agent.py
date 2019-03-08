@@ -10,9 +10,10 @@
 """
 
 import argparse
+from collections import deque
 import datetime
 import os
-from typing import Tuple
+from typing import Deque, Tuple
 
 import gym
 import numpy as np
@@ -24,6 +25,7 @@ import wandb
 from algorithms.common.abstract.agent import AbstractAgent
 from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
 import algorithms.common.helper_functions as common_utils
+import algorithms.dqn.utils as dqn_utils
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -43,6 +45,7 @@ class Agent(AbstractAgent):
         episode_step (int): step number of the current episode
         epsilon (float): parameter for epsilon greedy policy
         i_episode (int): current episode number
+        n_step_buffer (deque): n-size buffer to calculate n-step returns
 
     """
 
@@ -85,13 +88,20 @@ class Agent(AbstractAgent):
     def _initialize(self):
         """Initialize non-common things."""
         if not self.args.test:
-            # replay memory
+            # replay memory for a single step
             self.beta = self.hyper_params["PER_BETA"]
             self.memory = PrioritizedReplayBuffer(
                 self.hyper_params["BUFFER_SIZE"],
                 self.hyper_params["BATCH_SIZE"],
                 alpha=self.hyper_params["PER_ALPHA"],
             )
+
+            # replay memory for multi-steps
+            if self.hyper_params["N_STEP"] > 1:
+                self.memory_n = dqn_utils.NStepTransitionBuffer(
+                    self.hyper_params["BUFFER_SIZE"]
+                )
+                self.n_step_buffer: Deque = deque(maxlen=self.hyper_params["N_STEP"])
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""
@@ -107,6 +117,25 @@ class Agent(AbstractAgent):
             selected_action = selected_action.detach().cpu().numpy()
         return selected_action
 
+    def _add_transition_to_memory(self, transition: Tuple[np.ndarray, ...]):
+        """Add 1 step and n step transitions to memory."""
+        # calculate n-step reward when n_step_buffer is full
+        self.n_step_buffer.append(transition)
+
+        if len(self.n_step_buffer) == self.hyper_params["N_STEP"]:
+            # add a single step transition
+            transition = self.n_step_buffer[0]
+            self.memory.add(*transition)
+
+            # add a multi step transition
+            gamma = self.hyper_params["GAMMA"]
+            reward, next_state, done = dqn_utils.get_n_step_info(
+                self.n_step_buffer, gamma
+            )
+            self.curr_state, action = transition[:2]
+            transition = (self.curr_state, action, reward, next_state, done)
+            self.n_step_memory.add(*transition)
+
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, np.float64, bool]:
         """Take an action and return the response of the env."""
         self.total_step += 1
@@ -119,14 +148,17 @@ class Agent(AbstractAgent):
             done_bool = (
                 False if self.episode_step == self.args.max_episode_steps else done
             )
-            self.memory.add(self.curr_state, action, reward, next_state, done_bool)
+
+            transition = (self.curr_state, action, reward, next_state, done_bool)
+            self._add_transition_to_memory(transition)
 
         return next_state, reward, done
 
-    def update_model(self) -> Tuple[torch.Tensor, ...]:
-        """Train the model after each episode."""
-        experiences = self.memory.sample(self.beta)
-        states, actions, rewards, next_states, dones, weights, indexes = experiences
+    def _get_dqn_loss(
+        self, experiences: Tuple[torch.Tensor, ...], gamma: float
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        "Return element-wise dqn loss and Q-values."
+        states, actions, rewards, next_states, dones, _, _ = experiences
 
         q_values = self.dqn(states)
         next_q_values = self.dqn(next_states)
@@ -140,14 +172,46 @@ class Agent(AbstractAgent):
         # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
         #       = r                       otherwise
         masks = 1 - dones
-        target = rewards + self.hyper_params["GAMMA"] * next_q_value * masks
+        target = rewards + gamma * next_q_value * masks
         target = target.to(device)
 
         # calculate dq loss
         dq_loss_element_wise = F.smooth_l1_loss(
             curr_q_value, target.detach(), reduction="none"
         )
-        dq_loss = torch.mean(dq_loss_element_wise * weights)
+
+        return dq_loss_element_wise, q_values
+
+    def update_model(self) -> Tuple[torch.Tensor, ...]:
+        """Train the model after each episode."""
+        # 1 step loss
+        experiences_1 = self.memory.sample(self.beta)
+        indices = experiences_1[-1]
+        weights = experiences_1[-2]
+        gamma = self.hyper_params["GAMMA"]
+        dq_loss_1_element_wise, q_values_1 = self._get_dqn_loss(experiences_1, gamma)
+        dq_loss_1 = torch.mean(dq_loss_1_element_wise * weights)
+
+        # store for the further calculations
+        dq_loss = dq_loss_1
+        q_values = q_values_1
+        dq_loss_element_wise = dq_loss_1_element_wise
+
+        # n step loss
+        if self.hyper_params["N_STEP"] > 1:
+            experiences_n = self.memory_n.sample(indices)
+            gamma = self.hyper_params["GAMMA"] ** self.hyper_params["N_STEP"]
+            dq_loss_n_element_wise, q_values_n = self._get_dqn_loss(
+                experiences_n, gamma
+            )
+            dq_loss_n = torch.mean(dq_loss_n_element_wise * weights)
+
+            # to update loss and priorities
+            q_values = 0.5 * (q_values_1 + q_values_n)
+            dq_loss_element_wise += (
+                dq_loss_n_element_wise * self.hyper_params["W_N_STEP"]
+            )
+            dq_loss += dq_loss_n
 
         # q_value regularization
         q_regular = torch.norm(q_values, 2).mean() * self.hyper_params["W_Q_REG"]
@@ -167,7 +231,7 @@ class Agent(AbstractAgent):
         # update priorities in PER
         loss_for_prior = dq_loss_element_wise.detach().cpu().numpy().squeeze()
         new_priorities = loss_for_prior + self.hyper_params["PER_EPS"]
-        self.memory.update_priorities(indexes, new_priorities)
+        self.memory.update_priorities(indices, new_priorities)
 
         # increase beta
         fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)
