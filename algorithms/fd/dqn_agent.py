@@ -10,10 +10,9 @@
          https://arxiv.org/pdf/1704.03732.pdf (DQfD)
 """
 
-from collections import deque
 import datetime
 import pickle
-from typing import Deque, Tuple
+from typing import Tuple
 
 import numpy as np
 import torch
@@ -21,9 +20,9 @@ from torch.nn.utils import clip_grad_norm_
 import wandb
 
 from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBufferfD
+from algorithms.common.buffer.replay_buffer import NStepTransitionBuffer
 import algorithms.common.helper_functions as common_utils
 from algorithms.dqn.agent import Agent as DQNAgent
-import algorithms.dqn.utils as dqn_utils
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -44,7 +43,7 @@ class Agent(DQNAgent):
             with open(self.args.demo_path, "rb") as f:
                 demo = pickle.load(f)
 
-            demos_1_step, demos_n_step = dqn_utils.get_n_step_info_from_demo(
+            demos_1_step, demos_n_step = common_utils.get_n_step_info_from_demo(
                 demo, self.hyper_params["N_STEP"], self.hyper_params["GAMMA"]
             )
 
@@ -60,10 +59,12 @@ class Agent(DQNAgent):
 
             # replay memory for multi-steps
             if self.use_n_step:
-                self.memory_n = dqn_utils.NStepTransitionBuffer(
-                    self.hyper_params["BUFFER_SIZE"], demo=demos_n_step
+                self.memory_n = NStepTransitionBuffer(
+                    buffer_size=self.hyper_params["BUFFER_SIZE"],
+                    n_step=self.hyper_params["N_STEP"],
+                    gamma=self.hyper_params["GAMMA"],
+                    demo=demos_n_step,
                 )
-                self.n_step_buffer: Deque = deque(maxlen=self.hyper_params["N_STEP"])
 
     def update_model(self) -> Tuple[torch.Tensor, ...]:
         """Train the model after each episode."""

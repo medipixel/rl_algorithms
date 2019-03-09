@@ -10,10 +10,9 @@
 """
 
 import argparse
-from collections import deque
 import datetime
 import os
-from typing import Deque, Tuple
+from typing import Tuple
 
 import gym
 import numpy as np
@@ -24,8 +23,8 @@ import wandb
 
 from algorithms.common.abstract.agent import AbstractAgent
 from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
+from algorithms.common.buffer.replay_buffer import NStepTransitionBuffer
 import algorithms.common.helper_functions as common_utils
-import algorithms.dqn.utils as dqn_utils
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -70,15 +69,15 @@ class Agent(AbstractAgent):
         """
         AbstractAgent.__init__(self, env, args)
 
+        self.use_n_step = hyper_params["N_STEP"] > 1
+        self.epsilon = hyper_params["MAX_EPSILON"]
         self.dqn, self.dqn_target = models
-        self.dqn_optimizer = optim
         self.hyper_params = hyper_params
         self.curr_state = np.zeros(1)
+        self.dqn_optimizer = optim
         self.episode_step = 0
         self.total_step = 0
         self.i_episode = 0
-        self.epsilon = self.hyper_params["MAX_EPSILON"]
-        self.use_n_step = self.hyper_params["N_STEP"] > 1
 
         # load the optimizer and model parameters
         if args.load_from is not None and os.path.exists(args.load_from):
@@ -100,10 +99,11 @@ class Agent(AbstractAgent):
 
             # replay memory for multi-steps
             if self.use_n_step:
-                self.memory_n = dqn_utils.NStepTransitionBuffer(
-                    self.hyper_params["BUFFER_SIZE"]
+                self.memory_n = NStepTransitionBuffer(
+                    self.hyper_params["BUFFER_SIZE"],
+                    n_step=self.hyper_params["N_STEP"],
+                    gamma=self.hyper_params["GAMMA"],
                 )
-                self.n_step_buffer: Deque = deque(maxlen=self.hyper_params["N_STEP"])
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""
@@ -139,26 +139,14 @@ class Agent(AbstractAgent):
 
     def _add_transition_to_memory(self, transition: Tuple[np.ndarray, ...]):
         """Add 1 step and n step transitions to memory."""
-        # calculate n-step reward when n_step_buffer is full
-        if not self.use_n_step:
+        # add n-step transition
+        if self.use_n_step:
+            transition = self.memory_n.add(transition)
+
+        # add a single step transition
+        # if transition is not an empty tuple
+        if transition:
             self.memory.add(*transition)
-            return
-
-        self.n_step_buffer.append(transition)
-
-        if len(self.n_step_buffer) == self.hyper_params["N_STEP"]:
-            # add a single step transition
-            transition = self.n_step_buffer[0]
-            self.memory.add(*transition)
-
-            # add a multi step transition
-            gamma = self.hyper_params["GAMMA"]
-            reward, next_state, done = dqn_utils.get_n_step_info(
-                self.n_step_buffer, gamma
-            )
-            self.curr_state, action = transition[:2]
-            transition = (self.curr_state, action, reward, next_state, done)
-            self.memory_n.add(transition)
 
     def _get_dqn_loss(
         self, experiences: Tuple[torch.Tensor, ...], gamma: float
