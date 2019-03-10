@@ -41,18 +41,19 @@ class Agent(DQNAgent):
         if not self.args.test:
             # load demo replay memory
             with open(self.args.demo_path, "rb") as f:
-                demo = pickle.load(f)
+                demos = pickle.load(f)
 
-            demos_1_step, demos_n_step = common_utils.get_n_step_info_from_demo(
-                demo, self.hyper_params["N_STEP"], self.hyper_params["GAMMA"]
-            )
+            if self.use_n_step:
+                demos, demos_n_step = common_utils.get_n_step_info_from_demo(
+                    demos, self.hyper_params["N_STEP"], self.hyper_params["GAMMA"]
+                )
 
             # replay memory
             self.beta = self.hyper_params["PER_BETA"]
             self.memory = PrioritizedReplayBufferfD(
                 self.hyper_params["BUFFER_SIZE"],
                 self.hyper_params["BATCH_SIZE"],
-                demo=demos_1_step,
+                demo=demos,
                 alpha=self.hyper_params["PER_ALPHA"],
                 epsilon_d=self.hyper_params["PER_EPS_DEMO"],
             )
@@ -69,9 +70,7 @@ class Agent(DQNAgent):
     def update_model(self) -> Tuple[torch.Tensor, ...]:
         """Train the model after each episode."""
         experiences_1 = self.memory.sample()
-        weights = experiences_1[-3]
-        indices = experiences_1[-2]
-        eps_d = experiences_1[-1]
+        weights, indices, eps_d = experiences_1[-3:]
         actions = experiences_1[1]
 
         # 1 step loss

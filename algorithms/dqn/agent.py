@@ -151,7 +151,7 @@ class Agent(AbstractAgent):
     def _get_dqn_loss(
         self, experiences: Tuple[torch.Tensor, ...], gamma: float
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        "Return element-wise dqn loss and Q-values."
+        """Return element-wise dqn loss and Q-values."""
         states, actions, rewards, next_states, dones = experiences[:5]
 
         q_values = self.dqn(states)
@@ -180,8 +180,7 @@ class Agent(AbstractAgent):
         """Train the model after each episode."""
         # 1 step loss
         experiences_1 = self.memory.sample(self.beta)
-        weights = experiences_1[-2]
-        indices = experiences_1[-1]
+        weights, indices = experiences_1[-2:]
         gamma = self.hyper_params["GAMMA"]
         dq_loss_element_wise, q_values = self._get_dqn_loss(experiences_1, gamma)
         dq_loss = torch.mean(dq_loss_element_wise * weights)
