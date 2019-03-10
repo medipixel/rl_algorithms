@@ -18,10 +18,11 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # hyper parameters
 hyper_params = {
+    "N_STEP": 3,
     "GAMMA": 0.99,
     "TAU": 5e-3,
     "BUFFER_SIZE": int(1e5),
-    "BATCH_SIZE": 128,
+    "BATCH_SIZE": 64,
     "LR_DQN": 1e-4,  # dueling: 6.25e-5
     "ADAM_EPS": 1e-8,  # rainbow: 1.5e-4
     "MAX_EPSILON": 1.0,
@@ -40,7 +41,7 @@ hyper_params = {
     "GRADIENT_CLIP": 0.5,
     "UPDATE_STARTS_FROM": int(1e3),
     "TRAIN_FREQ": 4,
-    "MULTIPLE_LEARN": 1,
+    "MULTIPLE_LEARN": 4,
 }
 
 
