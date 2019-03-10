@@ -63,7 +63,7 @@ class Agent(DDPGAgent):
             self.lambda1 = self.hyper_params["LAMBDA1"]
             self.lambda2 = self.hyper_params["LAMBDA2"] / demo_batch_size
 
-    def _preproces_state(self, state: np.ndarray) -> torch.Tensor:
+    def _preprocess_state(self, state: np.ndarray) -> torch.Tensor:
         """Preprocess state so that actor selects an action."""
         if self.hyper_params["USE_HER"]:
             self.desired_state = self.her.sample_desired_state()

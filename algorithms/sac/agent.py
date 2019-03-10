@@ -48,8 +48,6 @@ class Agent(AbstractAgent):
         total_step (int): total step numbers
         episode_step (int): step number of the current episode
         i_episode (int): current episode number
-        hook_transition (bool): hook a transition in step() if it's True
-        hooked_transition (dict): hooked transition hooked in step()
 
     """
 
@@ -83,8 +81,6 @@ class Agent(AbstractAgent):
         self.total_step = 0
         self.episode_step = 0
         self.i_episode = 0
-        self.hook_transition = False
-        self.hooked_transition: Tuple = tuple()
 
         # automatic entropy tuning
         if self.hyper_params["AUTO_ENTROPY_TUNING"]:
@@ -112,6 +108,7 @@ class Agent(AbstractAgent):
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""
         self.curr_state = state
+        state = self._preprocess_state(state)
 
         # if initial random action should be conducted
         if (
@@ -120,13 +117,18 @@ class Agent(AbstractAgent):
         ):
             return self.env.action_space.sample()
 
-        state = torch.FloatTensor(state).to(device)
         if self.args.test and not self.is_discrete:
             _, _, _, selected_action, _ = self.actor(state)
         else:
             selected_action, _, _, _, _ = self.actor(state)
 
         return selected_action.detach().cpu().numpy()
+
+    # pylint: disable=no-self-use
+    def _preprocess_state(self, state: np.ndarray) -> torch.Tensor:
+        """Preprocess state so that actor selects an action."""
+        state = torch.FloatTensor(state).to(device)
+        return state
 
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, np.float64, bool]:
         """Take an action and return the response of the env."""
@@ -141,13 +143,13 @@ class Agent(AbstractAgent):
                 False if self.episode_step == self.args.max_episode_steps else done
             )
             transition = (self.curr_state, action, reward, next_state, done_bool)
-
-            if self.hook_transition:  # used for HER
-                self.hooked_transition = transition
-            else:
-                self.memory.add(*transition)
+            self._add_transition_to_memory(transition)
 
         return next_state, reward, done
+
+    def _add_transition_to_memory(self, transition: Tuple[np.ndarray, ...]):
+        """Add 1 step and n step transitions to memory."""
+        self.memory.add(*transition)
 
     def update_model(self) -> Tuple[torch.Tensor, ...]:
         """Train the model after each episode."""

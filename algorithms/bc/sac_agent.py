@@ -49,7 +49,6 @@ class Agent(SACAgent):
             self.her = HER(self.args.demo_path)
             self.transitions_epi: list = list()
             self.desired_state = np.zeros((1,))
-            self.hook_transition = True
             demo = self.her.generate_demo_transitions(demo)
 
         if not self.args.test:
@@ -69,34 +68,27 @@ class Agent(SACAgent):
                 self.hyper_params["LAMBDA2"] / self.hyper_params["DEMO_BATCH_SIZE"]
             )
 
-    def select_action(self, state: np.ndarray) -> np.ndarray:
-        """Select an action from the input space."""
-        state_ = state
-
-        # HER
+    def _preprocess_state(self, state: np.ndarray) -> torch.Tensor:
+        """Preprocess state so that actor selects an action."""
         if self.hyper_params["USE_HER"]:
             self.desired_state = self.her.sample_desired_state()
             state = np.concatenate((state, self.desired_state), axis=-1)
+        state = torch.FloatTensor(state).to(device)
+        return state
 
-        selected_action = SACAgent.select_action(self, state)
-        self.curr_state = state_
-
-        return selected_action
-
-    def step(self, action: np.ndarray) -> Tuple[np.ndarray, np.float64, bool]:
-        """Take an action and return the response of the env."""
-        next_state, reward, done = SACAgent.step(self, action)
-
-        if not self.args.test and self.hyper_params["USE_HER"]:
-            self.transitions_epi.append(self.hooked_transition)
+    def _add_transition_to_memory(self, transition: Tuple[np.ndarray, ...]):
+        """Add 1 step and n step transitions to memory."""
+        if self.hyper_params["USE_HER"]:
+            self.transitions_epi.append(transition)
+            done = transition[-1] or self.episode_step == self.args.max_episode_steps
             if done:
                 # insert generated transitions if the episode is done
                 transitions = self.her.generate_transitions(
                     self.transitions_epi, self.desired_state
                 )
                 self.memory.extend(transitions)
-
-        return next_state, reward, done
+        else:
+            self.memory.add(*transition)
 
     def update_model(self) -> Tuple[torch.Tensor, ...]:
         """Train the model after each episode."""

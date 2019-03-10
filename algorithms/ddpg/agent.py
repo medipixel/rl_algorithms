@@ -92,7 +92,7 @@ class Agent(AbstractAgent):
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""
         self.curr_state = state
-        state = self._preproces_state(state)
+        state = self._preprocess_state(state)
 
         # if initial random action should be conducted
         if (
@@ -110,7 +110,7 @@ class Agent(AbstractAgent):
         return selected_action.detach().cpu().numpy()
 
     # pylint: disable=no-self-use
-    def _preproces_state(self, state: np.ndarray) -> torch.Tensor:
+    def _preprocess_state(self, state: np.ndarray) -> torch.Tensor:
         """Preprocess state so that actor selects an action."""
         state = torch.FloatTensor(state).to(device)
         return state
