@@ -48,6 +48,13 @@ class Agent(DQNAgent):
                     demos, self.hyper_params["N_STEP"], self.hyper_params["GAMMA"]
                 )
 
+                self.memory_n = NStepTransitionBuffer(
+                    buffer_size=self.hyper_params["BUFFER_SIZE"],
+                    n_step=self.hyper_params["N_STEP"],
+                    gamma=self.hyper_params["GAMMA"],
+                    demo=demos_n_step,
+                )
+
             # replay memory
             self.beta = self.hyper_params["PER_BETA"]
             self.memory = PrioritizedReplayBufferfD(
@@ -57,15 +64,6 @@ class Agent(DQNAgent):
                 alpha=self.hyper_params["PER_ALPHA"],
                 epsilon_d=self.hyper_params["PER_EPS_DEMO"],
             )
-
-            # replay memory for multi-steps
-            if self.use_n_step:
-                self.memory_n = NStepTransitionBuffer(
-                    buffer_size=self.hyper_params["BUFFER_SIZE"],
-                    n_step=self.hyper_params["N_STEP"],
-                    gamma=self.hyper_params["GAMMA"],
-                    demo=demos_n_step,
-                )
 
     def update_model(self) -> Tuple[torch.Tensor, ...]:
         """Train the model after each episode."""

@@ -47,6 +47,14 @@ class Agent(SACAgent):
                     demos, self.hyper_params["N_STEP"], self.hyper_params["GAMMA"]
                 )
 
+                # replay memory for multi-steps
+                self.memory_n = NStepTransitionBuffer(
+                    buffer_size=self.hyper_params["BUFFER_SIZE"],
+                    n_step=self.hyper_params["N_STEP"],
+                    gamma=self.hyper_params["GAMMA"],
+                    demo=demos_n_step,
+                )
+
             # replay memory
             self.beta = self.hyper_params["PER_BETA"]
             self.memory = PrioritizedReplayBufferfD(
@@ -56,15 +64,6 @@ class Agent(SACAgent):
                 alpha=self.hyper_params["PER_ALPHA"],
                 epsilon_d=self.hyper_params["PER_EPS_DEMO"],
             )
-
-            # replay memory for multi-steps
-            if self.use_n_step:
-                self.memory_n = NStepTransitionBuffer(
-                    buffer_size=self.hyper_params["BUFFER_SIZE"],
-                    n_step=self.hyper_params["N_STEP"],
-                    gamma=self.hyper_params["GAMMA"],
-                    demo=demos_n_step,
-                )
 
     def _add_transition_to_memory(self, transition: Tuple[np.ndarray, ...]):
         """Add 1 step and n step transitions to memory."""
