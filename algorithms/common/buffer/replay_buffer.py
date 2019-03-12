@@ -157,13 +157,13 @@ class NStepTransitionBuffer:
         """Add experiences to memory using her."""
         # transitions with the initial goal state
         for transition in transitions[: int(len(transitions) / 2)]:
-            self.add(*transition)
+            self.add(transition)
 
         self.n_step_buffer.clear()
 
         # transitions with the new goal state
         for transition in transitions[int(len(transitions) / 2) :]:
-            self.add(*transition)
+            self.add(transition)
 
     def sample(self, indices: List[int]) -> Tuple[torch.Tensor, ...]:
         """Randomly sample a batch of experiences from memory."""
