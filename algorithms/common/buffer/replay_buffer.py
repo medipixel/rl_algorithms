@@ -142,7 +142,7 @@ class NStepTransitionBuffer:
 
         # add a multi step transition
         reward, next_state, done = get_n_step_info(self.n_step_buffer, self.gamma)
-        curr_state, action = transition[:2]
+        curr_state, action = self.n_step_buffer[0][:2]
         new_transition = (curr_state, action, reward, next_state, done)
 
         # insert the new transition to buffer

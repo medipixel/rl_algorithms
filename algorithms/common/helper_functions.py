@@ -80,7 +80,7 @@ def get_n_step_info_from_demo(
             demos_1_step.append(n_step_buffer[0])
 
             # add a multi step transition
-            curr_state, action = transition[:2]
+            curr_state, action = n_step_buffer[0][:2]
             reward, next_state, done = get_n_step_info(n_step_buffer, gamma)
             transition = (curr_state, action, reward, next_state, done)
             demos_n_step.append(transition)
