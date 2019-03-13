@@ -130,7 +130,7 @@ class NStepTransitionBuffer:
             self.demo_size = len(demo)
             self.buffer.extend(demo)
 
-        self.buffer.extend([None] * (self.buffer_size - self.demo_size))
+        self.buffer.extend([None] * self.buffer_size)
 
     def add(self, transition: Tuple[np.ndarray, ...]) -> Tuple[Any, ...]:
         """Add a new transition to memory."""
@@ -152,18 +152,6 @@ class NStepTransitionBuffer:
 
         # return a single step transition to insert to replay buffer
         return self.n_step_buffer[0]
-
-    def extend_for_her(self, transitions: list):
-        """Add experiences to memory using her."""
-        # transitions with the initial goal state
-        for transition in transitions[: int(len(transitions) / 2)]:
-            self.add(transition)
-
-        self.n_step_buffer.clear()
-
-        # transitions with the new goal state
-        for transition in transitions[int(len(transitions) / 2) :]:
-            self.add(transition)
 
     def sample(self, indices: List[int]) -> Tuple[torch.Tensor, ...]:
         """Randomly sample a batch of experiences from memory."""
