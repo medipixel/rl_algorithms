@@ -32,7 +32,7 @@ hyper_params = {
     "PER_BETA": 0.4,
     "PER_EPS": 1e-3,
     "PER_EPS_DEMO": 1.0,
-    "PRETRAIN_STEP": int(5e3),
+    "PRETRAIN_STEP": int(1e2),
     "LAMBDA1": 1.0,  # N-step return weight
     "LAMBDA2": 1.0,  # Supervised loss weight
     "LAMBDA3": 1e-5,  # l2 regularization weight
@@ -40,8 +40,8 @@ hyper_params = {
     "MARGIN": 0.8,  # margin for supervised loss
     "GRADIENT_CLIP": 0.5,
     "UPDATE_STARTS_FROM": int(1e3),
-    "TRAIN_FREQ": 4,
-    "MULTIPLE_LEARN": 4,
+    "TRAIN_FREQ": 8,
+    "MULTIPLE_LEARN": 1,
 }
 
 

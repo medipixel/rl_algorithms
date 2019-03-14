@@ -82,6 +82,7 @@ class Agent(DDPGAgent):
                     self.transitions_epi, self.desired_state
                 )
                 self.memory.extend(transitions)
+                self.transitions_epi.clear()
         else:
             self.memory.add(*transition)
 
