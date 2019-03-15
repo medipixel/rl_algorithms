@@ -153,17 +153,25 @@ class Agent(AbstractAgent):
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Return element-wise dqn loss and Q-values."""
         states, actions, rewards, next_states, dones = experiences[:5]
-        atom_size, v_min, v_max = self.dqn.atom_size, self.dqn.v_min, self.dqn.v_max
+        batch_size = self.hyper_params["BATCH_SIZE"]
 
         proj_dist = dqn_utils.projection_distribution(
-            self.dqn_target, next_states, rewards, dones, v_min, v_max, atom_size, gamma
+            model=self.dqn,
+            target_model=self.dqn_target,
+            batch_size=batch_size,
+            next_states=next_states,
+            rewards=rewards,
+            dones=dones,
+            v_min=self.dqn.v_min,
+            v_max=self.dqn.v_max,
+            atom_size=self.dqn.atom_size,
+            gamma=gamma,
         )
-        dist, q_values = self.dqn.get_dist_q(states)
-        actions = actions.long().unsqueeze(1).unsqueeze(1).expand(-1, 1, atom_size)
-        dist = dist.gather(1, actions).squeeze(1)
-        dist = torch.clamp(dist, min=0.01, max=0.99)
 
-        dq_loss_element_wise = -(proj_dist * dist.log()).sum(1)
+        dist, q_values = self.dqn.get_dist_q(states)
+        log_p = torch.log(dist[range(batch_size), actions.long()])
+
+        dq_loss_element_wise = -(proj_dist * log_p).sum(1)
 
         return dq_loss_element_wise, q_values
 
@@ -207,7 +215,7 @@ class Agent(AbstractAgent):
         common_utils.soft_update(self.dqn, self.dqn_target, tau)
 
         # update priorities in PER
-        loss_for_prior = dq_loss_element_wise.pow(2).detach().cpu().numpy().squeeze()
+        loss_for_prior = dq_loss_element_wise.detach().cpu().numpy()
         new_priorities = loss_for_prior + self.hyper_params["PER_EPS"]
         self.memory.update_priorities(indices, new_priorities)
 

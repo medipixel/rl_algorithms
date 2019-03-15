@@ -123,12 +123,10 @@ class CategoricalDuelingMLP(MLP):
         advantage_mean = advantage.mean(dim=1, keepdim=True)
 
         q_atoms = value + advantage - advantage_mean
-        dist = F.softmax(q_atoms.view(-1, self.atom_size)).view(
-            -1, action_size, atom_size
-        )
+        dist = F.softmax(q_atoms, dim=2)
 
-        dist = dist * torch.linspace(self.v_min, self.v_max, self.atom_size).to(device)
-        q = dist.sum(2)
+        support = torch.linspace(self.v_min, self.v_max, self.atom_size).to(device)
+        q = torch.sum(dist * support, dim=2)
 
         return dist, q
 

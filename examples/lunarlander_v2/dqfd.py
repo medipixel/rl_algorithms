@@ -11,7 +11,7 @@ import gym
 import torch
 import torch.optim as optim
 
-from algorithms.dqn.networks import DuelingMLP
+from algorithms.dqn.networks import CategoricalDuelingMLP
 from algorithms.fd.dqn_agent import Agent
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -58,12 +58,12 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
     # create model
     hidden_sizes = [128, 64]
 
-    dqn = DuelingMLP(
-        input_size=state_dim, output_size=action_dim, hidden_sizes=hidden_sizes
+    dqn = CategoricalDuelingMLP(
+        input_size=state_dim, action_size=action_dim, hidden_sizes=hidden_sizes
     ).to(device)
 
-    dqn_target = DuelingMLP(
-        input_size=state_dim, output_size=action_dim, hidden_sizes=hidden_sizes
+    dqn_target = CategoricalDuelingMLP(
+        input_size=state_dim, action_size=action_dim, hidden_sizes=hidden_sizes
     ).to(device)
     dqn_target.load_state_dict(dqn.state_dict())
 

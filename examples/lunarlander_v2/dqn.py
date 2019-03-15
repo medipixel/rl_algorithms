@@ -22,9 +22,9 @@ hyper_params = {
     "GAMMA": 0.99,
     "TAU": 5e-3,
     "W_N_STEP": 1.0,
-    "W_Q_REG": 1e-7,
+    "W_Q_REG": 0,  # 1e-7,
     "BUFFER_SIZE": int(1e5),
-    "BATCH_SIZE": 128,
+    "BATCH_SIZE": 64,
     "LR_DQN": 1e-4,  # dueling: 6.25e-5
     "ADAM_EPS": 1e-8,  # rainbow: 1.5e-4
     "WEIGHT_DECAY": 1e-7,
@@ -36,8 +36,8 @@ hyper_params = {
     "PER_EPS": 1e-6,
     "GRADIENT_CLIP": 10,
     "UPDATE_STARTS_FROM": int(1e4),
-    "TRAIN_FREQ": 4,
-    "MULTIPLE_LEARN": 4,
+    "TRAIN_FREQ": 1,
+    "MULTIPLE_LEARN": 1,
 }
 
 
