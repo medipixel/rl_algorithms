@@ -17,7 +17,6 @@ from typing import Tuple
 import gym
 import numpy as np
 import torch
-import torch.nn.functional as F
 from torch.nn.utils import clip_grad_norm_
 import wandb
 
@@ -25,6 +24,7 @@ from algorithms.common.abstract.agent import AbstractAgent
 from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
 from algorithms.common.buffer.replay_buffer import NStepTransitionBuffer
 import algorithms.common.helper_functions as common_utils
+import algorithms.dqn.utils as dqn_utils
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -153,30 +153,21 @@ class Agent(AbstractAgent):
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Return element-wise dqn loss and Q-values."""
         states, actions, rewards, next_states, dones = experiences[:5]
+        atom_size, v_min, v_max = self.dqn.atom_size, self.dqn.v_min, self.dqn.v_max
 
-        q_values = self.dqn(states)
-        next_q_values = self.dqn(next_states)
-        next_target_q_values = self.dqn_target(next_states)
-
-        curr_q_value = q_values.gather(1, actions.long().unsqueeze(1))
-        next_q_value = next_target_q_values.gather(  # Double DQN
-            1, next_q_values.argmax(1).unsqueeze(1)
+        proj_dist = dqn_utils.projection_distribution(
+            self.dqn_target, next_states, rewards, dones, v_min, v_max, atom_size, gamma
         )
+        dist, q_values = self.dqn.get_dist_q(states)
+        actions = actions.long().unsqueeze(1).unsqueeze(1).expand(-1, 1, atom_size)
+        dist = dist.gather(1, actions).squeeze(1)
+        dist = torch.clamp(dist, min=0.01, max=0.99)
 
-        # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
-        #       = r                       otherwise
-        masks = 1 - dones
-        target = rewards + gamma * next_q_value * masks
-        target = target.to(device)
-
-        # calculate dq loss
-        dq_loss_element_wise = F.smooth_l1_loss(
-            curr_q_value, target.detach(), reduction="none"
-        )
+        dq_loss_element_wise = -(proj_dist * dist.log()).sum(1)
 
         return dq_loss_element_wise, q_values
 
-    def update_model(self) -> Tuple[torch.Tensor, ...]:
+    def update_model(self) -> torch.Tensor:
         """Train the model after each episode."""
         # 1 step loss
         experiences_1 = self.memory.sample(self.beta)
@@ -216,7 +207,7 @@ class Agent(AbstractAgent):
         common_utils.soft_update(self.dqn, self.dqn_target, tau)
 
         # update priorities in PER
-        loss_for_prior = dq_loss_element_wise.detach().cpu().numpy().squeeze()
+        loss_for_prior = dq_loss_element_wise.pow(2).detach().cpu().numpy().squeeze()
         new_priorities = loss_for_prior + self.hyper_params["PER_EPS"]
         self.memory.update_priorities(indices, new_priorities)
 
@@ -252,7 +243,7 @@ class Agent(AbstractAgent):
         """Write log about loss and score"""
         print(
             "[INFO] episode %d, episode step: %d, total step: %d, total score: %d\n"
-            "epsilon: %f, loss: %f, avg q-value: %f at %s\n"
+            "epsilon: %f, loss: %f, avg_q_value: %f at %s\n"
             % (
                 i,
                 self.episode_step,

@@ -6,7 +6,7 @@
 """
 
 from collections import defaultdict
-from typing import Any, Callable, DefaultDict, Dict
+from typing import Any, Callable, DefaultDict, Dict, Tuple
 
 import torch
 import torch.nn as nn
@@ -51,8 +51,8 @@ class DuelingMLP(MLP):
         self.value_layer.bias.data.uniform_(-init_w, init_w)
 
     def _forward_dueling(self, x: torch.Tensor) -> torch.Tensor:
-        adv_x = self.advantage_hidden_layer(x)
-        val_x = self.value_hidden_layer(x)
+        adv_x = self.hidden_activation(self.advantage_hidden_layer(x))
+        val_x = self.hidden_activation(self.value_hidden_layer(x))
 
         advantage = self.advantage_layer(adv_x)
         value = self.value_layer(val_x)
@@ -68,6 +68,75 @@ class DuelingMLP(MLP):
         x = self._forward_dueling(x)
 
         return x
+
+
+class CategoricalDuelingMLP(MLP):
+    """Multilayer perceptron with dueling construction."""
+
+    def __init__(
+        self,
+        input_size: int,
+        action_size: int,
+        hidden_sizes: list,
+        atom_size: int = 51,
+        v_min: int = -10,
+        v_max: int = 10,
+        hidden_activation: Callable = F.relu,
+        init_w: float = 3e-3,
+    ):
+        """Initialization."""
+        super(CategoricalDuelingMLP, self).__init__(
+            input_size=input_size,
+            output_size=action_size,
+            hidden_sizes=hidden_sizes,
+            hidden_activation=hidden_activation,
+            use_output_layer=False,
+        )
+        in_size = hidden_sizes[-1]
+        self.action_size = action_size
+        self.atom_size = atom_size
+        self.output_size = action_size * atom_size
+        self.v_min, self.v_max = v_min, v_max
+
+        # set advantage layer
+        self.advantage_hidden_layer = nn.Linear(in_size, in_size)
+        self.advantage_layer = nn.Linear(in_size, self.output_size)
+        self.advantage_layer.weight.data.uniform_(-init_w, init_w)
+        self.advantage_layer.bias.data.uniform_(-init_w, init_w)
+
+        # set value layer
+        self.value_hidden_layer = nn.Linear(in_size, in_size)
+        self.value_layer = nn.Linear(in_size, self.atom_size)
+        self.value_layer.weight.data.uniform_(-init_w, init_w)
+        self.value_layer.bias.data.uniform_(-init_w, init_w)
+
+    def get_dist_q(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Get distribution for atoms."""
+        action_size, atom_size = self.action_size, self.atom_size
+
+        x = super(CategoricalDuelingMLP, self).forward(x)
+        adv_x = self.hidden_activation(self.advantage_hidden_layer(x))
+        val_x = self.hidden_activation(self.value_hidden_layer(x))
+
+        advantage = self.advantage_layer(adv_x).view(-1, action_size, atom_size)
+        value = self.value_layer(val_x).view(-1, 1, atom_size)
+        advantage_mean = advantage.mean(dim=1, keepdim=True)
+
+        q_atoms = value + advantage - advantage_mean
+        dist = F.softmax(q_atoms.view(-1, self.atom_size)).view(
+            -1, action_size, atom_size
+        )
+
+        dist = dist * torch.linspace(self.v_min, self.v_max, self.atom_size).to(device)
+        q = dist.sum(2)
+
+        return dist, q
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward method implementation."""
+        _, q = self.get_dist_q(x)
+
+        return q
 
 
 class LateFusionDuelingMLP(DuelingMLP):
