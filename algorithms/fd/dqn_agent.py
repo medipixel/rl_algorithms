@@ -40,8 +40,7 @@ class Agent(DQNAgent):
         """Initialize non-common things."""
         if not self.args.test:
             # load demo replay memory
-            with open(self.args.demo_path, "rb") as f:
-                demos = pickle.load(f)
+            demos = self._load_demos()
 
             if self.use_n_step:
                 demos, demos_n_step = common_utils.get_n_step_info_from_demo(
@@ -64,6 +63,14 @@ class Agent(DQNAgent):
                 alpha=self.hyper_params["PER_ALPHA"],
                 epsilon_d=self.hyper_params["PER_EPS_DEMO"],
             )
+
+    def _load_demos(self) -> list:
+        """Load expert's demonstrations."""
+        # load demo replay memory
+        with open(self.args.demo_path, "rb") as f:
+            demos = pickle.load(f)
+
+        return demos
 
     def update_model(self) -> Tuple[torch.Tensor, ...]:
         """Train the model after each episode."""
@@ -136,10 +143,10 @@ class Agent(DQNAgent):
 
         return loss.data, dq_loss.data, supervised_loss.data, q_values.mean().data
 
-    def write_log(self, i: int, avg_loss: np.ndarray, score: int = 0):
+    def write_log(self, i: int, avg_loss: np.ndarray, score: float = 0.0):
         """Write log about loss and score"""
         print(
-            "[INFO] episode %d, episode step: %d, total step: %d, total score: %d\n"
+            "[INFO] episode %d, episode step: %d, total step: %d, total score: %f\n"
             "epsilon: %f, total loss: %f, dq loss: %f, supervised loss: %f\n"
             "avg q values: %f, at %s\n"
             % (

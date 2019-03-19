@@ -19,6 +19,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # hyper parameters
 hyper_params = {
+    "N_STEP": 3,
     "GAMMA": 0.99,
     "TAU": 5e-3,
     "BUFFER_SIZE": int(1e4),  # openai baselines: int(1e4)
@@ -29,6 +30,7 @@ hyper_params = {
     "MAX_EPSILON": 1.0,
     "MIN_EPSILON": 0.01,  # openai baselines: 0.01
     "EPSILON_DECAY": 1e-6,  # openai baselines: 1e-7 / 1e-1
+    "W_N_STEP": 1.0,
     "W_Q_REG": 0.0,
     "PER_ALPHA": 0.6,  # openai baselines: 0.6
     "PER_BETA": 0.4,

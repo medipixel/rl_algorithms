@@ -102,7 +102,7 @@ class AbstractAgent(ABC):
         print("Start Test!")
         print("===========")
 
-        self._test(self.args.interim_test_num)
+        self._test(interim_test=True)
 
         print("===========")
         print("Test done!")
@@ -117,13 +117,19 @@ class AbstractAgent(ABC):
         if self.args.log:
             wandb.init()
 
-        self._test(self.args.episode_num)
+        self._test()
 
         # termination
         self.env.close()
 
-    def _test(self, test_num: int):
+    def _test(self, interim_test: bool = False):
         """Common test routine."""
+
+        if interim_test:
+            test_num = self.args.interim_test_num
+        else:
+            test_num = self.args.episode_num
+
         for i_episode in range(test_num):
             state = self.env.reset()
             done = False
