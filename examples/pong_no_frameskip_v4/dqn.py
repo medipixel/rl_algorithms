@@ -23,7 +23,7 @@ hyper_params = {
     "GAMMA": 0.99,
     "TAU": 5e-3,
     "BUFFER_SIZE": int(1e4),  # openai baselines: int(1e4)
-    "BATCH_SIZE": 128,  # openai baselines: 32
+    "BATCH_SIZE": 32,  # openai baselines: 32
     "LR_DQN": 1e-4,  # dueling: 6.25e-5, openai baselines: 1e-4
     "ADAM_EPS": 1e-8,  # rainbow: 1.5e-4, openai baselines: 1e-8
     "WEIGHT_DECAY": 0.0,  # this makes saturation in cnn weights
