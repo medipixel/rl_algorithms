@@ -114,10 +114,16 @@ class Agent(AbstractAgent):
         if not self.args.test and self.epsilon > np.random.random():
             selected_action = self.env.action_space.sample()
         else:
-            state = torch.FloatTensor(state).to(device)
+            state = self._preprocess_state(state)
             selected_action = self.dqn(state).argmax()
             selected_action = selected_action.detach().cpu().numpy()
         return selected_action
+
+    # pylint: disable=no-self-use
+    def _preprocess_state(self, state: np.ndarray) -> torch.Tensor:
+        """Preprocess state so that actor selects an action."""
+        state = torch.FloatTensor(state).to(device)
+        return state
 
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, np.float64, bool]:
         """Take an action and return the response of the env."""
@@ -244,11 +250,11 @@ class Agent(AbstractAgent):
 
         AbstractAgent.save_params(self, params, n_episode)
 
-    def write_log(self, i: int, loss: np.ndarray, score: int):
+    def write_log(self, i: int, loss: np.ndarray, score: float):
         """Write log about loss and score"""
         print(
-            "[INFO] episode %d, episode step: %d, total step: %d, total score: %d\n"
-            "epsilon: %f, loss: %f, avg_q_value: %f at %s\n"
+            "[INFO] episode %d, episode step: %d, total step: %d, total score: %f\n"
+            "epsilon: %f, loss: %f, avg q-value: %f at %s\n"
             % (
                 i,
                 self.episode_step,
