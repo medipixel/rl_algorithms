@@ -152,28 +152,25 @@ class Agent(AbstractAgent):
         self, experiences: Tuple[torch.Tensor, ...], gamma: float
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Return element-wise dqn loss and Q-values."""
-        states, actions, rewards, next_states, dones = experiences[:5]
-        batch_size = self.hyper_params["BATCH_SIZE"]
 
-        proj_dist = dqn_utils.projection_distribution(
-            model=self.dqn,
-            target_model=self.dqn_target,
-            batch_size=batch_size,
-            next_states=next_states,
-            rewards=rewards,
-            dones=dones,
-            v_min=self.dqn.v_min,
-            v_max=self.dqn.v_max,
-            atom_size=self.dqn.atom_size,
-            gamma=gamma,
-        )
-
-        dist, q_values = self.dqn.get_dist_q(states)
-        log_p = torch.log(dist[range(batch_size), actions.long()])
-
-        dq_loss_element_wise = -(proj_dist * log_p).sum(1)
-
-        return dq_loss_element_wise, q_values
+        if self.hyper_params["USE_C51"]:
+            return dqn_utils.get_dqn_c51_loss(
+                model=self.dqn,
+                target_model=self.dqn_target,
+                experiences=experiences,
+                gamma=gamma,
+                batch_size=self.hyper_params["BATCH_SIZE"],
+                v_min=self.hyper_params["V_MIN"],
+                v_max=self.hyper_params["V_MAX"],
+                atom_size=self.hyper_params["ATOMS"],
+            )
+        else:
+            return dqn_utils.get_dqn_loss(
+                model=self.dqn,
+                target_model=self.dqn_target,
+                experiences=experiences,
+                gamma=gamma,
+            )
 
     def update_model(self) -> torch.Tensor:
         """Train the model after each episode."""

@@ -7,26 +7,28 @@ This module has DQN util functions.
 - Contact: curt.park@medipixel.io
 """
 
+from typing import Tuple
+
 import torch
+import torch.nn.functional as F
 
 from algorithms.dqn.networks import CategoricalDuelingMLP
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-def projection_distribution(
+def get_dqn_c51_loss(
     model: CategoricalDuelingMLP,
     target_model: CategoricalDuelingMLP,
+    experiences: Tuple[torch.Tensor, ...],
+    gamma: float,
     batch_size: int,
-    next_states: torch.Tensor,
-    rewards: torch.Tensor,
-    dones: torch.Tensor,
     v_min: int,
     v_max: int,
     atom_size: int,
-    gamma: float,
-) -> torch.Tensor:
-    """Get projection distribution (C51) to calculate dqn loss.  """
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """Return element-wise dqn loss and Q-values."""
+    states, actions, rewards, next_states, dones = experiences[:5]
     support = torch.linspace(v_min, v_max, atom_size).to(device)
     delta_z = float(v_max - v_min) / (atom_size - 1)
 
@@ -62,4 +64,41 @@ def projection_distribution(
             0, (u + offset).view(-1), (next_dist * (b - l.float())).view(-1)
         )
 
-    return proj_dist
+    dist, q_values = model.get_dist_q(states)
+    log_p = torch.log(dist[range(batch_size), actions.long()])
+
+    dq_loss_element_wise = -(proj_dist * log_p).sum(1)
+
+    return dq_loss_element_wise, q_values
+
+
+def get_dqn_loss(
+    model: CategoricalDuelingMLP,
+    target_model: CategoricalDuelingMLP,
+    experiences: Tuple[torch.Tensor, ...],
+    gamma: float,
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """Return element-wise dqn loss and Q-values."""
+    states, actions, rewards, next_states, dones = experiences[:5]
+
+    q_values = model(states)
+    next_q_values = model(next_states)
+    next_target_q_values = target_model(next_states)
+
+    curr_q_value = q_values.gather(1, actions.long().unsqueeze(1))
+    next_q_value = next_target_q_values.gather(  # Double DQN
+        1, next_q_values.argmax(1).unsqueeze(1)
+    )
+
+    # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
+    #       = r                       otherwise
+    masks = 1 - dones
+    target = rewards + gamma * next_q_value * masks
+    target = target.to(device)
+
+    # calculate dq loss
+    dq_loss_element_wise = F.smooth_l1_loss(
+        curr_q_value, target.detach(), reduction="none"
+    )
+
+    return dq_loss_element_wise, q_values
