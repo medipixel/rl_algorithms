@@ -17,7 +17,6 @@ from typing import Tuple
 import gym
 import numpy as np
 import torch
-import torch.nn.functional as F
 from torch.nn.utils import clip_grad_norm_
 import wandb
 
@@ -25,6 +24,7 @@ from algorithms.common.abstract.agent import AbstractAgent
 from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
 from algorithms.common.buffer.replay_buffer import NStepTransitionBuffer
 import algorithms.common.helper_functions as common_utils
+import algorithms.dqn.utils as dqn_utils
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -158,31 +158,27 @@ class Agent(AbstractAgent):
         self, experiences: Tuple[torch.Tensor, ...], gamma: float
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Return element-wise dqn loss and Q-values."""
-        states, actions, rewards, next_states, dones = experiences[:5]
 
-        q_values = self.dqn(states)
-        next_q_values = self.dqn(next_states)
-        next_target_q_values = self.dqn_target(next_states)
+        if self.hyper_params["USE_C51"]:
+            return dqn_utils.calculate_dqn_c51_loss(
+                model=self.dqn,
+                target_model=self.dqn_target,
+                experiences=experiences,
+                gamma=gamma,
+                batch_size=self.hyper_params["BATCH_SIZE"],
+                v_min=self.hyper_params["V_MIN"],
+                v_max=self.hyper_params["V_MAX"],
+                atom_size=self.hyper_params["ATOMS"],
+            )
+        else:
+            return dqn_utils.calculate_dqn_loss(
+                model=self.dqn,
+                target_model=self.dqn_target,
+                experiences=experiences,
+                gamma=gamma,
+            )
 
-        curr_q_value = q_values.gather(1, actions.long().unsqueeze(1))
-        next_q_value = next_target_q_values.gather(  # Double DQN
-            1, next_q_values.argmax(1).unsqueeze(1)
-        )
-
-        # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
-        #       = r                       otherwise
-        masks = 1 - dones
-        target = rewards + gamma * next_q_value * masks
-        target = target.to(device)
-
-        # calculate dq loss
-        dq_loss_element_wise = F.smooth_l1_loss(
-            curr_q_value, target.detach(), reduction="none"
-        )
-
-        return dq_loss_element_wise, q_values
-
-    def update_model(self) -> Tuple[torch.Tensor, ...]:
+    def update_model(self) -> torch.Tensor:
         """Train the model after each episode."""
         # 1 step loss
         experiences_1 = self.memory.sample(self.beta)
@@ -222,7 +218,7 @@ class Agent(AbstractAgent):
         common_utils.soft_update(self.dqn, self.dqn_target, tau)
 
         # update priorities in PER
-        loss_for_prior = dq_loss_element_wise.detach().cpu().numpy().squeeze()
+        loss_for_prior = dq_loss_element_wise.detach().cpu().numpy()
         new_priorities = loss_for_prior + self.hyper_params["PER_EPS"]
         self.memory.update_priorities(indices, new_priorities)
 

@@ -11,7 +11,7 @@ import gym
 import torch
 import torch.optim as optim
 
-from algorithms.dqn.networks import DuelingMLP
+from algorithms.dqn.networks import CategoricalDuelingMLP, DuelingMLP
 from algorithms.fd.dqn_agent import Agent
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -42,6 +42,11 @@ hyper_params = {
     "UPDATE_STARTS_FROM": int(1e3),
     "TRAIN_FREQ": 8,
     "MULTIPLE_LEARN": 1,
+    # C51
+    "USE_C51": False,
+    "V_MIN": -10,
+    "V_MAX": 10,
+    "ATOMS": 51,
 }
 
 
@@ -56,15 +61,28 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
 
     """
     # create model
-    hidden_sizes = [128, 64]
+    def get_fc_model():
+        hidden_sizes = [128, 64]
 
-    dqn = DuelingMLP(
-        input_size=state_dim, output_size=action_dim, hidden_sizes=hidden_sizes
-    ).to(device)
+        if hyper_params["USE_C51"]:
+            model = CategoricalDuelingMLP(
+                input_size=state_dim,
+                action_size=action_dim,
+                hidden_sizes=hidden_sizes,
+                v_min=hyper_params["V_MIN"],
+                v_max=hyper_params["V_MAX"],
+                atom_size=hyper_params["ATOMS"],
+            ).to(device)
 
-    dqn_target = DuelingMLP(
-        input_size=state_dim, output_size=action_dim, hidden_sizes=hidden_sizes
-    ).to(device)
+        else:
+            model = DuelingMLP(
+                input_size=state_dim, output_size=action_dim, hidden_sizes=hidden_sizes
+            ).to(device)
+
+        return model
+
+    dqn = get_fc_model()
+    dqn_target = get_fc_model()
     dqn_target.load_state_dict(dqn.state_dict())
 
     # create optimizer

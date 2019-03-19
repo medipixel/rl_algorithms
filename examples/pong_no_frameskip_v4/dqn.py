@@ -13,7 +13,7 @@ import torch.optim as optim
 
 from algorithms.common.networks.cnn import CNN, CNNLayer
 from algorithms.dqn.agent import Agent
-from algorithms.dqn.networks import DuelingMLP
+from algorithms.dqn.networks import CategoricalCNN, CategoricalDuelingMLP, DuelingMLP
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -39,6 +39,11 @@ hyper_params = {
     "UPDATE_STARTS_FROM": int(1e4),  # openai baselines: int(1e4)
     "TRAIN_FREQ": 4,  # in openai baselines, train_freq = 4
     "MULTIPLE_LEARN": 1,
+    # C51
+    "USE_C51": True,
+    "V_MIN": -10,
+    "V_MAX": 10,
+    "ATOMS": 51,
 }
 
 
@@ -51,12 +56,33 @@ def run(env: gym.Env, env_name: str, args: argparse.Namespace):
         args (argparse.Namespace): arguments including training settings
 
     """
-    # create a model
-    action_dim = env.action_space.n
-    hidden_sizes = [512]
 
     def get_cnn_model():
-        cnn_model = CNN(  # from rainbow
+        fc_input_size = 3136
+        hidden_sizes = [512]
+        action_dim = env.action_space.n
+
+        if hyper_params["USE_C51"]:
+            Model = CategoricalCNN
+            fc_model = CategoricalDuelingMLP(
+                input_size=fc_input_size,
+                action_size=action_dim,
+                hidden_sizes=hidden_sizes,
+                v_min=hyper_params["V_MIN"],
+                v_max=hyper_params["V_MAX"],
+                atom_size=hyper_params["ATOMS"],
+            ).to(device)
+
+        else:
+            Model = CNN
+            fc_model = DuelingMLP(
+                input_size=fc_input_size,
+                output_size=action_dim,
+                hidden_sizes=hidden_sizes,
+            ).to(device)
+
+        # create a model
+        cnn_model = Model(  # from rainbow
             cnn_layers=[
                 CNNLayer(
                     input_size=4, output_size=32, kernel_size=8, stride=4, padding=1
@@ -64,9 +90,7 @@ def run(env: gym.Env, env_name: str, args: argparse.Namespace):
                 CNNLayer(input_size=32, output_size=64, kernel_size=4, stride=2),
                 CNNLayer(input_size=64, output_size=64, kernel_size=3),
             ],
-            fc_layers=DuelingMLP(
-                input_size=3136, output_size=action_dim, hidden_sizes=hidden_sizes
-            ),
+            fc_layers=fc_model,
         ).to(device)
         return cnn_model
 
