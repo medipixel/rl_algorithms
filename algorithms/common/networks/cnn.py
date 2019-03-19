@@ -89,10 +89,6 @@ class LateFusionCNN(CNN):
         x: torch.Tensor = args[0]
         late_in: list = args[1]
 
-        if len(x.size()) == 3:
-            x = x.unsqueeze(0)
-
-        x = self.cnn(x)
-        x = x.view(x.size(0), -1)
+        x = self.get_cnn_features(x)
         x = self.fc_layers(x, late_in)
         return x

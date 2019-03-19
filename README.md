@@ -30,15 +30,14 @@ We are warmly welcoming external contributors! :)
 6. [Behaviour Cloning (BC with DDPG, SAC)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/bc)
 7. [Prioritized Experience Replay (PER with DDPG)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/per)
 8. [From Demonstrations (DDPGfD, SACfD, DQfD)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/fd)
-9. [Dueling Deep Q-Network (Dueling DQN)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/dqn)
+9. [Rainbow Deep Q-Network (without NoisyNet)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/dqn)
 
 ## Getting started
 We have tested each algorithm on some of the following environments.
 - [LunarLanderContinuous-v2](https://github.com/medipixel/rl_algorithms/tree/master/examples/lunarlander_continuous_v2)
 - [LunarLander_v2](https://github.com/medipixel/rl_algorithms/tree/master/examples/lunarlander_v2)
 - [Reacher-v2](https://github.com/medipixel/rl_algorithms/tree/master/examples/reacher-v2)
-- [CarRacing-v0](https://github.com/medipixel/rl_algorithms/tree/master/examples/car_racing_v0)
-
+- [PongNoFrameskip-v4](https://github.com/medipixel/rl_algorithms/tree/master/examples/pong_no_frameskip_v4)
 
 ### Prerequisites
 In order to run Mujoco environments (e.g. `Reacher-v2`), you need to acquire [Mujoco license](https://www.roboti.us/license.html).
@@ -127,3 +126,5 @@ We use [W&B](https://www.wandb.com/) for logging of network parameters and other
 11. [van Hasselt et al., "Deep Reinforcement Learning with Double Q-learning." arXiv preprint arXiv:1509.06461, 2015.](https://arxiv.org/pdf/1509.06461.pdf)
 12. [Z. Wang et al., "Dueling Network Architectures for Deep Reinforcement Learning." arXiv preprint arXiv:1511.06581, 2015.](https://arxiv.org/pdf/1511.06581.pdf)
 13. [T. Hester et al., "Deep Q-learning from Demonstrations." arXiv preprint arXiv:1704.03732, 2017.](https://arxiv.org/pdf/1704.03732.pdf)
+14. [M. G. Bellemare et al., "A Distributional Perspective on Reinforcement Learning." arXiv preprint arXiv:1707.06887, 2017.](https://arxiv.org/pdf/1707.06887.pdf)
+15. [M. Hessel et al., "Rainbow: Combining Improvements in Deep Reinforcement Learning." arXiv preprint arXiv:1710.02298, 2017.](https://arxiv.org/pdf/1710.02298.pdf)
