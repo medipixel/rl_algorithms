@@ -17,7 +17,7 @@ from algorithms.dqn.networks import CategoricalDuelingMLP
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-def get_dqn_c51_loss(
+def calculate_dqn_c51_loss(
     model: CategoricalDuelingMLP,
     target_model: CategoricalDuelingMLP,
     experiences: Tuple[torch.Tensor, ...],
@@ -72,7 +72,7 @@ def get_dqn_c51_loss(
     return dq_loss_element_wise, q_values
 
 
-def get_dqn_loss(
+def calculate_dqn_loss(
     model: CategoricalDuelingMLP,
     target_model: CategoricalDuelingMLP,
     experiences: Tuple[torch.Tensor, ...],
