@@ -58,7 +58,6 @@ def run(env: gym.Env, env_name: str, args: argparse.Namespace):
     """
 
     def get_cnn_model():
-        Model = CategoricalCNN if hyper_params["USE_C51"] else CNN
         fc_input_size = 3136
         hidden_sizes = [512]
         action_dim = env.action_space.n
