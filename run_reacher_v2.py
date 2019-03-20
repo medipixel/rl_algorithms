@@ -44,10 +44,7 @@ parser.add_argument(
     "--interim-test-num", type=int, default=10, help="interim test number"
 )
 parser.add_argument(
-    "--demo-path",
-    type=str,
-    default="data/lunarlander_continuous_demo.pkl",
-    help="demonstration path",
+    "--demo-path", type=str, default="data/reacher_demo.pkl", help="demonstration path"
 )
 
 parser.set_defaults(test=False)
