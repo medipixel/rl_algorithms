@@ -5,8 +5,7 @@
 - Contact: kh.kim@medipixel.io
 """
 
-from collections import defaultdict
-from typing import Any, Callable, DefaultDict, Dict, Tuple
+from typing import Callable, Tuple
 
 import torch
 from torch.distributions import Categorical, Normal
@@ -85,7 +84,6 @@ class MLP(nn.Module):
         self.hidden_layers: list = []
         in_size = self.input_size
         for i, next_size in enumerate(hidden_sizes):
-            in_size += self._late_fusion_dim(i)
             fc = nn.Linear(in_size, next_size)
             in_size = next_size
             self.__setattr__("hidden_fc{}".format(i), fc)
@@ -108,12 +106,6 @@ class MLP(nn.Module):
 
         return x
 
-    def _late_fusion_dim(  # pylint: disable=no-self-use
-        self, idx: int  # pylint: disable=unused-argument
-    ) -> int:
-        """Return the dimension for late fusion."""
-        return 0
-
 
 class FlattenMLP(MLP):
     """Baseline of Multilayered perceptron for Flatten input."""
@@ -123,63 +115,6 @@ class FlattenMLP(MLP):
         states, actions = args
         flat_inputs = concat(states, actions, self.n_category)
         return super(FlattenMLP, self).forward(flat_inputs)
-
-
-class LateFusionMLP(MLP):
-    """Multilayered perceptron with late input fusion.
-
-    Attributes:
-        _late_fusion_info (DefaultDict): information of late fusion inputs
-    """
-
-    def __init__(
-        self,
-        input_size: int,
-        output_size: int,
-        hidden_sizes: list,
-        late_fusion_info: Dict,  # newly added
-        hidden_activation: Callable = F.relu,
-        output_activation: Callable = identity,
-        use_output_layer: bool = True,
-        n_category: int = -1,
-        init_w: float = 3e-3,
-    ):
-        """Initialization."""
-        self._late_fusion_info: DefaultDict = defaultdict(lambda: 0)
-        for i in late_fusion_info:
-            # 1st index has 0th hidden layer info
-            self._late_fusion_info[i] = late_fusion_info[i]
-
-        super(LateFusionMLP, self).__init__(
-            input_size=input_size,
-            output_size=output_size,
-            hidden_sizes=hidden_sizes,
-            hidden_activation=hidden_activation,
-            output_activation=output_activation,
-            use_output_layer=use_output_layer,
-            n_category=n_category,
-            init_w=init_w,
-        )
-
-    def forward(self, *args: Any) -> torch.Tensor:
-        """Forward method implementation."""
-        x: torch.Tensor = args[0]
-        late_in: list = args[1]
-
-        idx_late_in = 0
-        for i, hidden_layer in enumerate(self.hidden_layers):
-            if self.late_fusion_info[i] > 0:
-                x = concat(x, late_in[idx_late_in])
-                idx_late_in += 1
-            x = self.hidden_activation(hidden_layer(x))
-
-        x = self.output_activation(self.output_layer(x))
-
-        return x
-
-    def _late_fusion_dim(self, idx: int) -> int:
-        """Return the dimension for late fusion."""
-        return self._late_fusion_info[idx]
 
 
 class GaussianDist(MLP):

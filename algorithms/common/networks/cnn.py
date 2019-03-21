@@ -6,7 +6,7 @@
             curt.park@medipixel.io
 """
 
-from typing import Any, Callable, List
+from typing import Callable, List
 
 import torch
 import torch.nn as nn
@@ -78,17 +78,4 @@ class CNN(nn.Module):
         """Forward method implementation."""
         x = self.get_cnn_features(x)
         x = self.fc_layers(x)
-        return x
-
-
-class LateFusionCNN(CNN):
-    """Convolution neural network with late fusion inputs."""
-
-    def forward(self, *args: Any) -> torch.Tensor:
-        """Forward method implementation."""
-        x: torch.Tensor = args[0]
-        late_in: list = args[1]
-
-        x = self.get_cnn_features(x)
-        x = self.fc_layers(x, late_in)
         return x
