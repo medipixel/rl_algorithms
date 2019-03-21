@@ -188,7 +188,7 @@ class PrioritizedReplayBufferfD(PrioritizedReplayBuffer):
         """
         super(PrioritizedReplayBufferfD, self).__init__(buffer_size, batch_size, alpha)
         self.demo = demo
-        self.demo_size = len(demo)
+        self.demo_size = len(demo) if demo else 0
         self.total_size = self.demo_size + len(self.buffer)
         self.epsilon_d = epsilon_d
 
