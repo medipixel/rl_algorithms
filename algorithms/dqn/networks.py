@@ -12,13 +12,23 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from algorithms.common.networks.cnn import CNN
+from algorithms.common.networks.cnn import CNN, LateFusionCNN
 from algorithms.common.networks.mlp import MLP, concat
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 class CategoricalCNN(CNN):
+    """Convolution neural network for C51."""
+
+    def get_dist_q(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Forward method implementation."""
+        x = self.get_cnn_features(x)
+        dist, q = self.fc_layers.get_dist_q(x)
+        return dist, q
+
+
+class LateFusionCategoricalCNN(LateFusionCNN):
     """Convolution neural network for C51."""
 
     def get_dist_q(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
