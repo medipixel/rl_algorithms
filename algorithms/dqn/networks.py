@@ -5,15 +5,14 @@
 - Contact: kh.kim@medipixel.io
 """
 
-from collections import defaultdict
-from typing import Any, Callable, DefaultDict, Dict, Tuple
+from typing import Callable, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from algorithms.common.networks.cnn import CNN
-from algorithms.common.networks.mlp import MLP, concat
+from algorithms.common.networks.mlp import MLP
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -146,54 +145,3 @@ class CategoricalDuelingMLP(MLP):
         _, q = self.get_dist_q(x)
 
         return q
-
-
-class LateFusionDuelingMLP(DuelingMLP):
-    """DuelingMLP with late input fusion.
-
-    Attributes:
-        _late_fusion_info (DefaultDict): information of late fusion inputs
-    """
-
-    def __init__(
-        self,
-        input_size: int,
-        output_size: int,
-        hidden_sizes: list,
-        late_fusion_info: Dict,  # newly added
-        hidden_activation: Callable = F.relu,
-        init_w: float = 3e-3,
-    ):
-        """Initialization."""
-        self._late_fusion_info: DefaultDict = defaultdict(lambda: 0)
-        for i in late_fusion_info:
-            # 1st index has 0th hidden layer info
-            self._late_fusion_info[i] = late_fusion_info[i]
-
-        super(LateFusionDuelingMLP, self).__init__(
-            input_size=input_size,
-            output_size=output_size,
-            hidden_sizes=hidden_sizes,
-            hidden_activation=hidden_activation,
-            init_w=init_w,
-        )
-
-    def forward(self, *args: Any) -> torch.Tensor:
-        """Forward method implementation."""
-        x: torch.Tensor = args[0]
-        late_in: list = args[1]
-
-        idx_late_in = 0
-        for i, hidden_layer in enumerate(self.hidden_layers):
-            if self._late_fusion_info[i] > 0:
-                x = concat(x, late_in[idx_late_in])
-                idx_late_in += 1
-            x = self.hidden_activation(hidden_layer(x))
-
-        x = self._forward_dueling(x)
-
-        return x
-
-    def _late_fusion_dim(self, idx: int) -> int:
-        """Return the dimension for late fusion."""
-        return self._late_fusion_info[idx]

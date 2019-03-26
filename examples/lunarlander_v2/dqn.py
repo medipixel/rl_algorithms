@@ -39,10 +39,10 @@ hyper_params = {
     "TRAIN_FREQ": 1,
     "MULTIPLE_LEARN": 1,
     # C51
-    "USE_C51": False,
-    "V_MIN": -10,
-    "V_MAX": 10,
-    "ATOMS": 51,
+    "USE_C51": True,
+    "V_MIN": -300,
+    "V_MAX": 300,
+    "ATOMS": 1530,
 }
 
 

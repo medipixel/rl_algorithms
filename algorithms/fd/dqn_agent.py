@@ -100,7 +100,8 @@ class Agent(DQNAgent):
 
         # supervised loss using demo for only demo transitions
         demo_idxs = np.where(eps_d != 0.0)
-        if demo_idxs[0].size != 0:  # if 1 or more demos are sampled
+        n_demo = demo_idxs[0].size
+        if n_demo != 0:  # if 1 or more demos are sampled
             # get margin for each demo transition
             action_idxs = actions[demo_idxs].long()
             margin = torch.ones(q_values.size()) * self.hyper_params["MARGIN"]
@@ -141,14 +142,20 @@ class Agent(DQNAgent):
         fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)
         self.beta = self.beta + fraction * (1.0 - self.beta)
 
-        return loss.data, dq_loss.data, supervised_loss.data, q_values.mean().data
+        return (
+            loss.data,
+            dq_loss.data,
+            supervised_loss.data,
+            q_values.mean().data,
+            n_demo,
+        )
 
     def write_log(self, i: int, avg_loss: np.ndarray, score: float = 0.0):
         """Write log about loss and score"""
         print(
             "[INFO] episode %d, episode step: %d, total step: %d, total score: %f\n"
             "epsilon: %f, total loss: %f, dq loss: %f, supervised loss: %f\n"
-            "avg q values: %f, at %s\n"
+            "avg q values: %f, demo num in minibatch: %d at %s\n"
             % (
                 i,
                 self.episode_step,
@@ -159,6 +166,7 @@ class Agent(DQNAgent):
                 avg_loss[1],
                 avg_loss[2],
                 avg_loss[3],
+                avg_loss[4],
                 datetime.datetime.now(),
             )
         )
