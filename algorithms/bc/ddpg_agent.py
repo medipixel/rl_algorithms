@@ -1,39 +1,60 @@
 # -*- coding: utf-8 -*-
-"""DDPG with Behaviour Cloning agent for episodic tasks in OpenAI Gym.
+"""Behaviour Cloning with DDPG agent for episodic tasks in OpenAI Gym.
 
 - Author: Kh Kim
 - Contact: kh.kim@medipixel.io
 - Paper: https://arxiv.org/pdf/1709.10089.pdf
 """
 
+import argparse
 import pickle
 from typing import Tuple
 
+import gym
 import numpy as np
 import torch
 import torch.nn.functional as F
 
+from algorithms.common.abstract.her import AbstractHER
 from algorithms.common.buffer.replay_buffer import ReplayBuffer
 import algorithms.common.helper_functions as common_utils
+from algorithms.common.noise import OUNoise
 from algorithms.ddpg.agent import Agent as DDPGAgent
-from algorithms.her import LunarLanderContinuousHER
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 class Agent(DDPGAgent):
-    """ActorCritic interacting with environment.
+    """BC with DDPG agent interacting with environment.
 
     Attributes:
-        memory (ReplayBuffer): replay memory
-        demo_memory (ReplayBuffer): replay memory for demo
         her (HER): hinsight experience replay
         transitions_epi (list): transitions per episode (for HER)
-        goal_state (np.ndarray): goal state to generate concatenated states
-        total_step (int): total step numbers
-        episode_step (int): step number of the current episode
+        desired_state (np.ndarray): desired state of current episode
+        memory (ReplayBuffer): replay memory
+        demo_memory (ReplayBuffer): replay memory for demo
+        lambda1 (float): proportion of policy loss
+        lambda2 (float): proportion of BC loss
 
     """
+
+    def __init__(
+        self,
+        env: gym.Env,
+        args: argparse.Namespace,
+        hyper_params: dict,
+        models: tuple,
+        optims: tuple,
+        noise: OUNoise,
+        HER: AbstractHER,
+    ):
+        """Initialization.
+        Args:
+            HER(HER): HER object
+
+        """
+        self.her = HER
+        DDPGAgent.__init__(self, env, args, hyper_params, models, optims, noise)
 
     # pylint: disable=attribute-defined-outside-init
     def _initialize(self):
@@ -44,7 +65,7 @@ class Agent(DDPGAgent):
 
         # HER
         if self.hyper_params["USE_HER"]:
-            self.her = LunarLanderContinuousHER(demo)
+            self.her = self.her(demo)
             self.transitions_epi: list = list()
             self.desired_state = np.zeros((1,))
             demo = self.her.generate_demo_transitions()
@@ -66,7 +87,7 @@ class Agent(DDPGAgent):
     def _preprocess_state(self, state: np.ndarray) -> torch.Tensor:
         """Preprocess state so that actor selects an action."""
         if self.hyper_params["USE_HER"]:
-            self.desired_state = self.her.get_desired_state()
+            self.desired_state = self.her.get_desired_state(self.env)
             state = np.concatenate((state, self.desired_state), axis=-1)
         state = torch.FloatTensor(state).to(device)
         return state

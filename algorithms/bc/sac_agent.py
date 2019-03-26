@@ -8,34 +8,54 @@
          https://arxiv.org/pdf/1709.10089.pdf
 """
 
+import argparse
 import pickle
 from typing import Tuple
 
+import gym
 import numpy as np
 import torch
 import torch.nn.functional as F
 
+from algorithms.common.abstract.her import AbstractHER
 from algorithms.common.buffer.replay_buffer import ReplayBuffer
 import algorithms.common.helper_functions as common_utils
-from algorithms.her import HER
 from algorithms.sac.agent import Agent as SACAgent
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 class Agent(SACAgent):
-    """SAC agent interacting with environment.
+    """BC with SAC agent interacting with environment.
 
     Attrtibutes:
-        memory (ReplayBuffer): replay memory
-        demo_memory (ReplayBuffer): replay memory for demo
         her (HER): hinsight experience replay
         transitions_epi (list): transitions per episode (for HER)
-        goal_state (np.ndarray): goal state to generate concatenated states
-        total_step (int): total step numbers
-        episode_step (int): step number of the current episode
+        desired_state (np.ndarray): desired state of current episode
+        memory (ReplayBuffer): replay memory
+        demo_memory (ReplayBuffer): replay memory for demo
+        lambda1 (float): proportion of policy loss
+        lambda2 (float): proportion of BC loss
 
     """
+
+    def __init__(
+        self,
+        env: gym.Env,
+        args: argparse.Namespace,
+        hyper_params: dict,
+        models: tuple,
+        optims: tuple,
+        target_entropy: float,
+        HER: AbstractHER,
+    ):
+        """Initialization.
+        Args:
+            HER(HER): HER object
+
+        """
+        self.her = HER
+        SACAgent.__init__(self, env, args, hyper_params, models, optims, target_entropy)
 
     # pylint: disable=attribute-defined-outside-init
     def _initialize(self):
@@ -46,16 +66,15 @@ class Agent(SACAgent):
 
         # HER
         if self.hyper_params["USE_HER"]:
-            self.her = HER(self.args.demo_path)
+            self.her = self.her(demo)
             self.transitions_epi: list = list()
             self.desired_state = np.zeros((1,))
-            demo = self.her.generate_demo_transitions(demo)
+            demo = self.her.generate_demo_transitions()
 
         if not self.args.test:
             # Replay buffers
-            self.demo_memory = ReplayBuffer(
-                len(demo), self.hyper_params["DEMO_BATCH_SIZE"]
-            )
+            demo_batch_size = self.hyper_params["DEMO_BATCH_SIZE"]
+            self.demo_memory = ReplayBuffer(len(demo), demo_batch_size)
             self.demo_memory.extend(demo)
 
             self.memory = ReplayBuffer(
@@ -64,14 +83,12 @@ class Agent(SACAgent):
 
             # set hyper parameters
             self.lambda1 = self.hyper_params["LAMBDA1"]
-            self.lambda2 = (
-                self.hyper_params["LAMBDA2"] / self.hyper_params["DEMO_BATCH_SIZE"]
-            )
+            self.lambda2 = self.hyper_params["LAMBDA2"] / demo_batch_size
 
     def _preprocess_state(self, state: np.ndarray) -> torch.Tensor:
         """Preprocess state so that actor selects an action."""
         if self.hyper_params["USE_HER"]:
-            self.desired_state = self.her.sample_desired_state()
+            self.desired_state = self.her.get_desired_state(self.env)
             state = np.concatenate((state, self.desired_state), axis=-1)
         state = torch.FloatTensor(state).to(device)
         return state

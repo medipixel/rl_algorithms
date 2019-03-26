@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
-"""Run module for BC with DDPG on LunarLanderContinuous-v2.
+"""Run module for BC with DDPG on Reacher-v2.
 
 - Author: Curt Park, Kh Kim
 - Contact: curt.park@medipixel.io
            kh.kim@medipixel.io
-
 """
 
 import argparse
@@ -16,7 +15,7 @@ import torch.optim as optim
 from algorithms.bc.ddpg_agent import Agent
 from algorithms.common.networks.mlp import MLP
 from algorithms.common.noise import OUNoise
-from examples.lunarlander_continuous_v2.utils import LunarLanderContinuousHER
+from examples.reacher_v2.utils import ReacherHER
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -51,7 +50,7 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
 
     """
     if hyper_params["USE_HER"]:
-        state_dim *= 2
+        state_dim += 2
 
     hidden_sizes_actor = [256, 256]
     hidden_sizes_critic = [256, 256]
@@ -111,7 +110,7 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
     optims = (actor_optim, critic_optim)
 
     # HER
-    HER = LunarLanderContinuousHER if hyper_params["USE_HER"] else None
+    HER = ReacherHER if hyper_params["USE_HER"] else None
 
     # create an agent
     agent = Agent(env, args, hyper_params, models, optims, noise, HER)

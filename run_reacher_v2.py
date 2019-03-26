@@ -44,10 +44,7 @@ parser.add_argument(
     "--interim-test-num", type=int, default=10, help="interim test number"
 )
 parser.add_argument(
-    "--demo-path",
-    type=str,
-    default="data/lunarlander_continuous_demo.pkl",
-    help="demonstration path",
+    "--demo-path", type=str, default="data/reacher_demo.pkl", help="demonstration path"
 )
 
 parser.set_defaults(test=False)
@@ -69,7 +66,7 @@ def main():
     common_utils.set_random_seed(args.seed, env)
 
     # run
-    module_path = "examples.reacher-v2." + args.algo
+    module_path = "examples.reacher_v2." + args.algo
     example = importlib.import_module(module_path)
     example.run(env, args, state_dim, action_dim)
 
