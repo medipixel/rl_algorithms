@@ -6,7 +6,6 @@
 """
 
 from collections import deque
-import pickle
 import random
 from typing import Deque, List, Tuple
 
@@ -32,18 +31,6 @@ def soft_update(local: nn.Module, target: nn.Module, tau: float):
 def hard_update(local: nn.Module, target: nn.Module):
     """Hard updatte: target <- local."""
     target.load_state_dict(local.state_dict())
-
-
-def fetch_desired_states_from_demo(demo_path: str) -> np.ndarray:
-    """Return desired goal states from demonstration data."""
-    with open(demo_path, "rb") as f:
-        demo = pickle.load(f)
-
-    demo = np.array(demo)
-    goal_indices = np.where(demo[:, 4])[0]
-    goal_states = demo[goal_indices][:, 0]
-
-    return goal_states, goal_indices
 
 
 def set_random_seed(seed: int, env: gym.Env):

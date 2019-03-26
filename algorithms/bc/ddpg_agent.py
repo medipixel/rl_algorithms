@@ -16,7 +16,7 @@ import torch.nn.functional as F
 from algorithms.common.buffer.replay_buffer import ReplayBuffer
 import algorithms.common.helper_functions as common_utils
 from algorithms.ddpg.agent import Agent as DDPGAgent
-from algorithms.her import HER
+from algorithms.her import LunarLanderContinuousHER
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -44,10 +44,10 @@ class Agent(DDPGAgent):
 
         # HER
         if self.hyper_params["USE_HER"]:
-            self.her = HER(self.args.demo_path)
+            self.her = LunarLanderContinuousHER(demo)
             self.transitions_epi: list = list()
             self.desired_state = np.zeros((1,))
-            demo = self.her.generate_demo_transitions(demo)
+            demo = self.her.generate_demo_transitions()
 
         if not self.args.test:
             # Replay buffers
@@ -66,7 +66,7 @@ class Agent(DDPGAgent):
     def _preprocess_state(self, state: np.ndarray) -> torch.Tensor:
         """Preprocess state so that actor selects an action."""
         if self.hyper_params["USE_HER"]:
-            self.desired_state = self.her.sample_desired_state()
+            self.desired_state = self.her.get_desired_state()
             state = np.concatenate((state, self.desired_state), axis=-1)
         state = torch.FloatTensor(state).to(device)
         return state

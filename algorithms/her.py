@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """Hindsight Experience Replay.
 
-- Author: Curt Park
+- Author: Curt Park, Kh Kim
 - Contact: curt.park@medipixel.io
+           kh.kim@medipixel.io
 - Paper: https://arxiv.org/pdf/1707.01495.pdf
 
 """
@@ -11,7 +12,7 @@ from typing import Callable
 
 import numpy as np
 
-from algorithms.common.helper_functions import fetch_desired_states_from_demo
+from algorithms.common.abstract.her import AbstractHER
 
 
 def default_reward_func(
@@ -25,72 +26,89 @@ def default_reward_func(
         return np.float64(-1.0)
 
 
-class HER:
-    """HER (final strategy).
+class DemoHER(AbstractHER):
+    """HER class using demonstration.
 
     Attributes:
-        desired_states (np.ndarray): desired states
-        reward_func (Callable): returns reward from state, action, next_state
+        demo (list): demonstration
+        demo_goal_indices (np.ndarray): indices about goal of demo list
 
     """
 
-    def __init__(self, demo_path: str, reward_func: Callable = default_reward_func):
+    def __init__(self, demo: list, reward_func: Callable):
         """Initialization.
 
         Args:
-            demo_path (str): path of demonstration including desired states
+            demo (list): demonstration
             reward_func (Callable): returns reward from state, action, next_state
+
         """
-        self.desired_states, self.demo_goal_indices = fetch_desired_states_from_demo(
-            demo_path
-        )
-        self.reward_func = reward_func
+        AbstractHER.__init__(self, reward_func)
 
-    def sample_desired_state(self) -> np.ndarray:
-        """Sample one of the desired states."""
-        return np.random.choice(self.desired_states, 1).item()
+        self.demo = demo
+        self.demo_goal_indices = self.fetch_goal_indices_from_demo()
 
-    def generate_demo_transitions(self, demo: list) -> list:
+    def fetch_goal_indices_from_demo(self) -> np.ndarray:
+        """Return goal indices from demonstration data."""
+        demo = np.array(self.demo)
+        goal_indices = np.where(demo[:, 4])[0]
+
+        return goal_indices
+
+    def generate_demo_transitions(self) -> list:
         """Return generated demo transitions for HER."""
         new_demo: list = list()
 
         # generate demo transitions
         prev_idx = 0
         for idx in self.demo_goal_indices:
-            demo_final_state = demo[idx][0]
-            transitions = [demo[i] for i in range(prev_idx, idx + 1)]
+            demo_final_state = self.demo[idx][0]
+            transitions = [self.demo[i] for i in range(prev_idx, idx + 1)]
             prev_idx = idx + 1
 
             transitions = self.generate_transitions(
-                transitions, demo_final_state, demo=True
+                transitions, demo_final_state, is_demo=True
             )
 
             new_demo.extend(transitions)
 
         return new_demo
 
-    def generate_transitions(
-        self, transitions: list, desired_state: np.ndarray, demo: bool = False
-    ) -> list:
-        """Generate new transitions concatenated with desired states."""
-        new_transitions = list()
-        final_state = transitions[-1][0]
+    def set_desired_states(self):
+        pass
 
-        for transition in transitions:
-            # process transitions with the initial goal state
-            new_transitions.append(self.__get_transition(transition, desired_state))
-            if not demo:
-                new_transitions.append(self.__get_transition(transition, final_state))
+    def get_desired_state(self) -> np.ndarray:
+        pass
 
-        return new_transitions
 
-    def __get_transition(self, transition: tuple, goal_state: np.ndarray):
-        """Get a single transition concatenated with a goal state."""
-        state, action, _, next_state, done = transition
+class LunarLanderContinuousHER(DemoHER):
+    """HER for LunarLanderContinuous-v2 environment.
 
-        done = np.array_equal(state, goal_state)
-        reward = self.reward_func(state, action, goal_state)
-        state = np.concatenate((state, goal_state), axis=-1)
-        next_state = np.concatenate((next_state, goal_state), axis=-1)
+    Attributes:
+        desired_states (np.ndarray): desired states from demonstration
 
-        return state, action, reward, next_state, done
+    """
+
+    def __init__(self, demo: list, reward_func: Callable = default_reward_func):
+        """Initialization."""
+        DemoHER.__init__(self, demo, reward_func)
+        self.desired_states = self.fetch_desired_states_from_demo()
+
+    def fetch_desired_states_from_demo(self) -> np.ndarray:
+        """Return desired goal states from demonstration data."""
+        demo = np.array(self.demo)
+        goal_states = demo[self.demo_goal_indices][:, 0]
+
+        return goal_states
+
+    def get_desired_state(self) -> np.ndarray:
+        """Sample one of the desired states."""
+        return np.random.choice(self.desired_states, 1).item()
+
+
+class ReacherHER(DemoHER):
+    """HER for Reacher-v2 environment."""
+
+    def __init__(self, demo: list, reward_func: Callable):
+        """Initialization."""
+        DemoHER.__init__(self, demo, reward_func)
