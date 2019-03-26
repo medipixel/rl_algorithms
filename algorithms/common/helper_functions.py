@@ -29,7 +29,7 @@ def soft_update(local: nn.Module, target: nn.Module, tau: float):
 
 
 def hard_update(local: nn.Module, target: nn.Module):
-    """Hard updatte: target <- local."""
+    """Hard update: target <- local."""
     target.load_state_dict(local.state_dict())
 
 
