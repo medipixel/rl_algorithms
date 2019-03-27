@@ -44,6 +44,7 @@ hyper_params = {
     # HER
     "USE_HER": True,
     "SUCCESS_SCORE": 250.0,
+    "DESIRED_STATES_FROM_DEMO": True,
 }
 
 

@@ -30,9 +30,13 @@ class LunarLanderContinuousHER(AbstractHER):
 
     """
 
-    def __init__(self, demo: list, reward_func: AbstractRewardFn = L1DistanceRewardFn):
+    def __init__(self, reward_func: AbstractRewardFn = L1DistanceRewardFn):
         """Initialization."""
         AbstractHER.__init__(self, reward_func=reward_func)
+
+    # pylint: disable=attribute-defined-outside-init
+    def fetch_desired_states_from_demo(self, demo: list):
+        """Return desired goal states from demonstration data."""
         np_demo: np.ndarray = np.array(demo)
         self.demo_goal_indices: np.ndarray = np.where(np_demo[:, 4])[0]
         self.desired_states: np.ndarray = np_demo[self.demo_goal_indices][:, 0]
@@ -42,6 +46,7 @@ class LunarLanderContinuousHER(AbstractHER):
         return np.random.choice(self.desired_states, 1).item()
 
     def _get_final_state(self, transition: tuple) -> np.ndarray:
+        """Get final state from transitions for making HER transitions."""
         return transition[0]
 
     def generate_demo_transitions(self, demo: list) -> list:

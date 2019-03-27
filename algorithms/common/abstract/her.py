@@ -7,6 +7,7 @@
 """
 
 from abc import ABC, abstractmethod
+from typing import Tuple
 
 import numpy as np
 
@@ -21,50 +22,46 @@ class AbstractHER(ABC):
 
     """
 
-    def __init__(self, *args, reward_func: AbstractRewardFn):
+    def __init__(self, reward_func: AbstractRewardFn):
         """Initialization.
 
         Args:
             reward_func (Callable): returns reward from state, action, next_state
 
         """
-        self.args = args
         self.reward_func = reward_func()
+
+    @abstractmethod
+    def fetch_desired_states_from_demo(self, demo: list):
+        pass
 
     @abstractmethod
     def get_desired_state(self, *args) -> np.ndarray:
         pass
 
     @abstractmethod
-    def _get_final_state(self, transition: tuple) -> np.ndarray:
-        pass
-
-    @abstractmethod
     def generate_demo_transitions(self, demo: list) -> list:
         pass
 
-    def generate_transitions(
-        self,
-        transitions: list,
-        desired_state: np.ndarray,
-        success_score: float,
-        is_demo: bool = False,
-    ) -> list:
-        """Generate new transitions concatenated with desired states."""
-        origin_transitions = list()
-        new_transitions = list()
-        final_state = self._get_final_state(transitions[-1])
-        score = np.sum(np.array(transitions), axis=0)[2]
+    @abstractmethod
+    def _get_final_state(self, transition: tuple) -> np.ndarray:
+        pass
 
-        for transition in transitions:
-            # process transitions with the initial goal state
-            origin_transitions.append(self.__get_transition(transition, desired_state))
-            if not is_demo and score <= success_score:
-                new_transitions.append(self.__get_transition(transition, final_state))
+    def _append_origin_transitions(
+        self, origin_transitions: list, transition: tuple, desired_state: np.ndarray
+    ):
+        """Append original transitions adding goal state for training."""
+        origin_transitions.append(self._get_transition(transition, desired_state))
 
-        return origin_transitions + new_transitions
+    def _append_new_transitions(
+        self, new_transitions: list, transition: tuple, final_state: np.ndarray
+    ):
+        """Append new transitions made by HER strategy (final) for training."""
+        new_transitions.append(self._get_transition(transition, final_state))
 
-    def __get_transition(self, transition: tuple, goal_state: np.ndarray):
+    def _get_transition(
+        self, transition: tuple, goal_state: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray, np.float64, np.ndarray, bool]:
         """Get a single transition concatenated with a goal state."""
         state, action, _, next_state, done = transition
 
@@ -74,3 +71,28 @@ class AbstractHER(ABC):
         next_state = np.concatenate((next_state, goal_state), axis=-1)
 
         return state, action, reward, next_state, done
+
+    def generate_transitions(
+        self,
+        transitions: list,
+        desired_state: np.ndarray,
+        success_score: float,
+        is_demo: bool = False,
+    ) -> list:
+        """Generate new transitions concatenated with desired states."""
+        origin_transitions: list = list()
+        new_transitions: list = list()
+        final_state = self._get_final_state(transitions[-1])
+        score = np.sum(np.array(transitions), axis=0)[2]
+
+        for transition in transitions:
+            # process transitions with the initial goal state
+            self._append_origin_transitions(
+                origin_transitions, transition, desired_state
+            )
+
+            # do not need to append new transitions if sum of reward is big enough
+            if not is_demo and score <= success_score:
+                self._append_new_transitions(new_transitions, transition, final_state)
+
+        return origin_transitions + new_transitions

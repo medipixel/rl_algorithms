@@ -65,7 +65,10 @@ class Agent(DDPGAgent):
 
         # HER
         if self.hyper_params["USE_HER"]:
-            self.her = self.HERClass(demo)
+            self.her = self.HERClass()
+            if self.hyper_params["DESIRED_STATES_FROM_DEMO"]:
+                self.her.fetch_desired_states_from_demo(demo)
+
             self.transitions_epi: list = list()
             self.desired_state = np.zeros((1,))
             demo = self.her.generate_demo_transitions(demo)

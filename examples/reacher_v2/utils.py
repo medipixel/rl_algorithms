@@ -24,41 +24,42 @@ class ReacherRewardFn(AbstractRewardFn):
 class ReacherHER(AbstractHER):
     """HER for Reacher-v2 environment."""
 
-    def __init__(self, *args, reward_func: AbstractRewardFn = ReacherRewardFn):
+    def __init__(self, reward_func: AbstractRewardFn = ReacherRewardFn):
         """Initialization."""
-        AbstractHER.__init__(self, *args, reward_func=reward_func)
+        AbstractHER.__init__(self, reward_func=reward_func)
+
+    def fetch_desired_states_from_demo(self, _: list):
+        """Return desired goal states from demonstration data.
+
+        But do not use this method because demonstration already has goal state.
+        """
+        raise Exception("Do not use this method.")
 
     def get_desired_state(self, *args) -> np.ndarray:
+        """Sample one of the desired states.
+
+        But return empty array because demonstration already has goal state.
+        """
         return np.array([])
 
     def _get_final_state(self, transition: tuple) -> np.ndarray:
+        """Get tip position of final state from transitions."""
         return transition[0][8:10] + transition[0][2:4]
 
     def generate_demo_transitions(self, demo: list) -> list:
+        """Return generated demo transitions for HER.
+
+        Return demonstration this class.
+        """
         return demo
 
-    def generate_transitions(
-        self,
-        transitions: list,
-        desired_state: np.ndarray,
-        success_score: float,
-        is_demo: bool = False,
-    ) -> list:
-        """Generate new transitions concatenated with desired states."""
-        origin_transitions = list()
-        new_transitions = list()
-        final_state = self._get_final_state(transitions[-1])
-        score = np.sum(np.array(transitions), axis=0)[2]
+    def _append_origin_transitions(
+        self, origin_transitions: list, transition: tuple, _: np.ndarray
+    ):
+        """Append original transitions for training."""
+        origin_transitions.append(transition)
 
-        for transition in transitions:
-            # process transitions with the initial goal state
-            origin_transitions.append(transition)
-            if not is_demo and score <= success_score:
-                new_transitions.append(self.__get_transition(transition, final_state))
-
-        return origin_transitions + new_transitions
-
-    def __get_transition(self, transition: tuple, goal_state: np.ndarray):
+    def _get_transition(self, transition: tuple, goal_state: np.ndarray) -> tuple:
         """Get a single transition concatenated with a goal state."""
         state, action, _, next_state, done = transition
 
