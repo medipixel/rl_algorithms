@@ -4,8 +4,9 @@
 - Author: Kh Kim
 - Contact: kh.kim@medipixel.io
 """
-
 from abc import ABC, abstractmethod
+
+import numpy as np
 
 
 class AbstractRewardFn(ABC):
@@ -17,5 +18,5 @@ class AbstractRewardFn(ABC):
     """
 
     @abstractmethod
-    def __call__(self, *args):
+    def __call__(self, *args) -> np.float64:
         pass

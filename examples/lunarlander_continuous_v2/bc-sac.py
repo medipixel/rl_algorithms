@@ -38,10 +38,12 @@ hyper_params = {
     "AUTO_ENTROPY_TUNING": True,
     "LAMBDA1": 1e-3,
     "LAMBDA2": 1.0,
-    "USE_HER": True,
     "WEIGHT_DECAY": 0.0,
     "INITIAL_RANDOM_ACTION": 10000,
     "MULTIPLE_LEARN": 1,
+    # HER
+    "USE_HER": True,
+    "SUCCESS_SCORE": 250.0,
 }
 
 

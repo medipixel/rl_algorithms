@@ -28,7 +28,7 @@ class Agent(DDPGAgent):
     """BC with DDPG agent interacting with environment.
 
     Attributes:
-        her (HER): hinsight experience replay
+        HERClass (AbstractHER): hinsight experience replay
         transitions_epi (list): transitions per episode (for HER)
         desired_state (np.ndarray): desired state of current episode
         memory (ReplayBuffer): replay memory
@@ -53,7 +53,7 @@ class Agent(DDPGAgent):
             HER(HER): HER object
 
         """
-        self.her = HER
+        self.HERClass = HER
         DDPGAgent.__init__(self, env, args, hyper_params, models, optims, noise)
 
     # pylint: disable=attribute-defined-outside-init
@@ -65,10 +65,10 @@ class Agent(DDPGAgent):
 
         # HER
         if self.hyper_params["USE_HER"]:
-            self.her = self.her(demo)
+            self.her = self.HERClass(demo)
             self.transitions_epi: list = list()
             self.desired_state = np.zeros((1,))
-            demo = self.her.generate_demo_transitions()
+            demo = self.her.generate_demo_transitions(demo)
 
         if not self.args.test:
             # Replay buffers
@@ -87,7 +87,7 @@ class Agent(DDPGAgent):
     def _preprocess_state(self, state: np.ndarray) -> torch.Tensor:
         """Preprocess state so that actor selects an action."""
         if self.hyper_params["USE_HER"]:
-            self.desired_state = self.her.get_desired_state(self.env)
+            self.desired_state = self.her.get_desired_state()
             state = np.concatenate((state, self.desired_state), axis=-1)
         state = torch.FloatTensor(state).to(device)
         return state
@@ -100,7 +100,9 @@ class Agent(DDPGAgent):
             if done:
                 # insert generated transitions if the episode is done
                 transitions = self.her.generate_transitions(
-                    self.transitions_epi, self.desired_state
+                    self.transitions_epi,
+                    self.desired_state,
+                    self.hyper_params["SUCCESS_SCORE"],
                 )
                 self.memory.extend(transitions)
                 self.transitions_epi.clear()
