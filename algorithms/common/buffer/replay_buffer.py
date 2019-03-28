@@ -179,3 +179,7 @@ class NStepTransitionBuffer:
             dones_ = dones_.cuda(non_blocking=True)
 
         return states_, actions_, rewards_, next_states_, dones_
+
+    def __len__(self) -> int:
+        """Return the current size of internal memory."""
+        return len(self.buffer)
