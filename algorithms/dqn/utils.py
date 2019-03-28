@@ -12,14 +12,15 @@ from typing import Tuple
 import torch
 import torch.nn.functional as F
 
-from algorithms.dqn.networks import CategoricalDuelingMLP
+from algorithms.common.networks.mlp import MLP
+from algorithms.dqn.networks import C51DuelingMLP
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 def calculate_dqn_c51_loss(
-    model: CategoricalDuelingMLP,
-    target_model: CategoricalDuelingMLP,
+    model: C51DuelingMLP,
+    target_model: C51DuelingMLP,
     experiences: Tuple[torch.Tensor, ...],
     gamma: float,
     batch_size: int,
@@ -73,10 +74,7 @@ def calculate_dqn_c51_loss(
 
 
 def calculate_dqn_loss(
-    model: CategoricalDuelingMLP,
-    target_model: CategoricalDuelingMLP,
-    experiences: Tuple[torch.Tensor, ...],
-    gamma: float,
+    model: MLP, target_model: MLP, experiences: Tuple[torch.Tensor, ...], gamma: float
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """Return element-wise dqn loss and Q-values."""
     states, actions, rewards, next_states, dones = experiences[:5]

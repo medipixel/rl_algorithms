@@ -12,7 +12,7 @@ import torch
 import torch.optim as optim
 
 from algorithms.dqn.agent import Agent
-from algorithms.dqn.networks import CategoricalDuelingMLP, DuelingMLP
+from algorithms.dqn.networks import C51DuelingMLP, DuelingMLP
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -38,8 +38,8 @@ hyper_params = {
     "UPDATE_STARTS_FROM": int(1e4),
     "TRAIN_FREQ": 1,
     "MULTIPLE_LEARN": 1,
-    # C51
-    "USE_C51": True,
+    # Distributional Q function
+    "USE_DIST_Q": True,
     "V_MIN": -300,
     "V_MAX": 300,
     "ATOMS": 1530,
@@ -60,8 +60,8 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
     def get_fc_model():
         hidden_sizes = [128, 64]
 
-        if hyper_params["USE_C51"]:
-            model = CategoricalDuelingMLP(
+        if hyper_params["USE_DIST_Q"]:
+            model = C51DuelingMLP(
                 input_size=state_dim,
                 action_size=action_dim,
                 hidden_sizes=hidden_sizes,

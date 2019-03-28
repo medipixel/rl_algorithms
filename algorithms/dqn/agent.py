@@ -159,7 +159,7 @@ class Agent(AbstractAgent):
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Return element-wise dqn loss and Q-values."""
 
-        if self.hyper_params["USE_C51"]:
+        if self.hyper_params["USE_DIST_Q"]:
             return dqn_utils.calculate_dqn_c51_loss(
                 model=self.dqn,
                 target_model=self.dqn_target,

@@ -13,7 +13,7 @@ import torch.optim as optim
 
 from algorithms.common.networks.cnn import CNN, CNNLayer
 from algorithms.dqn.agent import Agent
-from algorithms.dqn.networks import CategoricalCNN, CategoricalDuelingMLP, DuelingMLP
+from algorithms.dqn.networks import C51DuelingMLP, DistributionalCNN, DuelingMLP
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -39,8 +39,8 @@ hyper_params = {
     "UPDATE_STARTS_FROM": int(1e4),  # openai baselines: int(1e4)
     "TRAIN_FREQ": 4,  # in openai baselines, train_freq = 4
     "MULTIPLE_LEARN": 1,
-    # C51
-    "USE_C51": True,
+    # Distributional Q function
+    "USE_DIST_Q": True,
     "V_MIN": -10,
     "V_MAX": 10,
     "ATOMS": 51,
@@ -62,9 +62,9 @@ def run(env: gym.Env, env_name: str, args: argparse.Namespace):
         hidden_sizes = [512]
         action_dim = env.action_space.n
 
-        if hyper_params["USE_C51"]:
-            Model = CategoricalCNN
-            fc_model = CategoricalDuelingMLP(
+        if hyper_params["USE_DIST_Q"]:
+            Model = DistributionalCNN
+            fc_model = C51DuelingMLP(
                 input_size=fc_input_size,
                 action_size=action_dim,
                 hidden_sizes=hidden_sizes,

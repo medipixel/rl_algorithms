@@ -17,7 +17,7 @@ from algorithms.common.networks.mlp import MLP
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-class CategoricalCNN(CNN):
+class DistributionalCNN(CNN):
     """Convolution neural network for C51."""
 
     def get_dist_q(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -80,7 +80,7 @@ class DuelingMLP(MLP):
         return x
 
 
-class CategoricalDuelingMLP(MLP):
+class C51DuelingMLP(MLP):
     """Multilayer perceptron with dueling construction."""
 
     def __init__(
@@ -95,7 +95,7 @@ class CategoricalDuelingMLP(MLP):
         init_w: float = 3e-3,
     ):
         """Initialization."""
-        super(CategoricalDuelingMLP, self).__init__(
+        super(C51DuelingMLP, self).__init__(
             input_size=input_size,
             output_size=action_size,
             hidden_sizes=hidden_sizes,
@@ -124,7 +124,7 @@ class CategoricalDuelingMLP(MLP):
         """Get distribution for atoms."""
         action_size, atom_size = self.action_size, self.atom_size
 
-        x = super(CategoricalDuelingMLP, self).forward(x)
+        x = super(C51DuelingMLP, self).forward(x)
         adv_x = self.hidden_activation(self.advantage_hidden_layer(x))
         val_x = self.hidden_activation(self.value_hidden_layer(x))
 
