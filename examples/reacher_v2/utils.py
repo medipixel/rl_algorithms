@@ -12,8 +12,9 @@ from algorithms.common.abstract.reward_fn import AbstractRewardFn
 
 
 class ReacherRewardFn(AbstractRewardFn):
-    def __call__(self, state: np.ndarray, action: np.ndarray, _) -> np.float64:
+    def __call__(self, transition: tuple, _) -> np.float64:
         """Reward function for Reacher-v2 environment."""
+        state, action = transition[0:2]
         diff_vec = state[-3:]
         reward_dist = -1 * np.linalg.norm(diff_vec)
         reward_ctrl = -np.square(action).sum()
@@ -31,25 +32,25 @@ class ReacherHER(AbstractHER):
     def fetch_desired_states_from_demo(self, _: list):
         """Return desired goal states from demonstration data.
 
-        But do not use this method because demonstration already has goal state.
+        DO NOT use this method because demo states have a goal position.
         """
         raise Exception("Do not use this method.")
 
     def get_desired_state(self, *args) -> np.ndarray:
         """Sample one of the desired states.
 
-        But return empty array because demonstration already has goal state.
+        Returns an empty array since demo states have a goal position.
         """
         return np.array([])
 
-    def _get_final_state(self, transition: tuple) -> np.ndarray:
-        """Get tip position of final state from transitions."""
-        return transition[0][8:10] + transition[0][2:4]
+    def _get_final_state(self, transition_final: tuple) -> np.ndarray:
+        """Get a finger-tip position from the final transition."""
+        return transition_final[0][8:10] + transition_final[0][2:4]
 
     def generate_demo_transitions(self, demo: list) -> list:
         """Return generated demo transitions for HER.
 
-        Return demonstration this class.
+        Works as an identity function in this class.
         """
         return demo
 
@@ -63,7 +64,7 @@ class ReacherHER(AbstractHER):
         """Get a single transition concatenated with a goal state."""
         state, action, _, next_state, done = transition
 
-        reward = self.reward_func(next_state, action, goal_state)
+        reward = self.reward_func(transition, goal_state)
         state_ = state
         state_[4:6] = goal_state
         next_state_ = next_state

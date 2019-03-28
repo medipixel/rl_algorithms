@@ -53,7 +53,7 @@ class Agent(DDPGAgent):
             HER(HER): HER object
 
         """
-        self.HERClass = HER
+        self.HER = HER
         DDPGAgent.__init__(self, env, args, hyper_params, models, optims, noise)
 
     # pylint: disable=attribute-defined-outside-init
@@ -65,7 +65,7 @@ class Agent(DDPGAgent):
 
         # HER
         if self.hyper_params["USE_HER"]:
-            self.her = self.HERClass()
+            self.her = self.HER()
             if self.hyper_params["DESIRED_STATES_FROM_DEMO"]:
                 self.her.fetch_desired_states_from_demo(demo)
 

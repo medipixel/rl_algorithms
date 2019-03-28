@@ -12,8 +12,9 @@ from algorithms.common.abstract.reward_fn import AbstractRewardFn
 
 
 class L1DistanceRewardFn(AbstractRewardFn):
-    def __call__(self, next_state: np.ndarray, _, goal_state: np.ndarray) -> np.float64:
+    def __call__(self, transition: tuple, goal_state: np.ndarray) -> np.float64:
         """L1 Distance reward function."""
+        next_state = transition[3]
         eps = 1e-6
         if np.abs(next_state - goal_state).sum() < eps:
             return np.float64(0.0)

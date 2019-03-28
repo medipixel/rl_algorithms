@@ -66,7 +66,7 @@ class AbstractHER(ABC):
         state, action, _, next_state, done = transition
 
         done = np.array_equal(next_state, goal_state)
-        reward = self.reward_func(next_state, action, goal_state)
+        reward = self.reward_func(transition, goal_state)
         state = np.concatenate((state, goal_state), axis=-1)
         next_state = np.concatenate((next_state, goal_state), axis=-1)
 

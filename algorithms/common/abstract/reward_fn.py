@@ -18,5 +18,5 @@ class AbstractRewardFn(ABC):
     """
 
     @abstractmethod
-    def __call__(self, *args) -> np.float64:
+    def __call__(self, transition: tuple, goal_state: np.ndarray) -> np.float64:
         pass

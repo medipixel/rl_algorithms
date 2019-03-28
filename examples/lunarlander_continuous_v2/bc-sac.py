@@ -42,7 +42,7 @@ hyper_params = {
     "INITIAL_RANDOM_ACTION": 10000,
     "MULTIPLE_LEARN": 1,
     # HER
-    "USE_HER": True,
+    "USE_HER": False,
     "SUCCESS_SCORE": 250.0,
     "DESIRED_STATES_FROM_DEMO": True,
 }
