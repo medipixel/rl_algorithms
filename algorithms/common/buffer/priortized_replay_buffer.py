@@ -187,8 +187,8 @@ class PrioritizedReplayBufferfD(PrioritizedReplayBuffer):
 
         """
         super(PrioritizedReplayBufferfD, self).__init__(buffer_size, batch_size, alpha)
-        self.demo = demo
-        self.demo_size = len(demo) if demo else 0
+        self.demo = demo if len(demo) < buffer_size else demo[: buffer_size - 1]
+        self.demo_size = len(self.demo) if demo else 0
         self.total_size = self.demo_size + len(self.buffer)
         self.epsilon_d = epsilon_d
 
@@ -295,3 +295,7 @@ class PrioritizedReplayBufferfD(PrioritizedReplayBuffer):
             self.min_tree[idx] = priority ** self.alpha
 
             self._max_priority = max(self._max_priority, priority)
+
+    def __len__(self) -> int:
+        """Return the current size of internal memory."""
+        return self.total_size
