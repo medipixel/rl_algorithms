@@ -28,7 +28,7 @@ class Agent(DDPGAgent):
     """BC with DDPG agent interacting with environment.
 
     Attributes:
-        HERClass (AbstractHER): hinsight experience replay
+        HER (AbstractHER): hinsight experience replay
         transitions_epi (list): transitions per episode (for HER)
         desired_state (np.ndarray): desired state of current episode
         memory (ReplayBuffer): replay memory
@@ -50,7 +50,7 @@ class Agent(DDPGAgent):
     ):
         """Initialization.
         Args:
-            HER(HER): HER object
+            HER (AbstractHER): hinsight experience replay
 
         """
         self.HER = HER

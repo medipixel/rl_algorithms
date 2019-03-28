@@ -29,7 +29,7 @@ class Agent(SACAgent):
     """BC with SAC agent interacting with environment.
 
     Attrtibutes:
-        HERClass (AbstractHER): hinsight experience replay
+        HER (AbstractHER): hinsight experience replay
         transitions_epi (list): transitions per episode (for HER)
         desired_state (np.ndarray): desired state of current episode
         memory (ReplayBuffer): replay memory
@@ -51,7 +51,7 @@ class Agent(SACAgent):
     ):
         """Initialization.
         Args:
-            HER(HER): HER object
+            HER (AbstractHER): hinsight experience replay
 
         """
         self.HER = HER
