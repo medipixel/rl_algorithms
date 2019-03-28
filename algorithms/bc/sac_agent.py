@@ -16,6 +16,7 @@ import gym
 import numpy as np
 import torch
 import torch.nn.functional as F
+import wandb
 
 from algorithms.common.abstract.her import AbstractHER
 from algorithms.common.buffer.replay_buffer import ReplayBuffer
@@ -211,6 +212,7 @@ class Agent(SACAgent):
             common_utils.soft_update(self.vf, self.vf_target, self.hyper_params["TAU"])
         else:
             actor_loss = torch.zeros(1)
+            n_qf_mask = 0
 
         return (
             actor_loss.data,
@@ -218,4 +220,43 @@ class Agent(SACAgent):
             qf_2_loss.data,
             vf_loss.data,
             alpha_loss.data,
+            n_qf_mask,
         )
+
+    def write_log(
+        self, i: int, loss: np.ndarray, score: float = 0.0, delayed_update: int = 1
+    ):
+        """Write log about loss and score"""
+        total_loss = loss.sum()
+
+        print(
+            "[INFO] episode %d, episode_step %d, total step %d, total score: %d\n"
+            "total loss: %.3f actor_loss: %.3f qf_1_loss: %.3f qf_2_loss: %.3f "
+            "vf_loss: %.3f alpha_loss: %.3f n_qf_mask: %d\n"
+            % (
+                i,
+                self.episode_step,
+                self.total_step,
+                score,
+                total_loss,
+                loss[0] * delayed_update,  # actor loss
+                loss[1],  # qf_1 loss
+                loss[2],  # qf_2 loss
+                loss[3],  # vf loss
+                loss[4],  # alpha loss
+                loss[5],  # n_qf_mask
+            )
+        )
+
+        if self.args.log:
+            wandb.log(
+                {
+                    "score": score,
+                    "total loss": total_loss,
+                    "actor loss": loss[0] * delayed_update,
+                    "qf_1 loss": loss[1],
+                    "qf_2 loss": loss[2],
+                    "vf loss": loss[3],
+                    "alpha loss": loss[4],
+                }
+            )

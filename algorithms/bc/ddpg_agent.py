@@ -14,6 +14,7 @@ import gym
 import numpy as np
 import torch
 import torch.nn.functional as F
+import wandb
 
 from algorithms.common.abstract.her import AbstractHER
 from algorithms.common.buffer.replay_buffer import ReplayBuffer
@@ -112,7 +113,7 @@ class Agent(DDPGAgent):
         else:
             self.memory.add(*transition)
 
-    def update_model(self) -> Tuple[torch.Tensor, torch.Tensor]:
+    def update_model(self) -> Tuple[torch.Tensor, ...]:
         """Train the model after each episode."""
         experiences = self.memory.sample()
         demos = self.demo_memory.sample()
@@ -174,4 +175,33 @@ class Agent(DDPGAgent):
         common_utils.soft_update(self.actor, self.actor_target, tau)
         common_utils.soft_update(self.critic, self.critic_target, tau)
 
-        return actor_loss.data, critic_loss.data
+        return actor_loss.data, critic_loss.data, n_qf_mask
+
+    def write_log(self, i: int, loss: np.ndarray, score: int):
+        """Write log about loss and score"""
+        total_loss = loss.sum()
+
+        print(
+            "[INFO] episode %d, episode step: %d, total step: %d, total score: %d\n"
+            "total loss: %f actor_loss: %.3f critic_loss: %.3f, n_qf_mask: %d\n"
+            % (
+                i,
+                self.episode_step,
+                self.total_step,
+                score,
+                total_loss,
+                loss[0],
+                loss[1],
+                loss[2],
+            )  # actor loss  # critic loss
+        )
+
+        if self.args.log:
+            wandb.log(
+                {
+                    "score": score,
+                    "total loss": total_loss,
+                    "actor loss": loss[0],
+                    "critic loss": loss[1],
+                }
+            )
