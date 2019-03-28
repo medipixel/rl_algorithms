@@ -1,39 +1,61 @@
 # -*- coding: utf-8 -*-
-"""DDPG with Behaviour Cloning agent for episodic tasks in OpenAI Gym.
+"""Behaviour Cloning with DDPG agent for episodic tasks in OpenAI Gym.
 
 - Author: Kh Kim
 - Contact: kh.kim@medipixel.io
 - Paper: https://arxiv.org/pdf/1709.10089.pdf
 """
 
+import argparse
 import pickle
 from typing import Tuple
 
+import gym
 import numpy as np
 import torch
 import torch.nn.functional as F
+import wandb
 
+from algorithms.common.abstract.her import AbstractHER
 from algorithms.common.buffer.replay_buffer import ReplayBuffer
 import algorithms.common.helper_functions as common_utils
+from algorithms.common.noise import OUNoise
 from algorithms.ddpg.agent import Agent as DDPGAgent
-from algorithms.her import HER
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 class Agent(DDPGAgent):
-    """ActorCritic interacting with environment.
+    """BC with DDPG agent interacting with environment.
 
     Attributes:
+        HER (AbstractHER): hinsight experience replay
+        transitions_epi (list): transitions per episode (for HER)
+        desired_state (np.ndarray): desired state of current episode
         memory (ReplayBuffer): replay memory
         demo_memory (ReplayBuffer): replay memory for demo
-        her (HER): hinsight experience replay
-        transitions_epi (list): transitions per episode (for HER)
-        goal_state (np.ndarray): goal state to generate concatenated states
-        total_step (int): total step numbers
-        episode_step (int): step number of the current episode
+        lambda1 (float): proportion of policy loss
+        lambda2 (float): proportion of BC loss
 
     """
+
+    def __init__(
+        self,
+        env: gym.Env,
+        args: argparse.Namespace,
+        hyper_params: dict,
+        models: tuple,
+        optims: tuple,
+        noise: OUNoise,
+        HER: AbstractHER,
+    ):
+        """Initialization.
+        Args:
+            HER (AbstractHER): hinsight experience replay
+
+        """
+        self.HER = HER
+        DDPGAgent.__init__(self, env, args, hyper_params, models, optims, noise)
 
     # pylint: disable=attribute-defined-outside-init
     def _initialize(self):
@@ -44,7 +66,10 @@ class Agent(DDPGAgent):
 
         # HER
         if self.hyper_params["USE_HER"]:
-            self.her = HER(self.args.demo_path)
+            self.her = self.HER()
+            if self.hyper_params["DESIRED_STATES_FROM_DEMO"]:
+                self.her.fetch_desired_states_from_demo(demo)
+
             self.transitions_epi: list = list()
             self.desired_state = np.zeros((1,))
             demo = self.her.generate_demo_transitions(demo)
@@ -66,7 +91,7 @@ class Agent(DDPGAgent):
     def _preprocess_state(self, state: np.ndarray) -> torch.Tensor:
         """Preprocess state so that actor selects an action."""
         if self.hyper_params["USE_HER"]:
-            self.desired_state = self.her.sample_desired_state()
+            self.desired_state = self.her.get_desired_state()
             state = np.concatenate((state, self.desired_state), axis=-1)
         state = torch.FloatTensor(state).to(device)
         return state
@@ -79,14 +104,16 @@ class Agent(DDPGAgent):
             if done:
                 # insert generated transitions if the episode is done
                 transitions = self.her.generate_transitions(
-                    self.transitions_epi, self.desired_state
+                    self.transitions_epi,
+                    self.desired_state,
+                    self.hyper_params["SUCCESS_SCORE"],
                 )
                 self.memory.extend(transitions)
                 self.transitions_epi.clear()
         else:
             self.memory.add(*transition)
 
-    def update_model(self) -> Tuple[torch.Tensor, torch.Tensor]:
+    def update_model(self) -> Tuple[torch.Tensor, ...]:
         """Train the model after each episode."""
         experiences = self.memory.sample()
         demos = self.demo_memory.sample()
@@ -148,4 +175,33 @@ class Agent(DDPGAgent):
         common_utils.soft_update(self.actor, self.actor_target, tau)
         common_utils.soft_update(self.critic, self.critic_target, tau)
 
-        return actor_loss.data, critic_loss.data
+        return actor_loss.data, critic_loss.data, n_qf_mask
+
+    def write_log(self, i: int, loss: np.ndarray, score: int):
+        """Write log about loss and score"""
+        total_loss = loss.sum()
+
+        print(
+            "[INFO] episode %d, episode step: %d, total step: %d, total score: %d\n"
+            "total loss: %f actor_loss: %.3f critic_loss: %.3f, n_qf_mask: %d\n"
+            % (
+                i,
+                self.episode_step,
+                self.total_step,
+                score,
+                total_loss,
+                loss[0],
+                loss[1],
+                loss[2],
+            )  # actor loss  # critic loss
+        )
+
+        if self.args.log:
+            wandb.log(
+                {
+                    "score": score,
+                    "total loss": total_loss,
+                    "actor loss": loss[0],
+                    "critic loss": loss[1],
+                }
+            )

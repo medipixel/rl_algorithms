@@ -1,0 +1,22 @@
+# -*- coding: utf-8 -*-
+"""Abstract class for computing reward.
+
+- Author: Kh Kim
+- Contact: kh.kim@medipixel.io
+"""
+from abc import ABC, abstractmethod
+
+import numpy as np
+
+
+class AbstractRewardFn(ABC):
+    """Abstract class for computing reward.
+       New compute_reward class should redefine __call__()
+
+    Attributes:
+
+    """
+
+    @abstractmethod
+    def __call__(self, transition: tuple, goal_state: np.ndarray) -> np.float64:
+        pass

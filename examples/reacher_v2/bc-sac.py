@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Run module for SAC on LunarLanderContinuous-v2.
+"""Run module for BC with SAC on LunarLanderContinuous-v2.
 
 - Author: Curt Park
 - Contact: curt.park@medipixel.io
@@ -14,7 +14,7 @@ import torch.optim as optim
 
 from algorithms.bc.sac_agent import Agent
 from algorithms.common.networks.mlp import MLP, FlattenMLP, TanhGaussianDistParams
-from examples.lunarlander_continuous_v2.utils import LunarLanderContinuousHER
+from examples.reacher_v2.utils import ReacherHER
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -42,9 +42,9 @@ hyper_params = {
     "INITIAL_RANDOM_ACTION": 10000,
     "MULTIPLE_LEARN": 1,
     # HER
-    "USE_HER": False,
-    "SUCCESS_SCORE": 250.0,
-    "DESIRED_STATES_FROM_DEMO": True,
+    "USE_HER": True,
+    "SUCCESS_SCORE": -5.0,
+    "DESIRED_STATES_FROM_DEMO": False,
 }
 
 
@@ -58,9 +58,6 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
         action_dim (int): dimension of actions
 
     """
-    if hyper_params["USE_HER"]:
-        state_dim *= 2
-
     hidden_sizes_actor = [256, 256]
     hidden_sizes_vf = [256, 256]
     hidden_sizes_qf = [256, 256]
@@ -117,7 +114,7 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
     optims = (actor_optim, vf_optim, qf_1_optim, qf_2_optim)
 
     # HER
-    HER = LunarLanderContinuousHER if hyper_params["USE_HER"] else None
+    HER = ReacherHER if hyper_params["USE_HER"] else None
 
     # create an agent
     agent = Agent(env, args, hyper_params, models, optims, target_entropy, HER)

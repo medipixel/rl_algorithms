@@ -8,34 +8,55 @@
          https://arxiv.org/pdf/1709.10089.pdf
 """
 
+import argparse
 import pickle
 from typing import Tuple
 
+import gym
 import numpy as np
 import torch
 import torch.nn.functional as F
+import wandb
 
+from algorithms.common.abstract.her import AbstractHER
 from algorithms.common.buffer.replay_buffer import ReplayBuffer
 import algorithms.common.helper_functions as common_utils
-from algorithms.her import HER
 from algorithms.sac.agent import Agent as SACAgent
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 class Agent(SACAgent):
-    """SAC agent interacting with environment.
+    """BC with SAC agent interacting with environment.
 
     Attrtibutes:
+        HER (AbstractHER): hinsight experience replay
+        transitions_epi (list): transitions per episode (for HER)
+        desired_state (np.ndarray): desired state of current episode
         memory (ReplayBuffer): replay memory
         demo_memory (ReplayBuffer): replay memory for demo
-        her (HER): hinsight experience replay
-        transitions_epi (list): transitions per episode (for HER)
-        goal_state (np.ndarray): goal state to generate concatenated states
-        total_step (int): total step numbers
-        episode_step (int): step number of the current episode
+        lambda1 (float): proportion of policy loss
+        lambda2 (float): proportion of BC loss
 
     """
+
+    def __init__(
+        self,
+        env: gym.Env,
+        args: argparse.Namespace,
+        hyper_params: dict,
+        models: tuple,
+        optims: tuple,
+        target_entropy: float,
+        HER: AbstractHER,
+    ):
+        """Initialization.
+        Args:
+            HER (AbstractHER): hinsight experience replay
+
+        """
+        self.HER = HER
+        SACAgent.__init__(self, env, args, hyper_params, models, optims, target_entropy)
 
     # pylint: disable=attribute-defined-outside-init
     def _initialize(self):
@@ -46,16 +67,18 @@ class Agent(SACAgent):
 
         # HER
         if self.hyper_params["USE_HER"]:
-            self.her = HER(self.args.demo_path)
+            self.her = self.HER()
+            if self.hyper_params["DESIRED_STATES_FROM_DEMO"]:
+                self.her.fetch_desired_states_from_demo(demo)
+
             self.transitions_epi: list = list()
             self.desired_state = np.zeros((1,))
             demo = self.her.generate_demo_transitions(demo)
 
         if not self.args.test:
             # Replay buffers
-            self.demo_memory = ReplayBuffer(
-                len(demo), self.hyper_params["DEMO_BATCH_SIZE"]
-            )
+            demo_batch_size = self.hyper_params["DEMO_BATCH_SIZE"]
+            self.demo_memory = ReplayBuffer(len(demo), demo_batch_size)
             self.demo_memory.extend(demo)
 
             self.memory = ReplayBuffer(
@@ -64,14 +87,12 @@ class Agent(SACAgent):
 
             # set hyper parameters
             self.lambda1 = self.hyper_params["LAMBDA1"]
-            self.lambda2 = (
-                self.hyper_params["LAMBDA2"] / self.hyper_params["DEMO_BATCH_SIZE"]
-            )
+            self.lambda2 = self.hyper_params["LAMBDA2"] / demo_batch_size
 
     def _preprocess_state(self, state: np.ndarray) -> torch.Tensor:
         """Preprocess state so that actor selects an action."""
         if self.hyper_params["USE_HER"]:
-            self.desired_state = self.her.sample_desired_state()
+            self.desired_state = self.her.get_desired_state()
             state = np.concatenate((state, self.desired_state), axis=-1)
         state = torch.FloatTensor(state).to(device)
         return state
@@ -84,7 +105,9 @@ class Agent(SACAgent):
             if done:
                 # insert generated transitions if the episode is done
                 transitions = self.her.generate_transitions(
-                    self.transitions_epi, self.desired_state
+                    self.transitions_epi,
+                    self.desired_state,
+                    self.hyper_params["SUCCESS_SCORE"],
                 )
                 self.memory.extend(transitions)
                 self.transitions_epi.clear()
@@ -189,6 +212,7 @@ class Agent(SACAgent):
             common_utils.soft_update(self.vf, self.vf_target, self.hyper_params["TAU"])
         else:
             actor_loss = torch.zeros(1)
+            n_qf_mask = 0
 
         return (
             actor_loss.data,
@@ -196,4 +220,43 @@ class Agent(SACAgent):
             qf_2_loss.data,
             vf_loss.data,
             alpha_loss.data,
+            n_qf_mask,
         )
+
+    def write_log(
+        self, i: int, loss: np.ndarray, score: float = 0.0, delayed_update: int = 1
+    ):
+        """Write log about loss and score"""
+        total_loss = loss.sum()
+
+        print(
+            "[INFO] episode %d, episode_step %d, total step %d, total score: %d\n"
+            "total loss: %.3f actor_loss: %.3f qf_1_loss: %.3f qf_2_loss: %.3f "
+            "vf_loss: %.3f alpha_loss: %.3f n_qf_mask: %d\n"
+            % (
+                i,
+                self.episode_step,
+                self.total_step,
+                score,
+                total_loss,
+                loss[0] * delayed_update,  # actor loss
+                loss[1],  # qf_1 loss
+                loss[2],  # qf_2 loss
+                loss[3],  # vf loss
+                loss[4],  # alpha loss
+                loss[5],  # n_qf_mask
+            )
+        )
+
+        if self.args.log:
+            wandb.log(
+                {
+                    "score": score,
+                    "total loss": total_loss,
+                    "actor loss": loss[0] * delayed_update,
+                    "qf_1 loss": loss[1],
+                    "qf_2 loss": loss[2],
+                    "vf loss": loss[3],
+                    "alpha loss": loss[4],
+                }
+            )
