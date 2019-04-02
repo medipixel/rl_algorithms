@@ -5,8 +5,10 @@
 - Contact: kh.kim@medipixel.io
 """
 
+import math
 from typing import Callable, Tuple
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -15,16 +17,6 @@ from algorithms.common.networks.cnn import CNN
 from algorithms.common.networks.mlp import MLP
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-
-class DistributionalCNN(CNN):
-    """Convolution neural network for C51."""
-
-    def get_dist_q(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Forward method implementation."""
-        x = self.get_cnn_features(x)
-        dist, q = self.fc_layers.get_dist_q(x)
-        return dist, q
 
 
 class DuelingMLP(MLP):
@@ -80,8 +72,18 @@ class DuelingMLP(MLP):
         return x
 
 
+class C51CNN(CNN):
+    """Convolution neural network for c51."""
+
+    def get_dist_q(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Forward method implementation."""
+        x = self.get_cnn_features(x)
+        dist, q = self.fc_layers.get_dist_q(x)
+        return dist, q
+
+
 class C51DuelingMLP(MLP):
-    """Multilayer perceptron with dueling construction."""
+    """Multilayered perceptron for C51 with dueling construction."""
 
     def __init__(
         self,
@@ -143,5 +145,66 @@ class C51DuelingMLP(MLP):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method implementation."""
         _, q = self.get_dist_q(x)
+
+        return q
+
+
+class IQNDuelingMLP(MLP):
+    """Multilayered perceptron for IQN with dueling construction.
+
+    Reference: https://github.com/google/dopamine
+    """
+
+    def __init__(
+        self,
+        input_size: int,
+        output_size: int,
+        hidden_sizes: list,
+        n_quantiles: int,
+        quantile_embedding_dim: int,
+        hidden_activation: Callable = F.relu,
+        init_w: float = 3e-3,
+    ):
+        """Initialization."""
+        super(IQNDuelingMLP, self).__init__(
+            input_size=input_size,
+            output_size=output_size,
+            hidden_sizes=hidden_sizes,
+            hidden_activation=hidden_activation,
+            use_output_layer=False,
+        )
+        self.quantile_embedding_dim = quantile_embedding_dim
+        self.input_size = input_size
+        self.output_size = output_size
+        self.n_quantiles = n_quantiles
+
+        # set quantile_net layer
+        self.quantile_fc_layer = nn.Linear(self.quantile_embedding_dim, self.input_size)
+        self.quantile_fc_layer.weight.data.uniform_(-init_w, init_w)
+        self.quantile_fc_layer.bias.data.uniform_(-init_w, init_w)
+
+    def forward(self, state: torch.Tensor) -> torch.Tensor:
+        """Get distribution for atoms."""
+        batch_size = np.prod(state.size()) // self.input_size
+        state_tiled = state.repeat(self.n_quantiles, 1)
+
+        quantiles = torch.rand([self.n_quantiles * batch_size, 1])
+        quantile_net = quantiles.repeat(1, self.quantile_embedding_dim)
+        quantile_net = (
+            torch.arange(1, self.quantile_embedding_dim + 1, dtype=torch.float)
+            * math.pi
+            * quantile_net
+        )
+        quantile_net = torch.cos(quantile_net)
+        quantile_net = F.relu(self.quantile_fc_layer(quantile_net))
+
+        # Hadamard product
+        net = state_tiled * quantile_net
+
+        quantile_values = super(IQNDuelingMLP, self).forward(net)
+        quantile_values = quantile_values.view(
+            self.n_quantiles, batch_size, self.output_size
+        )
+        q = torch.mean(quantile_values, dim=0)
 
         return q

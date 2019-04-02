@@ -40,9 +40,11 @@ hyper_params = {
     "MULTIPLE_LEARN": 1,
     # Distributional Q function
     "USE_DIST_Q": True,
-    "V_MIN": -300,
-    "V_MAX": 300,
-    "ATOMS": 1530,
+    "N_TAU_SAMPLES": 64,
+    "N_TAU_PRIME_SAMPLES": 64,
+    "N_QUANTILE_SAMPLES": 32,
+    "QUANTILE_EMBEDDING_DIM": 64,
+    "KAPPA": 1.0,
 }
 
 

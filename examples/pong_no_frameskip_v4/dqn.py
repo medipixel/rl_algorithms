@@ -13,7 +13,7 @@ import torch.optim as optim
 
 from algorithms.common.networks.cnn import CNN, CNNLayer
 from algorithms.dqn.agent import Agent
-from algorithms.dqn.networks import C51DuelingMLP, DistributionalCNN, DuelingMLP
+from algorithms.dqn.networks import C51CNN, C51DuelingMLP, DuelingMLP
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -63,7 +63,7 @@ def run(env: gym.Env, env_name: str, args: argparse.Namespace):
         action_dim = env.action_space.n
 
         if hyper_params["USE_DIST_Q"]:
-            Model = DistributionalCNN
+            Model = C51CNN
             fc_model = C51DuelingMLP(
                 input_size=fc_input_size,
                 action_size=action_dim,

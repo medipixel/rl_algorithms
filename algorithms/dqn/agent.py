@@ -7,6 +7,8 @@
          https://arxiv.org/pdf/1509.06461.pdf (Double DQN)
          https://arxiv.org/pdf/1511.05952.pdf (PER)
          https://arxiv.org/pdf/1511.06581.pdf (Dueling)
+         https://arxiv.org/pdf/1707.06887.pdf (C51)
+         https://arxiv.org/pdf/1806.06923.pdf (IQN)
 """
 
 import argparse
