@@ -166,7 +166,7 @@ class Agent(AbstractAgent):
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Return element-wise dqn loss and Q-values."""
         if self.hyper_params["USE_C51"]:
-            loss_and_qvalue = dqn_utils.calculate_dqn_c51_loss(
+            return dqn_utils.calculate_dqn_c51_loss(
                 model=self.dqn,
                 target_model=self.dqn_target,
                 experiences=experiences,
@@ -177,19 +177,14 @@ class Agent(AbstractAgent):
                 atom_size=self.hyper_params["ATOMS"],
             )
         else:
-            loss_and_qvalue = dqn_utils.calculate_dqn_loss(
+            return dqn_utils.calculate_dqn_loss(
                 model=self.dqn,
                 target_model=self.dqn_target,
                 experiences=experiences,
                 gamma=gamma,
             )
 
-        self.dqn.reset_noise()
-        self.dqn_target.reset_noise()
-
-        return loss_and_qvalue
-
-    def update_model(self) -> torch.Tensor:
+    def update_model(self) -> Tuple[torch.Tensor, torch.Tensor]:
         """Train the model after each episode."""
         # 1 step loss
         experiences_1 = self.memory.sample(self.beta)
@@ -236,6 +231,9 @@ class Agent(AbstractAgent):
         # increase beta
         fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)
         self.beta = self.beta + fraction * (1.0 - self.beta)
+
+        self.dqn.reset_noise()
+        self.dqn_target.reset_noise()
 
         return loss.data, q_values.mean().data
 
