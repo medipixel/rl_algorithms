@@ -7,6 +7,9 @@
          https://arxiv.org/pdf/1509.06461.pdf (Double DQN)
          https://arxiv.org/pdf/1511.05952.pdf (PER)
          https://arxiv.org/pdf/1511.06581.pdf (Dueling)
+         https://arxiv.org/pdf/1706.10295.pdf (NoisyNet)
+         https://arxiv.org/pdf/1707.06887.pdf (C51)
+         https://arxiv.org/pdf/1710.02298.pdf (Rainbow)
 """
 
 import argparse
@@ -111,7 +114,11 @@ class Agent(AbstractAgent):
 
         # epsilon greedy policy
         # pylint: disable=comparison-with-callable
-        if not self.args.test and self.epsilon > np.random.random():
+        if (
+            not self.args.test
+            and self.epsilon > np.random.random()
+            and not self.hyper_params["USE_NOISY_NET"]
+        ):
             selected_action = self.env.action_space.sample()
         else:
             state = self._preprocess_state(state)
@@ -158,9 +165,8 @@ class Agent(AbstractAgent):
         self, experiences: Tuple[torch.Tensor, ...], gamma: float
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Return element-wise dqn loss and Q-values."""
-
         if self.hyper_params["USE_C51"]:
-            return dqn_utils.calculate_dqn_c51_loss(
+            loss_and_qvalue = dqn_utils.calculate_dqn_c51_loss(
                 model=self.dqn,
                 target_model=self.dqn_target,
                 experiences=experiences,
@@ -171,12 +177,17 @@ class Agent(AbstractAgent):
                 atom_size=self.hyper_params["ATOMS"],
             )
         else:
-            return dqn_utils.calculate_dqn_loss(
+            loss_and_qvalue = dqn_utils.calculate_dqn_loss(
                 model=self.dqn,
                 target_model=self.dqn_target,
                 experiences=experiences,
                 gamma=gamma,
             )
+
+        self.dqn.reset_noise()
+        self.dqn_target.reset_noise()
+
+        return loss_and_qvalue
 
     def update_model(self) -> torch.Tensor:
         """Train the model after each episode."""

@@ -45,7 +45,7 @@ hyper_params = {
     "V_MAX": 300,
     "ATOMS": 1530,
     # NoisyNet
-    "USE_NOISYNET": True,
+    "USE_NOISY_NET": True,
 }
 
 
@@ -64,7 +64,8 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
         hidden_sizes = [128, 64]
 
         linear_layer = nn.Linear
-        if hyper_params["USE_NOISYNET"]:
+        # use noisy net
+        if hyper_params["USE_NOISY_NET"]:
             linear_layer = NoisyLinear
 
         if hyper_params["USE_C51"]:

@@ -27,6 +27,9 @@ class CategoricalCNN(CNN):
         dist, q = self.fc_layers.get_dist_q(x)
         return dist, q
 
+    def reset_noise(self):
+        self.fc_layers.reset_noise()
+
 
 class NoisyLinear(nn.Module):
     def __init__(self, in_features, out_features, std_init=0.5):
@@ -50,11 +53,6 @@ class NoisyLinear(nn.Module):
         self.bias_mu.data.uniform_(-mu_range, mu_range)
         self.bias_sigma.data.fill_(self.std_init / math.sqrt(self.out_features))
 
-    @staticmethod
-    def _scale_noise(size):
-        x = torch.randn(size)
-        return x.sign().mul_(x.abs().sqrt_())
-
     def reset_noise(self):
         epsilon_in = self._scale_noise(self.in_features)
         epsilon_out = self._scale_noise(self.out_features)
@@ -71,6 +69,11 @@ class NoisyLinear(nn.Module):
         else:
             return F.linear(x, self.weight_mu, self.bias_mu)
 
+    @staticmethod
+    def _scale_noise(size):
+        x = torch.randn(size)
+        return x.sign().mul_(x.abs().sqrt_())
+
 
 class DuelingMLP(MLP):
     """Multilayer perceptron with dueling construction."""
@@ -82,7 +85,7 @@ class DuelingMLP(MLP):
         hidden_sizes: list,
         hidden_activation: Callable = F.relu,
         linear_layer: nn.Module = nn.Linear,
-        init_w: float = 3e-3,
+        # init_w: float = 3e-3,
     ):
         """Initialization."""
         super(DuelingMLP, self).__init__(
@@ -126,6 +129,10 @@ class DuelingMLP(MLP):
 
         return x
 
+    def reset_noise(self):
+        for _, module in self.named_children():
+            module.reset_noise()
+
 
 class CategoricalDuelingMLP(MLP):
     """Multilayer perceptron with dueling construction."""
@@ -140,7 +147,7 @@ class CategoricalDuelingMLP(MLP):
         v_max: int = 10,
         hidden_activation: Callable = F.relu,
         linear_layer: nn.Module = nn.Linear,
-        init_w: float = 3e-3,
+        # init_w: float = 3e-3,
     ):
         """Initialization."""
         super(CategoricalDuelingMLP, self).__init__(
@@ -194,3 +201,7 @@ class CategoricalDuelingMLP(MLP):
         _, q = self.get_dist_q(x)
 
         return q
+
+    def reset_noise(self):
+        for _, module in self.named_children():
+            module.reset_noise()
