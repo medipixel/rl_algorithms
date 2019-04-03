@@ -9,10 +9,11 @@ import argparse
 
 import gym
 import torch
+from torch import nn
 import torch.optim as optim
 
 from algorithms.dqn.agent import Agent
-from algorithms.dqn.networks import CategoricalDuelingMLP, DuelingMLP
+from algorithms.dqn.networks import CategoricalDuelingMLP, DuelingMLP, NoisyLinear
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -43,6 +44,8 @@ hyper_params = {
     "V_MIN": -300,
     "V_MAX": 300,
     "ATOMS": 1530,
+    # NoisyNet
+    "USE_NOISYNET": True,
 }
 
 
@@ -60,6 +63,10 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
     def get_fc_model():
         hidden_sizes = [128, 64]
 
+        linear_layer = nn.Linear
+        if hyper_params["USE_NOISYNET"]:
+            linear_layer = NoisyLinear
+
         if hyper_params["USE_C51"]:
             model = CategoricalDuelingMLP(
                 input_size=state_dim,
@@ -68,11 +75,15 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
                 v_min=hyper_params["V_MIN"],
                 v_max=hyper_params["V_MAX"],
                 atom_size=hyper_params["ATOMS"],
+                linear_layer=linear_layer,
             ).to(device)
 
         else:
             model = DuelingMLP(
-                input_size=state_dim, output_size=action_dim, hidden_sizes=hidden_sizes
+                input_size=state_dim,
+                output_size=action_dim,
+                hidden_sizes=hidden_sizes,
+                linear_layer=linear_layer,
             ).to(device)
 
         return model

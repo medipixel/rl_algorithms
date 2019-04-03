@@ -324,3 +324,11 @@ class Agent(AbstractAgent):
         # termination
         self.env.close()
         self.save_params(self.i_episode)
+
+    def train_(self):
+        self.actor.train()
+        self.critic.train()
+
+    def eval(self):
+        self.actor.eval()
+        self.critic.eval()

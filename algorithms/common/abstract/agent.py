@@ -94,6 +94,14 @@ class AbstractAgent(ABC):
     def train(self):
         pass
 
+    @abstractmethod
+    def train_(self):
+        pass
+
+    @abstractmethod
+    def eval(self):
+        pass
+
     def interim_test(self):
         self.args.test = True
 
@@ -130,6 +138,8 @@ class AbstractAgent(ABC):
         else:
             test_num = self.args.episode_num
 
+        self.eval()
+
         for i_episode in range(test_num):
             state = self.env.reset()
             done = False
@@ -153,3 +163,5 @@ class AbstractAgent(ABC):
 
             if self.args.log:
                 wandb.log({"test score": score})
+
+        self.train_()

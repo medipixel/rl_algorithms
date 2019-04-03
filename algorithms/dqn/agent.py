@@ -333,3 +333,9 @@ class Agent(AbstractAgent):
         self.env.close()
         self.save_params(self.i_episode)
         self.interim_test()
+
+    def train_(self):
+        self.dqn.train()
+
+    def eval(self):
+        self.dqn.eval()

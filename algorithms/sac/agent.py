@@ -370,3 +370,15 @@ class Agent(AbstractAgent):
         self.env.close()
         self.save_params(self.i_episode)
         self.interim_test()
+
+    def train_(self):
+        self.actor.train()
+        self.vf.train()
+        self.qf_1.train()
+        self.qf_2.train()
+
+    def eval(self):
+        self.actor.eval()
+        self.vf.eval()
+        self.qf_1.eval()
+        self.qf_2.eval()
