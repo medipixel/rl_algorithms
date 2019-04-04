@@ -22,7 +22,7 @@ hyper_params = {
     "GAMMA": 0.99,
     "TAU": 5e-3,
     "BUFFER_SIZE": int(1e5),
-    "BATCH_SIZE": 32,
+    "BATCH_SIZE": 64,
     "LR_DQN": 1e-4,  # dueling: 6.25e-5
     "ADAM_EPS": 1e-8,  # rainbow: 1.5e-4
     "MAX_EPSILON": 1.0,
@@ -40,7 +40,7 @@ hyper_params = {
     "MARGIN": 0.8,  # margin for supervised loss
     "GRADIENT_CLIP": 0.5,
     "UPDATE_STARTS_FROM": int(1e3),
-    "TRAIN_FREQ": 4,
+    "TRAIN_FREQ": 8,
     "MULTIPLE_LEARN": 1,
     # Distributional Q function
     "USE_DIST_Q": True,

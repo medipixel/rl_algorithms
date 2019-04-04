@@ -166,17 +166,17 @@ class IQNMLP(MLP):
         init_w: float = 3e-3,
     ):
         """Initialization."""
-        IQNMLP.n_quantiles = n_quantiles
-        self.quantile_embedding_dim = quantile_embedding_dim
-        self.input_size = input_size
-        self.output_size = output_size
-
         super(IQNMLP, self).__init__(
             input_size=input_size,
             output_size=output_size,
             hidden_sizes=hidden_sizes,
             hidden_activation=hidden_activation,
         )
+
+        IQNMLP.n_quantiles = n_quantiles
+        self.quantile_embedding_dim = quantile_embedding_dim
+        self.input_size = input_size
+        self.output_size = output_size
 
         # set quantile_net layer
         self.quantile_fc_layer = nn.Linear(self.quantile_embedding_dim, self.input_size)

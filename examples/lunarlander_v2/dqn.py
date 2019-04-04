@@ -34,7 +34,7 @@ hyper_params = {
     "PER_ALPHA": 0.6,
     "PER_BETA": 0.4,
     "PER_EPS": 1e-6,
-    "GRADIENT_CLIP": 10,
+    "GRADIENT_CLIP": 10.0,
     "UPDATE_STARTS_FROM": int(1e4),
     "TRAIN_FREQ": 1,
     "MULTIPLE_LEARN": 1,
