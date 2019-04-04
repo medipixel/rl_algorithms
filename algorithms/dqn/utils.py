@@ -35,13 +35,11 @@ def calculate_iqn_loss(
     states, actions, rewards, next_states, dones = experiences[:5]
 
     # size of rewards: (n_tau_prime_samples x batch_size) x 1.
-    rewards = rewards[:, None]
     rewards = rewards.repeat(n_tau_prime_samples, 1)
 
     # size of gamma_with_terminal: (n_tau_prime_samples x batch_size) x 1.
     masks = 1 - dones
     gamma_with_terminal = masks * gamma
-    gamma_with_terminal = gamma_with_terminal[:, None]
     gamma_with_terminal = gamma_with_terminal.repeat(n_tau_prime_samples, 1)
 
     # Get the indices of the maximium Q-value across the action dimension.
@@ -52,7 +50,7 @@ def calculate_iqn_loss(
 
     # Shape of next_target_values: (n_tau_prime_samples x batch_size) x 1.
     target_quantile_values, _ = target_model.forward_(next_states, n_tau_prime_samples)
-    target_quantile_values = target_quantile_values.gather(1, next_actions)[:, None]
+    target_quantile_values = target_quantile_values.gather(1, next_actions)
     target_quantile_values = rewards + gamma_with_terminal * target_quantile_values
     target_quantile_values = target_quantile_values.detach()
 
@@ -69,7 +67,7 @@ def calculate_iqn_loss(
     # Get quantile values: (n_tau_samples x batch_size) x action_dim.
     quantile_values, quantiles = model.forward_(states, n_tau_samples)
     reshaped_actions = actions[:, None].repeat(n_tau_samples, 1)
-    chosen_action_quantile_values = quantile_values.gather(1, reshaped_actions)
+    chosen_action_quantile_values = quantile_values.gather(1, reshaped_actions.long())
     chosen_action_quantile_values = chosen_action_quantile_values.view(
         n_tau_samples, batch_size, 1
     )
@@ -107,10 +105,13 @@ def calculate_iqn_loss(
     # These quantiles will be used for computation of the quantile huber loss
     # below (see section 2.3 of the paper).
     quantiles = quantiles[:, None, :, :].repeat(1, n_tau_prime_samples, 1, 1)
+    quantiles = quantiles.to(device)
 
     # Shape: batch_size x n_tau_prime_samples x n_tau_samples x 1.
     quantile_huber_loss = (
-        torch.abs(quantiles) - ((bellman_errors < 0) * huber_loss / kappa).detach()
+        torch.abs(quantiles - (bellman_errors < 0).float().detach())
+        * huber_loss
+        / kappa
     )
 
     # Sum over current quantile value (n_tau_samples) dimension,

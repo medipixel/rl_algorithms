@@ -171,7 +171,6 @@ class IQNDuelingMLP(MLP):
             output_size=output_size,
             hidden_sizes=hidden_sizes,
             hidden_activation=hidden_activation,
-            use_output_layer=False,
         )
         IQNDuelingMLP.n_quantiles = n_quantiles
         self.quantile_embedding_dim = quantile_embedding_dim
@@ -199,7 +198,7 @@ class IQNDuelingMLP(MLP):
             * math.pi
             * quantile_net
         )
-        quantile_net = torch.cos(quantile_net)
+        quantile_net = torch.cos(quantile_net).to(device)
         quantile_net = F.relu(self.quantile_fc_layer(quantile_net))
 
         # Hadamard product
