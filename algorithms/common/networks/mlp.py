@@ -95,8 +95,9 @@ class MLP(nn.Module):
         # set output layers
         if self.use_output_layer:
             self.output_layer = self.linear_layer(in_size, output_size)
-            self.output_layer.weight.data.uniform_(-init_w, init_w)
-            self.output_layer.bias.data.uniform_(-init_w, init_w)
+            if isinstance(self.linear_layer, nn.Linear):
+                self.output_layer.weight.data.uniform_(-init_w, init_w)
+                self.output_layer.bias.data.uniform_(-init_w, init_w)
         else:
             self.output_layer = identity
             self.output_activation = identity
