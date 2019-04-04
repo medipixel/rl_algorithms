@@ -149,7 +149,7 @@ class C51DuelingMLP(MLP):
         return q
 
 
-class IQNDuelingMLP(MLP):
+class IQNMLP(MLP):
     """Multilayered perceptron for IQN with dueling construction.
 
     Reference: https://github.com/google/dopamine
@@ -166,16 +166,17 @@ class IQNDuelingMLP(MLP):
         init_w: float = 3e-3,
     ):
         """Initialization."""
-        super(IQNDuelingMLP, self).__init__(
+        IQNMLP.n_quantiles = n_quantiles
+        self.quantile_embedding_dim = quantile_embedding_dim
+        self.input_size = input_size
+        self.output_size = output_size
+
+        super(IQNMLP, self).__init__(
             input_size=input_size,
             output_size=output_size,
             hidden_sizes=hidden_sizes,
             hidden_activation=hidden_activation,
         )
-        IQNDuelingMLP.n_quantiles = n_quantiles
-        self.quantile_embedding_dim = quantile_embedding_dim
-        self.input_size = input_size
-        self.output_size = output_size
 
         # set quantile_net layer
         self.quantile_fc_layer = nn.Linear(self.quantile_embedding_dim, self.input_size)
@@ -204,7 +205,7 @@ class IQNDuelingMLP(MLP):
         # Hadamard product
         quantile_net = state_tiled * quantile_net
 
-        quantile_values = super(IQNDuelingMLP, self).forward(quantile_net)
+        quantile_values = super(IQNMLP, self).forward(quantile_net)
 
         return quantile_values, quantiles
 
@@ -222,6 +223,6 @@ class IQNDuelingMLP(MLP):
     def __get_n_tau_samples(n_tau_samples: Optional[int]) -> int:
         """Get sample tau number."""
         if not n_tau_samples:
-            return IQNDuelingMLP.n_quantiles
+            return IQNMLP.n_quantiles
         else:
             return n_tau_samples

@@ -13,14 +13,14 @@ import torch
 import torch.nn.functional as F
 
 from algorithms.common.networks.mlp import MLP
-from algorithms.dqn.networks import C51DuelingMLP, IQNDuelingMLP
+from algorithms.dqn.networks import IQNMLP, C51DuelingMLP
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 def calculate_iqn_loss(
-    model: IQNDuelingMLP,
-    target_model: IQNDuelingMLP,
+    model: IQNMLP,
+    target_model: IQNMLP,
     experiences: Tuple[torch.Tensor, ...],
     gamma: float,
     batch_size: int,
@@ -117,7 +117,7 @@ def calculate_iqn_loss(
     # Sum over current quantile value (n_tau_samples) dimension,
     # average over target quantile value (n_tau_prime_samples) dimension.
     # Shape: batch_size x n_tau_prime_samples x 1.
-    loss = torch.mean(quantile_huber_loss, dim=2)
+    loss = torch.sum(quantile_huber_loss, dim=2)
 
     # Shape: batch_size x 1.
     iqn_loss_element_wise = torch.mean(loss, dim=1)

@@ -13,7 +13,7 @@ import torch.optim as optim
 
 from algorithms.common.networks.cnn import CNN, CNNLayer
 from algorithms.dqn.agent import Agent
-from algorithms.dqn.networks import DistCNN, DuelingMLP, IQNDuelingMLP
+from algorithms.dqn.networks import IQNMLP, DistCNN, DuelingMLP
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -66,7 +66,7 @@ def run(env: gym.Env, env_name: str, args: argparse.Namespace):
 
         if hyper_params["USE_DIST_Q"]:
             Model = DistCNN
-            fc_model = IQNDuelingMLP(
+            fc_model = IQNMLP(
                 input_size=fc_input_size,
                 output_size=action_dim,
                 hidden_sizes=hidden_sizes,

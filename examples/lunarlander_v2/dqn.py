@@ -12,7 +12,7 @@ import torch
 import torch.optim as optim
 
 from algorithms.dqn.agent import Agent
-from algorithms.dqn.networks import DuelingMLP, IQNDuelingMLP
+from algorithms.dqn.networks import IQNMLP, DuelingMLP
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -22,9 +22,9 @@ hyper_params = {
     "GAMMA": 0.99,
     "TAU": 5e-3,
     "W_N_STEP": 1.0,
-    "W_Q_REG": 0,  # 1e-7,
+    "W_Q_REG": 1e-7,
     "BUFFER_SIZE": int(1e5),
-    "BATCH_SIZE": 64,
+    "BATCH_SIZE": 32,
     "LR_DQN": 1e-4,  # dueling: 6.25e-5
     "ADAM_EPS": 1e-8,  # rainbow: 1.5e-4
     "WEIGHT_DECAY": 1e-7,
@@ -60,10 +60,10 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
     """
     # create model
     def get_fc_model():
-        hidden_sizes = [128, 64]
+        hidden_sizes = [512, 128]
 
         if hyper_params["USE_DIST_Q"]:
-            model = IQNDuelingMLP(
+            model = IQNMLP(
                 input_size=state_dim,
                 output_size=action_dim,
                 hidden_sizes=hidden_sizes,
