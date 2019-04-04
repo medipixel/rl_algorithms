@@ -162,15 +162,15 @@ class Agent(AbstractAgent):
         """Return element-wise dqn loss and Q-values."""
 
         if self.hyper_params["USE_DIST_Q"]:
-            return dqn_utils.calculate_dqn_c51_loss(
+            return dqn_utils.calculate_iqn_loss(
                 model=self.dqn,
                 target_model=self.dqn_target,
                 experiences=experiences,
                 gamma=gamma,
                 batch_size=self.hyper_params["BATCH_SIZE"],
-                v_min=self.hyper_params["V_MIN"],
-                v_max=self.hyper_params["V_MAX"],
-                atom_size=self.hyper_params["ATOMS"],
+                n_tau_samples=self.hyper_params["N_TAU_SAMPLES"],
+                n_tau_prime_samples=self.hyper_params["N_TAU_PRIME_SAMPLES"],
+                kappa=self.hyper_params["KAPPA"],
             )
         else:
             return dqn_utils.calculate_dqn_loss(

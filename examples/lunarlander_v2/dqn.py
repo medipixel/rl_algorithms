@@ -12,7 +12,7 @@ import torch
 import torch.optim as optim
 
 from algorithms.dqn.agent import Agent
-from algorithms.dqn.networks import C51DuelingMLP, DuelingMLP
+from algorithms.dqn.networks import DuelingMLP, IQNDuelingMLP
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -63,13 +63,12 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
         hidden_sizes = [128, 64]
 
         if hyper_params["USE_DIST_Q"]:
-            model = C51DuelingMLP(
+            model = IQNDuelingMLP(
                 input_size=state_dim,
-                action_size=action_dim,
+                output_size=action_dim,
                 hidden_sizes=hidden_sizes,
-                v_min=hyper_params["V_MIN"],
-                v_max=hyper_params["V_MAX"],
-                atom_size=hyper_params["ATOMS"],
+                n_quantiles=hyper_params["N_QUANTILE_SAMPLES"],
+                quantile_embedding_dim=hyper_params["QUANTILE_EMBEDDING_DIM"],
             ).to(device)
 
         else:

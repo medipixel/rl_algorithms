@@ -6,7 +6,7 @@
 """
 
 import math
-from typing import Callable, Tuple
+from typing import Callable, Optional, Tuple
 
 import numpy as np
 import torch
@@ -72,14 +72,14 @@ class DuelingMLP(MLP):
         return x
 
 
-class C51CNN(CNN):
-    """Convolution neural network for c51."""
+class DistCNN(CNN):
+    """Convolution neural network for distributional RL."""
 
-    def get_dist_q(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward_(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """Forward method implementation."""
         x = self.get_cnn_features(x)
-        dist, q = self.fc_layers.get_dist_q(x)
-        return dist, q
+        out = self.fc_layers.forward_(x)
+        return out
 
 
 class C51DuelingMLP(MLP):
@@ -122,7 +122,7 @@ class C51DuelingMLP(MLP):
         self.value_layer.weight.data.uniform_(-init_w, init_w)
         self.value_layer.bias.data.uniform_(-init_w, init_w)
 
-    def get_dist_q(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward_(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """Get distribution for atoms."""
         action_size, atom_size = self.action_size, self.atom_size
 
@@ -144,7 +144,7 @@ class C51DuelingMLP(MLP):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method implementation."""
-        _, q = self.get_dist_q(x)
+        _, q = self.forward_(x)
 
         return q
 
@@ -173,22 +173,26 @@ class IQNDuelingMLP(MLP):
             hidden_activation=hidden_activation,
             use_output_layer=False,
         )
+        IQNDuelingMLP.n_quantiles = n_quantiles
         self.quantile_embedding_dim = quantile_embedding_dim
         self.input_size = input_size
         self.output_size = output_size
-        self.n_quantiles = n_quantiles
 
         # set quantile_net layer
         self.quantile_fc_layer = nn.Linear(self.quantile_embedding_dim, self.input_size)
         self.quantile_fc_layer.weight.data.uniform_(-init_w, init_w)
         self.quantile_fc_layer.bias.data.uniform_(-init_w, init_w)
 
-    def forward(self, state: torch.Tensor) -> torch.Tensor:
-        """Get distribution for atoms."""
+    def forward_(
+        self, state: torch.Tensor, n_tau_samples: int = None
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Get quantile values and quantiles."""
+        n_tau_samples = self.__get_n_tau_samples(n_tau_samples)
         batch_size = np.prod(state.size()) // self.input_size
-        state_tiled = state.repeat(self.n_quantiles, 1)
 
-        quantiles = torch.rand([self.n_quantiles * batch_size, 1])
+        state_tiled = state.repeat(n_tau_samples, 1)
+
+        quantiles = torch.rand([n_tau_samples * batch_size, 1])
         quantile_net = quantiles.repeat(1, self.quantile_embedding_dim)
         quantile_net = (
             torch.arange(1, self.quantile_embedding_dim + 1, dtype=torch.float)
@@ -199,12 +203,26 @@ class IQNDuelingMLP(MLP):
         quantile_net = F.relu(self.quantile_fc_layer(quantile_net))
 
         # Hadamard product
-        net = state_tiled * quantile_net
+        quantile_net = state_tiled * quantile_net
 
-        quantile_values = super(IQNDuelingMLP, self).forward(net)
-        quantile_values = quantile_values.view(
-            self.n_quantiles, batch_size, self.output_size
-        )
+        quantile_values = super(IQNDuelingMLP, self).forward(quantile_net)
+
+        return quantile_values, quantiles
+
+    def forward(self, state: torch.Tensor, n_tau_samples: int = None) -> torch.Tensor:
+        """Forward method implementation."""
+        n_tau_samples = self.__get_n_tau_samples(n_tau_samples)
+
+        quantile_values, _ = self.forward_(state, n_tau_samples)
+        quantile_values = quantile_values.view(n_tau_samples, -1, self.output_size)
         q = torch.mean(quantile_values, dim=0)
 
         return q
+
+    @staticmethod
+    def __get_n_tau_samples(n_tau_samples: Optional[int]) -> int:
+        """Get sample tau number."""
+        if not n_tau_samples:
+            return IQNDuelingMLP.n_quantiles
+        else:
+            return n_tau_samples
