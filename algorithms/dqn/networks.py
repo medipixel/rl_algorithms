@@ -72,7 +72,7 @@ class DuelingMLP(MLP):
         return x
 
 
-class DistCNN(CNN):
+class C51CNN(CNN):
     """Convolution neural network for distributional RL."""
 
     def forward_(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -147,6 +147,18 @@ class C51DuelingMLP(MLP):
         _, q = self.forward_(x)
 
         return q
+
+
+class IQNCNN(CNN):
+    """Convolution neural network for distributional RL."""
+
+    def forward_(
+        self, x: torch.Tensor, n_tau_samples: int = None
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Forward method implementation."""
+        x = self.get_cnn_features(x)
+        out = self.fc_layers.forward_(x, n_tau_samples)
+        return out
 
 
 class IQNMLP(MLP):
