@@ -13,7 +13,7 @@ import torch.optim as optim
 
 from algorithms.common.networks.cnn import CNN, CNNLayer
 from algorithms.dqn.agent import Agent
-from algorithms.dqn.networks import C51DuelingMLP, DistCNN, DuelingMLP
+from algorithms.dqn.networks import DistCNN, DuelingMLP, IQNDuelingMLP
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -41,9 +41,11 @@ hyper_params = {
     "MULTIPLE_LEARN": 1,
     # Distributional Q function
     "USE_DIST_Q": True,
-    "V_MIN": -10,
-    "V_MAX": 10,
-    "ATOMS": 51,
+    "N_TAU_SAMPLES": 64,
+    "N_TAU_PRIME_SAMPLES": 64,
+    "N_QUANTILE_SAMPLES": 32,
+    "QUANTILE_EMBEDDING_DIM": 64,
+    "KAPPA": 1.0,
 }
 
 
@@ -64,15 +66,13 @@ def run(env: gym.Env, env_name: str, args: argparse.Namespace):
 
         if hyper_params["USE_DIST_Q"]:
             Model = DistCNN
-            fc_model = C51DuelingMLP(
+            fc_model = IQNDuelingMLP(
                 input_size=fc_input_size,
-                action_size=action_dim,
+                output_size=action_dim,
                 hidden_sizes=hidden_sizes,
-                v_min=hyper_params["V_MIN"],
-                v_max=hyper_params["V_MAX"],
-                atom_size=hyper_params["ATOMS"],
+                n_quantiles=hyper_params["N_QUANTILE_SAMPLES"],
+                quantile_embedding_dim=hyper_params["QUANTILE_EMBEDDING_DIM"],
             ).to(device)
-
         else:
             Model = CNN
             fc_model = DuelingMLP(
