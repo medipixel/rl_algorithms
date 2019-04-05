@@ -325,10 +325,10 @@ class Agent(AbstractAgent):
         self.env.close()
         self.save_params(self.i_episode)
 
-    def train_(self):
+    def set_train_mode(self):
         self.actor.train()
         self.critic.train()
 
-    def eval(self):
+    def set_eval_mode(self):
         self.actor.eval()
         self.critic.eval()

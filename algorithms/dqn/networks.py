@@ -32,7 +32,24 @@ class CategoricalCNN(CNN):
 
 
 class NoisyLinear(nn.Module):
-    def __init__(self, in_features, out_features, std_init=0.5):
+    """Noisy linear module for NoisyNet.
+
+    References:
+        https://github.com/higgsfield/RL-Adventure/blob/master/5.noisy%20dqn.ipynb
+        https://github.com/Kaixhin/Rainbow/blob/master/model.py
+
+    Attributes:
+        in_features (int): input size of linear module
+        out_features (int): output size of linear module
+        std_init (float): initial std value
+        weight_mu (nn.Parameter): mean value weight parameter
+        weight_sigma (nn.Parameter): std value weight parameter
+        bias_mu (nn.Parameter): mean value bias parameter
+        bias_sigma (nn.Parameter): std value bias parameter
+
+    """
+
+    def __init__(self, in_features: int, out_features: int, std_init: float = 0.5):
         super(NoisyLinear, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
@@ -57,19 +74,19 @@ class NoisyLinear(nn.Module):
         self.bias_sigma.data.fill_(self.std_init / math.sqrt(self.out_features))
 
     @staticmethod
-    def _scale_noise(size):
+    def scale_noise(size: int):
         x = torch.randn(size)
         return x.sign().mul_(x.abs().sqrt_())
 
     def reset_noise(self):
-        epsilon_in = self._scale_noise(self.in_features)
-        epsilon_out = self._scale_noise(self.out_features)
+        epsilon_in = self.scale_noise(self.in_features)
+        epsilon_out = self.scale_noise(self.out_features)
 
         # outer product
         self.weight_epsilon.copy_(epsilon_out.ger(epsilon_in)).to(device)
         self.bias_epsilon.copy_(epsilon_out).to(device)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         if self.training:
             return F.linear(
                 x,
@@ -212,5 +229,6 @@ class CategoricalDuelingMLP(MLP):
         return q
 
     def reset_noise(self):
+        """Re-sample noise"""
         for _, module in self.named_children():
             module.reset_noise()
