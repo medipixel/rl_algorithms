@@ -12,7 +12,7 @@ import torch
 import torch.optim as optim
 
 from algorithms.dqn.agent import Agent
-from algorithms.dqn.networks import IQNMLP, DuelingMLP
+from algorithms.dqn.networks import C51DuelingMLP
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -24,7 +24,7 @@ hyper_params = {
     "W_N_STEP": 1.0,
     "W_Q_REG": 1e-7,
     "BUFFER_SIZE": int(1e5),
-    "BATCH_SIZE": 32,
+    "BATCH_SIZE": 64,
     "LR_DQN": 1e-4,  # dueling: 6.25e-5
     "ADAM_EPS": 1e-8,  # rainbow: 1.5e-4
     "WEIGHT_DECAY": 1e-7,
@@ -39,12 +39,10 @@ hyper_params = {
     "TRAIN_FREQ": 1,
     "MULTIPLE_LEARN": 1,
     # Distributional Q function
-    "USE_DIST_Q": True,
-    "N_TAU_SAMPLES": 64,
-    "N_TAU_PRIME_SAMPLES": 64,
-    "N_QUANTILE_SAMPLES": 32,
-    "QUANTILE_EMBEDDING_DIM": 64,
-    "KAPPA": 1.0,
+    "USE_DIST_Q": "C51",
+    "V_MIN": -300,
+    "V_MAX": 300,
+    "ATOMS": 1530,
 }
 
 
@@ -60,21 +58,15 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
     """
     # create model
     def get_fc_model():
-        hidden_sizes = [512, 128]
-
-        if hyper_params["USE_DIST_Q"]:
-            model = IQNMLP(
-                input_size=state_dim,
-                output_size=action_dim,
-                hidden_sizes=hidden_sizes,
-                n_quantiles=hyper_params["N_QUANTILE_SAMPLES"],
-                quantile_embedding_dim=hyper_params["QUANTILE_EMBEDDING_DIM"],
-            ).to(device)
-
-        else:
-            model = DuelingMLP(
-                input_size=state_dim, output_size=action_dim, hidden_sizes=hidden_sizes
-            ).to(device)
+        hidden_sizes = [128, 64]
+        model = C51DuelingMLP(
+            input_size=state_dim,
+            action_size=action_dim,
+            hidden_sizes=hidden_sizes,
+            v_min=hyper_params["V_MIN"],
+            v_max=hyper_params["V_MAX"],
+            atom_size=hyper_params["ATOMS"],
+        ).to(device)
 
         return model
 

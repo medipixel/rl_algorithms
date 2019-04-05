@@ -61,7 +61,7 @@ def run(env: gym.Env, env_name: str, args: argparse.Namespace):
 
     def get_cnn_model():
         fc_input_size = 3136
-        hidden_sizes = [512, 128]
+        hidden_sizes = [512]
         action_dim = env.action_space.n
 
         if hyper_params["USE_DIST_Q"]:
