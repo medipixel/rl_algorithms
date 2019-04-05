@@ -11,9 +11,9 @@ import gym
 import torch
 import torch.optim as optim
 
-from algorithms.common.networks.cnn import CNN, CNNLayer
+from algorithms.common.networks.cnn import CNNLayer
 from algorithms.dqn.agent import Agent
-from algorithms.dqn.networks import IQNCNN, IQNMLP, DuelingMLP
+from algorithms.dqn.networks import IQNCNN, IQNMLP
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -40,7 +40,7 @@ hyper_params = {
     "TRAIN_FREQ": 4,  # in openai baselines, train_freq = 4
     "MULTIPLE_LEARN": 1,
     # Distributional Q function
-    "USE_DIST_Q": True,
+    "USE_DIST_Q": "IQN",
     "N_TAU_SAMPLES": 64,
     "N_TAU_PRIME_SAMPLES": 64,
     "N_QUANTILE_SAMPLES": 32,
@@ -64,25 +64,16 @@ def run(env: gym.Env, env_name: str, args: argparse.Namespace):
         hidden_sizes = [512]
         action_dim = env.action_space.n
 
-        if hyper_params["USE_DIST_Q"]:
-            Model = IQNCNN
-            fc_model = IQNMLP(
-                input_size=fc_input_size,
-                output_size=action_dim,
-                hidden_sizes=hidden_sizes,
-                n_quantiles=hyper_params["N_QUANTILE_SAMPLES"],
-                quantile_embedding_dim=hyper_params["QUANTILE_EMBEDDING_DIM"],
-            ).to(device)
-        else:
-            Model = CNN
-            fc_model = DuelingMLP(
-                input_size=fc_input_size,
-                output_size=action_dim,
-                hidden_sizes=hidden_sizes,
-            ).to(device)
+        fc_model = IQNMLP(
+            input_size=fc_input_size,
+            output_size=action_dim,
+            hidden_sizes=hidden_sizes,
+            n_quantiles=hyper_params["N_QUANTILE_SAMPLES"],
+            quantile_embedding_dim=hyper_params["QUANTILE_EMBEDDING_DIM"],
+        ).to(device)
 
         # create a model
-        cnn_model = Model(  # from rainbow
+        cnn_model = IQNCNN(  # from rainbow
             cnn_layers=[
                 CNNLayer(
                     input_size=4, output_size=32, kernel_size=8, stride=4, padding=1
