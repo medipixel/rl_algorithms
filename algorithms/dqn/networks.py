@@ -64,8 +64,10 @@ class NoisyLinear(nn.Module):
     def reset_noise(self):
         epsilon_in = self._scale_noise(self.in_features)
         epsilon_out = self._scale_noise(self.out_features)
-        self.weight_epsilon.copy_(epsilon_out.ger(epsilon_in))  # outer product
-        self.bias_epsilon.copy_(epsilon_out)
+
+        # outer product
+        self.weight_epsilon.copy_(epsilon_out.ger(epsilon_in)).to(device)
+        self.bias_epsilon.copy_(epsilon_out).to(device)
 
     def forward(self, x):
         if self.training:

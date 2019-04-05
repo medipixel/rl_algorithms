@@ -291,7 +291,7 @@ class Agent(AbstractAgent):
         if self.args.log:
             wandb.init()
             wandb.config.update(self.hyper_params)
-            wandb.watch([self.dqn], log="parameters")
+            # wandb.watch([self.dqn], log="parameters")
 
         # pre-training if needed
         self.pretrain()
