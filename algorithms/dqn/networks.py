@@ -8,6 +8,7 @@
 import math
 from typing import Callable, Tuple
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -75,7 +76,7 @@ class NoisyLinear(nn.Module):
 
     @staticmethod
     def scale_noise(size: int):
-        x = torch.randn(size)
+        x = torch.from_numpy(np.random.normal(loc=0.0, scale=1.0, size=size))
         return x.sign().mul_(x.abs().sqrt_())
 
     def reset_noise(self):
