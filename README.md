@@ -30,7 +30,8 @@ We are warmly welcoming external contributors! :)
 6. [Behaviour Cloning (BC with DDPG, SAC)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/bc)
 7. [Prioritized Experience Replay (PER with DDPG)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/per)
 8. [From Demonstrations (DDPGfD, SACfD, DQfD)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/fd)
-9. [Rainbow IQN (without NoisyNet)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/dqn)
+9. [Rainbow DQN (without NoisyNet)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/dqn)
+10. [Rainbow IQN (without DuelingNet & NoisyNet)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/dqn)
 
 ## Getting started
 We have tested each algorithm on some of the following environments.
