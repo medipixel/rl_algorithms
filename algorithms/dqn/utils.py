@@ -7,20 +7,21 @@ This module has DQN util functions.
 - Contact: curt.park@medipixel.io
 """
 
-from typing import Tuple
+from typing import Tuple, Union
 
 import torch
 import torch.nn.functional as F
 
+from algorithms.common.networks.cnn import CNN
 from algorithms.common.networks.mlp import MLP
-from algorithms.dqn.networks import IQNMLP, C51DuelingMLP
+from algorithms.dqn.networks import C51CNN, IQNCNN, IQNMLP, C51DuelingMLP
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 def calculate_iqn_loss(
-    model: IQNMLP,
-    target_model: IQNMLP,
+    model: Union[IQNMLP, IQNCNN],
+    target_model: Union[IQNMLP, IQNCNN],
     experiences: Tuple[torch.Tensor, ...],
     gamma: float,
     batch_size: int,
@@ -129,8 +130,8 @@ def calculate_iqn_loss(
 
 
 def calculate_c51_loss(
-    model: C51DuelingMLP,
-    target_model: C51DuelingMLP,
+    model: Union[C51DuelingMLP, C51CNN],
+    target_model: Union[C51DuelingMLP, C51CNN],
     experiences: Tuple[torch.Tensor, ...],
     gamma: float,
     batch_size: int,
@@ -184,7 +185,10 @@ def calculate_c51_loss(
 
 
 def calculate_dqn_loss(
-    model: MLP, target_model: MLP, experiences: Tuple[torch.Tensor, ...], gamma: float
+    model: Union[MLP, CNN],
+    target_model: Union[MLP, CNN],
+    experiences: Tuple[torch.Tensor, ...],
+    gamma: float,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """Return element-wise dqn loss and Q-values."""
     states, actions, rewards, next_states, dones = experiences[:5]
