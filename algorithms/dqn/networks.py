@@ -204,7 +204,10 @@ class IQNMLP(MLP):
 
         state_tiled = state.repeat(n_tau_samples, 1)
 
-        quantiles = torch.rand(n_tau_samples * batch_size, 1)  # TODO: dead point
+        # torch.rand (CPU) may make a segmentation fault due to its non-thread safety.
+        # check: https://bit.ly/2TXlNbq
+        quantiles = np.random.rand(n_tau_samples * batch_size, 1)
+        quantiles = torch.FloatTensor(quantiles)
         quantile_net = quantiles.repeat(1, self.quantile_embedding_dim)
         quantile_net = (
             torch.arange(1, self.quantile_embedding_dim + 1, dtype=torch.float)
