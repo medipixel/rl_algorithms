@@ -205,6 +205,7 @@ class IQNMLP(MLP):
         state_tiled = state.repeat(n_tau_samples, 1)
 
         # torch.rand (CPU) may make a segmentation fault due to its non-thread safety.
+        # on v0.4.1
         # check: https://bit.ly/2TXlNbq
         quantiles = np.random.rand(n_tau_samples * batch_size, 1)
         quantiles = torch.FloatTensor(quantiles)
