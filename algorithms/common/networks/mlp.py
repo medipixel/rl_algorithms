@@ -31,7 +31,7 @@ def concat(
     return in_concat
 
 
-def init_layer_uniform(layer: nn.Module, init_w: float = 3e-3) -> nn.Module:
+def init_layer_uniform(layer: nn.Linear, init_w: float = 3e-3) -> nn.Linear:
     """Init uniform parameters on the single layer"""
     layer.weight.data.uniform_(-init_w, init_w)
     layer.bias.data.uniform_(-init_w, init_w)

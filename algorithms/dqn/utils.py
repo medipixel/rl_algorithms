@@ -146,8 +146,8 @@ def calculate_c51_loss(
 
     with torch.no_grad():
         # According to noisynet paper,
-        # Re-sample noisy net parameter on online network when using double q
-        # But, don't implement because performance issue
+        # it resamples noisynet parameters on online network when using double q
+        # but we don't because there is no remarkable difference in performance.
         next_actions = model.forward_(next_states)[1].argmax(1)
 
         next_dist = target_model.forward_(next_states)[0]
@@ -199,8 +199,8 @@ def calculate_dqn_loss(
 
     q_values = model(states)
     # According to noisynet paper,
-    # Re-sample noisy net parameter on online network when using double q
-    # But, don't implement because performance issue
+    # it resamples noisynet parameters on online network when using double q
+    # but we don't because there is no remarkable difference in performance.
     next_q_values = model(next_states)
 
     next_target_q_values = target_model(next_states)

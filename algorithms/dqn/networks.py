@@ -56,7 +56,7 @@ class NoisyLinear(nn.Module):
         self.reset_noise()
 
     def reset_parameters(self):
-        """Reset trainable parameters of networks (factorized gaussian noise)."""
+        """Reset trainable network parameters (factorized gaussian noise)."""
         mu_range = 1 / math.sqrt(self.in_features)
         self.weight_mu.data.uniform_(-mu_range, mu_range)
         self.weight_sigma.data.fill_(self.std_init / math.sqrt(self.in_features))
@@ -90,17 +90,21 @@ class NoisyLinear(nn.Module):
             return F.linear(x, self.weight_mu, self.bias_mu)
 
 
-class NoisyWrapper:
-    """Wrapper for changing hyper parameters of NoisyLinear"""
+class NoisyLinearConstructor:
+    """Constructor class for changing hyper parameters of NoisyLinear.
 
-    def __init__(self, noisy_linear, std_init=0.5):
+    Attributes:
+        std_init (float): initial std value
+
+    """
+
+    def __init__(self, std_init: float = 0.5):
         """Initialization."""
-        self.NoisyLinear = noisy_linear
         self.std_init = std_init
 
-    def __call__(self, *args: int):
+    def __call__(self, in_features: int, out_features: int) -> NoisyLinear:
         """Return NoisyLinear instance set hyper parameters"""
-        return self.NoisyLinear(*args, self.std_init)
+        return NoisyLinear(in_features, out_features, self.std_init)
 
 
 class DuelingMLP(MLP):
