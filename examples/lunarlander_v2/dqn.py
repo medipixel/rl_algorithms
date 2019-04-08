@@ -12,8 +12,6 @@ import torch
 from torch import nn
 import torch.optim as optim
 
-from algorithms.common.helper_functions import identity
-from algorithms.common.networks.mlp import init_layer_uniform
 from algorithms.dqn.agent import Agent
 from algorithms.dqn.networks import C51DuelingMLP, NoisyLinearConstructor
 
@@ -69,10 +67,8 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
         if hyper_params["USE_NOISY_NET"]:
             # use noisy net
             linear_layer = NoisyLinearConstructor(hyper_params["STD_INIT"])
-            init_fn = identity
         else:
             linear_layer = nn.Linear
-            init_fn = init_layer_uniform
 
         model = C51DuelingMLP(
             input_size=state_dim,
@@ -82,7 +78,6 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
             v_max=hyper_params["V_MAX"],
             atom_size=hyper_params["ATOMS"],
             linear_layer=linear_layer,
-            init_fn=init_fn,
         ).to(device)
 
         return model

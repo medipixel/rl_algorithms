@@ -64,7 +64,6 @@ class MLP(nn.Module):
         linear_layer: nn.Module = nn.Linear,
         use_output_layer: bool = True,
         n_category: int = -1,
-        init_fn: Callable = init_layer_uniform,
     ):
         """Initialization.
 
@@ -77,7 +76,6 @@ class MLP(nn.Module):
             linear_layer (nn.Module): linear layer of mlp
             use_output_layer (bool): whether or not to use the last layer
             n_category (int): category number (-1 if the action is continuous)
-            init_fn (Callable): weight initialization function bound for the last layer
 
         """
         super(MLP, self).__init__()
@@ -102,8 +100,8 @@ class MLP(nn.Module):
 
         # set output layers
         if self.use_output_layer:
-            self.output_layer = self.linear_layer(in_size, output_size)
-            self.output_layer = init_fn(self.output_layer)
+            self.output_layer = nn.Linear(in_size, output_size)
+            self.output_layer = init_layer_uniform(self.output_layer)
         else:
             self.output_layer = identity
             self.output_activation = identity
@@ -147,7 +145,6 @@ class GaussianDist(MLP):
         mu_activation: Callable = torch.tanh,
         log_std_min: float = -20,
         log_std_max: float = 2,
-        init_fn: Callable = init_layer_uniform,
     ):
         """Initialization."""
         super(GaussianDist, self).__init__(
@@ -165,11 +162,11 @@ class GaussianDist(MLP):
 
         # set log_std layer
         self.log_std_layer = nn.Linear(in_size, output_size)
-        self.log_std_layer = init_fn(self.log_std_layer)
+        self.log_std_layer = init_layer_uniform(self.log_std_layer)
 
         # set mean layer
         self.mu_layer = nn.Linear(in_size, output_size)
-        self.mu_layer = init_fn(self.mu_layer)
+        self.mu_layer = init_layer_uniform(self.mu_layer)
 
     def get_dist_params(self, x: torch.Tensor) -> Tuple[torch.Tensor, ...]:
         """Return gausian distribution parameters."""
@@ -237,7 +234,6 @@ class CategoricalDist(MLP):
         output_size: int,
         hidden_sizes: list,
         hidden_activation: Callable = F.relu,
-        init_fn: Callable = init_layer_uniform,
     ):
         """Initialization."""
         super(CategoricalDist, self).__init__(
@@ -252,7 +248,7 @@ class CategoricalDist(MLP):
 
         # set log_std layer
         self.last_layer = nn.Linear(in_size, output_size)
-        self.last_layer = init_fn(self.last_layer)
+        self.last_layer = init_layer_uniform(self.last_layer)
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, ...]:
         """Forward method implementation."""

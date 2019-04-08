@@ -117,7 +117,6 @@ class DuelingMLP(MLP):
         hidden_sizes: list,
         hidden_activation: Callable = F.relu,
         linear_layer: nn.Module = nn.Linear,
-        init_fn: Callable = init_layer_uniform,
     ):
         """Initialization."""
         super(DuelingMLP, self).__init__(
@@ -132,13 +131,13 @@ class DuelingMLP(MLP):
 
         # set advantage layer
         self.advantage_hidden_layer = self.linear_layer(in_size, in_size)
-        self.advantage_layer = self.linear_layer(in_size, output_size)
-        self.advantage_layer = init_fn(self.advantage_layer)
+        self.advantage_layer = nn.Linear(in_size, output_size)
+        self.advantage_layer = init_layer_uniform(self.advantage_layer)
 
         # set value layer
         self.value_hidden_layer = self.linear_layer(in_size, in_size)
-        self.value_layer = self.linear_layer(in_size, 1)
-        self.value_layer = init_fn(self.value_layer)
+        self.value_layer = nn.Linear(in_size, 1)
+        self.value_layer = init_layer_uniform(self.value_layer)
 
     def _forward_dueling(self, x: torch.Tensor) -> torch.Tensor:
         adv_x = self.hidden_activation(self.advantage_hidden_layer(x))
@@ -161,8 +160,8 @@ class DuelingMLP(MLP):
 
     def reset_noise(self):
         """Re-sample noise"""
-        for _, module in self.named_children():
-            module.reset_noise()
+        for hidden_layer in self.hidden_layers:
+            hidden_layer.reset_noise()
 
 
 class C51CNN(CNN):
@@ -192,7 +191,6 @@ class C51DuelingMLP(MLP):
         v_max: int = 10,
         hidden_activation: Callable = F.relu,
         linear_layer: nn.Module = nn.Linear,
-        init_fn: Callable = init_layer_uniform,
     ):
         """Initialization."""
         super(C51DuelingMLP, self).__init__(
@@ -211,13 +209,13 @@ class C51DuelingMLP(MLP):
 
         # set advantage layer
         self.advantage_hidden_layer = self.linear_layer(in_size, in_size)
-        self.advantage_layer = self.linear_layer(in_size, self.output_size)
-        self.advantage_layer = init_fn(self.advantage_layer)
+        self.advantage_layer = nn.Linear(in_size, self.output_size)
+        self.advantage_layer = init_layer_uniform(self.advantage_layer)
 
         # set value layer
         self.value_hidden_layer = self.linear_layer(in_size, in_size)
-        self.value_layer = self.linear_layer(in_size, self.atom_size)
-        self.value_layer = init_fn(self.value_layer)
+        self.value_layer = nn.Linear(in_size, self.atom_size)
+        self.value_layer = init_layer_uniform(self.value_layer)
 
     def forward_(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """Get distribution for atoms."""
@@ -247,8 +245,8 @@ class C51DuelingMLP(MLP):
 
     def reset_noise(self):
         """Re-sample noise"""
-        for _, module in self.named_children():
-            module.reset_noise()
+        for hidden_layer in self.hidden_layers:
+            hidden_layer.reset_noise()
 
 
 class IQNCNN(CNN):
@@ -282,7 +280,6 @@ class IQNMLP(MLP):
         quantile_embedding_dim: int,
         hidden_activation: Callable = F.relu,
         linear_layer: nn.Module = nn.Linear,
-        init_fn: Callable = init_layer_uniform,
     ):
         """Initialization."""
         super(IQNMLP, self).__init__(
@@ -291,7 +288,6 @@ class IQNMLP(MLP):
             hidden_sizes=hidden_sizes,
             hidden_activation=hidden_activation,
             linear_layer=linear_layer,
-            init_fn=init_fn,
         )
 
         IQNMLP.n_quantiles = n_quantiles
@@ -300,10 +296,8 @@ class IQNMLP(MLP):
         self.output_size = output_size
 
         # set quantile_net layer
-        self.quantile_fc_layer = self.linear_layer(
-            self.quantile_embedding_dim, self.input_size
-        )
-        self.quantile_fc_layer = init_fn(self.quantile_fc_layer)
+        self.quantile_fc_layer = nn.Linear(self.quantile_embedding_dim, self.input_size)
+        self.quantile_fc_layer = init_layer_uniform(self.quantile_fc_layer)
 
     def forward_(
         self, state: torch.Tensor, n_tau_samples: int = None
@@ -347,8 +341,8 @@ class IQNMLP(MLP):
 
     def reset_noise(self):
         """Re-sample noise"""
-        for _, module in self.named_children():
-            module.reset_noise()
+        for hidden_layer in self.hidden_layers:
+            hidden_layer.reset_noise()
 
     @staticmethod
     def __get_n_tau_samples(n_tau_samples: Optional[int]) -> int:
