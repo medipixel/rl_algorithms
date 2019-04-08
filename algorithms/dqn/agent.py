@@ -7,6 +7,8 @@
          https://arxiv.org/pdf/1509.06461.pdf (Double DQN)
          https://arxiv.org/pdf/1511.05952.pdf (PER)
          https://arxiv.org/pdf/1511.06581.pdf (Dueling)
+         https://arxiv.org/pdf/1707.06887.pdf (C51)
+         https://arxiv.org/pdf/1806.06923.pdf (IQN)
 """
 
 import argparse
@@ -159,8 +161,19 @@ class Agent(AbstractAgent):
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Return element-wise dqn loss and Q-values."""
 
-        if self.hyper_params["USE_C51"]:
-            return dqn_utils.calculate_dqn_c51_loss(
+        if self.hyper_params["USE_DIST_Q"] == "IQN":
+            return dqn_utils.calculate_iqn_loss(
+                model=self.dqn,
+                target_model=self.dqn_target,
+                experiences=experiences,
+                gamma=gamma,
+                batch_size=self.hyper_params["BATCH_SIZE"],
+                n_tau_samples=self.hyper_params["N_TAU_SAMPLES"],
+                n_tau_prime_samples=self.hyper_params["N_TAU_PRIME_SAMPLES"],
+                kappa=self.hyper_params["KAPPA"],
+            )
+        elif self.hyper_params["USE_DIST_Q"] == "C51":
+            return dqn_utils.calculate_c51_loss(
                 model=self.dqn,
                 target_model=self.dqn_target,
                 experiences=experiences,

@@ -5,8 +5,10 @@
 - Contact: kh.kim@medipixel.io
 """
 
-from typing import Callable, Tuple
+import math
+from typing import Callable, Optional, Tuple
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -15,16 +17,6 @@ from algorithms.common.networks.cnn import CNN
 from algorithms.common.networks.mlp import MLP
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-
-class CategoricalCNN(CNN):
-    """Convolution neural network for C51."""
-
-    def get_dist_q(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Forward method implementation."""
-        x = self.get_cnn_features(x)
-        dist, q = self.fc_layers.get_dist_q(x)
-        return dist, q
 
 
 class DuelingMLP(MLP):
@@ -80,8 +72,18 @@ class DuelingMLP(MLP):
         return x
 
 
-class CategoricalDuelingMLP(MLP):
-    """Multilayer perceptron with dueling construction."""
+class C51CNN(CNN):
+    """Convolution neural network for distributional RL."""
+
+    def forward_(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Forward method implementation."""
+        x = self.get_cnn_features(x)
+        out = self.fc_layers.forward_(x)
+        return out
+
+
+class C51DuelingMLP(MLP):
+    """Multilayered perceptron for C51 with dueling construction."""
 
     def __init__(
         self,
@@ -95,7 +97,7 @@ class CategoricalDuelingMLP(MLP):
         init_w: float = 3e-3,
     ):
         """Initialization."""
-        super(CategoricalDuelingMLP, self).__init__(
+        super(C51DuelingMLP, self).__init__(
             input_size=input_size,
             output_size=action_size,
             hidden_sizes=hidden_sizes,
@@ -120,11 +122,11 @@ class CategoricalDuelingMLP(MLP):
         self.value_layer.weight.data.uniform_(-init_w, init_w)
         self.value_layer.bias.data.uniform_(-init_w, init_w)
 
-    def get_dist_q(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward_(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """Get distribution for atoms."""
         action_size, atom_size = self.action_size, self.atom_size
 
-        x = super(CategoricalDuelingMLP, self).forward(x)
+        x = super(C51DuelingMLP, self).forward(x)
         adv_x = self.hidden_activation(self.advantage_hidden_layer(x))
         val_x = self.hidden_activation(self.value_hidden_layer(x))
 
@@ -142,6 +144,101 @@ class CategoricalDuelingMLP(MLP):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method implementation."""
-        _, q = self.get_dist_q(x)
+        _, q = self.forward_(x)
 
         return q
+
+
+class IQNCNN(CNN):
+    """Convolution neural network for distributional RL."""
+
+    def forward_(
+        self, x: torch.Tensor, n_tau_samples: int = None
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Forward method implementation."""
+        x = self.get_cnn_features(x)
+        out = self.fc_layers.forward_(x, n_tau_samples)
+        return out
+
+
+class IQNMLP(MLP):
+    """Multilayered perceptron for IQN with dueling construction.
+
+    Reference: https://github.com/google/dopamine
+    """
+
+    def __init__(
+        self,
+        input_size: int,
+        output_size: int,
+        hidden_sizes: list,
+        n_quantiles: int,
+        quantile_embedding_dim: int,
+        hidden_activation: Callable = F.relu,
+        init_w: float = 3e-3,
+    ):
+        """Initialization."""
+        super(IQNMLP, self).__init__(
+            input_size=input_size,
+            output_size=output_size,
+            hidden_sizes=hidden_sizes,
+            hidden_activation=hidden_activation,
+        )
+
+        IQNMLP.n_quantiles = n_quantiles
+        self.quantile_embedding_dim = quantile_embedding_dim
+        self.input_size = input_size
+        self.output_size = output_size
+
+        # set quantile_net layer
+        self.quantile_fc_layer = nn.Linear(self.quantile_embedding_dim, self.input_size)
+        self.quantile_fc_layer.weight.data.uniform_(-init_w, init_w)
+        self.quantile_fc_layer.bias.data.uniform_(-init_w, init_w)
+
+    def forward_(
+        self, state: torch.Tensor, n_tau_samples: int = None
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Get quantile values and quantiles."""
+        n_tau_samples = self.__get_n_tau_samples(n_tau_samples)
+        batch_size = np.prod(state.size()) // self.input_size
+
+        state_tiled = state.repeat(n_tau_samples, 1)
+
+        # torch.rand (CPU) may make a segmentation fault due to its non-thread safety.
+        # on v0.4.1
+        # check: https://bit.ly/2TXlNbq
+        quantiles = np.random.rand(n_tau_samples * batch_size, 1)
+        quantiles = torch.FloatTensor(quantiles)
+        quantile_net = quantiles.repeat(1, self.quantile_embedding_dim)
+        quantile_net = (
+            torch.arange(1, self.quantile_embedding_dim + 1, dtype=torch.float)
+            * math.pi
+            * quantile_net
+        )
+        quantile_net = torch.cos(quantile_net).to(device)
+        quantile_net = F.relu(self.quantile_fc_layer(quantile_net))
+
+        # Hadamard product
+        quantile_net = state_tiled * quantile_net
+
+        quantile_values = super(IQNMLP, self).forward(quantile_net)
+
+        return quantile_values, quantiles
+
+    def forward(self, state: torch.Tensor, n_tau_samples: int = None) -> torch.Tensor:
+        """Forward method implementation."""
+        n_tau_samples = self.__get_n_tau_samples(n_tau_samples)
+
+        quantile_values, _ = self.forward_(state, n_tau_samples)
+        quantile_values = quantile_values.view(n_tau_samples, -1, self.output_size)
+        q = torch.mean(quantile_values, dim=0)
+
+        return q
+
+    @staticmethod
+    def __get_n_tau_samples(n_tau_samples: Optional[int]) -> int:
+        """Get sample tau number."""
+        if not n_tau_samples:
+            return IQNMLP.n_quantiles
+        else:
+            return n_tau_samples

@@ -12,7 +12,7 @@ import torch
 import torch.optim as optim
 
 from algorithms.dqn.agent import Agent
-from algorithms.dqn.networks import CategoricalDuelingMLP, DuelingMLP
+from algorithms.dqn.networks import C51DuelingMLP
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -22,7 +22,7 @@ hyper_params = {
     "GAMMA": 0.99,
     "TAU": 5e-3,
     "W_N_STEP": 1.0,
-    "W_Q_REG": 0,  # 1e-7,
+    "W_Q_REG": 1e-7,
     "BUFFER_SIZE": int(1e5),
     "BATCH_SIZE": 64,
     "LR_DQN": 1e-4,  # dueling: 6.25e-5
@@ -34,12 +34,12 @@ hyper_params = {
     "PER_ALPHA": 0.6,
     "PER_BETA": 0.4,
     "PER_EPS": 1e-6,
-    "GRADIENT_CLIP": 10,
+    "GRADIENT_CLIP": 10.0,
     "UPDATE_STARTS_FROM": int(1e4),
     "TRAIN_FREQ": 1,
     "MULTIPLE_LEARN": 1,
-    # C51
-    "USE_C51": True,
+    # Distributional Q function
+    "USE_DIST_Q": "C51",
     "V_MIN": -300,
     "V_MAX": 300,
     "ATOMS": 1530,
@@ -59,21 +59,14 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
     # create model
     def get_fc_model():
         hidden_sizes = [128, 64]
-
-        if hyper_params["USE_C51"]:
-            model = CategoricalDuelingMLP(
-                input_size=state_dim,
-                action_size=action_dim,
-                hidden_sizes=hidden_sizes,
-                v_min=hyper_params["V_MIN"],
-                v_max=hyper_params["V_MAX"],
-                atom_size=hyper_params["ATOMS"],
-            ).to(device)
-
-        else:
-            model = DuelingMLP(
-                input_size=state_dim, output_size=action_dim, hidden_sizes=hidden_sizes
-            ).to(device)
+        model = C51DuelingMLP(
+            input_size=state_dim,
+            action_size=action_dim,
+            hidden_sizes=hidden_sizes,
+            v_min=hyper_params["V_MIN"],
+            v_max=hyper_params["V_MAX"],
+            atom_size=hyper_params["ATOMS"],
+        ).to(device)
 
         return model
 
