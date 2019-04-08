@@ -14,7 +14,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from algorithms.common.networks.cnn import CNN
-from algorithms.common.networks.mlp import MLP
+from algorithms.common.networks.mlp import MLP, init_layer_uniform
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -113,7 +113,7 @@ class DuelingMLP(MLP):
         hidden_sizes: list,
         hidden_activation: Callable = F.relu,
         linear_layer: nn.Module = nn.Linear,
-        init_w: float = 3e-3,
+        init_fn: Callable = init_layer_uniform,
     ):
         """Initialization."""
         super(DuelingMLP, self).__init__(
@@ -129,16 +129,12 @@ class DuelingMLP(MLP):
         # set advantage layer
         self.advantage_hidden_layer = self.linear_layer(in_size, in_size)
         self.advantage_layer = self.linear_layer(in_size, output_size)
+        self.advantage_layer = init_fn(self.advantage_layer)
 
         # set value layer
         self.value_hidden_layer = self.linear_layer(in_size, in_size)
         self.value_layer = self.linear_layer(in_size, 1)
-
-        if isinstance(self.linear_layer, nn.Linear):
-            self.advantage_layer.weight.data.uniform_(-init_w, init_w)
-            self.advantage_layer.bias.data.uniform_(-init_w, init_w)
-            self.value_layer.weight.data.uniform_(-init_w, init_w)
-            self.value_layer.bias.data.uniform_(-init_w, init_w)
+        self.value_layer = init_fn(self.value_layer)
 
     def _forward_dueling(self, x: torch.Tensor) -> torch.Tensor:
         adv_x = self.hidden_activation(self.advantage_hidden_layer(x))
@@ -192,7 +188,7 @@ class C51DuelingMLP(MLP):
         v_max: int = 10,
         hidden_activation: Callable = F.relu,
         linear_layer: nn.Module = nn.Linear,
-        init_w: float = 3e-3,
+        init_fn: Callable = init_layer_uniform,
     ):
         """Initialization."""
         super(C51DuelingMLP, self).__init__(
@@ -212,16 +208,12 @@ class C51DuelingMLP(MLP):
         # set advantage layer
         self.advantage_hidden_layer = self.linear_layer(in_size, in_size)
         self.advantage_layer = self.linear_layer(in_size, self.output_size)
+        self.advantage_layer = init_fn(self.advantage_layer)
 
         # set value layer
         self.value_hidden_layer = self.linear_layer(in_size, in_size)
         self.value_layer = self.linear_layer(in_size, self.atom_size)
-
-        if isinstance(self.linear_layer, nn.Linear):
-            self.advantage_layer.weight.data.uniform_(-init_w, init_w)
-            self.advantage_layer.bias.data.uniform_(-init_w, init_w)
-            self.value_layer.weight.data.uniform_(-init_w, init_w)
-            self.value_layer.bias.data.uniform_(-init_w, init_w)
+        self.value_layer = init_fn(self.value_layer)
 
     def forward_(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """Get distribution for atoms."""
@@ -286,7 +278,7 @@ class IQNMLP(MLP):
         quantile_embedding_dim: int,
         hidden_activation: Callable = F.relu,
         linear_layer: nn.Module = nn.Linear,
-        init_w: float = 3e-3,
+        init_fn: Callable = init_layer_uniform,
     ):
         """Initialization."""
         super(IQNMLP, self).__init__(
@@ -306,10 +298,7 @@ class IQNMLP(MLP):
         self.quantile_fc_layer = self.linear_layer(
             self.quantile_embedding_dim, self.input_size
         )
-
-        if isinstance(self.linear_layer, nn.Linear):
-            self.quantile_fc_layer.weight.data.uniform_(-init_w, init_w)
-            self.quantile_fc_layer.bias.data.uniform_(-init_w, init_w)
+        self.quantile_fc_layer = init_fn(self.quantile_fc_layer)
 
     def forward_(
         self, state: torch.Tensor, n_tau_samples: int = None
