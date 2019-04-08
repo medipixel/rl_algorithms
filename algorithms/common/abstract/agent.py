@@ -18,7 +18,7 @@ import torch
 import wandb
 
 
-class AbstractAgent(ABC):
+class Agent(ABC):
     """Abstract Agent used for all agents.
 
     Attributes:

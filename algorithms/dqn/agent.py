@@ -22,7 +22,7 @@ import torch
 from torch.nn.utils import clip_grad_norm_
 import wandb
 
-from algorithms.common.abstract.agent import AbstractAgent
+from algorithms.common.abstract.agent import Agent as AbstractAgent
 from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
 from algorithms.common.buffer.replay_buffer import NStepTransitionBuffer
 import algorithms.common.helper_functions as common_utils

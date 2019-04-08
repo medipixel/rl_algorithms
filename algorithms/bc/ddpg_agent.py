@@ -16,7 +16,7 @@ import torch
 import torch.nn.functional as F
 import wandb
 
-from algorithms.common.abstract.her import AbstractHER
+from algorithms.common.abstract.her import HER as AbstractHER
 from algorithms.common.buffer.replay_buffer import ReplayBuffer
 import algorithms.common.helper_functions as common_utils
 from algorithms.common.noise import OUNoise

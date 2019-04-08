@@ -16,7 +16,7 @@ import torch
 import torch.nn as nn
 import wandb
 
-from algorithms.common.abstract.agent import AbstractAgent
+from algorithms.common.abstract.agent import Agent as AbstractAgent
 from algorithms.common.env.multiprocessing_env import SubprocVecEnv
 import algorithms.ppo.utils as ppo_utils
 

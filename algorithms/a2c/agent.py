@@ -16,7 +16,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import wandb
 
-from algorithms.common.abstract.agent import AbstractAgent
+from algorithms.common.abstract.agent import Agent as AbstractAgent
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 

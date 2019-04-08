@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 
 
-class AbstractRewardFn(ABC):
+class RewardFn(ABC):
     """Abstract class for computing reward.
        New compute_reward class should redefine __call__()
 

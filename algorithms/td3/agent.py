@@ -16,7 +16,7 @@ import torch
 import torch.nn.functional as F
 import wandb
 
-from algorithms.common.abstract.agent import AbstractAgent
+from algorithms.common.abstract.agent import Agent as AbstractAgent
 from algorithms.common.buffer.replay_buffer import ReplayBuffer
 import algorithms.common.helper_functions as common_utils
 from algorithms.common.noise import GaussianNoise

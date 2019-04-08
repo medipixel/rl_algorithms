@@ -7,11 +7,11 @@
 
 import numpy as np
 
-from algorithms.common.abstract.her import AbstractHER
-from algorithms.common.abstract.reward_fn import AbstractRewardFn
+from algorithms.common.abstract.her import HER as AbstractHER
+from algorithms.common.abstract.reward_fn import RewardFn
 
 
-class ReacherRewardFn(AbstractRewardFn):
+class ReacherRewardFn(RewardFn):
     def __call__(self, transition: tuple, _) -> np.float64:
         """Reward function for Reacher-v2 environment."""
         state, action = transition[0:2]
@@ -25,7 +25,7 @@ class ReacherRewardFn(AbstractRewardFn):
 class ReacherHER(AbstractHER):
     """HER for Reacher-v2 environment."""
 
-    def __init__(self, reward_func: AbstractRewardFn = ReacherRewardFn):
+    def __init__(self, reward_func: RewardFn = ReacherRewardFn):
         """Initialization."""
         AbstractHER.__init__(self, reward_func=reward_func)
 
