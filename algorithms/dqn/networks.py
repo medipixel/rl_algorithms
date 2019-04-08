@@ -56,6 +56,7 @@ class NoisyLinear(nn.Module):
         self.reset_noise()
 
     def reset_parameters(self):
+        """Reset trainable parameters of networks (factorized gaussian noise)."""
         mu_range = 1 / math.sqrt(self.in_features)
         self.weight_mu.data.uniform_(-mu_range, mu_range)
         self.weight_sigma.data.fill_(self.std_init / math.sqrt(self.in_features))
@@ -64,10 +65,12 @@ class NoisyLinear(nn.Module):
 
     @staticmethod
     def scale_noise(size: int):
+        """Set scale to make noise (factorized gaussian noise)."""
         x = torch.from_numpy(np.random.normal(loc=0.0, scale=1.0, size=size))
         return x.sign().mul_(x.abs().sqrt_())
 
     def reset_noise(self):
+        """Make new noise."""
         epsilon_in = self.scale_noise(self.in_features)
         epsilon_out = self.scale_noise(self.out_features)
 
@@ -76,6 +79,7 @@ class NoisyLinear(nn.Module):
         self.bias_epsilon.copy_(epsilon_out).to(device)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward method implementation."""
         if self.training:
             return F.linear(
                 x,
