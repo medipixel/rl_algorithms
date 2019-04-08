@@ -287,6 +287,7 @@ class IQNMLP(MLP):
             hidden_sizes=hidden_sizes,
             hidden_activation=hidden_activation,
             linear_layer=linear_layer,
+            init_fn=init_fn,
         )
 
         IQNMLP.n_quantiles = n_quantiles

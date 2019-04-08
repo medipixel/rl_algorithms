@@ -12,7 +12,9 @@ import torch
 from torch import nn
 import torch.optim as optim
 
+from algorithms.common.helper_functions import identity
 from algorithms.common.networks.cnn import CNNLayer
+from algorithms.common.networks.mlp import init_layer_uniform
 from algorithms.dqn.agent import Agent
 from algorithms.dqn.networks import IQNCNN, IQNMLP, NoisyLinear, NoisyWrapper
 
@@ -72,8 +74,10 @@ def run(env: gym.Env, env_name: str, args: argparse.Namespace):
         if hyper_params["USE_NOISY_NET"]:
             linear_layer = NoisyLinear
             linear_layer = NoisyWrapper(linear_layer, hyper_params["STD_INIT"])
+            init_fn = identity
         else:
             linear_layer = nn.Linear
+            init_fn = init_layer_uniform
 
         fc_model = IQNMLP(
             input_size=fc_input_size,
@@ -82,6 +86,7 @@ def run(env: gym.Env, env_name: str, args: argparse.Namespace):
             n_quantiles=hyper_params["N_QUANTILE_SAMPLES"],
             quantile_embedding_dim=hyper_params["QUANTILE_EMBEDDING_DIM"],
             linear_layer=linear_layer,
+            init_fn=init_fn,
         ).to(device)
 
         # create a model
