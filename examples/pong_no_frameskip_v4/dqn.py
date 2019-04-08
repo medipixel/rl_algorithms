@@ -9,11 +9,12 @@ import argparse
 
 import gym
 import torch
+from torch import nn
 import torch.optim as optim
 
 from algorithms.common.networks.cnn import CNNLayer
 from algorithms.dqn.agent import Agent
-from algorithms.dqn.networks import IQNCNN, IQNMLP
+from algorithms.dqn.networks import IQNCNN, IQNMLP, NoisyLinear
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -39,6 +40,7 @@ hyper_params = {
     "UPDATE_STARTS_FROM": int(1e4),  # openai baselines: int(1e4)
     "TRAIN_FREQ": 4,  # in openai baselines, train_freq = 4
     "MULTIPLE_LEARN": 1,
+    "USE_NOISY_NET": True,
     # Distributional Q function
     "USE_DIST_Q": "IQN",
     "N_TAU_SAMPLES": 64,
@@ -64,12 +66,19 @@ def run(env: gym.Env, env_name: str, args: argparse.Namespace):
         hidden_sizes = [512]
         action_dim = env.action_space.n
 
+        # use noisy net
+        if hyper_params["USE_NOISY_NET"]:
+            linear_layer = NoisyLinear
+        else:
+            linear_layer = nn.Linear
+
         fc_model = IQNMLP(
             input_size=fc_input_size,
             output_size=action_dim,
             hidden_sizes=hidden_sizes,
             n_quantiles=hyper_params["N_QUANTILE_SAMPLES"],
             quantile_embedding_dim=hyper_params["QUANTILE_EMBEDDING_DIM"],
+            linear_layer=linear_layer,
         ).to(device)
 
         # create a model

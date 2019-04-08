@@ -3,11 +3,7 @@
 
 - Author: Kh Kim, Curt Park
 - Contact: kh.kim@medipixel.io, curt.park@medipixel.io
-- Paper: https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf (DQN)
-         https://arxiv.org/pdf/1509.06461.pdf (Double DQN)
-         https://arxiv.org/pdf/1511.05952.pdf (PER)
-         https://arxiv.org/pdf/1511.06581.pdf (Dueling)
-         https://arxiv.org/pdf/1704.03732.pdf (DQfD)
+- Paper: https://arxiv.org/pdf/1704.03732.pdf (DQfD)
 """
 
 import datetime
@@ -142,6 +138,10 @@ class Agent(DQNAgent):
         fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)
         self.beta = self.beta + fraction * (1.0 - self.beta)
 
+        if self.hyper_params["USE_NOISY_NET"]:
+            self.dqn.reset_noise()
+            self.dqn_target.reset_noise()
+
         return (
             loss.data,
             dq_loss.data,
@@ -195,3 +195,4 @@ class Agent(DQNAgent):
                 avg_loss = np.vstack(pretrain_loss).mean(axis=0)
                 pretrain_loss.clear()
                 self.write_log(0, avg_loss)
+        print("[INFO] Pre-Train Complete!\n")

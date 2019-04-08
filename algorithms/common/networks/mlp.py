@@ -53,6 +53,7 @@ class MLP(nn.Module):
         hidden_sizes: list,
         hidden_activation: Callable = F.relu,
         output_activation: Callable = identity,
+        linear_layer: nn.Module = nn.Linear,
         use_output_layer: bool = True,
         n_category: int = -1,
         init_w: float = 3e-3,
@@ -65,6 +66,7 @@ class MLP(nn.Module):
             hidden_sizes (list): number of hidden layers
             hidden_activation (function): activation function of hidden layers
             output_activation (function): activation function of output layer
+            linear_layer (nn.Module): linear layer of mlp
             use_output_layer (bool): whether or not to use the last layer
             n_category (int): category number (-1 if the action is continuous)
             init_w (float): weight initialization bound for the last layer
@@ -77,6 +79,7 @@ class MLP(nn.Module):
         self.output_size = output_size
         self.hidden_activation = hidden_activation
         self.output_activation = output_activation
+        self.linear_layer = linear_layer
         self.use_output_layer = use_output_layer
         self.n_category = n_category
 
@@ -84,16 +87,17 @@ class MLP(nn.Module):
         self.hidden_layers: list = []
         in_size = self.input_size
         for i, next_size in enumerate(hidden_sizes):
-            fc = nn.Linear(in_size, next_size)
+            fc = self.linear_layer(in_size, next_size)
             in_size = next_size
             self.__setattr__("hidden_fc{}".format(i), fc)
             self.hidden_layers.append(fc)
 
         # set output layers
         if self.use_output_layer:
-            self.output_layer = nn.Linear(in_size, output_size)
-            self.output_layer.weight.data.uniform_(-init_w, init_w)
-            self.output_layer.bias.data.uniform_(-init_w, init_w)
+            self.output_layer = self.linear_layer(in_size, output_size)
+            if isinstance(self.linear_layer, nn.Linear):
+                self.output_layer.weight.data.uniform_(-init_w, init_w)
+                self.output_layer.bias.data.uniform_(-init_w, init_w)
         else:
             self.output_layer = identity
             self.output_activation = identity

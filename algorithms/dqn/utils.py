@@ -7,6 +7,7 @@ This module has DQN util functions.
 - Contact: curt.park@medipixel.io
 """
 
+import copy
 from typing import Tuple, Union
 
 import torch
@@ -138,6 +139,7 @@ def calculate_c51_loss(
     v_min: int,
     v_max: int,
     atom_size: int,
+    use_noisy_net: bool = False,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """Return element-wise C51 loss and Q-values."""
     states, actions, rewards, next_states, dones = experiences[:5]
@@ -145,8 +147,15 @@ def calculate_c51_loss(
     delta_z = float(v_max - v_min) / (atom_size - 1)
 
     with torch.no_grad():
-        next_actions = model.forward_(next_states)[1].argmax(1)
-        next_dist = target_model.forward_(next_states)[0]
+        # re-sample noisy net parameter on online network when using double q
+        if use_noisy_net:
+            new_model = copy.deepcopy(model)
+            new_model.reset_noise()
+            next_actions = new_model.get_dist_q(next_states)[1].argmax(1)
+        else:
+            next_actions = model.get_dist_q(next_states)[1].argmax(1)
+
+        next_dist = target_model.get_dist_q(next_states)[0]
         next_dist = next_dist[range(batch_size), next_actions]
 
         t_z = rewards + (1 - dones) * gamma * support
@@ -189,12 +198,20 @@ def calculate_dqn_loss(
     target_model: Union[MLP, CNN],
     experiences: Tuple[torch.Tensor, ...],
     gamma: float,
+    use_noisy_net: bool = False,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """Return element-wise dqn loss and Q-values."""
     states, actions, rewards, next_states, dones = experiences[:5]
 
     q_values = model(states)
-    next_q_values = model(next_states)
+    # re-sample noisy net parameter on online network when using double q
+    if use_noisy_net:
+        new_model = copy.deepcopy(model)
+        new_model.reset_noise()
+        next_q_values = new_model(next_states)
+    else:
+        next_q_values = model(next_states)
+
     next_target_q_values = target_model(next_states)
 
     curr_q_value = q_values.gather(1, actions.long().unsqueeze(1))

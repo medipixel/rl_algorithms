@@ -7,7 +7,9 @@
          https://arxiv.org/pdf/1509.06461.pdf (Double DQN)
          https://arxiv.org/pdf/1511.05952.pdf (PER)
          https://arxiv.org/pdf/1511.06581.pdf (Dueling)
+         https://arxiv.org/pdf/1706.10295.pdf (NoisyNet)
          https://arxiv.org/pdf/1707.06887.pdf (C51)
+         https://arxiv.org/pdf/1710.02298.pdf (Rainbow)
          https://arxiv.org/pdf/1806.06923.pdf (IQN)
 """
 
@@ -113,7 +115,11 @@ class Agent(AbstractAgent):
 
         # epsilon greedy policy
         # pylint: disable=comparison-with-callable
-        if not self.args.test and self.epsilon > np.random.random():
+        if (
+            not self.args.test
+            and self.epsilon > np.random.random()
+            and not self.hyper_params["USE_NOISY_NET"]
+        ):
             selected_action = self.env.action_space.sample()
         else:
             state = self._preprocess_state(state)
@@ -191,7 +197,7 @@ class Agent(AbstractAgent):
                 gamma=gamma,
             )
 
-    def update_model(self) -> torch.Tensor:
+    def update_model(self) -> Tuple[torch.Tensor, torch.Tensor]:
         """Train the model after each episode."""
         # 1 step loss
         experiences_1 = self.memory.sample(self.beta)
@@ -238,6 +244,10 @@ class Agent(AbstractAgent):
         # increase beta
         fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)
         self.beta = self.beta + fraction * (1.0 - self.beta)
+
+        if self.hyper_params["USE_NOISY_NET"]:
+            self.dqn.reset_noise()
+            self.dqn_target.reset_noise()
 
         return loss.data, q_values.mean().data
 
@@ -346,3 +356,9 @@ class Agent(AbstractAgent):
         self.env.close()
         self.save_params(self.i_episode)
         self.interim_test()
+
+    def set_train_mode(self):
+        self.dqn.train()
+
+    def set_eval_mode(self):
+        self.dqn.eval()
