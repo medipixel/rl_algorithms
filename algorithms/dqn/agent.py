@@ -188,7 +188,6 @@ class Agent(AbstractAgent):
                 v_min=self.hyper_params["V_MIN"],
                 v_max=self.hyper_params["V_MAX"],
                 atom_size=self.hyper_params["ATOMS"],
-                use_noisy_net=self.hyper_params["USE_NOISY_NET"],
             )
         else:
             return dqn_utils.calculate_dqn_loss(
@@ -196,7 +195,6 @@ class Agent(AbstractAgent):
                 target_model=self.dqn_target,
                 experiences=experiences,
                 gamma=gamma,
-                use_noisy_net=self.hyper_params["USE_NOISY_NET"],
             )
 
     def update_model(self) -> Tuple[torch.Tensor, torch.Tensor]:

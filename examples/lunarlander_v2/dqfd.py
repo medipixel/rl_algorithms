@@ -12,7 +12,7 @@ import torch
 from torch import nn
 import torch.optim as optim
 
-from algorithms.dqn.networks import C51DuelingMLP, NoisyLinear
+from algorithms.dqn.networks import C51DuelingMLP, NoisyLinear, NoisyWrapper
 from algorithms.fd.dqn_agent import Agent
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -50,6 +50,7 @@ hyper_params = {
     "ATOMS": 1530,
     # NoisyNet
     "USE_NOISY_NET": True,
+    "STD_INIT": 0.5,
 }
 
 
@@ -70,6 +71,7 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
         # use noisy net
         if hyper_params["USE_NOISY_NET"]:
             linear_layer = NoisyLinear
+            linear_layer = NoisyWrapper(linear_layer, hyper_params["STD_INIT"])
         else:
             linear_layer = nn.Linear
 

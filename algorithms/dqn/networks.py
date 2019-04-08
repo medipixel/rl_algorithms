@@ -90,6 +90,19 @@ class NoisyLinear(nn.Module):
             return F.linear(x, self.weight_mu, self.bias_mu)
 
 
+class NoisyWrapper:
+    """Wrapper for changing hyper parameters of NoisyLinear"""
+
+    def __init__(self, noisy_linear, std_init=0.5):
+        """Initialization."""
+        self.NoisyLinear = noisy_linear
+        self.std_init = std_init
+
+    def __call__(self, *args: int):
+        """Return NoisyLinear instance set hyper parameters"""
+        return self.NoisyLinear(*args, self.std_init)
+
+
 class DuelingMLP(MLP):
     """Multilayer perceptron with dueling construction."""
 

@@ -14,7 +14,7 @@ import torch.optim as optim
 
 from algorithms.common.networks.cnn import CNNLayer
 from algorithms.dqn.agent import Agent
-from algorithms.dqn.networks import IQNCNN, IQNMLP, NoisyLinear
+from algorithms.dqn.networks import IQNCNN, IQNMLP, NoisyLinear, NoisyWrapper
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -40,7 +40,6 @@ hyper_params = {
     "UPDATE_STARTS_FROM": int(1e4),  # openai baselines: int(1e4)
     "TRAIN_FREQ": 4,  # in openai baselines, train_freq = 4
     "MULTIPLE_LEARN": 1,
-    "USE_NOISY_NET": True,
     # Distributional Q function
     "USE_DIST_Q": "IQN",
     "N_TAU_SAMPLES": 64,
@@ -48,6 +47,9 @@ hyper_params = {
     "N_QUANTILE_SAMPLES": 32,
     "QUANTILE_EMBEDDING_DIM": 64,
     "KAPPA": 1.0,
+    # NoisyNet
+    "USE_NOISY_NET": True,
+    "STD_INIT": 0.5,
 }
 
 
@@ -69,6 +71,7 @@ def run(env: gym.Env, env_name: str, args: argparse.Namespace):
         # use noisy net
         if hyper_params["USE_NOISY_NET"]:
             linear_layer = NoisyLinear
+            linear_layer = NoisyWrapper(linear_layer, hyper_params["STD_INIT"])
         else:
             linear_layer = nn.Linear
 
