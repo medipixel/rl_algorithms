@@ -151,11 +151,11 @@ def calculate_c51_loss(
         if use_noisy_net:
             new_model = copy.deepcopy(model)
             new_model.reset_noise()
-            next_actions = new_model.get_dist_q(next_states)[1].argmax(1)
+            next_actions = new_model.forward_(next_states)[1].argmax(1)
         else:
-            next_actions = model.get_dist_q(next_states)[1].argmax(1)
+            next_actions = model.forward_(next_states)[1].argmax(1)
 
-        next_dist = target_model.get_dist_q(next_states)[0]
+        next_dist = target_model.forward_(next_states)[0]
         next_dist = next_dist[range(batch_size), next_actions]
 
         t_z = rewards + (1 - dones) * gamma * support
