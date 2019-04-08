@@ -360,7 +360,9 @@ class Agent(AbstractAgent):
         self.interim_test()
 
     def set_train_mode(self):
+        """Set train mode on networks."""
         self.dqn.train()
 
     def set_eval_mode(self):
+        """Set evaluation mode on networks."""
         self.dqn.eval()
