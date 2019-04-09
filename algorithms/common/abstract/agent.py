@@ -94,14 +94,6 @@ class AbstractAgent(ABC):
     def train(self):
         pass
 
-    @abstractmethod
-    def set_train_mode(self):
-        pass
-
-    @abstractmethod
-    def set_eval_mode(self):
-        pass
-
     def interim_test(self):
         self.args.test = True
 

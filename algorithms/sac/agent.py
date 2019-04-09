@@ -370,17 +370,3 @@ class Agent(AbstractAgent):
         self.env.close()
         self.save_params(self.i_episode)
         self.interim_test()
-
-    def set_train_mode(self):
-        """Set train mode on networks."""
-        self.actor.train()
-        self.vf.train()
-        self.qf_1.train()
-        self.qf_2.train()
-
-    def set_eval_mode(self):
-        """Set evaluation mode on networks."""
-        self.actor.eval()
-        self.vf.eval()
-        self.qf_1.eval()
-        self.qf_2.eval()
