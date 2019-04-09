@@ -124,8 +124,7 @@ def calculate_iqn_loss(
     iqn_loss_element_wise = torch.mean(loss, dim=1)
 
     # q values for regularization.
-    quantile_values = quantile_values.view(n_tau_samples, -1, model.output_size)
-    q_values = torch.mean(quantile_values, dim=0)
+    q_values = model(states)
 
     return iqn_loss_element_wise, q_values
 
