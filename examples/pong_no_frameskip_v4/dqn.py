@@ -9,7 +9,7 @@ import argparse
 
 import gym
 import torch
-from torch import nn
+import torch.nn as nn
 import torch.optim as optim
 
 from algorithms.common.helper_functions import identity
