@@ -14,8 +14,8 @@
 """
 
 import argparse
-import datetime
 import os
+import time
 from typing import Tuple
 
 import gym
@@ -269,11 +269,11 @@ class Agent(AbstractAgent):
 
         AbstractAgent.save_params(self, params, n_episode)
 
-    def write_log(self, i: int, loss: np.ndarray, score: float):
+    def write_log(self, i: int, loss: np.ndarray, score: float, avg_time_cost: float):
         """Write log about loss and score"""
         print(
             "[INFO] episode %d, episode step: %d, total step: %d, total score: %f\n"
-            "epsilon: %f, loss: %f, avg q-value: %f at %s\n"
+            "epsilon: %f, loss: %f, avg q-value: %f (spent %.6f sec/step)\n"
             % (
                 i,
                 self.episode_step,
@@ -282,12 +282,20 @@ class Agent(AbstractAgent):
                 self.epsilon,
                 loss[0],
                 loss[1],
-                datetime.datetime.now(),
+                avg_time_cost,
             )
         )
 
         if self.args.log:
-            wandb.log({"score": score, "dqn loss": loss[0], "epsilon": self.epsilon})
+            wandb.log(
+                {
+                    "score": score,
+                    "epsilon": self.epsilon,
+                    "dqn loss": loss[0],
+                    "avg q values": loss[1],
+                    "time per each step": avg_time_cost,
+                }
+            )
 
     # pylint: disable=no-self-use, unnecessary-pass
     def pretrain(self):
@@ -318,6 +326,8 @@ class Agent(AbstractAgent):
             done = False
             score = 0
 
+            t_begin = time.time()
+
             while not done:
                 if self.args.render and self.i_episode >= self.args.render_after:
                     self.env.render()
@@ -340,9 +350,12 @@ class Agent(AbstractAgent):
                 state = next_state
                 score += reward
 
+            t_end = time.time()
+            avg_time_cost = (t_end - t_begin) / self.episode_step
+
             if losses:
                 avg_loss = np.vstack(losses).mean(axis=0)
-                self.write_log(self.i_episode, avg_loss, score)
+                self.write_log(self.i_episode, avg_loss, score, avg_time_cost)
 
             if self.i_episode % self.args.save_period == 0:
                 self.save_params(self.i_episode)
