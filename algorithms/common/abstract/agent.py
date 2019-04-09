@@ -138,8 +138,6 @@ class AbstractAgent(ABC):
         else:
             test_num = self.args.episode_num
 
-        self.set_eval_mode()
-
         for i_episode in range(test_num):
             state = self.env.reset()
             done = False
@@ -163,5 +161,3 @@ class AbstractAgent(ABC):
 
             if self.args.log:
                 wandb.log({"test score": score})
-
-        self.set_train_mode()
