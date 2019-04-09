@@ -159,11 +159,6 @@ def calculate_c51_loss(
         l = b.floor().long()  # noqa: E741
         u = b.ceil().long()
 
-        # Fix disappearing probability mass when l = b = u (b is int)
-        # taken from https://github.com/Kaixhin/Rainbow
-        l[(u > 0) * (l == u)] -= 1  # noqa: E741
-        u[(l < (atom_size - 1)) * (l == u)] += 1  # noqa: E741
-
         offset = (
             torch.linspace(0, (batch_size - 1) * atom_size, batch_size)
             .long()

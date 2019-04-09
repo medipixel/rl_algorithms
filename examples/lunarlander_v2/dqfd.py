@@ -52,7 +52,7 @@ hyper_params = {
     "V_MAX": 300,
     "ATOMS": 1530,
     # NoisyNet
-    "USE_NOISY_NET": True,
+    "USE_NOISY_NET": False,
     "STD_INIT": 0.5,
 }
 
