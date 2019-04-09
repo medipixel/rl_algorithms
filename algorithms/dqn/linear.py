@@ -62,8 +62,8 @@ class NoisyLinear(nn.Module):
     @staticmethod
     def scale_noise(size: int):
         """Set scale to make noise (factorized gaussian noise)."""
-        x = torch.from_numpy(np.random.normal(loc=0.0, scale=1.0, size=size))
-        return x.sign().mul_(x.abs().sqrt_())
+        x = torch.FloatTensor(np.random.normal(loc=0.0, scale=1.0, size=size))
+        return x.sign().mul(x.abs().sqrt())
 
     def reset_noise(self):
         """Make new noise."""
@@ -73,6 +73,12 @@ class NoisyLinear(nn.Module):
         # outer product
         self.weight_epsilon.copy_(epsilon_out.ger(epsilon_in)).to(device)
         self.bias_epsilon.copy_(epsilon_out).to(device)
+
+        # TODO: should test this
+
+    #        if torch.cuda.is_available():
+    #            self.weight_epsilon = self.weight_epsilon(non_blocking=True)
+    #            self.bias_epsilon = self.bias_epsilon(non_blocking=True)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method implementation."""
