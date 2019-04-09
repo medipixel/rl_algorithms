@@ -45,7 +45,7 @@ def calculate_iqn_loss(
 
     # Get the indices of the maximium Q-value across the action dimension.
     # Shape of replay_next_qt_argmax: (n_tau_prime_samples x batch_size) x 1.
-    next_actions = target_model(next_states).argmax(dim=1)
+    next_actions = model(next_states).argmax(dim=1)  # double Q
     next_actions = next_actions[:, None]
     next_actions = next_actions.repeat(n_tau_prime_samples, 1)
 
