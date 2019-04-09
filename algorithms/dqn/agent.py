@@ -115,11 +115,7 @@ class Agent(AbstractAgent):
 
         # epsilon greedy policy
         # pylint: disable=comparison-with-callable
-        if (
-            not self.args.test
-            and self.epsilon > np.random.random()
-            and not self.hyper_params["USE_NOISY_NET"]
-        ):
+        if not self.args.test and self.epsilon > np.random.random():
             selected_action = self.env.action_space.sample()
         else:
             state = self._preprocess_state(state)

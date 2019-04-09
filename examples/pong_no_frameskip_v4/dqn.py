@@ -16,7 +16,8 @@ from algorithms.common.helper_functions import identity
 from algorithms.common.networks.cnn import CNNLayer
 from algorithms.common.networks.mlp import init_layer_uniform
 from algorithms.dqn.agent import Agent
-from algorithms.dqn.networks import IQNCNN, IQNMLP, NoisyLinearConstructor
+from algorithms.dqn.linear import NoisyLinearConstructor
+from algorithms.dqn.networks import IQNCNN, IQNMLP
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -74,6 +75,8 @@ def run(env: gym.Env, env_name: str, args: argparse.Namespace):
         if hyper_params["USE_NOISY_NET"]:
             linear_layer = NoisyLinearConstructor(hyper_params["STD_INIT"])
             init_fn = identity
+            hyper_params["MAX_EPSILON"] = 0.0
+            hyper_params["MIN_EPSILON"] = 0.0
         else:
             linear_layer = nn.Linear
             init_fn = init_layer_uniform
