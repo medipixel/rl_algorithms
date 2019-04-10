@@ -366,7 +366,7 @@ class Agent(AbstractAgent):
                     self.i_episode,
                     avg_loss,
                     score,
-                    self.hyper_params["policy_update_freq"],
+                    self.hyper_params["POLICY_UPDATE_FREQ"],
                 )
 
             if self.i_episode % self.args.save_period == 0:
