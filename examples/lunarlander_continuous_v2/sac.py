@@ -22,8 +22,8 @@ hyper_params = {
     "GAMMA": 0.99,
     "TAU": 5e-3,
     "W_ENTROPY": 1e-3,
-    "W_MEAN_REG": 1e-6,
-    "W_STD_REG": 1e-6,
+    "W_MEAN_REG": 1e-7,
+    "W_STD_REG": 1e-7,
     "W_PRE_ACTIVATION_REG": 0.0,
     "LR_ACTOR": 3e-4,
     "LR_VF": 3e-4,
@@ -35,7 +35,7 @@ hyper_params = {
     "BATCH_SIZE": 512,
     "AUTO_ENTROPY_TUNING": True,
     "WEIGHT_DECAY": 0.0,
-    "INITIAL_RANDOM_ACTION": 5000,
+    "INITIAL_RANDOM_ACTION": int(1e4),
     "MULTIPLE_LEARN": 1,
 }
 
