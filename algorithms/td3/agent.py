@@ -81,6 +81,7 @@ class Agent(AbstractAgent):
         self.target_policy_noise = target_policy_noise
         self.total_steps = 0
         self.episode_steps = 0
+        self.update_steps = 0
         self.i_episode = 0
 
         # load the optimizer and model parameters
@@ -129,12 +130,11 @@ class Agent(AbstractAgent):
         return next_state, reward, done
 
     def update_model(
-        self,
-        experiences: Tuple[
-            torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor
-        ],
+        self, experiences: Tuple[torch.Tensor, ...]
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Train the model after each episode."""
+        self.update_steps += 1
+
         states, actions, rewards, next_states, dones = experiences
         masks = 1 - dones
 
@@ -169,7 +169,7 @@ class Agent(AbstractAgent):
         critic_loss.backward()
         self.critic_optim.step()
 
-        if self.episode_steps % self.hyper_params["POLICY_UPDATE_FREQ"] == 0:
+        if self.update_steps % self.hyper_params["POLICY_UPDATE_FREQ"] == 0:
             # policy loss
             actions = self.actor(states)
             actor_loss = -self.critic1(states, actions).mean()
