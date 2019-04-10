@@ -30,8 +30,8 @@ We are warmly welcoming external contributors! :)
 6. [Behaviour Cloning (BC with DDPG, SAC)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/bc)
 7. [Prioritized Experience Replay (PER with DDPG)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/per)
 8. [From Demonstrations (DDPGfD, SACfD, DQfD)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/fd)
-9. [Rainbow DQN (without NoisyNet)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/dqn)
-10. [Rainbow IQN (without DuelingNet & NoisyNet)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/dqn)
+9. [Rainbow DQN](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/dqn)
+10. [Rainbow IQN (without DuelingNet)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/dqn)
 
 ## Getting started
 We have tested each algorithm on some of the following environments.
@@ -128,5 +128,6 @@ We use [W&B](https://www.wandb.com/) for logging of network parameters and other
 12. [Z. Wang et al., "Dueling Network Architectures for Deep Reinforcement Learning." arXiv preprint arXiv:1511.06581, 2015.](https://arxiv.org/pdf/1511.06581.pdf)
 13. [T. Hester et al., "Deep Q-learning from Demonstrations." arXiv preprint arXiv:1704.03732, 2017.](https://arxiv.org/pdf/1704.03732.pdf)
 14. [M. G. Bellemare et al., "A Distributional Perspective on Reinforcement Learning." arXiv preprint arXiv:1707.06887, 2017.](https://arxiv.org/pdf/1707.06887.pdf)
-15. [M. Hessel et al., "Rainbow: Combining Improvements in Deep Reinforcement Learning." arXiv preprint arXiv:1710.02298, 2017.](https://arxiv.org/pdf/1710.02298.pdf)
-16. [W. Dabney et al., "Implicit Quantile Networks for Distributional Reinforcement Learning." arXiv preprint arXiv:1806.06923, 2018.](https://arxiv.org/pdf/1806.06923.pdf)
+15. [M. Fortunato et al., "Noisy Networks for Exploration." arXiv preprint arXiv:1706.10295, 2017.](https://arxiv.org/pdf/1706.10295.pdf)
+16. [M. Hessel et al., "Rainbow: Combining Improvements in Deep Reinforcement Learning." arXiv preprint arXiv:1710.02298, 2017.](https://arxiv.org/pdf/1710.02298.pdf)
+17. [W. Dabney et al., "Implicit Quantile Networks for Distributional Reinforcement Learning." arXiv preprint arXiv:1806.06923, 2018.](https://arxiv.org/pdf/1806.06923.pdf)

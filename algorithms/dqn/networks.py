@@ -14,12 +14,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from algorithms.common.networks.cnn import CNN
-from algorithms.common.networks.mlp import MLP
+from algorithms.common.networks.mlp import MLP, init_layer_uniform
+from algorithms.dqn.linear import NoisyMLPHandler
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-class DuelingMLP(MLP):
+class DuelingMLP(MLP, NoisyMLPHandler):
     """Multilayer perceptron with dueling construction."""
 
     def __init__(
@@ -28,7 +29,8 @@ class DuelingMLP(MLP):
         output_size: int,
         hidden_sizes: list,
         hidden_activation: Callable = F.relu,
-        init_w: float = 3e-3,
+        linear_layer: nn.Module = nn.Linear,
+        init_fn: Callable = init_layer_uniform,
     ):
         """Initialization."""
         super(DuelingMLP, self).__init__(
@@ -36,21 +38,20 @@ class DuelingMLP(MLP):
             output_size=output_size,
             hidden_sizes=hidden_sizes,
             hidden_activation=hidden_activation,
+            linear_layer=linear_layer,
             use_output_layer=False,
         )
         in_size = hidden_sizes[-1]
 
         # set advantage layer
-        self.advantage_hidden_layer = nn.Linear(in_size, in_size)
-        self.advantage_layer = nn.Linear(in_size, output_size)
-        self.advantage_layer.weight.data.uniform_(-init_w, init_w)
-        self.advantage_layer.bias.data.uniform_(-init_w, init_w)
+        self.advantage_hidden_layer = self.linear_layer(in_size, in_size)
+        self.advantage_layer = self.linear_layer(in_size, output_size)
+        self.advantage_layer = init_fn(self.advantage_layer)
 
         # set value layer
-        self.value_hidden_layer = nn.Linear(in_size, in_size)
-        self.value_layer = nn.Linear(in_size, 1)
-        self.value_layer.weight.data.uniform_(-init_w, init_w)
-        self.value_layer.bias.data.uniform_(-init_w, init_w)
+        self.value_hidden_layer = self.linear_layer(in_size, in_size)
+        self.value_layer = self.linear_layer(in_size, 1)
+        self.value_layer = init_fn(self.value_layer)
 
     def _forward_dueling(self, x: torch.Tensor) -> torch.Tensor:
         adv_x = self.hidden_activation(self.advantage_hidden_layer(x))
@@ -81,8 +82,12 @@ class C51CNN(CNN):
         out = self.fc_layers.forward_(x)
         return out
 
+    def reset_noise(self):
+        """Re-sample noise for fc layers."""
+        self.fc_layers.reset_noise()
 
-class C51DuelingMLP(MLP):
+
+class C51DuelingMLP(MLP, NoisyMLPHandler):
     """Multilayered perceptron for C51 with dueling construction."""
 
     def __init__(
@@ -94,7 +99,8 @@ class C51DuelingMLP(MLP):
         v_min: int = -10,
         v_max: int = 10,
         hidden_activation: Callable = F.relu,
-        init_w: float = 3e-3,
+        linear_layer: nn.Module = nn.Linear,
+        init_fn: Callable = init_layer_uniform,
     ):
         """Initialization."""
         super(C51DuelingMLP, self).__init__(
@@ -102,6 +108,7 @@ class C51DuelingMLP(MLP):
             output_size=action_size,
             hidden_sizes=hidden_sizes,
             hidden_activation=hidden_activation,
+            linear_layer=linear_layer,
             use_output_layer=False,
         )
         in_size = hidden_sizes[-1]
@@ -111,16 +118,14 @@ class C51DuelingMLP(MLP):
         self.v_min, self.v_max = v_min, v_max
 
         # set advantage layer
-        self.advantage_hidden_layer = nn.Linear(in_size, in_size)
-        self.advantage_layer = nn.Linear(in_size, self.output_size)
-        self.advantage_layer.weight.data.uniform_(-init_w, init_w)
-        self.advantage_layer.bias.data.uniform_(-init_w, init_w)
+        self.advantage_hidden_layer = self.linear_layer(in_size, in_size)
+        self.advantage_layer = self.linear_layer(in_size, self.output_size)
+        self.advantage_layer = init_fn(self.advantage_layer)
 
         # set value layer
-        self.value_hidden_layer = nn.Linear(in_size, in_size)
-        self.value_layer = nn.Linear(in_size, self.atom_size)
-        self.value_layer.weight.data.uniform_(-init_w, init_w)
-        self.value_layer.bias.data.uniform_(-init_w, init_w)
+        self.value_hidden_layer = self.linear_layer(in_size, in_size)
+        self.value_layer = self.linear_layer(in_size, self.atom_size)
+        self.value_layer = init_fn(self.value_layer)
 
     def forward_(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """Get distribution for atoms."""
@@ -160,8 +165,12 @@ class IQNCNN(CNN):
         out = self.fc_layers.forward_(x, n_tau_samples)
         return out
 
+    def reset_noise(self):
+        """Re-sample noise for fc layers."""
+        self.fc_layers.reset_noise()
 
-class IQNMLP(MLP):
+
+class IQNMLP(MLP, NoisyMLPHandler):
     """Multilayered perceptron for IQN with dueling construction.
 
     Reference: https://github.com/google/dopamine
@@ -175,7 +184,8 @@ class IQNMLP(MLP):
         n_quantiles: int,
         quantile_embedding_dim: int,
         hidden_activation: Callable = F.relu,
-        init_w: float = 3e-3,
+        linear_layer: nn.Module = nn.Linear,
+        init_fn: Callable = init_layer_uniform,
     ):
         """Initialization."""
         super(IQNMLP, self).__init__(
@@ -183,6 +193,8 @@ class IQNMLP(MLP):
             output_size=output_size,
             hidden_sizes=hidden_sizes,
             hidden_activation=hidden_activation,
+            linear_layer=linear_layer,
+            init_fn=init_fn,
         )
 
         IQNMLP.n_quantiles = n_quantiles
@@ -191,9 +203,10 @@ class IQNMLP(MLP):
         self.output_size = output_size
 
         # set quantile_net layer
-        self.quantile_fc_layer = nn.Linear(self.quantile_embedding_dim, self.input_size)
-        self.quantile_fc_layer.weight.data.uniform_(-init_w, init_w)
-        self.quantile_fc_layer.bias.data.uniform_(-init_w, init_w)
+        self.quantile_fc_layer = self.linear_layer(
+            self.quantile_embedding_dim, self.input_size
+        )
+        self.quantile_fc_layer = init_fn(self.quantile_fc_layer)
 
     def forward_(
         self, state: torch.Tensor, n_tau_samples: int = None

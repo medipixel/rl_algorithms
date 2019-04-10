@@ -3,15 +3,11 @@
 
 - Author: Kh Kim, Curt Park
 - Contact: kh.kim@medipixel.io, curt.park@medipixel.io
-- Paper: https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf (DQN)
-         https://arxiv.org/pdf/1509.06461.pdf (Double DQN)
-         https://arxiv.org/pdf/1511.05952.pdf (PER)
-         https://arxiv.org/pdf/1511.06581.pdf (Dueling)
-         https://arxiv.org/pdf/1704.03732.pdf (DQfD)
+- Paper: https://arxiv.org/pdf/1704.03732.pdf (DQfD)
 """
 
-import datetime
 import pickle
+import time
 from typing import Tuple
 
 import numpy as np
@@ -142,6 +138,10 @@ class Agent(DQNAgent):
         fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)
         self.beta = self.beta + fraction * (1.0 - self.beta)
 
+        if self.hyper_params["USE_NOISY_NET"]:
+            self.dqn.reset_noise()
+            self.dqn_target.reset_noise()
+
         return (
             loss.data,
             dq_loss.data,
@@ -150,12 +150,14 @@ class Agent(DQNAgent):
             n_demo,
         )
 
-    def write_log(self, i: int, avg_loss: np.ndarray, score: float = 0.0):
+    def write_log(
+        self, i: int, avg_loss: np.ndarray, score: float, avg_time_cost: float
+    ):
         """Write log about loss and score"""
         print(
             "[INFO] episode %d, episode step: %d, total step: %d, total score: %f\n"
             "epsilon: %f, total loss: %f, dq loss: %f, supervised loss: %f\n"
-            "avg q values: %f, demo num in minibatch: %d at %s\n"
+            "avg q values: %f, demo num in minibatch: %d (spent %.6f sec/step)\n"
             % (
                 i,
                 self.episode_step,
@@ -167,7 +169,7 @@ class Agent(DQNAgent):
                 avg_loss[2],
                 avg_loss[3],
                 avg_loss[4],
-                datetime.datetime.now(),
+                avg_time_cost,
             )
         )
 
@@ -179,6 +181,9 @@ class Agent(DQNAgent):
                     "total loss": avg_loss[0],
                     "dq loss": avg_loss[1],
                     "supervised loss": avg_loss[2],
+                    "avg q values": avg_loss[3],
+                    "demo num in minibatch": avg_loss[4],
+                    "time per each step": avg_time_cost,
                 }
             )
 
@@ -187,11 +192,14 @@ class Agent(DQNAgent):
         pretrain_loss = list()
         print("[INFO] Pre-Train %d step." % self.hyper_params["PRETRAIN_STEP"])
         for i_step in range(1, self.hyper_params["PRETRAIN_STEP"] + 1):
+            t_begin = time.time()
             loss = self.update_model()
+            t_end = time.time()
             pretrain_loss.append(loss)  # for logging
 
             # logging
             if i_step == 1 or i_step % 100 == 0:
                 avg_loss = np.vstack(pretrain_loss).mean(axis=0)
                 pretrain_loss.clear()
-                self.write_log(0, avg_loss)
+                self.write_log(0, avg_loss, 0.0, t_end - t_begin)
+        print("[INFO] Pre-Train Complete!\n")
