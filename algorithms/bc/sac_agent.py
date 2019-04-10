@@ -18,19 +18,19 @@ import torch
 import torch.nn.functional as F
 import wandb
 
-from algorithms.common.abstract.her import HER as AbstractHER
+from algorithms.common.abstract.her import HER
 from algorithms.common.buffer.replay_buffer import ReplayBuffer
 import algorithms.common.helper_functions as common_utils
-from algorithms.sac.agent import Agent as SACAgent
+from algorithms.sac.agent import SACAgent
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-class Agent(SACAgent):
+class BCSACAgent(SACAgent):
     """BC with SAC agent interacting with environment.
 
     Attrtibutes:
-        HER (AbstractHER): hinsight experience replay
+        her (HER): hinsight experience replay
         transitions_epi (list): transitions per episode (for HER)
         desired_state (np.ndarray): desired state of current episode
         memory (ReplayBuffer): replay memory
@@ -48,14 +48,14 @@ class Agent(SACAgent):
         models: tuple,
         optims: tuple,
         target_entropy: float,
-        HER: AbstractHER,
+        her: HER,
     ):
         """Initialization.
         Args:
-            HER (AbstractHER): hinsight experience replay
+            her (HER): hinsight experience replay
 
         """
-        self.HER = HER
+        self.her = her
         SACAgent.__init__(self, env, args, hyper_params, models, optims, target_entropy)
 
     # pylint: disable=attribute-defined-outside-init
@@ -67,7 +67,6 @@ class Agent(SACAgent):
 
         # HER
         if self.hyper_params["USE_HER"]:
-            self.her = self.HER()
             if self.hyper_params["DESIRED_STATES_FROM_DEMO"]:
                 self.her.fetch_desired_states_from_demo(demo)
 

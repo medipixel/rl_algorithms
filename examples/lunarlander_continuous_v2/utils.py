@@ -7,7 +7,7 @@
 
 import numpy as np
 
-from algorithms.common.abstract.her import HER as AbstractHER
+from algorithms.common.abstract.her import HER
 from algorithms.common.abstract.reward_fn import RewardFn
 
 
@@ -22,7 +22,7 @@ class L1DistanceRewardFn(RewardFn):
             return np.float64(-1.0)
 
 
-class LunarLanderContinuousHER(AbstractHER):
+class LunarLanderContinuousHER(HER):
     """HER for LunarLanderContinuous-v2 environment.
 
     Attributes:
@@ -33,7 +33,7 @@ class LunarLanderContinuousHER(AbstractHER):
 
     def __init__(self, reward_func: RewardFn = L1DistanceRewardFn):
         """Initialization."""
-        AbstractHER.__init__(self, reward_func=reward_func)
+        HER.__init__(self, reward_func=reward_func)
 
     # pylint: disable=attribute-defined-outside-init
     def fetch_desired_states_from_demo(self, demo: list):

@@ -22,7 +22,7 @@ import torch
 from torch.nn.utils import clip_grad_norm_
 import wandb
 
-from algorithms.common.abstract.agent import Agent as AbstractAgent
+from algorithms.common.abstract.agent import Agent
 from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
 from algorithms.common.buffer.replay_buffer import NStepTransitionBuffer
 import algorithms.common.helper_functions as common_utils
@@ -31,7 +31,7 @@ import algorithms.dqn.utils as dqn_utils
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-class Agent(AbstractAgent):
+class DQNAgent(Agent):
     """DQN interacting with environment.
 
     Attribute:
@@ -69,7 +69,7 @@ class Agent(AbstractAgent):
             optim (torch.optim.Adam): optimizers for dqn
 
         """
-        AbstractAgent.__init__(self, env, args)
+        Agent.__init__(self, env, args)
 
         self.use_n_step = hyper_params["N_STEP"] > 1
         self.epsilon = hyper_params["MAX_EPSILON"]
@@ -261,7 +261,7 @@ class Agent(AbstractAgent):
             "dqn_optim_state_dict": self.dqn_optimizer.state_dict(),
         }
 
-        AbstractAgent.save_params(self, params, n_episode)
+        Agent.save_params(self, params, n_episode)
 
     def write_log(self, i: int, loss: np.ndarray, score: float):
         """Write log about loss and score"""

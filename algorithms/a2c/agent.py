@@ -16,12 +16,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 import wandb
 
-from algorithms.common.abstract.agent import Agent as AbstractAgent
+from algorithms.common.abstract.agent import Agent
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-class Agent(AbstractAgent):
+class A2CAgent(Agent):
     """1-Step Advantage Actor-Critic interacting with environment.
 
     Attributes:
@@ -55,7 +55,7 @@ class Agent(AbstractAgent):
             optims (tuple): optimizers for actor and critic
 
         """
-        AbstractAgent.__init__(self, env, args)
+        Agent.__init__(self, env, args)
 
         self.actor, self.critic = models
         self.actor_optimizer, self.critic_optimizer = optims
@@ -158,7 +158,7 @@ class Agent(AbstractAgent):
             "critic_optim_state_dict": self.critic_optimizer.state_dict(),
         }
 
-        AbstractAgent.save_params(self, params, n_episode)
+        Agent.save_params(self, params, n_episode)
 
     def write_log(self, i: int, score: int, policy_loss: float, value_loss: float):
         total_loss = policy_loss + value_loss

@@ -12,7 +12,7 @@ import numpy as np
 import torch
 import torch.optim as optim
 
-from algorithms.bc.sac_agent import Agent
+from algorithms.bc.sac_agent import BCSACAgent
 from algorithms.common.networks.mlp import MLP, FlattenMLP, TanhGaussianDistParams
 from examples.reacher_v2.utils import ReacherHER
 
@@ -114,10 +114,10 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
     optims = (actor_optim, vf_optim, qf_1_optim, qf_2_optim)
 
     # HER
-    HER = ReacherHER if hyper_params["USE_HER"] else None
+    her = ReacherHER() if hyper_params["USE_HER"] else None
 
     # create an agent
-    agent = Agent(env, args, hyper_params, models, optims, target_entropy, HER)
+    agent = BCSACAgent(env, args, hyper_params, models, optims, target_entropy, her)
 
     # run
     if args.test:

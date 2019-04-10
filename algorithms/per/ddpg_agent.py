@@ -13,12 +13,12 @@ import torch
 
 from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
 import algorithms.common.helper_functions as common_utils
-from algorithms.ddpg.agent import Agent as DDPGAgent
+from algorithms.ddpg.agent import DDPGAgent
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-class Agent(DDPGAgent):
+class DDPGPERAgent(DDPGAgent):
     """ActorCritic interacting with environment.
 
     Attributes:

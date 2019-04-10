@@ -7,7 +7,7 @@
 
 import numpy as np
 
-from algorithms.common.abstract.her import HER as AbstractHER
+from algorithms.common.abstract.her import HER
 from algorithms.common.abstract.reward_fn import RewardFn
 
 
@@ -22,12 +22,12 @@ class ReacherRewardFn(RewardFn):
         return reward_dist + reward_ctrl
 
 
-class ReacherHER(AbstractHER):
+class ReacherHER(HER):
     """HER for Reacher-v2 environment."""
 
     def __init__(self, reward_func: RewardFn = ReacherRewardFn):
         """Initialization."""
-        AbstractHER.__init__(self, reward_func=reward_func)
+        HER.__init__(self, reward_func=reward_func)
 
     def fetch_desired_states_from_demo(self, _: list):
         """Return desired goal states from demonstration data.

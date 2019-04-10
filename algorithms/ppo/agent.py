@@ -16,14 +16,14 @@ import torch
 import torch.nn as nn
 import wandb
 
-from algorithms.common.abstract.agent import Agent as AbstractAgent
+from algorithms.common.abstract.agent import Agent
 from algorithms.common.env.multiprocessing_env import SubprocVecEnv
 import algorithms.ppo.utils as ppo_utils
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-class Agent(AbstractAgent):
+class PPOAgent(Agent):
     """PPO Agent.
 
     Attributes:
@@ -64,7 +64,7 @@ class Agent(AbstractAgent):
             optims (tuple): optimizers for actor and critic
 
         """
-        AbstractAgent.__init__(self, env_single, args)
+        Agent.__init__(self, env_single, args)
 
         if not self.args.test:
             self.env = env_multi
@@ -251,7 +251,7 @@ class Agent(AbstractAgent):
             "actor_optim_state_dict": self.actor_optimizer.state_dict(),
             "critic_optim_state_dict": self.critic_optimizer.state_dict(),
         }
-        AbstractAgent.save_params(self, params, n_episode)
+        Agent.save_params(self, params, n_episode)
 
     def write_log(
         self,

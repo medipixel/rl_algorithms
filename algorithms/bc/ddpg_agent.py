@@ -16,20 +16,20 @@ import torch
 import torch.nn.functional as F
 import wandb
 
-from algorithms.common.abstract.her import HER as AbstractHER
+from algorithms.common.abstract.her import HER
 from algorithms.common.buffer.replay_buffer import ReplayBuffer
 import algorithms.common.helper_functions as common_utils
 from algorithms.common.noise import OUNoise
-from algorithms.ddpg.agent import Agent as DDPGAgent
+from algorithms.ddpg.agent import DDPGAgent
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-class Agent(DDPGAgent):
+class BCDDPGAgent(DDPGAgent):
     """BC with DDPG agent interacting with environment.
 
     Attributes:
-        HER (AbstractHER): hinsight experience replay
+        her (HER): hinsight experience replay
         transitions_epi (list): transitions per episode (for HER)
         desired_state (np.ndarray): desired state of current episode
         memory (ReplayBuffer): replay memory
@@ -47,14 +47,14 @@ class Agent(DDPGAgent):
         models: tuple,
         optims: tuple,
         noise: OUNoise,
-        HER: AbstractHER,
+        her: HER,
     ):
         """Initialization.
         Args:
-            HER (AbstractHER): hinsight experience replay
+            her (HER): hinsight experience replay
 
         """
-        self.HER = HER
+        self.her = her
         DDPGAgent.__init__(self, env, args, hyper_params, models, optims, noise)
 
     # pylint: disable=attribute-defined-outside-init
@@ -66,7 +66,6 @@ class Agent(DDPGAgent):
 
         # HER
         if self.hyper_params["USE_HER"]:
-            self.her = self.HER()
             if self.hyper_params["DESIRED_STATES_FROM_DEMO"]:
                 self.her.fetch_desired_states_from_demo(demo)
 

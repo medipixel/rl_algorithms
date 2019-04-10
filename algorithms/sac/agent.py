@@ -18,14 +18,14 @@ import torch.nn.functional as F
 import torch.optim as optim
 import wandb
 
-from algorithms.common.abstract.agent import Agent as AbstractAgent
+from algorithms.common.abstract.agent import Agent
 from algorithms.common.buffer.replay_buffer import ReplayBuffer
 import algorithms.common.helper_functions as common_utils
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-class Agent(AbstractAgent):
+class SACAgent(Agent):
     """SAC agent interacting with environment.
 
     Attrtibutes:
@@ -71,7 +71,7 @@ class Agent(AbstractAgent):
             target_entropy (float): target entropy for the inequality constraint
 
         """
-        AbstractAgent.__init__(self, env, args)
+        Agent.__init__(self, env, args)
 
         self.actor, self.vf, self.vf_target, self.qf_1, self.qf_2 = models
         self.actor_optimizer, self.vf_optimizer = optims[0:2]
@@ -277,7 +277,7 @@ class Agent(AbstractAgent):
         if self.hyper_params["AUTO_ENTROPY_TUNING"]:
             params["alpha_optim"] = self.alpha_optimizer.state_dict()
 
-        AbstractAgent.save_params(self, params, n_episode)
+        Agent.save_params(self, params, n_episode)
 
     def write_log(
         self, i: int, loss: np.ndarray, score: float = 0.0, delayed_update: int = 1

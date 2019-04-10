@@ -12,7 +12,7 @@ import gym
 import torch
 import torch.optim as optim
 
-from algorithms.bc.ddpg_agent import Agent
+from algorithms.bc.ddpg_agent import BCDDPGAgent
 from algorithms.common.networks.mlp import MLP
 from algorithms.common.noise import OUNoise
 from examples.reacher_v2.utils import ReacherHER
@@ -36,7 +36,7 @@ hyper_params = {
     "INITIAL_RANDOM_ACTION": 10000,
     "MULTIPLE_LEARN": 1,
     # HER
-    "USE_HER": True,
+    "USE_HER": False,
     "SUCCESS_SCORE": -5.0,
     "DESIRED_STATES_FROM_DEMO": False,
 }
@@ -110,10 +110,10 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
     optims = (actor_optim, critic_optim)
 
     # HER
-    HER = ReacherHER if hyper_params["USE_HER"] else None
+    her = ReacherHER() if hyper_params["USE_HER"] else None
 
     # create an agent
-    agent = Agent(env, args, hyper_params, models, optims, noise, HER)
+    agent = BCDDPGAgent(env, args, hyper_params, models, optims, noise, her)
 
     # run
     if args.test:

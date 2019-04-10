@@ -12,7 +12,7 @@ import torch
 import torch.optim as optim
 
 from algorithms.dqn.networks import C51DuelingMLP
-from algorithms.fd.dqn_agent import Agent
+from algorithms.fd.dqn_agent import DQNfDAgent
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -89,7 +89,7 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
     models = (dqn, dqn_target)
 
     # create an agent
-    agent = Agent(env, args, hyper_params, models, dqn_optim)
+    agent = DQNfDAgent(env, args, hyper_params, models, dqn_optim)
 
     # run
     if args.test:

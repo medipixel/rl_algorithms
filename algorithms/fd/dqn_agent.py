@@ -22,12 +22,12 @@ import wandb
 from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBufferfD
 from algorithms.common.buffer.replay_buffer import NStepTransitionBuffer
 import algorithms.common.helper_functions as common_utils
-from algorithms.dqn.agent import Agent as DQNAgent
+from algorithms.dqn.agent import DQNAgent
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-class Agent(DQNAgent):
+class DQNfDAgent(DQNAgent):
     """DQN interacting with environment.
 
     Attribute:
