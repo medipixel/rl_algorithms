@@ -21,8 +21,8 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 hyper_params = {
     "GAMMA": 0.99,
     "TAU": 5e-3,
-    "BUFFER_SIZE": int(1e6),
-    "BATCH_SIZE": 100,
+    "BUFFER_SIZE": int(1e5),
+    "BATCH_SIZE": 128,
     "LR_ACTOR": 1e-3,
     "LR_CRITIC": 1e-3,
     "DELAYED_UPDATE": 2,
@@ -31,7 +31,7 @@ hyper_params = {
     "GAUSSIAN_NOISE_MIN_SIGMA": 0.1,
     "GAUSSIAN_NOISE_MAX_SIGMA": 0.1,
     "GAUSSIAN_NOISE_DECAY_PERIOD": int(1e6),
-    "WEIGHT_DECAY": 0.0,
+    "WEIGHT_DECAY": 1e-6,
     "INITIAL_RANDOM_ACTION": int(1e4),
 }
 

@@ -235,11 +235,12 @@ class Agent(AbstractAgent):
         """Write log about loss and score"""
         total_loss = loss.sum()
         print(
-            "[INFO] episode %d total score: %d, total_step: %d, total loss: %f\n"
-            "actor_loss: %.3f critic1_loss: %.3f critic2_loss: %.3f\n"
+            "[INFO] episode %d total score: %d, episode_step: %d, total_step: %d\n"
+            "total loss: %f actor_loss: %.3f critic1_loss: %.3f critic2_loss: %.3f\n"
             % (
                 i,
                 score,
+                self.episode_step,
                 self.total_step,
                 total_loss,
                 loss[0] * delayed_update,  # actor loss
