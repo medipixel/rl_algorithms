@@ -194,6 +194,7 @@ class IQNMLP(MLP, NoisyMLPHandler):
             hidden_sizes=hidden_sizes,
             hidden_activation=hidden_activation,
             linear_layer=linear_layer,
+            use_output_layer=False,
             init_fn=init_fn,
         )
 
@@ -207,6 +208,17 @@ class IQNMLP(MLP, NoisyMLPHandler):
             self.quantile_embedding_dim, self.input_size
         )
         self.quantile_fc_layer = init_fn(self.quantile_fc_layer)
+
+        # set advantage layer
+        hidden_size = hidden_sizes[-1]
+        self.adv_hidden_layer = self.linear_layer(hidden_size, hidden_size)
+        self.adv_layer = self.linear_layer(hidden_size, output_size)
+        self.adv_layer = init_fn(self.adv_layer)
+
+        # set value layer
+        self.val_hidden_layer = self.linear_layer(hidden_size, hidden_size)
+        self.val_layer = self.linear_layer(hidden_size, 1)
+        self.val_layer = init_fn(self.val_layer)
 
     def forward_(
         self, state: torch.Tensor, n_tau_samples: int = None
@@ -234,7 +246,21 @@ class IQNMLP(MLP, NoisyMLPHandler):
         # Hadamard product
         quantile_net = state_tiled * quantile_net
 
-        quantile_values = super(IQNMLP, self).forward(quantile_net)
+        # advantage
+        last_common_hidden = super(IQNMLP, self).forward(quantile_net)
+        adv_hidden = self.hidden_activation(self.adv_hidden_layer(last_common_hidden))
+        advantages = self.adv_layer(adv_hidden)
+        advantages = advantages.view(-1, self.output_size, n_tau_samples)
+
+        # value
+        val_hidden = self.hidden_activation(self.val_hidden_layer(last_common_hidden))
+        values = self.val_layer(val_hidden)
+        values = values.view(-1, 1, n_tau_samples)
+
+        # dueling
+        advantages_mean = advantages.mean(dim=1, keepdim=True)
+        quantile_values = values + advantages - advantages_mean
+        quantile_values = quantile_values.view(-1, self.output_size)
 
         return quantile_values, quantiles
 
