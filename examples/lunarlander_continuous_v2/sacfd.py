@@ -34,7 +34,7 @@ hyper_params = {
     "W_MEAN_REG": 1e-3,
     "W_STD_REG": 1e-3,
     "W_PRE_ACTIVATION_REG": 0.0,
-    "DELAYED_UPDATE": 2,
+    "POLICY_UPDATE_FREQ": 2,
     "PRETRAIN_STEP": 100,
     "MULTIPLE_LEARN": 2,  # multiple learning updates
     "LAMBDA1": 1.0,  # N-step return weight

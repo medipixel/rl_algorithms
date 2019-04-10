@@ -30,7 +30,7 @@ hyper_params = {
     "LR_QF1": 3e-4,
     "LR_QF2": 3e-4,
     "LR_ENTROPY": 3e-4,
-    "DELAYED_UPDATE": 2,
+    "POLICY_UPDATE_FREQ": 2,
     "BUFFER_SIZE": int(1e6),
     "BATCH_SIZE": 512,
     "AUTO_ENTROPY_TUNING": True,

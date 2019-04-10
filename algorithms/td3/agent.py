@@ -222,7 +222,7 @@ class Agent(AbstractAgent):
         AbstractAgent.save_params(self, params, n_episode)
 
     def write_log(
-        self, i: int, loss: np.ndarray, score: float = 0.0, delayed_update: int = 1
+        self, i: int, loss: np.ndarray, score: float = 0.0, policy_update_freq: int = 1
     ):
         """Write log about loss and score"""
         total_loss = loss.sum()
@@ -235,7 +235,7 @@ class Agent(AbstractAgent):
                 self.episode_steps,
                 self.total_steps,
                 total_loss,
-                loss[0] * delayed_update,  # actor loss
+                loss[0] * policy_update_freq,  # actor loss
                 loss[1],  # critic1 loss
                 loss[2],  # critic2 loss
             )
@@ -246,7 +246,7 @@ class Agent(AbstractAgent):
                 {
                     "score": score,
                     "total loss": total_loss,
-                    "actor loss": loss[0] * delayed_update,
+                    "actor loss": loss[0] * policy_update_freq,
                     "critic1 loss": loss[1],
                     "critic2 loss": loss[2],
                 }
