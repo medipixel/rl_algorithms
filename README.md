@@ -109,6 +109,10 @@ python <run-file> -h
 - `--load-from <save-file-path>`
     - Load the saved models and optimizers at the beginning.
 
+### Class Diagram
+Class diagram drawn on e447f3e
+![rl_algorithms_cls](https://user-images.githubusercontent.com/14961526/55703648-26022a80-5a15-11e9-8099-9bbfdffcb96d.png)
+
 ### W&B for logging
 We use [W&B](https://www.wandb.com/) for logging of network parameters and others. For more details, read [W&B tutorial](https://docs.wandb.com/docs/started.html).
 
