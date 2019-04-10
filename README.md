@@ -110,7 +110,7 @@ python <run-file> -h
     - Load the saved models and optimizers at the beginning.
 
 ### Class Diagram
-Class diagram drawn on [e447f3e](https://github.com/medipixel/rl_algorithms/commit/e447f3e743f6f85505f2275b646e46f0adcf8f89). This will be not frequently updated.
+Class diagram drawn on [e447f3e](https://github.com/medipixel/rl_algorithms/commit/e447f3e743f6f85505f2275b646e46f0adcf8f89). This won't be frequently updated.
 ![rl_algorithms_cls](https://user-images.githubusercontent.com/14961526/55703648-26022a80-5a15-11e9-8099-9bbfdffcb96d.png)
 
 ### W&B for logging
