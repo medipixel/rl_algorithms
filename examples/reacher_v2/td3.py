@@ -11,7 +11,7 @@ import gym
 import torch
 import torch.optim as optim
 
-from algorithms.common.networks.mlp import MLP
+from algorithms.common.networks.mlp import MLP, FlattenMLP
 from algorithms.common.noise import GaussianNoise
 from algorithms.td3.agent import Agent
 
@@ -25,13 +25,11 @@ hyper_params = {
     "BATCH_SIZE": 100,
     "LR_ACTOR": 1e-3,
     "LR_CRITIC": 1e-3,
-    "DELAYED_UPDATE": 2,
-    "TARGET_SMOOTHING_NOISE_STD": 0.2,
-    "TARGET_SMOOTHING_NOISE_CLIP": 0.5,
-    "GAUSSIAN_NOISE_MIN_SIGMA": 0.1,
-    "GAUSSIAN_NOISE_MAX_SIGMA": 0.1,
-    "GAUSSIAN_NOISE_DECAY_PERIOD": int(1e6),
     "WEIGHT_DECAY": 0.0,
+    "POLICY_UPDATE_FREQ": 2,
+    "EXPLORATION_NOISE": 0.1,
+    "TARGET_POLICY_NOISE": 0.2,
+    "TARGET_POLICY_NOISE_CLIP": 0.5,
     "INITIAL_RANDOM_ACTION": int(1e4),
 }
 
@@ -67,32 +65,35 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
     actor_target.load_state_dict(actor.state_dict())
 
     # create critic
-    critic_1 = MLP(
+    critic1 = FlattenMLP(
         input_size=state_dim + action_dim,
         output_size=1,
         hidden_sizes=hidden_sizes_critic,
     ).to(device)
 
-    critic_2 = MLP(
+    critic2 = FlattenMLP(
         input_size=state_dim + action_dim,
         output_size=1,
         hidden_sizes=hidden_sizes_critic,
     ).to(device)
 
-    critic_target1 = MLP(
+    critic_target1 = FlattenMLP(
         input_size=state_dim + action_dim,
         output_size=1,
         hidden_sizes=hidden_sizes_critic,
     ).to(device)
 
-    critic_target2 = MLP(
+    critic_target2 = FlattenMLP(
         input_size=state_dim + action_dim,
         output_size=1,
         hidden_sizes=hidden_sizes_critic,
     ).to(device)
 
-    critic_target1.load_state_dict(critic_1.state_dict())
-    critic_target2.load_state_dict(critic_2.state_dict())
+    critic_target1.load_state_dict(critic1.state_dict())
+    critic_target2.load_state_dict(critic2.state_dict())
+
+    # concat critic parameters to use one optim
+    critic_parameters = list(critic1.parameters()) + list(critic2.parameters())
 
     # create optimizers
     actor_optim = optim.Adam(
@@ -101,26 +102,31 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
         weight_decay=hyper_params["WEIGHT_DECAY"],
     )
 
-    critic_parameter = list(critic_1.parameters()) + list(critic_2.parameters())
     critic_optim = optim.Adam(
-        critic_parameter,
+        critic_parameters,
         lr=hyper_params["LR_CRITIC"],
         weight_decay=hyper_params["WEIGHT_DECAY"],
     )
 
     # noise instance to make randomness of action
-    noise = GaussianNoise(
-        hyper_params["GAUSSIAN_NOISE_MIN_SIGMA"],
-        hyper_params["GAUSSIAN_NOISE_MAX_SIGMA"],
-        hyper_params["GAUSSIAN_NOISE_DECAY_PERIOD"],
+    exploration_noise = GaussianNoise(
+        action_dim, hyper_params["EXPLORATION_NOISE"], hyper_params["EXPLORATION_NOISE"]
+    )
+
+    target_policy_noise = GaussianNoise(
+        action_dim,
+        hyper_params["TARGET_POLICY_NOISE"],
+        hyper_params["TARGET_POLICY_NOISE"],
     )
 
     # make tuples to create an agent
-    models = (actor, actor_target, critic_1, critic_2, critic_target1, critic_target2)
+    models = (actor, actor_target, critic1, critic2, critic_target1, critic_target2)
     optims = (actor_optim, critic_optim)
 
     # create an agent
-    agent = Agent(env, args, hyper_params, models, optims, noise)
+    agent = Agent(
+        env, args, hyper_params, models, optims, exploration_noise, target_policy_noise
+    )
 
     # run
     if args.test:
