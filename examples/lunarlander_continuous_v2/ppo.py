@@ -14,7 +14,7 @@ import torch.optim as optim
 
 from algorithms.common.env.utils import env_generator, make_envs
 from algorithms.common.networks.mlp import MLP, GaussianDist
-from algorithms.ppo.agent import Agent
+from algorithms.ppo.agent import PPOAgent
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -92,7 +92,7 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
     optims = (actor_optim, critic_optim)
 
     # create an agent
-    agent = Agent(env_single, env_multi, args, hyper_params, models, optims)
+    agent = PPOAgent(env_single, env_multi, args, hyper_params, models, optims)
 
     # run
     if args.test:

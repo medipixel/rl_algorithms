@@ -13,7 +13,7 @@ import gym
 import torch
 import torch.optim as optim
 
-from algorithms.bc.ddpg_agent import Agent
+from algorithms.bc.ddpg_agent import BCDDPGAgent
 from algorithms.common.networks.mlp import MLP
 from algorithms.common.noise import OUNoise
 from examples.lunarlander_continuous_v2.utils import LunarLanderContinuousHER
@@ -114,10 +114,10 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
     optims = (actor_optim, critic_optim)
 
     # HER
-    HER = LunarLanderContinuousHER if hyper_params["USE_HER"] else None
+    her = LunarLanderContinuousHER() if hyper_params["USE_HER"] else None
 
     # create an agent
-    agent = Agent(env, args, hyper_params, models, optims, noise, HER)
+    agent = BCDDPGAgent(env, args, hyper_params, models, optims, noise, her)
 
     # run
     if args.test:

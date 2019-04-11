@@ -14,7 +14,7 @@ import torch.optim as optim
 
 from algorithms.common.helper_functions import identity
 from algorithms.common.networks.mlp import init_layer_uniform
-from algorithms.dqn.agent import Agent
+from algorithms.dqn.agent import DQNAgent
 from algorithms.dqn.linear import NoisyLinearConstructor
 from algorithms.dqn.networks import C51DuelingMLP
 
@@ -105,7 +105,7 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
     models = (dqn, dqn_target)
 
     # create an agent
-    agent = Agent(env, args, hyper_params, models, dqn_optim)
+    agent = DQNAgent(env, args, hyper_params, models, dqn_optim)
 
     # run
     if args.test:
