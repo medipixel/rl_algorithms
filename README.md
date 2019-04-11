@@ -111,7 +111,7 @@ python <run-file> -h
 
 ### Class Diagram
 Class diagram drawn on [e447f3e](https://github.com/medipixel/rl_algorithms/commit/e447f3e743f6f85505f2275b646e46f0adcf8f89). This won't be frequently updated.
-![rl_algorithms_cls](https://user-images.githubusercontent.com/14961526/55703648-26022a80-5a15-11e9-8099-9bbfdffcb96d.png)
+![RL_Algorithms_ClassDiagram](https://user-images.githubusercontent.com/16010242/55934443-812d5a80-5c6b-11e9-9b31-fa8214965a55.png)
 
 ### W&B for logging
 We use [W&B](https://www.wandb.com/) for logging of network parameters and others. For more details, read [W&B tutorial](https://docs.wandb.com/docs/started.html).
