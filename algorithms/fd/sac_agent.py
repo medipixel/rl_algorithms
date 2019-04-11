@@ -79,6 +79,8 @@ class SACfDAgent(SACAgent):
     # pylint: disable=too-many-statements
     def update_model(self) -> Tuple[torch.Tensor, ...]:
         """Train the model after each episode."""
+        self.update_step += 1
+
         experiences = self.memory.sample(self.beta)
         states, actions, rewards, next_states, dones, weights, indices, eps_d = (
             experiences
@@ -149,7 +151,7 @@ class SACfDAgent(SACAgent):
         vf_loss.backward()
         self.vf_optimizer.step()
 
-        if self.total_step % self.hyper_params["DELAYED_UPDATE"] == 0:
+        if self.update_step % self.hyper_params["POLICY_UPDATE_FREQ"] == 0:
             # actor loss
             advantage = q_pred - v_pred.detach()
             actor_loss_element_wise = alpha * log_prob - advantage
@@ -212,5 +214,9 @@ class SACfDAgent(SACAgent):
                 avg_loss = np.vstack(pretrain_loss).mean(axis=0)
                 pretrain_loss.clear()
                 self.write_log(
-                    0, avg_loss, 0, delayed_update=self.hyper_params["DELAYED_UPDATE"]
+                    0,
+                    avg_loss,
+                    0,
+                    policy_update_freq=self.hyper_params["POLICY_UPDATE_FREQ"],
                 )
+        print("[INFO] Pre-Train Complete!\n")

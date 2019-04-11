@@ -115,8 +115,9 @@ class BCSACAgent(SACAgent):
 
     def update_model(self) -> Tuple[torch.Tensor, ...]:
         """Train the model after each episode."""
-        experiences = self.memory.sample()
-        demos = self.demo_memory.sample()
+        self.update_step += 1
+
+        experiences, demos = self.memory.sample(), self.demo_memory.sample()
 
         states, actions, rewards, next_states, dones = experiences
         demo_states, demo_actions, _, _, _ = demos
@@ -169,7 +170,7 @@ class BCSACAgent(SACAgent):
         vf_loss.backward()
         self.vf_optimizer.step()
 
-        if self.total_step % self.hyper_params["DELAYED_UPDATE"] == 0:
+        if self.update_step % self.hyper_params["POLICY_UPDATE_FREQ"] == 0:
             # bc loss
             qf_mask = torch.gt(
                 self.qf_1(demo_states, demo_actions),
@@ -223,7 +224,7 @@ class BCSACAgent(SACAgent):
         )
 
     def write_log(
-        self, i: int, loss: np.ndarray, score: float = 0.0, delayed_update: int = 1
+        self, i: int, loss: np.ndarray, score: float = 0.0, policy_update_freq: int = 1
     ):
         """Write log about loss and score"""
         total_loss = loss.sum()
@@ -238,7 +239,7 @@ class BCSACAgent(SACAgent):
                 self.total_step,
                 score,
                 total_loss,
-                loss[0] * delayed_update,  # actor loss
+                loss[0] * policy_update_freq,  # actor loss
                 loss[1],  # qf_1 loss
                 loss[2],  # qf_2 loss
                 loss[3],  # vf loss
@@ -252,7 +253,7 @@ class BCSACAgent(SACAgent):
                 {
                     "score": score,
                     "total loss": total_loss,
-                    "actor loss": loss[0] * delayed_update,
+                    "actor loss": loss[0] * policy_update_freq,
                     "qf_1 loss": loss[1],
                     "qf_2 loss": loss[2],
                     "vf loss": loss[3],

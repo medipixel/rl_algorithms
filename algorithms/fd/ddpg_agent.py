@@ -160,3 +160,4 @@ class DDPGfDAgent(DDPGAgent):
                 avg_loss = np.vstack(pretrain_loss).mean(axis=0)
                 pretrain_loss.clear()
                 self.write_log(0, avg_loss, 0)
+        print("[INFO] Pre-Train Complete!\n")

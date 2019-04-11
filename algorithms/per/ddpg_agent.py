@@ -18,7 +18,7 @@ from algorithms.ddpg.agent import DDPGAgent
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-class DDPGPERAgent(DDPGAgent):
+class PERDDPGAgent(DDPGAgent):
     """ActorCritic interacting with environment.
 
     Attributes:

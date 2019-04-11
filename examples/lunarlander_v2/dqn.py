@@ -9,9 +9,13 @@ import argparse
 
 import gym
 import torch
+import torch.nn as nn
 import torch.optim as optim
 
+from algorithms.common.helper_functions import identity
+from algorithms.common.networks.mlp import init_layer_uniform
 from algorithms.dqn.agent import DQNAgent
+from algorithms.dqn.linear import NoisyLinearConstructor
 from algorithms.dqn.networks import C51DuelingMLP
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -43,6 +47,9 @@ hyper_params = {
     "V_MIN": -300,
     "V_MAX": 300,
     "ATOMS": 1530,
+    # NoisyNet
+    "USE_NOISY_NET": True,
+    "STD_INIT": 0.5,
 }
 
 
@@ -59,6 +66,17 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
     # create model
     def get_fc_model():
         hidden_sizes = [128, 64]
+
+        if hyper_params["USE_NOISY_NET"]:
+            # use noisy net
+            linear_layer = NoisyLinearConstructor(hyper_params["STD_INIT"])
+            init_fn = identity
+            hyper_params["MAX_EPSILON"] = 0.0
+            hyper_params["MIN_EPSILON"] = 0.0
+        else:
+            linear_layer = nn.Linear
+            init_fn = init_layer_uniform
+
         model = C51DuelingMLP(
             input_size=state_dim,
             action_size=action_dim,
@@ -66,6 +84,8 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
             v_min=hyper_params["V_MIN"],
             v_max=hyper_params["V_MAX"],
             atom_size=hyper_params["ATOMS"],
+            linear_layer=linear_layer,
+            init_fn=init_fn,
         ).to(device)
 
         return model

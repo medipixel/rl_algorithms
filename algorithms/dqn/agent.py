@@ -7,13 +7,15 @@
          https://arxiv.org/pdf/1509.06461.pdf (Double DQN)
          https://arxiv.org/pdf/1511.05952.pdf (PER)
          https://arxiv.org/pdf/1511.06581.pdf (Dueling)
+         https://arxiv.org/pdf/1706.10295.pdf (NoisyNet)
          https://arxiv.org/pdf/1707.06887.pdf (C51)
+         https://arxiv.org/pdf/1710.02298.pdf (Rainbow)
          https://arxiv.org/pdf/1806.06923.pdf (IQN)
 """
 
 import argparse
-import datetime
 import os
+import time
 from typing import Tuple
 
 import gym
@@ -191,7 +193,7 @@ class DQNAgent(Agent):
                 gamma=gamma,
             )
 
-    def update_model(self) -> torch.Tensor:
+    def update_model(self) -> Tuple[torch.Tensor, torch.Tensor]:
         """Train the model after each episode."""
         # 1 step loss
         experiences_1 = self.memory.sample(self.beta)
@@ -239,6 +241,10 @@ class DQNAgent(Agent):
         fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)
         self.beta = self.beta + fraction * (1.0 - self.beta)
 
+        if self.hyper_params["USE_NOISY_NET"]:
+            self.dqn.reset_noise()
+            self.dqn_target.reset_noise()
+
         return loss.data, q_values.mean().data
 
     def load_params(self, path: str):
@@ -263,11 +269,11 @@ class DQNAgent(Agent):
 
         Agent.save_params(self, params, n_episode)
 
-    def write_log(self, i: int, loss: np.ndarray, score: float):
+    def write_log(self, i: int, loss: np.ndarray, score: float, avg_time_cost: float):
         """Write log about loss and score"""
         print(
             "[INFO] episode %d, episode step: %d, total step: %d, total score: %f\n"
-            "epsilon: %f, loss: %f, avg q-value: %f at %s\n"
+            "epsilon: %f, loss: %f, avg q-value: %f (spent %.6f sec/step)\n"
             % (
                 i,
                 self.episode_step,
@@ -276,12 +282,20 @@ class DQNAgent(Agent):
                 self.epsilon,
                 loss[0],
                 loss[1],
-                datetime.datetime.now(),
+                avg_time_cost,
             )
         )
 
         if self.args.log:
-            wandb.log({"score": score, "dqn loss": loss[0], "epsilon": self.epsilon})
+            wandb.log(
+                {
+                    "score": score,
+                    "epsilon": self.epsilon,
+                    "dqn loss": loss[0],
+                    "avg q values": loss[1],
+                    "time per each step": avg_time_cost,
+                }
+            )
 
     # pylint: disable=no-self-use, unnecessary-pass
     def pretrain(self):
@@ -312,6 +326,8 @@ class DQNAgent(Agent):
             done = False
             score = 0
 
+            t_begin = time.time()
+
             while not done:
                 if self.args.render and self.i_episode >= self.args.render_after:
                     self.env.render()
@@ -334,9 +350,12 @@ class DQNAgent(Agent):
                 state = next_state
                 score += reward
 
+            t_end = time.time()
+            avg_time_cost = (t_end - t_begin) / self.episode_step
+
             if losses:
                 avg_loss = np.vstack(losses).mean(axis=0)
-                self.write_log(self.i_episode, avg_loss, score)
+                self.write_log(self.i_episode, avg_loss, score, avg_time_cost)
 
             if self.i_episode % self.args.save_period == 0:
                 self.save_params(self.i_episode)

@@ -9,10 +9,14 @@ import argparse
 
 import gym
 import torch
+import torch.nn as nn
 import torch.optim as optim
 
+from algorithms.common.helper_functions import identity
 from algorithms.common.networks.cnn import CNNLayer
+from algorithms.common.networks.mlp import init_layer_uniform
 from algorithms.dqn.agent import DQNAgent
+from algorithms.dqn.linear import NoisyLinearConstructor
 from algorithms.dqn.networks import IQNCNN, IQNMLP
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -46,6 +50,9 @@ hyper_params = {
     "N_QUANTILE_SAMPLES": 32,
     "QUANTILE_EMBEDDING_DIM": 64,
     "KAPPA": 1.0,
+    # NoisyNet
+    "USE_NOISY_NET": True,
+    "STD_INIT": 0.5,
 }
 
 
@@ -64,12 +71,24 @@ def run(env: gym.Env, env_name: str, args: argparse.Namespace):
         hidden_sizes = [512]
         action_dim = env.action_space.n
 
+        # use noisy net
+        if hyper_params["USE_NOISY_NET"]:
+            linear_layer = NoisyLinearConstructor(hyper_params["STD_INIT"])
+            init_fn = identity
+            hyper_params["MAX_EPSILON"] = 0.0
+            hyper_params["MIN_EPSILON"] = 0.0
+        else:
+            linear_layer = nn.Linear
+            init_fn = init_layer_uniform
+
         fc_model = IQNMLP(
             input_size=fc_input_size,
             output_size=action_dim,
             hidden_sizes=hidden_sizes,
             n_quantiles=hyper_params["N_QUANTILE_SAMPLES"],
             quantile_embedding_dim=hyper_params["QUANTILE_EMBEDDING_DIM"],
+            linear_layer=linear_layer,
+            init_fn=init_fn,
         ).to(device)
 
         # create a model

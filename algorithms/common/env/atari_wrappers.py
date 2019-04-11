@@ -8,7 +8,7 @@ import os
 
 import cv2
 import gym
-from gym import spaces
+import gym.spaces as spaces
 import numpy as np
 
 os.environ.setdefault("PATH", "")

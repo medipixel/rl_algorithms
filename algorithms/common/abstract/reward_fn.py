@@ -13,8 +13,6 @@ class RewardFn(ABC):
     """Abstract class for computing reward.
        New compute_reward class should redefine __call__()
 
-    Attributes:
-
     """
 
     @abstractmethod

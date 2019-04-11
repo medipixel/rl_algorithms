@@ -45,7 +45,7 @@ def calculate_iqn_loss(
 
     # Get the indices of the maximium Q-value across the action dimension.
     # Shape of replay_next_qt_argmax: (n_tau_prime_samples x batch_size) x 1.
-    next_actions = target_model(next_states).argmax(dim=1)
+    next_actions = model(next_states).argmax(dim=1)  # double Q
     next_actions = next_actions[:, None]
     next_actions = next_actions.repeat(n_tau_prime_samples, 1)
 
@@ -145,7 +145,11 @@ def calculate_c51_loss(
     delta_z = float(v_max - v_min) / (atom_size - 1)
 
     with torch.no_grad():
+        # According to noisynet paper,
+        # it resamples noisynet parameters on online network when using double q
+        # but we don't because there is no remarkable difference in performance.
         next_actions = model.forward_(next_states)[1].argmax(1)
+
         next_dist = target_model.forward_(next_states)[0]
         next_dist = next_dist[range(batch_size), next_actions]
 
@@ -154,11 +158,6 @@ def calculate_c51_loss(
         b = (t_z - v_min) / delta_z
         l = b.floor().long()  # noqa: E741
         u = b.ceil().long()
-
-        # Fix disappearing probability mass when l = b = u (b is int)
-        # taken from https://github.com/Kaixhin/Rainbow
-        l[(u > 0) * (l == u)] -= 1  # noqa: E741
-        u[(l < (atom_size - 1)) * (l == u)] += 1  # noqa: E741
 
         offset = (
             torch.linspace(0, (batch_size - 1) * atom_size, batch_size)
@@ -194,7 +193,11 @@ def calculate_dqn_loss(
     states, actions, rewards, next_states, dones = experiences[:5]
 
     q_values = model(states)
+    # According to noisynet paper,
+    # it resamples noisynet parameters on online network when using double q
+    # but we don't because there is no remarkable difference in performance.
     next_q_values = model(next_states)
+
     next_target_q_values = target_model(next_states)
 
     curr_q_value = q_values.gather(1, actions.long().unsqueeze(1))

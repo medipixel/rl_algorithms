@@ -31,6 +31,14 @@ def concat(
     return in_concat
 
 
+def init_layer_uniform(layer: nn.Linear, init_w: float = 3e-3) -> nn.Linear:
+    """Init uniform parameters on the single layer"""
+    layer.weight.data.uniform_(-init_w, init_w)
+    layer.bias.data.uniform_(-init_w, init_w)
+
+    return layer
+
+
 class MLP(nn.Module):
     """Baseline of Multilayer perceptron.
 
@@ -53,9 +61,10 @@ class MLP(nn.Module):
         hidden_sizes: list,
         hidden_activation: Callable = F.relu,
         output_activation: Callable = identity,
+        linear_layer: nn.Module = nn.Linear,
         use_output_layer: bool = True,
         n_category: int = -1,
-        init_w: float = 3e-3,
+        init_fn: Callable = init_layer_uniform,
     ):
         """Initialization.
 
@@ -65,9 +74,10 @@ class MLP(nn.Module):
             hidden_sizes (list): number of hidden layers
             hidden_activation (function): activation function of hidden layers
             output_activation (function): activation function of output layer
+            linear_layer (nn.Module): linear layer of mlp
             use_output_layer (bool): whether or not to use the last layer
             n_category (int): category number (-1 if the action is continuous)
-            init_w (float): weight initialization bound for the last layer
+            init_fn (Callable): weight initialization function bound for the last layer
 
         """
         super(MLP, self).__init__()
@@ -77,6 +87,7 @@ class MLP(nn.Module):
         self.output_size = output_size
         self.hidden_activation = hidden_activation
         self.output_activation = output_activation
+        self.linear_layer = linear_layer
         self.use_output_layer = use_output_layer
         self.n_category = n_category
 
@@ -84,16 +95,15 @@ class MLP(nn.Module):
         self.hidden_layers: list = []
         in_size = self.input_size
         for i, next_size in enumerate(hidden_sizes):
-            fc = nn.Linear(in_size, next_size)
+            fc = self.linear_layer(in_size, next_size)
             in_size = next_size
             self.__setattr__("hidden_fc{}".format(i), fc)
             self.hidden_layers.append(fc)
 
         # set output layers
         if self.use_output_layer:
-            self.output_layer = nn.Linear(in_size, output_size)
-            self.output_layer.weight.data.uniform_(-init_w, init_w)
-            self.output_layer.bias.data.uniform_(-init_w, init_w)
+            self.output_layer = self.linear_layer(in_size, output_size)
+            self.output_layer = init_fn(self.output_layer)
         else:
             self.output_layer = identity
             self.output_activation = identity
@@ -137,7 +147,7 @@ class GaussianDist(MLP):
         mu_activation: Callable = torch.tanh,
         log_std_min: float = -20,
         log_std_max: float = 2,
-        init_w: float = 3e-3,
+        init_fn: Callable = init_layer_uniform,
     ):
         """Initialization."""
         super(GaussianDist, self).__init__(
@@ -155,13 +165,11 @@ class GaussianDist(MLP):
 
         # set log_std layer
         self.log_std_layer = nn.Linear(in_size, output_size)
-        self.log_std_layer.weight.data.uniform_(-init_w, init_w)
-        self.log_std_layer.bias.data.uniform_(-init_w, init_w)
+        self.log_std_layer = init_fn(self.log_std_layer)
 
         # set mean layer
         self.mu_layer = nn.Linear(in_size, output_size)
-        self.mu_layer.weight.data.uniform_(-init_w, init_w)
-        self.mu_layer.bias.data.uniform_(-init_w, init_w)
+        self.mu_layer = init_fn(self.mu_layer)
 
     def get_dist_params(self, x: torch.Tensor) -> Tuple[torch.Tensor, ...]:
         """Return gausian distribution parameters."""
@@ -229,7 +237,7 @@ class CategoricalDist(MLP):
         output_size: int,
         hidden_sizes: list,
         hidden_activation: Callable = F.relu,
-        init_w: float = 3e-3,
+        init_fn: Callable = init_layer_uniform,
     ):
         """Initialization."""
         super(CategoricalDist, self).__init__(
@@ -244,8 +252,7 @@ class CategoricalDist(MLP):
 
         # set log_std layer
         self.last_layer = nn.Linear(in_size, output_size)
-        self.last_layer.weight.data.uniform_(-init_w, init_w)
-        self.last_layer.bias.data.uniform_(-init_w, init_w)
+        self.last_layer = init_fn(self.last_layer)
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, ...]:
         """Forward method implementation."""

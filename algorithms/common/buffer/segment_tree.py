@@ -102,7 +102,8 @@ class SumSegmentTree(SegmentTree):
 
     def retrieve(self, upperbound: float) -> int:
         """Find the highest index `i` about upper bound in the tree"""
-        assert 0 <= upperbound <= self.sum() + 1e-5
+        # TODO: Check assert case and fix bug
+        assert 0 <= upperbound <= self.sum() + 1e-5, "upperbound: {}".format(upperbound)
 
         idx = 1
 
