@@ -175,7 +175,7 @@ class Agent(DDPGAgent):
         common_utils.soft_update(self.actor, self.actor_target, tau)
         common_utils.soft_update(self.critic, self.critic_target, tau)
 
-        return actor_loss.data, critic_loss.data, n_qf_mask
+        return actor_loss.item(), critic_loss.item(), n_qf_mask
 
     def write_log(self, i: int, loss: np.ndarray, score: int):
         """Write log about loss and score"""

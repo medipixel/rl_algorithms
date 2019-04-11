@@ -207,9 +207,9 @@ class Agent(AbstractAgent):
             )
             self.actor_optimizer.step()
 
-            actor_losses.append(actor_loss.data)
-            critic_losses.append(critic_loss.data)
-            total_losses.append(total_loss.data)
+            actor_losses.append(actor_loss.item())
+            critic_losses.append(critic_loss.item())
+            total_losses.append(total_loss.item())
 
         self.states, self.actions, self.rewards = [], [], []
         self.values, self.masks, self.log_probs = [], [], []

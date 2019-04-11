@@ -134,7 +134,7 @@ class Agent(AbstractAgent):
         )
         self.critic_optimizer.step()
 
-        return policy_loss.data, value_loss.data
+        return policy_loss.item(), value_loss.item()
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""

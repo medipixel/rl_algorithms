@@ -187,7 +187,7 @@ class Agent(AbstractAgent):
         else:
             actor_loss = torch.zeros(1)
 
-        return actor_loss.data, critic1_loss.data, critic2_loss.data
+        return actor_loss.item(), critic1_loss.item(), critic2_loss.item()
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
