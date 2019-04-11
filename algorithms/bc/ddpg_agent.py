@@ -13,6 +13,7 @@ from typing import Tuple
 import gym
 import numpy as np
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 import wandb
 
@@ -138,8 +139,10 @@ class BCDDPGAgent(DDPGAgent):
         critic_loss = F.mse_loss(values, curr_returns)
 
         # train critic
+        gradient_clip_cr = self.hyper_params["GRADIENT_CLIP_CR"]
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
+        nn.utils.clip_grad_norm_(self.critic.parameters(), gradient_clip_cr)
         self.critic_optimizer.step()
 
         # policy loss
@@ -165,8 +168,10 @@ class BCDDPGAgent(DDPGAgent):
         # train actor: pg loss + BC loss
         actor_loss = self.lambda1 * policy_loss + self.lambda2 * bc_loss
 
+        gradient_clip_ac = self.hyper_params["GRADIENT_CLIP_AC"]
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
+        nn.utils.clip_grad_norm_(self.actor.parameters(), gradient_clip_ac)
         self.actor_optimizer.step()
 
         # update target networks
