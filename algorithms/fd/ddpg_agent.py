@@ -17,12 +17,12 @@ import torch
 from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBufferfD
 from algorithms.common.buffer.replay_buffer import NStepTransitionBuffer
 import algorithms.common.helper_functions as common_utils
-from algorithms.ddpg.agent import Agent as DDPGAgent
+from algorithms.ddpg.agent import DDPGAgent
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-class Agent(DDPGAgent):
+class DDPGfDAgent(DDPGAgent):
     """ActorCritic interacting with environment.
 
     Attributes:

@@ -16,7 +16,7 @@ import torch
 import torch.nn.functional as F
 import wandb
 
-from algorithms.common.abstract.agent import AbstractAgent
+from algorithms.common.abstract.agent import Agent
 from algorithms.common.buffer.replay_buffer import ReplayBuffer
 import algorithms.common.helper_functions as common_utils
 from algorithms.common.noise import OUNoise
@@ -24,7 +24,7 @@ from algorithms.common.noise import OUNoise
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-class Agent(AbstractAgent):
+class DDPGAgent(Agent):
     """ActorCritic interacting with environment.
 
     Attributes:
@@ -64,7 +64,7 @@ class Agent(AbstractAgent):
             noise (OUNoise): random noise for exploration
 
         """
-        AbstractAgent.__init__(self, env, args)
+        Agent.__init__(self, env, args)
 
         self.actor, self.actor_target, self.critic, self.critic_target = models
         self.actor_optimizer, self.critic_optimizer = optims
@@ -196,7 +196,7 @@ class Agent(AbstractAgent):
             "critic_optim_state_dict": self.critic_optimizer.state_dict(),
         }
 
-        AbstractAgent.save_params(self, params, n_episode)
+        Agent.save_params(self, params, n_episode)
 
     def write_log(self, i: int, loss: np.ndarray, score: int):
         """Write log about loss and score"""

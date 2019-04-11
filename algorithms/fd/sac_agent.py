@@ -18,12 +18,12 @@ import torch
 from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBufferfD
 from algorithms.common.buffer.replay_buffer import NStepTransitionBuffer
 import algorithms.common.helper_functions as common_utils
-from algorithms.sac.agent import Agent as SACAgent
+from algorithms.sac.agent import SACAgent
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-class Agent(SACAgent):
+class SACfDAgent(SACAgent):
     """SAC agent interacting with environment.
 
     Attrtibutes:

@@ -13,7 +13,7 @@ import torch.optim as optim
 
 from algorithms.common.networks.mlp import MLP
 from algorithms.common.noise import OUNoise
-from algorithms.fd.ddpg_agent import Agent
+from algorithms.fd.ddpg_agent import DDPGfDAgent
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -109,7 +109,7 @@ def run(env: gym.Env, args: argparse.Namespace, state_dim: int, action_dim: int)
     optims = (actor_optim, critic_optim)
 
     # create an agent
-    agent = Agent(env, args, hyper_params, models, optims, noise)
+    agent = DDPGfDAgent(env, args, hyper_params, models, optims, noise)
 
     # run
     if args.test:

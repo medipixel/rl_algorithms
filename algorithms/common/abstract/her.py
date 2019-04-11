@@ -11,10 +11,10 @@ from typing import Tuple
 
 import numpy as np
 
-from algorithms.common.abstract.reward_fn import AbstractRewardFn
+from algorithms.common.abstract.reward_fn import RewardFn
 
 
-class AbstractHER(ABC):
+class HER(ABC):
     """Abstract class for HER (final strategy).
 
     Attributes:
@@ -22,7 +22,7 @@ class AbstractHER(ABC):
 
     """
 
-    def __init__(self, reward_func: AbstractRewardFn):
+    def __init__(self, reward_func: RewardFn):
         """Initialization.
 
         Args:
