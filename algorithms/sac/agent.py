@@ -47,6 +47,7 @@ class Agent(AbstractAgent):
         hyper_params (dict): hyper-parameters
         total_step (int): total step numbers
         episode_step (int): step number of the current episode
+        update_step (int): step number of updates
         i_episode (int): current episode number
 
     """
@@ -80,6 +81,7 @@ class Agent(AbstractAgent):
         self.curr_state = np.zeros((1,))
         self.total_step = 0
         self.episode_step = 0
+        self.update_step = 0
         self.i_episode = 0
 
         # automatic entropy tuning
@@ -153,6 +155,8 @@ class Agent(AbstractAgent):
 
     def update_model(self) -> Tuple[torch.Tensor, ...]:
         """Train the model after each episode."""
+        self.update_step += 1
+
         experiences = self.memory.sample()
         states, actions, rewards, next_states, dones = experiences
         new_actions, log_prob, pre_tanh_value, mu, std = self.actor(states)
@@ -203,7 +207,7 @@ class Agent(AbstractAgent):
         vf_loss.backward()
         self.vf_optimizer.step()
 
-        if self.total_step % self.hyper_params["DELAYED_UPDATE"] == 0:
+        if self.update_step % self.hyper_params["POLICY_UPDATE_FREQ"] == 0:
             # actor loss
             advantage = q_pred - v_pred.detach()
             actor_loss = (alpha * log_prob - advantage).mean()
@@ -280,7 +284,7 @@ class Agent(AbstractAgent):
         AbstractAgent.save_params(self, params, n_episode)
 
     def write_log(
-        self, i: int, loss: np.ndarray, score: float = 0.0, delayed_update: int = 1
+        self, i: int, loss: np.ndarray, score: float = 0.0, policy_update_freq: int = 1
     ):
         """Write log about loss and score"""
         total_loss = loss.sum()
@@ -295,7 +299,7 @@ class Agent(AbstractAgent):
                 self.total_step,
                 score,
                 total_loss,
-                loss[0] * delayed_update,  # actor loss
+                loss[0] * policy_update_freq,  # actor loss
                 loss[1],  # qf_1 loss
                 loss[2],  # qf_2 loss
                 loss[3],  # vf loss
@@ -308,7 +312,7 @@ class Agent(AbstractAgent):
                 {
                     "score": score,
                     "total loss": total_loss,
-                    "actor loss": loss[0] * delayed_update,
+                    "actor loss": loss[0] * policy_update_freq,
                     "qf_1 loss": loss[1],
                     "qf_2 loss": loss[2],
                     "vf loss": loss[3],
@@ -359,7 +363,10 @@ class Agent(AbstractAgent):
             if loss_episode:
                 avg_loss = np.vstack(loss_episode).mean(axis=0)
                 self.write_log(
-                    self.i_episode, avg_loss, score, self.hyper_params["DELAYED_UPDATE"]
+                    self.i_episode,
+                    avg_loss,
+                    score,
+                    self.hyper_params["POLICY_UPDATE_FREQ"],
                 )
 
             if self.i_episode % self.args.save_period == 0:
