@@ -23,7 +23,7 @@ hyper_params = {
     "TAU": 5e-3,
     "BUFFER_SIZE": int(1e5),
     "BATCH_SIZE": 64,
-    "LR_ACTOR": 4e-5,
+    "LR_ACTOR": 3e-4,
     "LR_CRITIC": 3e-4,
     "OU_NOISE_THETA": 0.0,
     "OU_NOISE_SIGMA": 0.0,
