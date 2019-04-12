@@ -143,10 +143,10 @@ class DQfDAgent(DQNAgent):
             self.dqn_target.reset_noise()
 
         return (
-            loss.data,
-            dq_loss.data,
-            supervised_loss.data,
-            q_values.mean().data,
+            loss.item(),
+            dq_loss.item(),
+            supervised_loss.item(),
+            q_values.mean().item(),
             n_demo,
         )
 

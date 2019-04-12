@@ -245,7 +245,7 @@ class DQNAgent(Agent):
             self.dqn.reset_noise()
             self.dqn_target.reset_noise()
 
-        return loss.data, q_values.mean().data
+        return loss.item(), q_values.mean().item()
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""

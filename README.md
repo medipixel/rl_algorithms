@@ -15,9 +15,9 @@ We are warmly welcoming external contributors! :)
 
 ## Demo
 
-|<img src="https://user-images.githubusercontent.com/17582508/52840582-18c76e80-313d-11e9-9752-3d6138f39a15.gif" width="300" height="180"/>|<img src="https://media.giphy.com/media/1mikGEln2lArKMQ6Pt/giphy.gif" width="300" height="180"/>|
-|:---:|:---:|
-|BC agent on LunarLanderContinuous-v2|SAC agent on Reacher-v2|
+|<img src="https://user-images.githubusercontent.com/17582508/52840582-18c76e80-313d-11e9-9752-3d6138f39a15.gif" width="260" height="180"/>|<img src="https://media.giphy.com/media/ZxLNajigOcLyeUnOwg/giphy.gif" width="160" height="180"/>|<img src="https://media.giphy.com/media/1mikGEln2lArKMQ6Pt/giphy.gif" width="260" height="180"/>|
+|:---:|:---:|:---:|
+|BC agent on LunarLanderContinuous-v2|RainbowIQN agent on PongNoFrameskip-v4|SAC agent on Reacher-v2|
 
 
 ## Contents
@@ -110,7 +110,7 @@ python <run-file> -h
     - Load the saved models and optimizers at the beginning.
 
 ### Class Diagram
-Class diagram drawn on [Pull Request #135](https://github.com/medipixel/rl_algorithms/pull/135)
+Class diagram at [#135](https://github.com/medipixel/rl_algorithms/pull/135).
 This won't be frequently updated.
 ![RL_Algorithms_ClassDiagram](https://user-images.githubusercontent.com/16010242/55934443-812d5a80-5c6b-11e9-9b31-fa8214965a55.png)
 

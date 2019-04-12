@@ -215,11 +215,11 @@ class BCSACAgent(SACAgent):
             n_qf_mask = 0
 
         return (
-            actor_loss.data,
-            qf_1_loss.data,
-            qf_2_loss.data,
-            vf_loss.data,
-            alpha_loss.data,
+            actor_loss.item(),
+            qf_1_loss.item(),
+            qf_2_loss.item(),
+            vf_loss.item(),
+            alpha_loss.item(),
             n_qf_mask,
         )
 

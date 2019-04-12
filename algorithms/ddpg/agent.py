@@ -168,7 +168,7 @@ class DDPGAgent(Agent):
         common_utils.soft_update(self.actor, self.actor_target, tau)
         common_utils.soft_update(self.critic, self.critic_target, tau)
 
-        return actor_loss.data, critic_loss.data
+        return actor_loss.item(), critic_loss.item()
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""

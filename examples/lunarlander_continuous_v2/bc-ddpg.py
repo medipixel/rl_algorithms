@@ -33,9 +33,11 @@ hyper_params = {
     "OU_NOISE_SIGMA": 0.0,
     "LAMBDA1": 1e-3,
     "LAMBDA2": 1.0,
-    "WEIGHT_DECAY": 1e-6,
+    "WEIGHT_DECAY": 1e-4,
     "INITIAL_RANDOM_ACTION": 10000,
     "MULTIPLE_LEARN": 1,
+    "GRADIENT_CLIP_AC": 0.5,
+    "GRADIENT_CLIP_CR": 0.5,
     # HER
     "USE_HER": False,
     "SUCCESS_SCORE": 250.0,
