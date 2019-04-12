@@ -13,6 +13,10 @@ This repository contains Reinforcement Learning algorithms which are being used 
 We are warmly welcoming external contributors! :)
 
 
+## Contributors
+We wish to add
+
+
 ## Demo
 
 |<img src="https://user-images.githubusercontent.com/17582508/52840582-18c76e80-313d-11e9-9752-3d6138f39a15.gif" width="260" height="180"/>|<img src="https://media.giphy.com/media/ZxLNajigOcLyeUnOwg/giphy.gif" width="160" height="180"/>|<img src="https://media.giphy.com/media/1mikGEln2lArKMQ6Pt/giphy.gif" width="260" height="180"/>|
