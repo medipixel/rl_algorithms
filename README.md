@@ -9,9 +9,23 @@
 
 </p>
 
+## Contents
+
+* [Welcome!](https://github.com/medipixel/rl_algorithms#welcome)
+* [Contributors](https://github.com/medipixel/rl_algorithms#contributors)
+* [Algorithms](https://github.com/medipixel/rl_algorithms#algorithms)
+* [Getting Started](https://github.com/medipixel/rl_algorithms#getting-started)
+* [Class Diagram](https://github.com/medipixel/rl_algorithms#class-diagram)
+* [References](https://github.com/medipixel/rl_algorithms#references)
+
+
 ## Welcome!
 This repository contains Reinforcement Learning algorithms which are being used for research activities at Medipixel. The source code will be frequently updated. 
 We are warmly welcoming external contributors! :)
+
+|<img src="https://user-images.githubusercontent.com/17582508/52840582-18c76e80-313d-11e9-9752-3d6138f39a15.gif" width="260" height="180"/>|<img src="https://media.giphy.com/media/ZxLNajigOcLyeUnOwg/giphy.gif" width="160" height="180"/>|<img src="https://media.giphy.com/media/1mikGEln2lArKMQ6Pt/giphy.gif" width="260" height="180"/>|
+|:---:|:---:|:---:|
+|BC agent on LunarLanderContinuous-v2|RainbowIQN agent on PongNoFrameskip-v4|SAC agent on Reacher-v2|
 
 ## Contributors
 
@@ -23,16 +37,9 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
 
 <!-- ALL-CONTRIBUTORS-LIST:END -->
 
-This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind welcome!
+This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification.
 
-## Demo
-
-|<img src="https://user-images.githubusercontent.com/17582508/52840582-18c76e80-313d-11e9-9752-3d6138f39a15.gif" width="260" height="180"/>|<img src="https://media.giphy.com/media/ZxLNajigOcLyeUnOwg/giphy.gif" width="160" height="180"/>|<img src="https://media.giphy.com/media/1mikGEln2lArKMQ6Pt/giphy.gif" width="260" height="180"/>|
-|:---:|:---:|:---:|
-|BC agent on LunarLanderContinuous-v2|RainbowIQN agent on PongNoFrameskip-v4|SAC agent on Reacher-v2|
-
-
-## Contents
+## Algorithms
 
 1. [Advantage Actor-Critic (A2C)](https://github.com/medipixel/rl_algorithms/blob/master/algorithms/a2c)
 2. [Deep Deterministic Policy Gradient (DDPG)](https://github.com/medipixel/rl_algorithms/blob/master/algorithms/ddpg)
@@ -121,13 +128,13 @@ python <run-file> -h
 - `--load-from <save-file-path>`
     - Load the saved models and optimizers at the beginning.
 
-### Class Diagram
+### W&B for logging
+We use [W&B](https://www.wandb.com/) for logging of network parameters and others. For more details, read [W&B tutorial](https://docs.wandb.com/docs/started.html).
+
+## Class Diagram
 Class diagram at [#135](https://github.com/medipixel/rl_algorithms/pull/135).
 This won't be frequently updated.
 ![RL_Algorithms_ClassDiagram](https://user-images.githubusercontent.com/16010242/55934443-812d5a80-5c6b-11e9-9b31-fa8214965a55.png)
-
-### W&B for logging
-We use [W&B](https://www.wandb.com/) for logging of network parameters and others. For more details, read [W&B tutorial](https://docs.wandb.com/docs/started.html).
 
 ## References
 1. [T. P. Lillicrap et al., "Continuous control with deep reinforcement learning." arXiv preprint arXiv:1509.02971, 2015.](https://arxiv.org/pdf/1509.02971.pdf)
