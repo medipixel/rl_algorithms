@@ -9,9 +9,11 @@
 
 </p>
 
+## Contents
+
 * [Welcome!](https://github.com/medipixel/rl_algorithms#welcome)
 * [Contributors](https://github.com/medipixel/rl_algorithms#contributors)
-* [Contents](https://github.com/medipixel/rl_algorithms#contents)
+* [Algorithms](https://github.com/medipixel/rl_algorithms#algorithms)
 * [Getting Started](https://github.com/medipixel/rl_algorithms#getting-started)
 * [Class Diagram](https://github.com/medipixel/rl_algorithms#class-diagram)
 * [References](https://github.com/medipixel/rl_algorithms#references)
@@ -37,7 +39,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
 
 This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification.
 
-## Contents
+## Algorithms
 
 1. [Advantage Actor-Critic (A2C)](https://github.com/medipixel/rl_algorithms/blob/master/algorithms/a2c)
 2. [Deep Deterministic Policy Gradient (DDPG)](https://github.com/medipixel/rl_algorithms/blob/master/algorithms/ddpg)
