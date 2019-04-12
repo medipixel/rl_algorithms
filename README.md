@@ -5,7 +5,7 @@
 ![Build Status](https://travis-ci.org/medipixel/rl_algorithms.svg?branch=master)
 [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/medipixel/rl_algorithms.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/medipixel/rl_algorithms/context:python)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
-[![All Contributors](https://img.shields.io/badge/all_contributors-2-orange.svg?style=flat-square)](#contributors)
+[![All Contributors](https://img.shields.io/badge/all_contributors-3-orange.svg?style=flat-square)](#contributors)
 
 </p>
 
@@ -19,7 +19,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
 
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
 <!-- prettier-ignore -->
-<table><tr><td align="center"><a href="https://github.com/Curt-Park"><img src="https://avatars3.githubusercontent.com/u/14961526?v=4" width="100px;" alt="Jinwoo Park (Curt)"/><br /><sub><b>Jinwoo Park (Curt)</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=Curt-Park" title="Code">💻</a></td><td align="center"><a href="https://github.com/MrSyee"><img src="https://avatars3.githubusercontent.com/u/17582508?v=4" width="100px;" alt="Kyunghwan Kim"/><br /><sub><b>Kyunghwan Kim</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=MrSyee" title="Code">💻</a></td></tr></table>
+<table><tr><td align="center"><a href="https://github.com/Curt-Park"><img src="https://avatars3.githubusercontent.com/u/14961526?v=4" width="100px;" alt="Jinwoo Park (Curt)"/><br /><sub><b>Jinwoo Park (Curt)</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=Curt-Park" title="Code">💻</a></td><td align="center"><a href="https://github.com/MrSyee"><img src="https://avatars3.githubusercontent.com/u/17582508?v=4" width="100px;" alt="Kyunghwan Kim"/><br /><sub><b>Kyunghwan Kim</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=MrSyee" title="Code">💻</a></td><td align="center"><a href="https://github.com/darthegg"><img src="https://avatars0.githubusercontent.com/u/16010242?v=4" width="100px;" alt="darthegg"/><br /><sub><b>darthegg</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=darthegg" title="Code">💻</a></td></tr></table>
 
 <!-- ALL-CONTRIBUTORS-LIST:END -->
 
