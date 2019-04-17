@@ -90,7 +90,7 @@ See <a href="https://app.wandb.ai/medipixel_rl/lunarlander_v2/reports?view=curt-
 <p><br>
 See <a href="https://app.wandb.ai/medipixel_rl/lunarlander_continuous_v2/reports?view=curt-park%2FBaselines%20%23158">W&B log</a> for more details.
 
-![lunarlandercontinuous-v2_baselines](https://user-images.githubusercontent.com/17582508/56282603-7f233a00-614a-11e9-8985-c8a85e2af9bc.png)
+![lunarlandercontinuous-v2_baselines](https://user-images.githubusercontent.com/14961526/56286075-bcd89080-6153-11e9-9ef5-8336bd5e2114.png)
 </p>
 </details>
 
