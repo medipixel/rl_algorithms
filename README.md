@@ -56,13 +56,13 @@ This project follows the [all-contributors](https://github.com/all-contributors/
 
 ## Performance
 
-The performance is measured on [4248057](https://github.com/medipixel/rl_algorithms/pull/158). Please note that this won't be frequently updated.
+The performance is measured on the commit [4248057](https://github.com/medipixel/rl_algorithms/pull/158). Please note that this won't be frequently updated.
 
 
 #### Reacher-v2
 
 We reproduced the performance of **DDPG**, **TD3**, and **SAC** on Reacher-v2 (Mujoco). They reach the score around -3.5 to -4.5.
-See [Wandb Log](https://app.wandb.ai/medipixel_rl/reacher-v2/reports?view=curt-park%2FBaselines%20%23158) for more details.
+See [W&B Log](https://app.wandb.ai/medipixel_rl/reacher-v2/reports?view=curt-park%2FBaselines%20%23158) for more details.
 
 ![reacher-v2_baselines](https://user-images.githubusercontent.com/17582508/56282421-163bc200-614a-11e9-8d4d-2bb520575fbb.png)
 
@@ -70,7 +70,7 @@ See [Wandb Log](https://app.wandb.ai/medipixel_rl/reacher-v2/reports?view=curt-p
 
 **RainbowIQN** learns the game incredibly fast! It accomplishes the perfect score (21) [within 100 episodes](https://app.wandb.ai/curt-park/dqn/runs/b2p9e9f7/logs)!
 The idea of RainbowIQN is roughly suggested from [W. Dabney et al.](https://arxiv.org/pdf/1806.06923.pdf).
-See [Wandb Log](https://app.wandb.ai/curt-park/dqn/reports?view=curt-park%2FPong%20%28DQN%20%2F%20C51%20%2F%20IQN%20%2F%20IQN%20-double%20q%29) for more details.
+See [W&B Log](https://app.wandb.ai/curt-park/dqn/reports?view=curt-park%2FPong%20%28DQN%20%2F%20C51%20%2F%20IQN%20%2F%20IQN%20-double%20q%29) for more details.
 
 ![pong_dqn](https://user-images.githubusercontent.com/17582508/56282434-1e93fd00-614a-11e9-9c31-af32e119d5b6.png)
 
@@ -79,32 +79,32 @@ See [Wandb Log](https://app.wandb.ai/curt-park/dqn/reports?view=curt-park%2FPong
 We used these environments just for a quick verification of each algorithm, so some of experiments may not show the best performance. Click the following lines to see the figures.
 
 <details><summary>LunarLander-v2 (RainbowDQN, RainbowDQfD)</summary>
-<p>
-See [Wandb Log](https://app.wandb.ai/medipixel_rl/lunarlander_v2/reports?view=curt-park%2FBaselines%20%23158) for more details.
+<p><br>
+See <a href="https://app.wandb.ai/medipixel_rl/lunarlander_v2/reports?view=curt-park%2FBaselines%20%23158">W&B log</a> for more details.
 
 ![lunarlander-v2_dqn](https://user-images.githubusercontent.com/17582508/56282616-85b1b180-614a-11e9-99a7-b2d9715a6bc6.png)
 </p>
 </details>
 
 <details><summary>LunarLanderContinuous-v2: A2C, PPO, DDPG, TD3, SAC</summary>
-<p>
-See [Wandb Log](https://app.wandb.ai/medipixel_rl/lunarlander_continuous_v2/reports?view=curt-park%2FBaselines%20%23158) for more details.
+<p><br>
+See <a href="https://app.wandb.ai/medipixel_rl/lunarlander_continuous_v2/reports?view=curt-park%2FBaselines%20%23158">W&B log</a> for more details.
 
 ![lunarlandercontinuous-v2_baselines](https://user-images.githubusercontent.com/17582508/56282603-7f233a00-614a-11e9-8985-c8a85e2af9bc.png)
 </p>
 </details>
 
 <details><summary>LunarLanderContinuous-v2: DDPG, PER-DDPG, DDPGfD, BC-DDPG</summary>
-<p>
-See [Wandb Log](https://app.wandb.ai/medipixel_rl/lunarlander_continuous_v2/reports?view=curt-park%2FDDPG%20%23158) for more details.
+<p><br>
+See <a href="https://app.wandb.ai/medipixel_rl/lunarlander_continuous_v2/reports?view=curt-park%2FDDPG%20%23158">W&B log</a> for more details.
 
 ![lunarlandercontinuous-v2_ddpg](https://user-images.githubusercontent.com/17582508/56282350-ea204100-6149-11e9-8642-0b9d6171ad9f.png)
 </p>
 </details>
 
 <details><summary>LunarLanderContinuous-v2: SAC, SACfD, BC-SAC</summary>
-<p>
-See [Wandb Log](https://app.wandb.ai/medipixel_rl/lunarlander_continuous_v2/reports?view=curt-park%2FSAC%20%23158) for more details.
+<p><br>
+See <a href="https://app.wandb.ai/medipixel_rl/lunarlander_continuous_v2/reports?view=curt-park%2FSAC%20%23158">W&B log</a> for more details.
 
 ![lunarlandercontinuous-v2_sac](https://user-images.githubusercontent.com/17582508/56282450-2c498280-614a-11e9-836d-86fdc240cd17.png)
 </p>
