@@ -14,6 +14,7 @@
 * [Welcome!](https://github.com/medipixel/rl_algorithms#welcome)
 * [Contributors](https://github.com/medipixel/rl_algorithms#contributors)
 * [Algorithms](https://github.com/medipixel/rl_algorithms#algorithms)
+* [Performance](https://github.com/medipixel/rl_algorithms#performance)
 * [Getting Started](https://github.com/medipixel/rl_algorithms#getting-started)
 * [Class Diagram](https://github.com/medipixel/rl_algorithms#class-diagram)
 * [References](https://github.com/medipixel/rl_algorithms#references)
@@ -52,6 +53,63 @@ This project follows the [all-contributors](https://github.com/all-contributors/
 9. [Rainbow DQN](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/dqn)
 10. [Rainbow IQN (without DuelingNet)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/dqn) - DuelingNet [degrades performance](https://github.com/medipixel/rl_algorithms/pull/137)
 
+
+## Performance
+
+The performance is measured on the commit [4248057](https://github.com/medipixel/rl_algorithms/pull/158). Please note that this won't be frequently updated.
+
+
+#### Reacher-v2
+
+We reproduced the performance of **DDPG**, **TD3**, and **SAC** on Reacher-v2 (Mujoco). They reach the score around -3.5 to -4.5.
+See [W&B Log](https://app.wandb.ai/medipixel_rl/reacher-v2/reports?view=curt-park%2FBaselines%20%23158) for more details.
+
+![reacher-v2_baselines](https://user-images.githubusercontent.com/17582508/56282421-163bc200-614a-11e9-8d4d-2bb520575fbb.png)
+
+#### PongNoFrameskip-v4
+
+**RainbowIQN** learns the game incredibly fast! It accomplishes the perfect score (21) [within 100 episodes](https://app.wandb.ai/curt-park/dqn/runs/b2p9e9f7/logs)!
+The idea of RainbowIQN is roughly suggested from [W. Dabney et al.](https://arxiv.org/pdf/1806.06923.pdf).
+See [W&B Log](https://app.wandb.ai/curt-park/dqn/reports?view=curt-park%2FPong%20%28DQN%20%2F%20C51%20%2F%20IQN%20%2F%20IQN%20-double%20q%29) for more details.
+
+![pong_dqn](https://user-images.githubusercontent.com/17582508/56282434-1e93fd00-614a-11e9-9c31-af32e119d5b6.png)
+
+#### LunarLander-v2 / LunarLanderContinuous-v2
+
+We used these environments just for a quick verification of each algorithm, so some of experiments may not show the best performance. Click the following lines to see the figures.
+
+<details><summary><b>LunarLander-v2: RainbowDQN, RainbowDQfD</b></summary>
+<p><br>
+See <a href="https://app.wandb.ai/medipixel_rl/lunarlander_v2/reports?view=curt-park%2FBaselines%20%23158">W&B log</a> for more details.
+
+![lunarlander-v2_dqn](https://user-images.githubusercontent.com/17582508/56282616-85b1b180-614a-11e9-99a7-b2d9715a6bc6.png)
+</p>
+</details>
+
+<details><summary><b>LunarLanderContinuous-v2: A2C, PPO, DDPG, TD3, SAC</b></summary>
+<p><br>
+See <a href="https://app.wandb.ai/medipixel_rl/lunarlander_continuous_v2/reports?view=curt-park%2FBaselines%20%23158">W&B log</a> for more details.
+
+![lunarlandercontinuous-v2_baselines](https://user-images.githubusercontent.com/14961526/56286075-bcd89080-6153-11e9-9ef5-8336bd5e2114.png)
+</p>
+</details>
+
+<details><summary><b>LunarLanderContinuous-v2: DDPG, PER-DDPG, DDPGfD, BC-DDPG</b></summary>
+<p><br>
+See <a href="https://app.wandb.ai/medipixel_rl/lunarlander_continuous_v2/reports?view=curt-park%2FDDPG%20%23158">W&B log</a> for more details.
+
+![lunarlandercontinuous-v2_ddpg](https://user-images.githubusercontent.com/17582508/56282350-ea204100-6149-11e9-8642-0b9d6171ad9f.png)
+</p>
+</details>
+
+<details><summary><b>LunarLanderContinuous-v2: SAC, SACfD, BC-SAC</b></summary>
+<p><br>
+See <a href="https://app.wandb.ai/medipixel_rl/lunarlander_continuous_v2/reports?view=curt-park%2FSAC%20%23158">W&B log</a> for more details.
+
+![lunarlandercontinuous-v2_sac](https://user-images.githubusercontent.com/17582508/56282450-2c498280-614a-11e9-836d-86fdc240cd17.png)
+</p>
+</details>
+
 ## Getting started
 We have tested each algorithm on some of the following environments.
 - [LunarLanderContinuous-v2](https://github.com/medipixel/rl_algorithms/tree/master/examples/lunarlander_continuous_v2)
@@ -59,10 +117,10 @@ We have tested each algorithm on some of the following environments.
 - [Reacher-v2](https://github.com/medipixel/rl_algorithms/tree/master/examples/reacher-v2)
 - [PongNoFrameskip-v4](https://github.com/medipixel/rl_algorithms/tree/master/examples/pong_no_frameskip_v4)
 
-### Prerequisites
+#### Prerequisites
 In order to run Mujoco environments (e.g. `Reacher-v2`), you need to acquire [Mujoco license](https://www.roboti.us/license.html).
 
-### Installation
+#### Installation
 First, clone the repository.
 ```
 git clone https://github.com/medipixel/rl_algorithms.git
@@ -73,7 +131,7 @@ Secondly, install packages required to execute the code. Just type:
 make dep
 ```
 
-#### For developers
+###### For developers
 You need to type the additional command which configures formatting and linting settings. It automatically runs formatting and linting when you commit the code.
 
 ```
@@ -86,7 +144,7 @@ make format  # for formatting
 make test  # for linting
 ```
 
-### Usages
+#### Usages
 You can train or test `algorithm` on `env_name` if `examples/env_name/algorithm.py` exists. (`examples/env_name/algorithm.py` contains hyper-parameters and details of networks.)
 ```
 python run_env_name.py --algo algorithm
@@ -103,7 +161,7 @@ python run_env_name.py --algo ddpg-custom
 ```
 You will see the agent run with hyper parameter and model settings you configured.
 
-### Arguments for run-files
+#### Arguments for run-files
 
 In addition, there are various argument settings for running algorithms. If you check the options to run file you should command 
 ```
@@ -128,7 +186,7 @@ python <run-file> -h
 - `--load-from <save-file-path>`
     - Load the saved models and optimizers at the beginning.
 
-### W&B for logging
+#### W&B for logging
 We use [W&B](https://www.wandb.com/) for logging of network parameters and others. For more details, read [W&B tutorial](https://docs.wandb.com/docs/started.html).
 
 ## Class Diagram
