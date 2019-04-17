@@ -78,7 +78,7 @@ See [W&B Log](https://app.wandb.ai/curt-park/dqn/reports?view=curt-park%2FPong%2
 
 We used these environments just for a quick verification of each algorithm, so some of experiments may not show the best performance. Click the following lines to see the figures.
 
-<details><summary>LunarLander-v2 (RainbowDQN, RainbowDQfD)</summary>
+<details><summary><b>LunarLander-v2 (RainbowDQN, RainbowDQfD)</b></summary>
 <p><br>
 See <a href="https://app.wandb.ai/medipixel_rl/lunarlander_v2/reports?view=curt-park%2FBaselines%20%23158">W&B log</a> for more details.
 
@@ -86,7 +86,7 @@ See <a href="https://app.wandb.ai/medipixel_rl/lunarlander_v2/reports?view=curt-
 </p>
 </details>
 
-<details><summary>LunarLanderContinuous-v2: A2C, PPO, DDPG, TD3, SAC</summary>
+<details><summary><b>LunarLanderContinuous-v2: A2C, PPO, DDPG, TD3, SAC</b></summary>
 <p><br>
 See <a href="https://app.wandb.ai/medipixel_rl/lunarlander_continuous_v2/reports?view=curt-park%2FBaselines%20%23158">W&B log</a> for more details.
 
@@ -94,7 +94,7 @@ See <a href="https://app.wandb.ai/medipixel_rl/lunarlander_continuous_v2/reports
 </p>
 </details>
 
-<details><summary>LunarLanderContinuous-v2: DDPG, PER-DDPG, DDPGfD, BC-DDPG</summary>
+<details><summary><b>LunarLanderContinuous-v2: DDPG, PER-DDPG, DDPGfD, BC-DDPG</b></summary>
 <p><br>
 See <a href="https://app.wandb.ai/medipixel_rl/lunarlander_continuous_v2/reports?view=curt-park%2FDDPG%20%23158">W&B log</a> for more details.
 
@@ -102,7 +102,7 @@ See <a href="https://app.wandb.ai/medipixel_rl/lunarlander_continuous_v2/reports
 </p>
 </details>
 
-<details><summary>LunarLanderContinuous-v2: SAC, SACfD, BC-SAC</summary>
+<details><summary><b>LunarLanderContinuous-v2: SAC, SACfD, BC-SAC</b></summary>
 <p><br>
 See <a href="https://app.wandb.ai/medipixel_rl/lunarlander_continuous_v2/reports?view=curt-park%2FSAC%20%23158">W&B log</a> for more details.
 
