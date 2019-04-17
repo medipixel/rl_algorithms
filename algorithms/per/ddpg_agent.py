@@ -10,6 +10,7 @@
 from typing import Tuple
 
 import torch
+import torch.nn as nn
 
 from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
 import algorithms.common.helper_functions as common_utils
@@ -53,19 +54,23 @@ class PERDDPGAgent(DDPGAgent):
         curr_returns = curr_returns.to(device).detach()
 
         # train critic
+        gradient_clip_cr = self.hyper_params["GRADIENT_CLIP_CR"]
         values = self.critic(torch.cat((states, actions), dim=-1))
         critic_loss_element_wise = (values - curr_returns).pow(2)
         critic_loss = torch.mean(critic_loss_element_wise * weights)
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
+        nn.utils.clip_grad_norm_(self.critic.parameters(), gradient_clip_cr)
         self.critic_optimizer.step()
 
         # train actor
+        gradient_clip_ac = self.hyper_params["GRADIENT_CLIP_AC"]
         actions = self.actor(states)
         actor_loss_element_wise = -self.critic(torch.cat((states, actions), dim=-1))
         actor_loss = torch.mean(actor_loss_element_wise * weights)
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
+        nn.utils.clip_grad_norm_(self.actor.parameters(), gradient_clip_ac)
         self.actor_optimizer.step()
 
         # update target networks

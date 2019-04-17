@@ -13,6 +13,7 @@ from typing import Tuple
 
 import numpy as np
 import torch
+import torch.nn as nn
 
 from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBufferfD
 from algorithms.common.buffer.replay_buffer import NStepTransitionBuffer
@@ -104,6 +105,7 @@ class DDPGfDAgent(DDPGAgent):
         gamma = self.hyper_params["GAMMA"]
 
         # train critic
+        gradient_clip_cr = self.hyper_params["GRADIENT_CLIP_CR"]
         critic_loss_element_wise = self._get_critic_loss(experiences_1, gamma)
         critic_loss = torch.mean(critic_loss_element_wise * weights)
 
@@ -118,14 +120,17 @@ class DDPGfDAgent(DDPGAgent):
 
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
+        nn.utils.clip_grad_norm_(self.critic.parameters(), gradient_clip_cr)
         self.critic_optimizer.step()
 
         # train actor
+        gradient_clip_ac = self.hyper_params["GRADIENT_CLIP_AC"]
         actions = self.actor(states)
         actor_loss_element_wise = -self.critic(torch.cat((states, actions), dim=-1))
         actor_loss = torch.mean(actor_loss_element_wise * weights)
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
+        nn.utils.clip_grad_norm_(self.actor.parameters(), gradient_clip_ac)
         self.actor_optimizer.step()
 
         # update target networks

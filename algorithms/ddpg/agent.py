@@ -13,6 +13,7 @@ from typing import Tuple
 import gym
 import numpy as np
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 import wandb
 
@@ -101,13 +102,13 @@ class DDPGAgent(Agent):
         ):
             return self.env.action_space.sample()
 
-        selected_action = self.actor(state)
+        selected_action = self.actor(state).detach().cpu().numpy()
 
         if not self.args.test:
-            selected_action += torch.FloatTensor(self.noise.sample()).to(device)
-            selected_action = torch.clamp(selected_action, -1.0, 1.0)
+            noise = self.noise.sample()
+            selected_action = np.clip(selected_action + noise, -1.0, 1.0)
 
-        return selected_action.detach().cpu().numpy()
+        return selected_action
 
     # pylint: disable=no-self-use
     def _preprocess_state(self, state: np.ndarray) -> torch.Tensor:
@@ -150,17 +151,21 @@ class DDPGAgent(Agent):
         curr_returns = curr_returns.to(device)
 
         # train critic
+        gradient_clip_cr = self.hyper_params["GRADIENT_CLIP_CR"]
         values = self.critic(torch.cat((states, actions), dim=-1))
         critic_loss = F.mse_loss(values, curr_returns)
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
+        nn.utils.clip_grad_norm_(self.critic.parameters(), gradient_clip_cr)
         self.critic_optimizer.step()
 
         # train actor
+        gradient_clip_ac = self.hyper_params["GRADIENT_CLIP_AC"]
         actions = self.actor(states)
         actor_loss = -self.critic(torch.cat((states, actions), dim=-1)).mean()
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
+        nn.utils.clip_grad_norm_(self.actor.parameters(), gradient_clip_ac)
         self.actor_optimizer.step()
 
         # update target networks
