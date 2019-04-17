@@ -78,7 +78,7 @@ See [W&B Log](https://app.wandb.ai/curt-park/dqn/reports?view=curt-park%2FPong%2
 
 We used these environments just for a quick verification of each algorithm, so some of experiments may not show the best performance. Click the following lines to see the figures.
 
-<details><summary><b>LunarLander-v2 (RainbowDQN, RainbowDQfD)</b></summary>
+<details><summary><b>LunarLander-v2: RainbowDQN, RainbowDQfD</b></summary>
 <p><br>
 See <a href="https://app.wandb.ai/medipixel_rl/lunarlander_v2/reports?view=curt-park%2FBaselines%20%23158">W&B log</a> for more details.
 
