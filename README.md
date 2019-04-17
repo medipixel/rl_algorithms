@@ -52,6 +52,22 @@ This project follows the [all-contributors](https://github.com/all-contributors/
 9. [Rainbow DQN](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/dqn)
 10. [Rainbow IQN (without DuelingNet)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/dqn) - DuelingNet [degrades performance](https://github.com/medipixel/rl_algorithms/pull/137)
 
+## Performance
+<details><summary>CLICK ME</summary>
+
+<p>
+
+![pong_dqn](https://user-images.githubusercontent.com/17582508/56282434-1e93fd00-614a-11e9-9c31-af32e119d5b6.png)
+![lunarlander-v2_dqn](https://user-images.githubusercontent.com/17582508/56282616-85b1b180-614a-11e9-99a7-b2d9715a6bc6.png)
+![reacher-v2_baselines](https://user-images.githubusercontent.com/17582508/56282421-163bc200-614a-11e9-8d4d-2bb520575fbb.png)
+![lunarlandercontinuous-v2_baselines](https://user-images.githubusercontent.com/17582508/56282603-7f233a00-614a-11e9-8985-c8a85e2af9bc.png)
+![lunarlandercontinuous-v2_ddpg](https://user-images.githubusercontent.com/17582508/56282350-ea204100-6149-11e9-8642-0b9d6171ad9f.png)
+![lunarlandercontinuous-v2_sac](https://user-images.githubusercontent.com/17582508/56282450-2c498280-614a-11e9-836d-86fdc240cd17.png)
+
+</p>
+
+</details>
+
 ## Getting started
 We have tested each algorithm on some of the following environments.
 - [LunarLanderContinuous-v2](https://github.com/medipixel/rl_algorithms/tree/master/examples/lunarlander_continuous_v2)
