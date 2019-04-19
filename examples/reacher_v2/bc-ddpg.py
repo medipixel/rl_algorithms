@@ -35,6 +35,8 @@ hyper_params = {
     "WEIGHT_DECAY": 1e-6,
     "INITIAL_RANDOM_ACTION": 10000,
     "MULTIPLE_LEARN": 1,
+    "GRADIENT_CLIP_AC": 0.5,
+    "GRADIENT_CLIP_CR": 1.0,
     # HER
     "USE_HER": False,
     "SUCCESS_SCORE": -5.0,

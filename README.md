@@ -56,6 +56,12 @@ This project follows the [all-contributors](https://github.com/all-contributors/
 
 ## Performance
 
+We have tested each algorithm on some of the following environments.
+- [LunarLanderContinuous-v2](https://github.com/medipixel/rl_algorithms/tree/master/examples/lunarlander_continuous_v2)
+- [LunarLander_v2](https://github.com/medipixel/rl_algorithms/tree/master/examples/lunarlander_v2)
+- [Reacher-v2](https://github.com/medipixel/rl_algorithms/tree/master/examples/reacher-v2)
+- [PongNoFrameskip-v4](https://github.com/medipixel/rl_algorithms/tree/master/examples/pong_no_frameskip_v4)
+
 The performance is measured on the commit [4248057](https://github.com/medipixel/rl_algorithms/pull/158). Please note that this won't be frequently updated.
 
 
@@ -111,11 +117,6 @@ See <a href="https://app.wandb.ai/medipixel_rl/lunarlander_continuous_v2/reports
 </details>
 
 ## Getting started
-We have tested each algorithm on some of the following environments.
-- [LunarLanderContinuous-v2](https://github.com/medipixel/rl_algorithms/tree/master/examples/lunarlander_continuous_v2)
-- [LunarLander_v2](https://github.com/medipixel/rl_algorithms/tree/master/examples/lunarlander_v2)
-- [Reacher-v2](https://github.com/medipixel/rl_algorithms/tree/master/examples/reacher-v2)
-- [PongNoFrameskip-v4](https://github.com/medipixel/rl_algorithms/tree/master/examples/pong_no_frameskip_v4)
 
 #### Prerequisites
 In order to run Mujoco environments (e.g. `Reacher-v2`), you need to acquire [Mujoco license](https://www.roboti.us/license.html).
