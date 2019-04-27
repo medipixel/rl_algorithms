@@ -119,7 +119,8 @@ See <a href="https://app.wandb.ai/medipixel_rl/lunarlander_continuous_v2/reports
 ## Getting started
 
 #### Prerequisites
-In order to run Mujoco environments (e.g. `Reacher-v2`), you need to acquire [Mujoco license](https://www.roboti.us/license.html).
+* Python 3.6.1+
+* In order to run Mujoco environments (e.g. `Reacher-v2`), you need to acquire [Mujoco license](https://www.roboti.us/license.html).
 
 #### Installation
 First, clone the repository.
