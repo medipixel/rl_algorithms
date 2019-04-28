@@ -195,9 +195,9 @@ python <run-file> -h
 #### W&B for logging
 We use [W&B](https://www.wandb.com/) for logging of network parameters and others. For logging, please follow the steps below after requirement installation:
 
-1. Create a [wandb](https://www.wandb.com/) account
-2. Check your **API key** in settings, and login wandb on your terminal: `$ wandb login API_KEY`
-3. Initialize wandb: `$ wandb init`
+>0. Create a [wandb](https://www.wandb.com/) account
+>1. Check your **API key** in settings, and login wandb on your terminal: `$ wandb login API_KEY`
+>2. Initialize wandb: `$ wandb init`
 
 For more details, read [W&B tutorial](https://docs.wandb.com/docs/started.html).
 
