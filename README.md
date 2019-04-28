@@ -119,7 +119,7 @@ See <a href="https://app.wandb.ai/medipixel_rl/lunarlander_continuous_v2/reports
 ## Getting started
 
 #### Prerequisites
-* This repository was tested on [Anaconda](https://www.anaconda.com/distribution/) virtual environment with python 3.6.1+
+* This repository is tested on [Anaconda](https://www.anaconda.com/distribution/) virtual environment with python 3.6.1+
     ```
     $ conda create -n rl_algorithms python=3.6.1
     $ conda activate rl_algorithms
