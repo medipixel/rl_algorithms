@@ -119,15 +119,16 @@ See <a href="https://app.wandb.ai/medipixel_rl/lunarlander_continuous_v2/reports
 ## Getting started
 
 #### Prerequisites
-* This repository was tested with Conda virtual environment (Python 3.6.1+).
-    `$ conda create -n rl_algorithms python=3.6.1`
+* This repository was tested on [Anaconda](https://www.anaconda.com/distribution/) virtual environment with python 3.6.1+
+    ```
+    $ conda create -n rl_algorithms python=3.6.1
+    ```
 * In order to run Mujoco environments (e.g. `Reacher-v2`), you need to acquire [Mujoco license](https://www.roboti.us/license.html).
 * For logging, please follow the steps below:
-
-    0. Create [wandb](https://www.wandb.com/) account
-    1. Check your **API key** in settings, and login on your terminal
+    1. Create [wandb](https://www.wandb.com/) account
+    2. Check your **API key** in settings, and login on your terminal
     `$ wandb login API_KEY`
-    2. Initialize wandb on your terminal
+    3. Initialize wandb on your terminal
     `$ wandb init`
 
 #### Installation
