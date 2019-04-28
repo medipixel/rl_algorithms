@@ -122,6 +122,7 @@ See <a href="https://app.wandb.ai/medipixel_rl/lunarlander_continuous_v2/reports
 * This repository was tested on [Anaconda](https://www.anaconda.com/distribution/) virtual environment with python 3.6.1+
     ```
     $ conda create -n rl_algorithms python=3.6.1
+    $ conda activate rl_algorithms
     ```
 * In order to run Mujoco environments (e.g. `Reacher-v2`), you need to acquire [Mujoco license](https://www.roboti.us/license.html).
 * For logging, please follow the steps below:
