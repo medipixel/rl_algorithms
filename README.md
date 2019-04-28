@@ -125,10 +125,6 @@ See <a href="https://app.wandb.ai/medipixel_rl/lunarlander_continuous_v2/reports
     $ conda activate rl_algorithms
     ```
 * In order to run Mujoco environments (e.g. `Reacher-v2`), you need to acquire [Mujoco license](https://www.roboti.us/license.html).
-* For logging, please follow the steps below after requirement installation:
-    1. Create a [wandb](https://www.wandb.com/) account
-    2. Check your **API key** in settings, and login wandb on your terminal: `$ wandb login API_KEY`
-    3. Initialize wandb: `$ wandb init`
 
 #### Installation
 First, clone the repository.
@@ -197,7 +193,13 @@ python <run-file> -h
     - Load the saved models and optimizers at the beginning.
 
 #### W&B for logging
-We use [W&B](https://www.wandb.com/) for logging of network parameters and others. For more details, read [W&B tutorial](https://docs.wandb.com/docs/started.html).
+We use [W&B](https://www.wandb.com/) for logging of network parameters and others. For logging, please follow the steps below after requirement installation:
+
+1. Create a [wandb](https://www.wandb.com/) account
+2. Check your **API key** in settings, and login wandb on your terminal: `$ wandb login API_KEY`
+3. Initialize wandb: `$ wandb init`
+
+For more details, read [W&B tutorial](https://docs.wandb.com/docs/started.html).
 
 ## Class Diagram
 Class diagram at [#135](https://github.com/medipixel/rl_algorithms/pull/135).
