@@ -273,10 +273,6 @@ class TD3Agent(Agent):
                 self.total_step += 1
                 self.episode_step += 1
 
-                print(self.total_step)
-                print(self.episode_step)
-                input()
-
                 state = next_state
                 score += reward
 
