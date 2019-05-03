@@ -118,9 +118,6 @@ class DDPGAgent(Agent):
 
     def step(self, action: np.ndarray) -> Tuple[torch.Tensor, ...]:
         """Take an action and return the response of the env."""
-        self.total_step += 1
-        self.episode_step += 1
-
         next_state, reward, done, _ = self.env.step(action)
 
         if not self.args.test:
@@ -260,6 +257,8 @@ class DDPGAgent(Agent):
 
                 action = self.select_action(state)
                 next_state, reward, done = self.step(action)
+                self.total_step += 1
+                self.episode_step += 1
 
                 if len(self.memory) >= self.hyper_params["BATCH_SIZE"]:
                     for _ in range(self.hyper_params["MULTIPLE_LEARN"]):
