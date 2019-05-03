@@ -134,9 +134,6 @@ class SACAgent(Agent):
 
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, np.float64, bool]:
         """Take an action and return the response of the env."""
-        self.total_step += 1
-        self.episode_step += 1
-
         next_state, reward, done, _ = self.env.step(action)
 
         if not self.args.test:
@@ -349,6 +346,8 @@ class SACAgent(Agent):
 
                 action = self.select_action(state)
                 next_state, reward, done = self.step(action)
+                self.total_step += 1
+                self.episode_step += 1
 
                 state = next_state
                 score += reward

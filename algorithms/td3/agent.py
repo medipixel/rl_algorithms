@@ -79,9 +79,9 @@ class TD3Agent(Agent):
         self.curr_state = np.zeros((1,))
         self.exploration_noise = exploration_noise
         self.target_policy_noise = target_policy_noise
-        self.total_steps = 0
-        self.episode_steps = 0
-        self.update_steps = 0
+        self.total_step = 0
+        self.episode_step = 0
+        self.update_step = 0
         self.i_episode = 0
 
         # load the optimizer and model parameters
@@ -101,7 +101,7 @@ class TD3Agent(Agent):
 
         self.curr_state = state
 
-        if self.total_steps < random_action_count and not self.args.test:
+        if self.total_step < random_action_count and not self.args.test:
             return self.env.action_space.sample()
 
         state = torch.FloatTensor(state).to(device)
@@ -115,15 +115,12 @@ class TD3Agent(Agent):
 
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, np.float64, bool]:
         """Take an action and return the response of the env."""
-        self.total_steps += 1
-        self.episode_steps += 1
-
         next_state, reward, done, _ = self.env.step(action)
 
         if not self.args.test:
             # if last state is not terminal state in episode, done is false
             done_bool = (
-                False if self.episode_steps == self.args.max_episode_steps else done
+                False if self.episode_step == self.args.max_episode_steps else done
             )
             self.memory.add(self.curr_state, action, reward, next_state, done_bool)
 
@@ -133,7 +130,7 @@ class TD3Agent(Agent):
         self, experiences: Tuple[torch.Tensor, ...]
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Train the model after each episode."""
-        self.update_steps += 1
+        self.update_step += 1
 
         states, actions, rewards, next_states, dones = experiences
         masks = 1 - dones
@@ -169,7 +166,7 @@ class TD3Agent(Agent):
         critic_loss.backward()
         self.critic_optim.step()
 
-        if self.update_steps % self.hyper_params["POLICY_UPDATE_FREQ"] == 0:
+        if self.update_step % self.hyper_params["POLICY_UPDATE_FREQ"] == 0:
             # policy loss
             actions = self.actor(states)
             actor_loss = -self.critic1(states, actions).mean()
@@ -231,8 +228,8 @@ class TD3Agent(Agent):
             "total loss: %f actor_loss: %.3f critic1_loss: %.3f critic2_loss: %.3f\n"
             % (
                 i,
-                self.episode_steps,
-                self.total_steps,
+                self.episode_step,
+                self.total_step,
                 score,
                 total_loss,
                 loss[0] * policy_update_freq,  # actor loss
@@ -265,7 +262,7 @@ class TD3Agent(Agent):
             done = False
             score = 0
             loss_episode = list()
-            self.episode_steps = 0
+            self.episode_step = 0
 
             while not done:
                 if self.args.render and self.i_episode >= self.args.render_after:
@@ -273,6 +270,12 @@ class TD3Agent(Agent):
 
                 action = self.select_action(state)
                 next_state, reward, done = self.step(action)
+                self.total_step += 1
+                self.episode_step += 1
+
+                print(self.total_step)
+                print(self.episode_step)
+                input()
 
                 state = next_state
                 score += reward

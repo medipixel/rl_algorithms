@@ -87,7 +87,6 @@ class A2CAgent(Agent):
 
     def step(self, action: torch.Tensor) -> Tuple[np.ndarray, np.float64, bool]:
         """Take an action and return the response of the env."""
-        self.episode_step += 1
 
         action = action.detach().cpu().numpy()
         next_state, reward, done, _ = self.env.step(action)
@@ -201,6 +200,8 @@ class A2CAgent(Agent):
 
                 action = self.select_action(state)
                 next_state, reward, done = self.step(action)
+                self.episode_step += 1
+
                 policy_loss, value_loss = self.update_model()
 
                 policy_loss_episode.append(policy_loss)

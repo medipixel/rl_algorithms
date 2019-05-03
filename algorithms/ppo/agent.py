@@ -103,8 +103,6 @@ class PPOAgent(Agent):
         return selected_action
 
     def step(self, action: torch.Tensor) -> Tuple[np.ndarray, np.float64, bool]:
-        self.episode_steps += 1
-
         next_state, reward, done, _ = self.env.step(action.detach().cpu().numpy())
 
         if not self.args.test:
@@ -298,6 +296,7 @@ class PPOAgent(Agent):
 
                 action = self.select_action(state)
                 next_state, reward, done = self.step(action)
+                self.episode_steps += 1
 
                 state = next_state
                 score += reward[0]
