@@ -52,7 +52,6 @@ def get_n_step_info_from_demo(
     demo: List, n_step: int, gamma: float
 ) -> Tuple[List, List]:
     """Return 1 step and n step demos."""
-    assert demo
     assert n_step > 1
 
     demos_1_step = list()

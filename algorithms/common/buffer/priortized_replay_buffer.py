@@ -78,7 +78,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
     def _sample_proportional(self, batch_size: int) -> list:
         """Sample indices based on proportional."""
         indices = []
-        p_total = self.sum_tree.sum(0, len(self.buffer) - 1)
+        p_total = self.sum_tree.sum(0, len(self) - 1)
         segment = p_total / batch_size
         for i in range(batch_size):
             a = segment * i
@@ -90,6 +90,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
 
     def sample(self, beta: float = 0.4) -> Tuple[torch.Tensor, ...]:
         """Sample a batch of experiences."""
+        assert len(self) >= self.batch_size
         assert beta > 0
 
         indices = self._sample_proportional(self.batch_size)
@@ -223,6 +224,7 @@ class PrioritizedReplayBufferfD(PrioritizedReplayBuffer):
 
     def sample(self, beta: float = 0.4) -> Tuple[torch.Tensor, ...]:
         """Sample a batch of experiences."""
+        assert len(self) >= self.batch_size
         assert beta > 0
 
         indices = self._sample_proportional(self.batch_size)
@@ -295,3 +297,7 @@ class PrioritizedReplayBufferfD(PrioritizedReplayBuffer):
             self.min_tree[idx] = priority ** self.alpha
 
             self._max_priority = max(self._max_priority, priority)
+
+    def __len__(self) -> int:
+        """Return the current size of internal memory."""
+        return len(self.demo) + len(self.buffer)

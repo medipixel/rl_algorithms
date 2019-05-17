@@ -62,6 +62,8 @@ class ReplayBuffer:
 
     def sample(self) -> Tuple[torch.Tensor, ...]:
         """Randomly sample a batch of experiences from memory."""
+        assert len(self) >= self.batch_size
+
         indices = np.random.choice(
             len(self.buffer), size=self.batch_size, replace=False
         )
