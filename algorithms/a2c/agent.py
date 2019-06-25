@@ -85,11 +85,11 @@ class A2CAgent(Agent):
 
         return selected_action
 
-    def step(self, action: torch.Tensor) -> Tuple[np.ndarray, np.float64, bool]:
+    def step(self, action: torch.Tensor) -> Tuple[np.ndarray, np.float64, bool, dict]:
         """Take an action and return the response of the env."""
 
         action = action.detach().cpu().numpy()
-        next_state, reward, done, _ = self.env.step(action)
+        next_state, reward, done, info = self.env.step(action)
 
         if not self.args.test:
             done_bool = done
@@ -97,7 +97,7 @@ class A2CAgent(Agent):
                 done_bool = False
             self.transition.extend([next_state, reward, done_bool])
 
-        return next_state, reward, done
+        return next_state, reward, done, info
 
     def update_model(self) -> Tuple[torch.Tensor, torch.Tensor]:
         log_prob, pred_value, next_state, reward, done = self.transition
@@ -199,7 +199,7 @@ class A2CAgent(Agent):
                     self.env.render()
 
                 action = self.select_action(state)
-                next_state, reward, done = self.step(action)
+                next_state, reward, done, _ = self.step(action)
                 self.episode_step += 1
 
                 policy_loss, value_loss = self.update_model()

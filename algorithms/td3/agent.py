@@ -113,9 +113,9 @@ class TD3Agent(Agent):
 
         return selected_action
 
-    def step(self, action: np.ndarray) -> Tuple[np.ndarray, np.float64, bool]:
+    def step(self, action: np.ndarray) -> Tuple[np.ndarray, np.float64, bool, dict]:
         """Take an action and return the response of the env."""
-        next_state, reward, done, _ = self.env.step(action)
+        next_state, reward, done, info = self.env.step(action)
 
         if not self.args.test:
             # if last state is not terminal state in episode, done is false
@@ -124,7 +124,7 @@ class TD3Agent(Agent):
             )
             self.memory.add(self.curr_state, action, reward, next_state, done_bool)
 
-        return next_state, reward, done
+        return next_state, reward, done, info
 
     def update_model(
         self, experiences: Tuple[torch.Tensor, ...]
@@ -269,7 +269,7 @@ class TD3Agent(Agent):
                     self.env.render()
 
                 action = self.select_action(state)
-                next_state, reward, done = self.step(action)
+                next_state, reward, done, _ = self.step(action)
                 self.total_step += 1
                 self.episode_step += 1
 

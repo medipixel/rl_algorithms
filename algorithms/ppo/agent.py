@@ -102,8 +102,8 @@ class PPOAgent(Agent):
 
         return selected_action
 
-    def step(self, action: torch.Tensor) -> Tuple[np.ndarray, np.float64, bool]:
-        next_state, reward, done, _ = self.env.step(action.detach().cpu().numpy())
+    def step(self, action: torch.Tensor) -> Tuple[np.ndarray, np.float64, bool, dict]:
+        next_state, reward, done, info = self.env.step(action.detach().cpu().numpy())
 
         if not self.args.test:
             # if the last state is not a terminal state, store done as false
@@ -115,7 +115,7 @@ class PPOAgent(Agent):
             self.rewards.append(torch.FloatTensor(reward).unsqueeze(1).to(device))
             self.masks.append(torch.FloatTensor(1 - done_bool).unsqueeze(1).to(device))
 
-        return next_state, reward, done
+        return next_state, reward, done, info
 
     def update_model(
         self, next_state: np.ndarray
@@ -295,7 +295,7 @@ class PPOAgent(Agent):
                     self.env.render()
 
                 action = self.select_action(state)
-                next_state, reward, done = self.step(action)
+                next_state, reward, done, _ = self.step(action)
                 self.episode_steps += 1
 
                 state = next_state
