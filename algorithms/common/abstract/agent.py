@@ -63,7 +63,7 @@ class Agent(ABC):
     @abstractmethod
     def step(
         self, action: Union[torch.Tensor, np.ndarray]
-    ) -> Tuple[np.ndarray, np.float64, bool]:
+    ) -> Tuple[np.ndarray, np.float64, bool, dict]:
         pass
 
     @abstractmethod
@@ -141,7 +141,7 @@ class Agent(ABC):
                     self.env.render()
 
                 action = self.select_action(state)
-                next_state, reward, done = self.step(action)
+                next_state, reward, done, _ = self.step(action)
 
                 state = next_state
                 score += reward
