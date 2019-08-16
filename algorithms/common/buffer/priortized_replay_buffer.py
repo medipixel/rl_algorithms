@@ -26,7 +26,6 @@ class PrioritizedReplayBuffer(ReplayBuffer):
     https://github.com/openai/baselines/blob/master/baselines/deepq/replay_buffer.py
 
     Attributes:
-        buffer_size (int): size of replay buffer for experience
         alpha (float): alpha parameter for prioritized replay buffer
         tree_idx (int): next index of tree
         sum_tree (SumSegmentTree): sum tree for prior
@@ -46,7 +45,6 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         """
         super(PrioritizedReplayBuffer, self).__init__(buffer_size, batch_size)
         assert alpha >= 0
-        self.buffer_size = buffer_size
         self.alpha = alpha
         self.tree_idx = 0
 
@@ -94,49 +92,35 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         assert beta > 0
 
         indices = self._sample_proportional(self.batch_size)
-        states, actions, rewards, next_states, dones, weights = [], [], [], [], [], []
 
         # get max weight
         p_min = self.min_tree.min() / self.sum_tree.sum()
-        max_weight = (p_min * len(self.buffer)) ** (-beta)
+        max_weight = (p_min * len(self)) ** (-beta)
 
+        # calculate weights
+        weights = []
         for i in indices:
-            s, a, r, n_s, d = self.buffer[i]
-            states.append(np.array(s, copy=False))
-            actions.append(np.array(a, copy=False))
-            rewards.append(np.array(r, copy=False))
-            next_states.append(np.array(n_s, copy=False))
-            dones.append(np.array(float(d), copy=False))
-
-            # calculate weights
             p_sample = self.sum_tree[i] / self.sum_tree.sum()
-            weight = (p_sample * len(self.buffer)) ** (-beta)
+            weight = (p_sample * len(self)) ** (-beta)
             weights.append(weight / max_weight)
 
-        states_ = torch.FloatTensor(np.array(states)).to(device)
-        actions_ = torch.FloatTensor(np.array(actions)).to(device)
-        rewards_ = torch.FloatTensor(np.array(rewards).reshape(-1, 1)).to(device)
-        next_states_ = torch.FloatTensor(np.array(next_states)).to(device)
-        dones_ = torch.FloatTensor(np.array(dones).reshape(-1, 1)).to(device)
-        weights_ = torch.FloatTensor(np.array(weights).reshape(-1, 1)).to(device)
+        states = torch.FloatTensor(self.obs_buf[indices]).to(device)
+        actions = torch.FloatTensor(self.acts_buf[indices]).to(device)
+        rewards = torch.FloatTensor(self.rews_buf[indices].reshape(-1, 1)).to(device)
+        next_states = torch.FloatTensor(self.next_obs_buf[indices]).to(device)
+        dones = torch.FloatTensor(self.done_buf[indices].reshape(-1, 1)).to(device)
+        weights = torch.FloatTensor(np.array(weights).reshape(-1, 1)).to(device)
 
-        if torch.cuda.is_available():
-            states_ = states_.cuda(non_blocking=True)
-            actions_ = actions_.cuda(non_blocking=True)
-            rewards_ = rewards_.cuda(non_blocking=True)
-            next_states_ = next_states_.cuda(non_blocking=True)
-            dones_ = dones_.cuda(non_blocking=True)
-            weights_ = weights_.cuda(non_blocking=True)
+        # MC Check 이것은 무엇인가?
+        # if torch.cuda.is_available():
+        #     states = states.cuda(non_blocking=True)
+        #     actions = actions.cuda(non_blocking=True)
+        #     rewards = rewards.cuda(non_blocking=True)
+        #     next_states = next_states.cuda(non_blocking=True)
+        #     dones = dones.cuda(non_blocking=True)
+        #     weights = weights.cuda(non_blocking=True)
 
-        experiences = (
-            states_,
-            actions_,
-            rewards_,
-            next_states_,
-            dones_,
-            weights_,
-            indices,
-        )
+        experiences = (states, actions, rewards, next_states, dones, weights, indices)
 
         return experiences
 
@@ -146,7 +130,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
 
         for idx, priority in zip(indices, priorities):
             assert priority > 0
-            assert 0 <= idx < len(self.buffer)
+            assert 0 <= idx < len(self)
 
             self.sum_tree[idx] = priority ** self.alpha
             self.min_tree[idx] = priority ** self.alpha
