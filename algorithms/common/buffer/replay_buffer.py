@@ -20,8 +20,15 @@ class ReplayBuffer:
     ddpg-pendulum/ddpg_agent.py
 
     Attributes:
-        buffer (list): list of replay buffer
+        obs_buf(np.ndarray): buffer of observations that will be initialized in _initialize()
+        acts_buf(np.ndarray): buffer of observations that will be initialized in _initialize()
+        rews_buf(np.ndarray): buffer of observations that will be initialized in _initialize()
+        next_obs_buf(np.ndarray): buffer of observations that will be initialized in _initialize()
+        done_buf(np.ndarray): buffer of observations that will be initialized in _initialize()
+        buffer_size (int): size of each buffers
         batch_size (int): size of a batched sampled from replay buffer for training
+        idx (int): index of current memory
+        cur_size (int): amount of memory filled
 
     """
 
@@ -56,21 +63,13 @@ class ReplayBuffer:
         If the buffer is empty, it is respectively initialized by size of arguments.
         """
         if self.cur_size == 0:
-            self.obs_buf = np.zeros([self.buffer_size] + list(state.shape))
-            self.acts_buf = np.zeros(
-                [self.buffer_size] + list(action.shape), dtype=action.dtype
-            )
-            self.rews_buf = np.zeros([self.buffer_size], dtype=float)
-            self.next_obs_buf = np.zeros(
-                [self.buffer_size] + list(next_state.shape), dtype=next_state.dtype
-            )
-            self.done_buf = np.zeros([self.buffer_size], dtype=float)
-        else:
-            self.obs_buf[self.idx] = state
-            self.acts_buf[self.idx] = action
-            self.rews_buf[self.idx] = reward
-            self.next_obs_buf[self.idx] = next_state
-            self.done_buf[self.idx] = done
+            self._initialize_buffers(state, action)
+
+        self.obs_buf[self.idx] = state
+        self.acts_buf[self.idx] = action
+        self.rews_buf[self.idx] = reward
+        self.next_obs_buf[self.idx] = next_state
+        self.done_buf[self.idx] = done
 
         self.idx = (self.idx + 1) % self.buffer_size
         self.cur_size = min(self.cur_size + 1, self.buffer_size)
@@ -82,9 +81,9 @@ class ReplayBuffer:
 
     def sample(self) -> Tuple[torch.Tensor, ...]:
         """Randomly sample a batch of experiences from memory."""
-        assert len(self) >= self.batch_size
+        assert self.cur_size >= self.batch_size
 
-        indices = np.random.choice(len(self), size=self.batch_size, replace=False)
+        indices = np.random.choice(self.cur_size, size=self.batch_size, replace=False)
 
         states = torch.FloatTensor(self.obs_buf[indices]).to(device)
         actions = torch.FloatTensor(self.acts_buf[indices]).to(device)
@@ -100,6 +99,20 @@ class ReplayBuffer:
             dones = dones.cuda(non_blocking=True)
 
         return states, actions, rewards, next_states, dones
+
+    def _initialize_buffers(self, state: np.ndarray, action: np.ndarray) -> None:
+        """Initialze buffers for state, action, resward, next_state, done."""
+        self.obs_buf = np.zeros(
+            [self.buffer_size] + list(state.shape), dtype=state.dtype
+        )
+        self.acts_buf = np.zeros(
+            [self.buffer_size] + list(action.shape), dtype=action.dtype
+        )
+        self.rews_buf = np.zeros([self.buffer_size], dtype=float)
+        self.next_obs_buf = np.zeros(
+            [self.buffer_size] + list(state.shape), dtype=state.dtype
+        )
+        self.done_buf = np.zeros([self.buffer_size], dtype=float)
 
     def __len__(self) -> int:
         """Return the current size of internal memory."""
