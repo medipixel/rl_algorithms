@@ -8,7 +8,7 @@
 """
 
 import random
-from typing import Tuple
+from typing import Any, List, Tuple
 
 import numpy as np
 import torch
@@ -34,7 +34,15 @@ class PrioritizedReplayBuffer(ReplayBuffer):
 
         """
 
-    def __init__(self, buffer_size: int, batch_size: int, alpha: float = 0.6):
+    def __init__(
+        self,
+        buffer_size: int,
+        batch_size: int = 32,
+        alpha: float = 0.6,
+        gamma: float = 0.0,
+        n_step: int = 1,
+        demo: List[Tuple[Any, ...]] = None,
+    ):
         """Initialization.
 
         Args:
@@ -43,7 +51,9 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             alpha (float): alpha parameter for prioritized replay buffer
 
         """
-        super(PrioritizedReplayBuffer, self).__init__(buffer_size, batch_size)
+        super(PrioritizedReplayBuffer, self).__init__(
+            buffer_size, batch_size, gamma, n_step, demo
+        )
         assert alpha >= 0
         self.alpha = alpha
         self.tree_idx = 0
@@ -68,7 +78,9 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         """Add experience and priority."""
         idx = self.tree_idx
         self.tree_idx = (self.tree_idx + 1) % self.buffer_size
-        super().add(state, action, reward, next_state, done)
+
+        transition = (state, action, reward, next_state, done)
+        super().add(transition)
 
         self.sum_tree[idx] = self._max_priority ** self.alpha
         self.min_tree[idx] = self._max_priority ** self.alpha
@@ -103,26 +115,11 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             p_sample = self.sum_tree[i] / self.sum_tree.sum()
             weight = (p_sample * len(self)) ** (-beta)
             weights.append(weight / max_weight)
-
-        states = torch.FloatTensor(self.obs_buf[indices]).to(device)
-        actions = torch.FloatTensor(self.acts_buf[indices]).to(device)
-        rewards = torch.FloatTensor(self.rews_buf[indices].reshape(-1, 1)).to(device)
-        next_states = torch.FloatTensor(self.next_obs_buf[indices]).to(device)
-        dones = torch.FloatTensor(self.done_buf[indices].reshape(-1, 1)).to(device)
         weights = torch.FloatTensor(np.array(weights).reshape(-1, 1)).to(device)
 
-        # MC Check 이것은 무엇인가?
-        # if torch.cuda.is_available():
-        #     states = states.cuda(non_blocking=True)
-        #     actions = actions.cuda(non_blocking=True)
-        #     rewards = rewards.cuda(non_blocking=True)
-        #     next_states = next_states.cuda(non_blocking=True)
-        #     dones = dones.cuda(non_blocking=True)
-        #     weights = weights.cuda(non_blocking=True)
+        states, actions, rewards, next_states, dones = super().sample(indices)
 
-        experiences = (states, actions, rewards, next_states, dones, weights, indices)
-
-        return experiences
+        return (states, actions, rewards, next_states, dones, weights, indices)
 
     def update_priorities(self, indices: list, priorities: np.ndarray):
         """Update priorities of sampled transitions."""

@@ -26,7 +26,7 @@ import wandb
 
 from algorithms.common.abstract.agent import Agent
 from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
-from algorithms.common.buffer.replay_buffer import NStepTransitionBuffer
+from algorithms.common.buffer.replay_buffer import ReplayBuffer
 import algorithms.common.helper_functions as common_utils
 import algorithms.dqn.utils as dqn_utils
 
@@ -103,7 +103,7 @@ class DQNAgent(Agent):
 
             # replay memory for multi-steps
             if self.use_n_step:
-                self.memory_n = NStepTransitionBuffer(
+                self.memory_n = ReplayBuffer(
                     self.hyper_params["BUFFER_SIZE"],
                     n_step=self.hyper_params["N_STEP"],
                     gamma=self.hyper_params["GAMMA"],
@@ -148,7 +148,7 @@ class DQNAgent(Agent):
         """Add 1 step and n step transitions to memory."""
         # add n-step transition
         if self.use_n_step:
-            transition = self.memory_n.add(transition)
+            transition = self.memory_n.add(*transition)
 
         # add a single step transition
         # if transition is not an empty tuple
