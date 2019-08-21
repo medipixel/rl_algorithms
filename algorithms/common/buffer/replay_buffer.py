@@ -16,15 +16,19 @@ class ReplayBuffer:
     """Fixed-size buffer to store experience tuples.
 
     Attributes:
-        obs_buf(np.ndarray): buffer of observations that will be initialized in _initialize()
-        acts_buf(np.ndarray): buffer of observations that will be initialized in _initialize()
-        rews_buf(np.ndarray): buffer of observations that will be initialized in _initialize()
-        next_obs_buf(np.ndarray): buffer of observations that will be initialized in _initialize()
-        done_buf(np.ndarray): buffer of observations that will be initialized in _initialize()
+        obs_buf (np.ndarray): buffer of observations that will be initialized in _initialize()
+        acts_buf (np.ndarray): buffer of observations that will be initialized in _initialize()
+        rews_buf (np.ndarray): buffer of observations that will be initialized in _initialize()
+        next_obs_buf (np.ndarray): buffer of observations that will be initialized in _initialize()
+        done_buf (np.ndarray): buffer of observations that will be initialized in _initialize()
+        n_step_buffer (Deque): buffer of transition of nth steps
+        n_step (int): size of step to save n_step_buffer
+        gamma (float): discount factor
         buffer_size (int): size of each buffers
         batch_size (int): size of a batched sampled from replay buffer for training
-        idx (int): index of current memory
+        demo_size (int): size of demo transitions
         length (int): amount of memory filled
+        idx (int): index of memory
     """
 
     def __init__(
@@ -42,7 +46,6 @@ class ReplayBuffer:
         Args:
             buffer_size (int): size of replay buffer for experience
             batch_size (int): size of a batched sampled from replay buffer for training
-
         """
         assert 0 < batch_size <= buffer_size
         assert 0.0 <= gamma <= 1.0
@@ -119,6 +122,7 @@ class ReplayBuffer:
 
     def sample(self, indices: List[int] = None) -> Tuple[torch.Tensor, ...]:
         """Randomly sample a batch of experiences from memory."""
+        assert len(self) >= self.batch_size
 
         if indices is None:
             indices = np.random.choice(len(self), size=self.batch_size, replace=False)
@@ -140,14 +144,13 @@ class ReplayBuffer:
 
     def _initialize_buffers(self, state: np.ndarray, action: np.ndarray) -> None:
         """Initialze buffers for state, action, resward, next_state, done."""
-        # if len(action.shape) == 0:
-        #     action = np.expand_dims(action, 0)
+        act_type = action.dtype if isinstance(action, np.ndarray) else type(action)
 
         self.obs_buf = np.zeros(
             [self.buffer_size] + list(state.shape), dtype=state.dtype
         )
         self.acts_buf = np.zeros(
-            [self.buffer_size] + list(action.shape), dtype=action.dtype
+            [self.buffer_size] + list(np.shape(action)), dtype=act_type
         )
         self.rews_buf = np.zeros([self.buffer_size], dtype=float)
         self.next_obs_buf = np.zeros(
