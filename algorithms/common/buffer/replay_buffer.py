@@ -16,26 +16,26 @@ class ReplayBuffer:
     """Fixed-size buffer to store experience tuples.
 
     Attributes:
-        obs_buf (np.ndarray): buffer of observations that will be initialized in _initialize()
-        acts_buf (np.ndarray): buffer of observations that will be initialized in _initialize()
-        rews_buf (np.ndarray): buffer of observations that will be initialized in _initialize()
-        next_obs_buf (np.ndarray): buffer of observations that will be initialized in _initialize()
-        done_buf (np.ndarray): buffer of observations that will be initialized in _initialize()
-        n_step_buffer (Deque): buffer of transition of nth steps
-        n_step (int): size of step to save n_step_buffer
+        obs_buf (np.ndarray): observations
+        acts_buf (np.ndarray): actions
+        rews_buf (np.ndarray): rewards
+        next_obs_buf (np.ndarray): next observations
+        done_buf (np.ndarray): dones
+        n_step_buffer (deque): recent n transitions
+        n_step (int): step size for n-step transition
         gamma (float): discount factor
-        buffer_size (int): size of each buffers
-        batch_size (int): size of a batched sampled from replay buffer for training
+        buffer_size (int): size of buffers
+        batch_size (int): batch size for training
         demo_size (int): size of demo transitions
         length (int): amount of memory filled
-        idx (int): index of memory
+        idx (int): memory index to add the next incoming transition
     """
 
     def __init__(
         self,
         buffer_size: int,
         batch_size: int = 32,
-        gamma: float = 0.0,
+        gamma: float = 0.99,
         n_step: int = 1,
         demo: List[
             Tuple[np.ndarray, Union[int, np.ndarray], float, np.ndarray, bool]
@@ -64,20 +64,9 @@ class ReplayBuffer:
         self.buffer_size = buffer_size
         self.batch_size = batch_size
         self.demo_size = len(demo) if demo else 0
+        self.demo = demo
         self.length = 0
         self.idx = self.demo_size
-
-        if demo and demo[0]:
-            self.buffer_size += self.demo_size
-            self.length += self.demo_size
-            self._initialize_buffers(demo[0][0], demo[0][1])  # state, action
-            for idx, d in enumerate(demo):
-                state, action, reward, next_state, done = d
-                self.obs_buf[idx] = state
-                self.acts_buf[idx] = action
-                self.rews_buf[idx] = reward
-                self.next_obs_buf[idx] = next_state
-                self.done_buf[idx] = done
 
     def add(
         self,
@@ -144,6 +133,17 @@ class ReplayBuffer:
 
     def _initialize_buffers(self, state: np.ndarray, action: np.ndarray) -> None:
         """Initialze buffers for state, action, resward, next_state, done."""
+        if self.demo and self.demo[0]:
+            self.buffer_size += self.demo_size
+            self.length += self.demo_size
+            for idx, d in enumerate(self.demo):
+                state, action, reward, next_state, done = d
+                self.obs_buf[idx] = state
+                self.acts_buf[idx] = action
+                self.rews_buf[idx] = reward
+                self.next_obs_buf[idx] = next_state
+                self.done_buf[idx] = done
+
         act_type = action.dtype if isinstance(action, np.ndarray) else type(action)
 
         self.obs_buf = np.zeros(

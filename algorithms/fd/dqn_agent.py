@@ -15,7 +15,7 @@ import torch
 from torch.nn.utils import clip_grad_norm_
 import wandb
 
-from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBufferfD
+from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
 from algorithms.common.buffer.replay_buffer import ReplayBuffer
 import algorithms.common.helper_functions as common_utils
 from algorithms.dqn.agent import DQNAgent
@@ -27,7 +27,7 @@ class DQfDAgent(DQNAgent):
     """DQN interacting with environment.
 
     Attribute:
-        memory (PrioritizedReplayBufferfD): replay memory
+        memory (PrioritizedReplayBuffer): replay memory
 
     """
 
@@ -52,7 +52,7 @@ class DQfDAgent(DQNAgent):
 
             # replay memory
             self.beta = self.hyper_params["PER_BETA"]
-            self.memory = PrioritizedReplayBufferfD(
+            self.memory = PrioritizedReplayBuffer(
                 self.hyper_params["BUFFER_SIZE"],
                 self.hyper_params["BATCH_SIZE"],
                 demo=demos,

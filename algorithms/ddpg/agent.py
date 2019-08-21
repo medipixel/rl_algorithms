@@ -132,7 +132,7 @@ class DDPGAgent(Agent):
 
     def _add_transition_to_memory(self, transition: Tuple[np.ndarray, ...]):
         """Add 1 step and n step transitions to memory."""
-        self.memory.add(*transition)
+        self.memory.add(transition)
 
     def update_model(self) -> Tuple[torch.Tensor, torch.Tensor]:
         """Train the model after each episode."""

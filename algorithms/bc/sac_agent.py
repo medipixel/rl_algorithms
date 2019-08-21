@@ -111,7 +111,7 @@ class BCSACAgent(SACAgent):
                 self.memory.extend(transitions)
                 self.transitions_epi.clear()
         else:
-            self.memory.add(*transition)
+            self.memory.add(transition)
 
     def update_model(self) -> Tuple[torch.Tensor, ...]:
         """Train the model after each episode."""

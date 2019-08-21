@@ -148,12 +148,12 @@ class DQNAgent(Agent):
         """Add 1 step and n step transitions to memory."""
         # add n-step transition
         if self.use_n_step:
-            transition = self.memory_n.add(*transition)
+            transition = self.memory_n.add(transition)
 
         # add a single step transition
         # if transition is not an empty tuple
         if transition:
-            self.memory.add(*transition)
+            self.memory.add(transition)
 
     def _get_dqn_loss(
         self, experiences: Tuple[torch.Tensor, ...], gamma: float
