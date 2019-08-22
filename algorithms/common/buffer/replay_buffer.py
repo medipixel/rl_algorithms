@@ -2,7 +2,7 @@
 """Replay buffer for baselines."""
 
 from collections import deque
-from typing import Any, Deque, List, Tuple, Union
+from typing import Deque, List, Tuple, Union
 
 import numpy as np
 import torch
@@ -37,9 +37,7 @@ class ReplayBuffer:
         batch_size: int = 32,
         gamma: float = 0.99,
         n_step: int = 1,
-        demo: List[
-            Tuple[np.ndarray, Union[int, np.ndarray], float, np.ndarray, bool]
-        ] = None,
+        demo: List[Tuple[np.ndarray, np.ndarray, float, np.ndarray, bool]] = None,
     ):
         """Initialize a ReplayBuffer object.
 
@@ -69,11 +67,8 @@ class ReplayBuffer:
         self.idx = self.demo_size
 
     def add(
-        self,
-        transition: Tuple[np.ndarray, Union[int, np.ndarray], float, np.ndarray, bool],
-    ) -> Union[
-        Tuple[np.ndarray, Union[int, np.ndarray], float, np.ndarray, bool], Tuple[()]
-    ]:
+        self, transition: Tuple[np.ndarray, np.ndarray, float, np.ndarray, bool]
+    ) -> Union[Tuple[np.ndarray, np.ndarray, float, np.ndarray, bool], Tuple[()]]:
         """Add a new experience to memory.
         If the buffer is empty, it is respectively initialized by size of arguments.
         """
@@ -104,10 +99,12 @@ class ReplayBuffer:
         # return a single step transition to insert to replay buffer
         return self.n_step_buffer[0]
 
-    def extend(self, transitions: List[Tuple[Any, ...]]):
+    def extend(
+        self, transitions: List[Tuple[np.ndarray, np.ndarray, float, np.ndarray, bool]]
+    ):
         """Add experiences to memory."""
         for transition in transitions:
-            self.add(*transition)
+            self.add(transition)
 
     def sample(self, indices: List[int] = None) -> Tuple[torch.Tensor, ...]:
         """Randomly sample a batch of experiences from memory."""
@@ -144,13 +141,11 @@ class ReplayBuffer:
                 self.next_obs_buf[idx] = next_state
                 self.done_buf[idx] = done
 
-        act_type = action.dtype if isinstance(action, np.ndarray) else type(action)
-
         self.obs_buf = np.zeros(
             [self.buffer_size] + list(state.shape), dtype=state.dtype
         )
         self.acts_buf = np.zeros(
-            [self.buffer_size] + list(np.shape(action)), dtype=act_type
+            [self.buffer_size] + list(action.shape), dtype=action.dtype
         )
         self.rews_buf = np.zeros([self.buffer_size], dtype=float)
         self.next_obs_buf = np.zeros(

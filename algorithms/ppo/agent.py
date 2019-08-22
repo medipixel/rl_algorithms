@@ -280,7 +280,11 @@ class PPOAgent(Agent):
         """Train the agent."""
         # logger
         if self.args.log:
-            wandb.init(project=self.args.wandb_project)
+            wandb.init(
+                project=self.args.wandb_project,
+                entity=self.args.wandb_entity,
+                name=self.args.wandb_run,
+            )
             wandb.config.update(self.hyper_params)
             # wandb.watch([self.actor, self.critic], log="parameters")
 

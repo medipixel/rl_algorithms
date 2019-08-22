@@ -43,7 +43,7 @@ class PERDDPGAgent(DDPGAgent):
     def update_model(self) -> Tuple[torch.Tensor, ...]:
         """Train the model after each episode."""
         experiences = self.memory.sample(self.beta)
-        states, actions, rewards, next_states, dones, weights, indexes = experiences
+        states, actions, rewards, next_states, dones, weights, indices, _ = experiences
 
         # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
         #       = r                       otherwise
@@ -83,7 +83,7 @@ class PERDDPGAgent(DDPGAgent):
         new_priorities = (
             new_priorities.data.cpu().numpy() + self.hyper_params["PER_EPS"]
         )
-        self.memory.update_priorities(indexes, new_priorities)
+        self.memory.update_priorities(indices, new_priorities)
 
         # increase beta
         fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)

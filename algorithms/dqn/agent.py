@@ -116,7 +116,7 @@ class DQNAgent(Agent):
         # epsilon greedy policy
         # pylint: disable=comparison-with-callable
         if not self.args.test and self.epsilon > np.random.random():
-            selected_action = self.env.action_space.sample()
+            selected_action = np.array(self.env.action_space.sample())
         else:
             state = self._preprocess_state(state)
             selected_action = self.dqn(state).argmax()
@@ -194,7 +194,7 @@ class DQNAgent(Agent):
         """Train the model after each episode."""
         # 1 step loss
         experiences_1 = self.memory.sample(self.beta)
-        weights, indices = experiences_1[-2:]
+        weights, indices = experiences_1[-3:-1]
         gamma = self.hyper_params["GAMMA"]
         dq_loss_element_wise, q_values = self._get_dqn_loss(experiences_1, gamma)
         dq_loss = torch.mean(dq_loss_element_wise * weights)
@@ -303,7 +303,11 @@ class DQNAgent(Agent):
         """Train the agent."""
         # logger
         if self.args.log:
-            wandb.init(project=self.args.wandb_project)
+            wandb.init(
+                project=self.args.wandb_project,
+                entity=self.args.wandb_entity,
+                name=self.args.wandb_run,
+            )
             wandb.config.update(self.hyper_params)
             # wandb.watch([self.dqn], log="parameters")
 

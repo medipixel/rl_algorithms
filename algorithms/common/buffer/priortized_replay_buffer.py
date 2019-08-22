@@ -42,9 +42,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         n_step: int = 1,
         alpha: float = 0.6,
         epsilon_d: float = 1.0,
-        demo: List[
-            Tuple[np.ndarray, Union[int, np.ndarray], float, np.ndarray, bool]
-        ] = None,
+        demo: List[Tuple[np.ndarray, np.ndarray, float, np.ndarray, bool]] = None,
     ):
         """Initialization.
 
@@ -78,11 +76,8 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             self.min_tree[i] = self._max_priority ** self.alpha
 
     def add(
-        self,
-        transition: Tuple[np.ndarray, Union[int, np.ndarray], float, np.ndarray, bool],
-    ) -> Union[
-        Tuple[np.ndarray, Union[int, np.ndarray], float, np.ndarray, bool], Tuple[()]
-    ]:
+        self, transition: Tuple[np.ndarray, np.ndarray, float, np.ndarray, bool]
+    ) -> Union[Tuple[np.ndarray, np.ndarray, float, np.ndarray, bool], Tuple[()]]:
         """Add experience and priority."""
         n_step_transition = super().add(transition)
         if n_step_transition:
