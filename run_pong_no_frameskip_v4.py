@@ -41,9 +41,6 @@ parser.add_argument(
 parser.add_argument(
     "--interim-test-num", type=int, default=10, help="interim test number"
 )
-parser.add_argument("--wandb-project", type=str, default="", help="wandb project name")
-parser.add_argument("--wandb-entity", type=str, default="", help="wandb team name")
-parser.add_argument("--wandb-run", type=str, default="", help="wandb run name")
 
 parser.set_defaults(test=False)
 parser.set_defaults(load_from=None)

@@ -115,11 +115,7 @@ class Agent(ABC):
         """Test the agent."""
         # logger
         if self.args.log:
-            wandb.init(
-                project=self.args.wandb_project,
-                entity=self.args.wandb_entity,
-                name=self.args.wandb_run,
-            )
+            wandb.init()
 
         self._test()
 
