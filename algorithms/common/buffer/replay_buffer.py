@@ -69,6 +69,19 @@ class ReplayBuffer:
         self.length = 0
         self.idx = self.demo_size
 
+        if self.demo and self.demo[0]:
+            self.buffer_size += self.demo_size
+            self.length += self.demo_size
+            for idx, d in enumerate(self.demo):
+                state, action, reward, next_state, done = d
+                if idx == 0:
+                    self._initialize_buffers(state, action)
+                self.obs_buf[idx] = state
+                self.acts_buf[idx] = action
+                self.rews_buf[idx] = reward
+                self.next_obs_buf[idx] = next_state
+                self.done_buf[idx] = done
+
     def add(
         self, transition: Tuple[np.ndarray, np.ndarray, float, np.ndarray, bool]
     ) -> Union[Tuple[np.ndarray, np.ndarray, float, np.ndarray, bool], Tuple[()]]:
@@ -133,16 +146,8 @@ class ReplayBuffer:
 
     def _initialize_buffers(self, state: np.ndarray, action: np.ndarray) -> None:
         """Initialze buffers for state, action, resward, next_state, done."""
-        if self.demo and self.demo[0]:
-            self.buffer_size += self.demo_size
-            self.length += self.demo_size
-            for idx, d in enumerate(self.demo):
-                state, action, reward, next_state, done = d
-                self.obs_buf[idx] = state
-                self.acts_buf[idx] = action
-                self.rews_buf[idx] = reward
-                self.next_obs_buf[idx] = next_state
-                self.done_buf[idx] = done
+        # In case action of demo is not np.ndarray
+        action = np.array(action)
 
         self.obs_buf = np.zeros(
             [self.buffer_size] + list(state.shape), dtype=state.dtype
