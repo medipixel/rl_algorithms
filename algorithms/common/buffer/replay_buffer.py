@@ -2,7 +2,7 @@
 """Replay buffer for baselines."""
 
 from collections import deque
-from typing import Deque, List, Tuple, Union
+from typing import Any, Deque, List, Tuple
 
 import numpy as np
 import torch
@@ -69,6 +69,7 @@ class ReplayBuffer:
         self.length = 0
         self.idx = self.demo_size
 
+        # demo may have empty tuple list [()]
         if self.demo and self.demo[0]:
             self.buffer_size += self.demo_size
             self.length += self.demo_size
@@ -77,14 +78,14 @@ class ReplayBuffer:
                 if idx == 0:
                     self._initialize_buffers(state, action)
                 self.obs_buf[idx] = state
-                self.acts_buf[idx] = action
+                self.acts_buf[idx] = np.array(action)
                 self.rews_buf[idx] = reward
                 self.next_obs_buf[idx] = next_state
                 self.done_buf[idx] = done
 
     def add(
         self, transition: Tuple[np.ndarray, np.ndarray, float, np.ndarray, bool]
-    ) -> Union[Tuple[np.ndarray, np.ndarray, float, np.ndarray, bool], Tuple[()]]:
+    ) -> Tuple[Any, ...]:
         """Add a new experience to memory.
         If the buffer is empty, it is respectively initialized by size of arguments.
         """
@@ -147,7 +148,6 @@ class ReplayBuffer:
     def _initialize_buffers(self, state: np.ndarray, action: np.ndarray) -> None:
         """Initialze buffers for state, action, resward, next_state, done."""
         # In case action of demo is not np.ndarray
-        action = np.array(action)
 
         self.obs_buf = np.zeros(
             [self.buffer_size] + list(state.shape), dtype=state.dtype

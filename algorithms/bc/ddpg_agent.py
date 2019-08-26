@@ -181,13 +181,14 @@ class BCDDPGAgent(DDPGAgent):
 
         return actor_loss.item(), critic_loss.item(), n_qf_mask
 
-    def write_log(self, i: int, loss: np.ndarray, score: int):
+    def write_log(self, i: int, loss: np.ndarray, score: int, avg_time_cost):
         """Write log about loss and score"""
         total_loss = loss.sum()
 
         print(
             "[INFO] episode %d, episode step: %d, total step: %d, total score: %d\n"
-            "total loss: %f actor_loss: %.3f critic_loss: %.3f, n_qf_mask: %d\n"
+            "total loss: %f actor_loss: %.3f critic_loss: %.3f, n_qf_mask: %d "
+            "(spent %.6f sec/step)\n"
             % (
                 i,
                 self.episode_step,
@@ -197,6 +198,7 @@ class BCDDPGAgent(DDPGAgent):
                 loss[0],
                 loss[1],
                 loss[2],
+                avg_time_cost,
             )  # actor loss  # critic loss
         )
 
@@ -207,5 +209,6 @@ class BCDDPGAgent(DDPGAgent):
                     "total loss": total_loss,
                     "actor loss": loss[0],
                     "critic loss": loss[1],
+                    "time per each step": avg_time_cost,
                 }
             )

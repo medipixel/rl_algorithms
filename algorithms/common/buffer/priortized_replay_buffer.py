@@ -8,7 +8,7 @@
 """
 
 import random
-from typing import List, Tuple, Union
+from typing import Any, List, Tuple
 
 import numpy as np
 import torch
@@ -77,7 +77,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
 
     def add(
         self, transition: Tuple[np.ndarray, np.ndarray, float, np.ndarray, bool]
-    ) -> Union[Tuple[np.ndarray, np.ndarray, float, np.ndarray, bool], Tuple[()]]:
+    ) -> Tuple[Any, ...]:
         """Add experience and priority."""
         n_step_transition = super().add(transition)
         if n_step_transition:

@@ -10,6 +10,7 @@
 """
 
 import pickle
+import time
 from typing import Tuple
 
 import numpy as np
@@ -206,7 +207,9 @@ class SACfDAgent(SACAgent):
         pretrain_loss = list()
         print("[INFO] Pre-Train %d steps." % self.hyper_params["PRETRAIN_STEP"])
         for i_step in range(1, self.hyper_params["PRETRAIN_STEP"] + 1):
+            t_begin = time.time()
             loss = self.update_model()
+            t_end = time.time()
             pretrain_loss.append(loss)  # for logging
 
             # logging
@@ -218,5 +221,6 @@ class SACfDAgent(SACAgent):
                     avg_loss,
                     0,
                     policy_update_freq=self.hyper_params["POLICY_UPDATE_FREQ"],
+                    avg_time_cost=t_end - t_begin,
                 )
         print("[INFO] Pre-Train Complete!\n")
