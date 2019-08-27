@@ -9,6 +9,7 @@
 """
 
 import pickle
+import time
 from typing import Tuple
 
 import numpy as np
@@ -157,12 +158,14 @@ class DDPGfDAgent(DDPGAgent):
         pretrain_loss = list()
         print("[INFO] Pre-Train %d step." % self.hyper_params["PRETRAIN_STEP"])
         for i_step in range(1, self.hyper_params["PRETRAIN_STEP"] + 1):
+            t_begin = time.time()
             loss = self.update_model()
+            t_end = time.time()
             pretrain_loss.append(loss)  # for logging
 
             # logging
             if i_step == 1 or i_step % 100 == 0:
                 avg_loss = np.vstack(pretrain_loss).mean(axis=0)
                 pretrain_loss.clear()
-                self.write_log(0, avg_loss, 0)
+                self.write_log(0, avg_loss, 0, t_end - t_begin)
         print("[INFO] Pre-Train Complete!\n")

@@ -8,6 +8,7 @@
 
 import argparse
 import os
+import time
 from typing import Tuple
 
 import gym
@@ -219,13 +220,19 @@ class TD3Agent(Agent):
         Agent.save_params(self, params, n_episode)
 
     def write_log(
-        self, i: int, loss: np.ndarray, score: float = 0.0, policy_update_freq: int = 1
+        self,
+        i: int,
+        loss: np.ndarray,
+        score: float = 0.0,
+        policy_update_freq: int = 1,
+        avg_time_cost: float = 0.0,
     ):
         """Write log about loss and score"""
         total_loss = loss.sum()
         print(
             "[INFO] episode %d, episode_step: %d, total_step: %d, total score: %d\n"
-            "total loss: %f actor_loss: %.3f critic1_loss: %.3f critic2_loss: %.3f\n"
+            "total loss: %f actor_loss: %.3f critic1_loss: %.3f critic2_loss: %.3f "
+            "(spent %.6f sec/step)\n"
             % (
                 i,
                 self.episode_step,
@@ -235,6 +242,7 @@ class TD3Agent(Agent):
                 loss[0] * policy_update_freq,  # actor loss
                 loss[1],  # critic1 loss
                 loss[2],  # critic2 loss
+                avg_time_cost,
             )
         )
 
@@ -246,6 +254,7 @@ class TD3Agent(Agent):
                     "actor loss": loss[0] * policy_update_freq,
                     "critic1 loss": loss[1],
                     "critic2 loss": loss[2],
+                    "time per each step": avg_time_cost,
                 }
             )
 
@@ -253,7 +262,7 @@ class TD3Agent(Agent):
         """Train the agent."""
         # logger
         if self.args.log:
-            wandb.init(project=self.args.wandb_project)
+            wandb.init()
             wandb.config.update(self.hyper_params)
             # wandb.watch([self.actor, self.critic1, self.critic2], log="parameters")
 
@@ -263,6 +272,8 @@ class TD3Agent(Agent):
             score = 0
             loss_episode = list()
             self.episode_step = 0
+
+            t_begin = time.time()
 
             while not done:
                 if self.args.render and self.i_episode >= self.args.render_after:
@@ -281,6 +292,9 @@ class TD3Agent(Agent):
                     loss = self.update_model(experiences)
                     loss_episode.append(loss)  # for logging
 
+            t_end = time.time()
+            avg_time_cost = (t_end - t_begin) / self.episode_step
+
             # logging
             if loss_episode:
                 avg_loss = np.vstack(loss_episode).mean(axis=0)
@@ -289,6 +303,7 @@ class TD3Agent(Agent):
                     avg_loss,
                     score,
                     self.hyper_params["POLICY_UPDATE_FREQ"],
+                    avg_time_cost,
                 )
             if self.i_episode % self.args.save_period == 0:
                 self.save_params(self.i_episode)

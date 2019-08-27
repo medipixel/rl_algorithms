@@ -224,7 +224,12 @@ class BCSACAgent(SACAgent):
         )
 
     def write_log(
-        self, i: int, loss: np.ndarray, score: float = 0.0, policy_update_freq: int = 1
+        self,
+        i: int,
+        loss: np.ndarray,
+        score: float = 0.0,
+        policy_update_freq: int = 1,
+        avg_time_cost: float = 0.0,
     ):
         """Write log about loss and score"""
         total_loss = loss.sum()
@@ -232,7 +237,7 @@ class BCSACAgent(SACAgent):
         print(
             "[INFO] episode %d, episode_step %d, total step %d, total score: %d\n"
             "total loss: %.3f actor_loss: %.3f qf_1_loss: %.3f qf_2_loss: %.3f "
-            "vf_loss: %.3f alpha_loss: %.3f n_qf_mask: %d\n"
+            "vf_loss: %.3f alpha_loss: %.3f n_qf_mask: %d (spent %.6f sec/step)\n"
             % (
                 i,
                 self.episode_step,
@@ -245,6 +250,7 @@ class BCSACAgent(SACAgent):
                 loss[3],  # vf loss
                 loss[4],  # alpha loss
                 loss[5],  # n_qf_mask
+                avg_time_cost,
             )
         )
 
@@ -258,5 +264,6 @@ class BCSACAgent(SACAgent):
                     "qf_2 loss": loss[2],
                     "vf loss": loss[3],
                     "alpha loss": loss[4],
+                    "time per each step": avg_time_cost,
                 }
             )

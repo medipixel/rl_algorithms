@@ -8,6 +8,7 @@
 
 import argparse
 import os
+import time
 from typing import Tuple
 
 import gym
@@ -200,13 +201,13 @@ class DDPGAgent(Agent):
 
         Agent.save_params(self, params, n_episode)
 
-    def write_log(self, i: int, loss: np.ndarray, score: int):
+    def write_log(self, i: int, loss: np.ndarray, score: int, avg_time_cost: float):
         """Write log about loss and score"""
         total_loss = loss.sum()
 
         print(
             "[INFO] episode %d, episode step: %d, total step: %d, total score: %d\n"
-            "total loss: %f actor_loss: %.3f critic_loss: %.3f\n"
+            "total loss: %f actor_loss: %.3f critic_loss: %.3f (spent %.6f sec/step)\n"
             % (
                 i,
                 self.episode_step,
@@ -215,6 +216,7 @@ class DDPGAgent(Agent):
                 total_loss,
                 loss[0],
                 loss[1],
+                avg_time_cost,
             )  # actor loss  # critic loss
         )
 
@@ -225,6 +227,7 @@ class DDPGAgent(Agent):
                     "total loss": total_loss,
                     "actor loss": loss[0],
                     "critic loss": loss[1],
+                    "time per each step": avg_time_cost,
                 }
             )
 
@@ -237,7 +240,7 @@ class DDPGAgent(Agent):
         """Train the agent."""
         # logger
         if self.args.log:
-            wandb.init(project=self.args.wandb_project)
+            wandb.init()
             wandb.config.update(self.hyper_params)
             # wandb.watch([self.actor, self.critic], log="parameters")
 
@@ -250,6 +253,8 @@ class DDPGAgent(Agent):
             score = 0
             self.episode_step = 0
             losses = list()
+
+            t_begin = time.time()
 
             while not done:
                 if self.args.render and self.i_episode >= self.args.render_after:
@@ -268,10 +273,13 @@ class DDPGAgent(Agent):
                 state = next_state
                 score += reward
 
+            t_end = time.time()
+            avg_time_cost = (t_end - t_begin) / self.episode_step
+
             # logging
             if losses:
                 avg_loss = np.vstack(losses).mean(axis=0)
-                self.write_log(self.i_episode, avg_loss, score)
+                self.write_log(self.i_episode, avg_loss, score, avg_time_cost)
                 losses.clear()
 
             if self.i_episode % self.args.save_period == 0:
