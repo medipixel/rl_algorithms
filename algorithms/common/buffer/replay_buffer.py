@@ -45,7 +45,7 @@ class ReplayBuffer:
             buffer_size (int): size of replay buffer for experience
             batch_size (int): size of a batched sampled from replay buffer for training
             gamma (float): discount factor
-            n_step (int): n_step (int): step size for n-step transition
+            n_step (int): step size for n-step transition
             demo (list): transitions of human play
         """
         assert 0 < batch_size <= buffer_size
