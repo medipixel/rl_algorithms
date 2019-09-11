@@ -15,169 +15,152 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 class ReplayBuffer:
     """Fixed-size buffer to store experience tuples.
 
-    Taken from Udacity deep-reinforcement-learning github repository:
-    https://github.com/udacity/deep-reinforcement-learning/blob/master/
-    ddpg-pendulum/ddpg_agent.py
-
     Attributes:
-        buffer (list): list of replay buffer
-        batch_size (int): size of a batched sampled from replay buffer for training
-
+        obs_buf (np.ndarray): observations
+        acts_buf (np.ndarray): actions
+        rews_buf (np.ndarray): rewards
+        next_obs_buf (np.ndarray): next observations
+        done_buf (np.ndarray): dones
+        n_step_buffer (deque): recent n transitions
+        n_step (int): step size for n-step transition
+        gamma (float): discount factor
+        buffer_size (int): size of buffers
+        batch_size (int): batch size for training
+        demo_size (int): size of demo transitions
+        length (int): amount of memory filled
+        idx (int): memory index to add the next incoming transition
     """
 
-    def __init__(self, buffer_size: int, batch_size: int):
+    def __init__(
+        self,
+        buffer_size: int,
+        batch_size: int = 32,
+        gamma: float = 0.99,
+        n_step: int = 1,
+        demo: List[Tuple[np.ndarray, np.ndarray, float, np.ndarray, bool]] = None,
+    ):
         """Initialize a ReplayBuffer object.
 
         Args:
             buffer_size (int): size of replay buffer for experience
             batch_size (int): size of a batched sampled from replay buffer for training
-
+            gamma (float): discount factor
+            n_step (int): step size for n-step transition
+            demo (list): transitions of human play
         """
-        self.buffer: list = list()
-        self.buffer_size = buffer_size
-        self.batch_size = batch_size
-        self.idx = 0
+        assert 0 < batch_size <= buffer_size
+        assert 0.0 <= gamma <= 1.0
+        assert 1 <= n_step <= buffer_size
 
-    def add(
-        self,
-        state: np.ndarray,
-        action: np.ndarray,
-        reward: np.float64,
-        next_state: np.ndarray,
-        done: float,
-    ):
-        """Add a new experience to memory."""
-        data = (state, action, reward, next_state, done)
-
-        if len(self.buffer) == self.buffer_size:
-            self.buffer[self.idx] = data
-            self.idx = (self.idx + 1) % self.buffer_size
-        else:
-            self.buffer.append(data)
-
-    def extend(self, transitions: list):
-        """Add experiences to memory."""
-        for transition in transitions:
-            self.add(*transition)
-
-    def sample(self) -> Tuple[torch.Tensor, ...]:
-        """Randomly sample a batch of experiences from memory."""
-        assert len(self) >= self.batch_size
-
-        indices = np.random.choice(
-            len(self.buffer), size=self.batch_size, replace=False
-        )
-
-        states, actions, rewards, next_states, dones = [], [], [], [], []
-
-        for i in np.nditer(indices):
-            s, a, r, n_s, d = self.buffer[i]
-            states.append(np.array(s, copy=False))
-            actions.append(np.array(a, copy=False))
-            rewards.append(np.array(r, copy=False))
-            next_states.append(np.array(n_s, copy=False))
-            dones.append(np.array(float(d), copy=False))
-
-        states_ = torch.FloatTensor(np.array(states)).to(device)
-        actions_ = torch.FloatTensor(np.array(actions)).to(device)
-        rewards_ = torch.FloatTensor(np.array(rewards).reshape(-1, 1)).to(device)
-        next_states_ = torch.FloatTensor(np.array(next_states)).to(device)
-        dones_ = torch.FloatTensor(np.array(dones).reshape(-1, 1)).to(device)
-
-        if torch.cuda.is_available():
-            states_ = states_.cuda(non_blocking=True)
-            actions_ = actions_.cuda(non_blocking=True)
-            rewards_ = rewards_.cuda(non_blocking=True)
-            next_states_ = next_states_.cuda(non_blocking=True)
-            dones_ = dones_.cuda(non_blocking=True)
-
-        return states_, actions_, rewards_, next_states_, dones_
-
-    def __len__(self) -> int:
-        """Return the current size of internal memory."""
-        return len(self.buffer)
-
-
-class NStepTransitionBuffer:
-    """Fixed-size buffer to store experience tuples.
-
-    Attributes:
-        buffer (list): list of replay buffer
-        buffer_size (int): buffer size not storing demos
-        demo_size (int): size of a demo to permanently store in the buffer
-        cursor (int): position to store next transition coming in
-
-    """
-
-    def __init__(self, buffer_size: int, n_step: int, gamma: float, demo: list = None):
-        """Initialize a ReplayBuffer object.
-
-        Args:
-            buffer_size (int): size of replay buffer for experience
-            demo (list): demonstration transitions
-
-        """
-        assert buffer_size > 0
+        self.obs_buf: np.ndarray = None
+        self.acts_buf: np.ndarray = None
+        self.rews_buf: np.ndarray = None
+        self.next_obs_buf: np.ndarray = None
+        self.done_buf: np.ndarray = None
 
         self.n_step_buffer: Deque = deque(maxlen=n_step)
-        self.buffer_size = buffer_size
-        self.buffer: list = list()
         self.n_step = n_step
         self.gamma = gamma
-        self.demo_size = 0
-        self.cursor = 0
 
-        # if demo exists
-        if demo:
-            self.demo_size = len(demo)
-            self.buffer.extend(demo)
+        self.buffer_size = buffer_size
+        self.batch_size = batch_size
+        self.demo_size = len(demo) if demo else 0
+        self.demo = demo
+        self.length = 0
+        self.idx = self.demo_size
 
-        self.buffer.extend([None] * self.buffer_size)
+        # demo may have empty tuple list [()]
+        if self.demo and self.demo[0]:
+            self.buffer_size += self.demo_size
+            self.length += self.demo_size
+            for idx, d in enumerate(self.demo):
+                state, action, reward, next_state, done = d
+                if idx == 0:
+                    self._initialize_buffers(state, action)
+                self.obs_buf[idx] = state
+                self.acts_buf[idx] = np.array(action)
+                self.rews_buf[idx] = reward
+                self.next_obs_buf[idx] = next_state
+                self.done_buf[idx] = done
 
-    def add(self, transition: Tuple[np.ndarray, ...]) -> Tuple[Any, ...]:
-        """Add a new transition to memory."""
+    def add(
+        self, transition: Tuple[np.ndarray, np.ndarray, float, np.ndarray, bool]
+    ) -> Tuple[Any, ...]:
+        """Add a new experience to memory.
+        If the buffer is empty, it is respectively initialized by size of arguments.
+        """
         self.n_step_buffer.append(transition)
 
         # single step transition is not ready
         if len(self.n_step_buffer) < self.n_step:
             return ()
 
+        if self.length == 0:
+            state, action = transition[:2]
+            self._initialize_buffers(state, action)
+
         # add a multi step transition
         reward, next_state, done = get_n_step_info(self.n_step_buffer, self.gamma)
         curr_state, action = self.n_step_buffer[0][:2]
-        new_transition = (curr_state, action, reward, next_state, done)
 
-        # insert the new transition to buffer
-        idx = self.demo_size + self.cursor
-        self.buffer[idx] = new_transition
-        self.cursor = (self.cursor + 1) % self.buffer_size
+        self.obs_buf[self.idx] = curr_state
+        self.acts_buf[self.idx] = action
+        self.rews_buf[self.idx] = reward
+        self.next_obs_buf[self.idx] = next_state
+        self.done_buf[self.idx] = done
+
+        self.idx += 1
+        self.idx = self.demo_size if self.idx % self.buffer_size == 0 else self.idx
+        self.length = min(self.length + 1, self.buffer_size)
 
         # return a single step transition to insert to replay buffer
         return self.n_step_buffer[0]
 
-    def sample(self, indices: List[int]) -> Tuple[torch.Tensor, ...]:
+    def extend(
+        self, transitions: List[Tuple[np.ndarray, np.ndarray, float, np.ndarray, bool]]
+    ):
+        """Add experiences to memory."""
+        for transition in transitions:
+            self.add(transition)
+
+    def sample(self, indices: List[int] = None) -> Tuple[torch.Tensor, ...]:
         """Randomly sample a batch of experiences from memory."""
-        states, actions, rewards, next_states, dones = [], [], [], [], []
+        assert len(self) >= self.batch_size
 
-        for i in indices:
-            s, a, r, n_s, d = self.buffer[i]
-            states.append(np.array(s, copy=False))
-            actions.append(np.array(a, copy=False))
-            rewards.append(np.array(r, copy=False))
-            next_states.append(np.array(n_s, copy=False))
-            dones.append(np.array(float(d), copy=False))
+        if indices is None:
+            indices = np.random.choice(len(self), size=self.batch_size, replace=False)
 
-        states_ = torch.FloatTensor(np.array(states)).to(device)
-        actions_ = torch.FloatTensor(np.array(actions)).to(device)
-        rewards_ = torch.FloatTensor(np.array(rewards).reshape(-1, 1)).to(device)
-        next_states_ = torch.FloatTensor(np.array(next_states)).to(device)
-        dones_ = torch.FloatTensor(np.array(dones).reshape(-1, 1)).to(device)
+        states = torch.FloatTensor(self.obs_buf[indices]).to(device)
+        actions = torch.FloatTensor(self.acts_buf[indices]).to(device)
+        rewards = torch.FloatTensor(self.rews_buf[indices].reshape(-1, 1)).to(device)
+        next_states = torch.FloatTensor(self.next_obs_buf[indices]).to(device)
+        dones = torch.FloatTensor(self.done_buf[indices].reshape(-1, 1)).to(device)
 
         if torch.cuda.is_available():
-            states_ = states_.cuda(non_blocking=True)
-            actions_ = actions_.cuda(non_blocking=True)
-            rewards_ = rewards_.cuda(non_blocking=True)
-            next_states_ = next_states_.cuda(non_blocking=True)
-            dones_ = dones_.cuda(non_blocking=True)
+            states = states.cuda(non_blocking=True)
+            actions = actions.cuda(non_blocking=True)
+            rewards = rewards.cuda(non_blocking=True)
+            next_states = next_states.cuda(non_blocking=True)
+            dones = dones.cuda(non_blocking=True)
 
-        return states_, actions_, rewards_, next_states_, dones_
+        return states, actions, rewards, next_states, dones
+
+    def _initialize_buffers(self, state: np.ndarray, action: np.ndarray) -> None:
+        """Initialze buffers for state, action, resward, next_state, done."""
+        # In case action of demo is not np.ndarray
+
+        self.obs_buf = np.zeros(
+            [self.buffer_size] + list(state.shape), dtype=state.dtype
+        )
+        self.acts_buf = np.zeros(
+            [self.buffer_size] + list(action.shape), dtype=action.dtype
+        )
+        self.rews_buf = np.zeros([self.buffer_size], dtype=float)
+        self.next_obs_buf = np.zeros(
+            [self.buffer_size] + list(state.shape), dtype=state.dtype
+        )
+        self.done_buf = np.zeros([self.buffer_size], dtype=float)
+
+    def __len__(self) -> int:
+        """Return the current size of internal memory."""
+        return self.length

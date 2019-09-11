@@ -9,14 +9,15 @@
 """
 
 import pickle
+import time
 from typing import Tuple
 
 import numpy as np
 import torch
 import torch.nn as nn
 
-from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBufferfD
-from algorithms.common.buffer.replay_buffer import NStepTransitionBuffer
+from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
+from algorithms.common.buffer.replay_buffer import ReplayBuffer
 import algorithms.common.helper_functions as common_utils
 from algorithms.ddpg.agent import DDPGAgent
 
@@ -27,7 +28,7 @@ class DDPGfDAgent(DDPGAgent):
     """ActorCritic interacting with environment.
 
     Attributes:
-        memory (PrioritizedReplayBufferfD): replay memory
+        memory (PrioritizedReplayBuffer): replay memory
         beta (float): beta parameter for prioritized replay buffer
 
     """
@@ -48,7 +49,7 @@ class DDPGfDAgent(DDPGAgent):
                 )
 
                 # replay memory for multi-steps
-                self.memory_n = NStepTransitionBuffer(
+                self.memory_n = ReplayBuffer(
                     buffer_size=self.hyper_params["BUFFER_SIZE"],
                     n_step=self.hyper_params["N_STEP"],
                     gamma=self.hyper_params["GAMMA"],
@@ -57,7 +58,7 @@ class DDPGfDAgent(DDPGAgent):
 
             # replay memory for a single step
             self.beta = self.hyper_params["PER_BETA"]
-            self.memory = PrioritizedReplayBufferfD(
+            self.memory = PrioritizedReplayBuffer(
                 self.hyper_params["BUFFER_SIZE"],
                 self.hyper_params["BATCH_SIZE"],
                 demo=demos,
@@ -74,7 +75,7 @@ class DDPGfDAgent(DDPGAgent):
         # add a single step transition
         # if transition is not an empty tuple
         if transition:
-            self.memory.add(*transition)
+            self.memory.add(transition)
 
     def _get_critic_loss(
         self, experiences: Tuple[torch.Tensor, ...], gamma: float
@@ -157,12 +158,14 @@ class DDPGfDAgent(DDPGAgent):
         pretrain_loss = list()
         print("[INFO] Pre-Train %d step." % self.hyper_params["PRETRAIN_STEP"])
         for i_step in range(1, self.hyper_params["PRETRAIN_STEP"] + 1):
+            t_begin = time.time()
             loss = self.update_model()
+            t_end = time.time()
             pretrain_loss.append(loss)  # for logging
 
             # logging
             if i_step == 1 or i_step % 100 == 0:
                 avg_loss = np.vstack(pretrain_loss).mean(axis=0)
                 pretrain_loss.clear()
-                self.write_log(0, avg_loss, 0)
+                self.write_log(0, avg_loss, 0, t_end - t_begin)
         print("[INFO] Pre-Train Complete!\n")

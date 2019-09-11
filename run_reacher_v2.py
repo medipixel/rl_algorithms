@@ -46,7 +46,7 @@ parser.add_argument(
 parser.add_argument(
     "--demo-path", type=str, default="data/reacher_demo.pkl", help="demonstration path"
 )
-parser.add_argument("--wandb-project", type=str, default="", help="wandb project name")
+
 
 parser.set_defaults(test=False)
 parser.set_defaults(load_from=None)

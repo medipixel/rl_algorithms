@@ -10,13 +10,14 @@
 """
 
 import pickle
+import time
 from typing import Tuple
 
 import numpy as np
 import torch
 
-from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBufferfD
-from algorithms.common.buffer.replay_buffer import NStepTransitionBuffer
+from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
+from algorithms.common.buffer.replay_buffer import ReplayBuffer
 import algorithms.common.helper_functions as common_utils
 from algorithms.sac.agent import SACAgent
 
@@ -27,7 +28,7 @@ class SACfDAgent(SACAgent):
     """SAC agent interacting with environment.
 
     Attrtibutes:
-        memory (PrioritizedReplayBufferfD): replay memory
+        memory (PrioritizedReplayBuffer): replay memory
         beta (float): beta parameter for prioritized replay buffer
 
     """
@@ -48,7 +49,7 @@ class SACfDAgent(SACAgent):
                 )
 
                 # replay memory for multi-steps
-                self.memory_n = NStepTransitionBuffer(
+                self.memory_n = ReplayBuffer(
                     buffer_size=self.hyper_params["BUFFER_SIZE"],
                     n_step=self.hyper_params["N_STEP"],
                     gamma=self.hyper_params["GAMMA"],
@@ -57,7 +58,7 @@ class SACfDAgent(SACAgent):
 
             # replay memory
             self.beta = self.hyper_params["PER_BETA"]
-            self.memory = PrioritizedReplayBufferfD(
+            self.memory = PrioritizedReplayBuffer(
                 self.hyper_params["BUFFER_SIZE"],
                 self.hyper_params["BATCH_SIZE"],
                 demo=demos,
@@ -74,7 +75,7 @@ class SACfDAgent(SACAgent):
         # add a single step transition
         # if transition is not an empty tuple
         if transition:
-            self.memory.add(*transition)
+            self.memory.add(transition)
 
     # pylint: disable=too-many-statements
     def update_model(self) -> Tuple[torch.Tensor, ...]:
@@ -206,7 +207,9 @@ class SACfDAgent(SACAgent):
         pretrain_loss = list()
         print("[INFO] Pre-Train %d steps." % self.hyper_params["PRETRAIN_STEP"])
         for i_step in range(1, self.hyper_params["PRETRAIN_STEP"] + 1):
+            t_begin = time.time()
             loss = self.update_model()
+            t_end = time.time()
             pretrain_loss.append(loss)  # for logging
 
             # logging
@@ -218,5 +221,6 @@ class SACfDAgent(SACAgent):
                     avg_loss,
                     0,
                     policy_update_freq=self.hyper_params["POLICY_UPDATE_FREQ"],
+                    avg_time_cost=t_end - t_begin,
                 )
         print("[INFO] Pre-Train Complete!\n")

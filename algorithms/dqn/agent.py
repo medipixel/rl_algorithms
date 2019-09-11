@@ -26,7 +26,7 @@ import wandb
 
 from algorithms.common.abstract.agent import Agent
 from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
-from algorithms.common.buffer.replay_buffer import NStepTransitionBuffer
+from algorithms.common.buffer.replay_buffer import ReplayBuffer
 import algorithms.common.helper_functions as common_utils
 import algorithms.dqn.utils as dqn_utils
 
@@ -103,7 +103,7 @@ class DQNAgent(Agent):
 
             # replay memory for multi-steps
             if self.use_n_step:
-                self.memory_n = NStepTransitionBuffer(
+                self.memory_n = ReplayBuffer(
                     self.hyper_params["BUFFER_SIZE"],
                     n_step=self.hyper_params["N_STEP"],
                     gamma=self.hyper_params["GAMMA"],
@@ -116,7 +116,7 @@ class DQNAgent(Agent):
         # epsilon greedy policy
         # pylint: disable=comparison-with-callable
         if not self.args.test and self.epsilon > np.random.random():
-            selected_action = self.env.action_space.sample()
+            selected_action = np.array(self.env.action_space.sample())
         else:
             state = self._preprocess_state(state)
             selected_action = self.dqn(state).argmax()
@@ -153,7 +153,7 @@ class DQNAgent(Agent):
         # add a single step transition
         # if transition is not an empty tuple
         if transition:
-            self.memory.add(*transition)
+            self.memory.add(transition)
 
     def _get_dqn_loss(
         self, experiences: Tuple[torch.Tensor, ...], gamma: float
@@ -194,7 +194,7 @@ class DQNAgent(Agent):
         """Train the model after each episode."""
         # 1 step loss
         experiences_1 = self.memory.sample(self.beta)
-        weights, indices = experiences_1[-2:]
+        weights, indices = experiences_1[-3:-1]
         gamma = self.hyper_params["GAMMA"]
         dq_loss_element_wise, q_values = self._get_dqn_loss(experiences_1, gamma)
         dq_loss = torch.mean(dq_loss_element_wise * weights)
@@ -303,7 +303,7 @@ class DQNAgent(Agent):
         """Train the agent."""
         # logger
         if self.args.log:
-            wandb.init(project=self.args.wandb_project)
+            wandb.init()
             wandb.config.update(self.hyper_params)
             # wandb.watch([self.dqn], log="parameters")
 
