@@ -31,7 +31,16 @@
       "contributions": [
         "code"
       ]
-    }
+    },
+    {
+      "login": "mclearning2",
+      "name": "Mincehol Kim",
+      "avatar_url": "https://avatars3.githubusercontent.com/u/43226417?v=4",
+      "profile": "https://github.com/mclearning2",
+      "contributions": [
+        "code"
+      ]
+    },
   ],
   "contributorsPerLine": 7,
   "projectName": "rl_algorithms",

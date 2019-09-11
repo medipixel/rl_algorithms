@@ -49,7 +49,7 @@ parser.add_argument(
     default="data/lunarlander_discrete_demo.pkl",
     help="demonstration path",
 )
-parser.add_argument("--wandb-project", type=str, default="", help="wandb project name")
+
 
 parser.set_defaults(test=False)
 parser.set_defaults(load_from=None)
