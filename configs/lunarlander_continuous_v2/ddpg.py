@@ -1,0 +1,1 @@
+agent = dict(type="DDPGAgent")

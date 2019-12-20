@@ -22,10 +22,12 @@ from algorithms.common.abstract.agent import Agent
 from algorithms.common.buffer.replay_buffer import ReplayBuffer
 import algorithms.common.helper_functions as common_utils
 from algorithms.common.noise import OUNoise
+from algorithms.registry import AGENTS
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
+@AGENTS.register_module
 class DDPGAgent(Agent):
     """ActorCritic interacting with environment.
 
