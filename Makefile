@@ -1,5 +1,7 @@
 test:
-	pytest --pylint --flake8 --mypy # --cov=algorithms
+	black . --check --exclude checkpoint
+	isort -y --check-only --skip checkpoint
+	env PYTHONPATH=. pytest --pylint --flake8 --mypy --ignore=checkpoint
 
 format:
 	black .

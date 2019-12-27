@@ -83,9 +83,16 @@ class SACfDAgent(SACAgent):
         self.update_step += 1
 
         experiences = self.memory.sample(self.beta)
-        states, actions, rewards, next_states, dones, weights, indices, eps_d = (
-            experiences
-        )
+        (
+            states,
+            actions,
+            rewards,
+            next_states,
+            dones,
+            weights,
+            indices,
+            eps_d,
+        ) = experiences
         new_actions, log_prob, pre_tanh_value, mu, std = self.actor(states)
 
         # train alpha

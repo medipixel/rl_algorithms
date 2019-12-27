@@ -44,7 +44,7 @@ class Registry(object):
         return cls
 
 
-def build_from_cfg(cfg, registry, default_args=None):
+def build_from_cfg(cfg: dict, registry: Registry, default_args: dict = None):
     """Build a module from config dict.
     Args:
         cfg (dict): Config dict. It should at least contain the key "type".

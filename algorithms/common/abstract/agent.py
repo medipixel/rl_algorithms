@@ -8,6 +8,7 @@
 from abc import ABC, abstractmethod
 import argparse
 import os
+import shutil
 import subprocess
 from typing import Tuple, Union
 
@@ -32,16 +33,24 @@ class Agent(ABC):
 
     """
 
-    def __init__(self, env: gym.Env, args: argparse.Namespace):
+    def __init__(self, env: gym.Env, args: argparse.Namespace, log_cfg: dict):
         """Initialization.
 
         Args:
             env (gym.Env): openAI Gym environment
             args (argparse.Namespace): arguments including hyperparameters and training settings
-
+            log_cfg (ConfigDict): configuration for saving log and checkpoint
         """
         self.args = args
         self.env = env
+        self.log_cfg = log_cfg
+        self.ckpt_path = (
+            f"./checkpoint/{log_cfg.env}/{log_cfg.agent}/{log_cfg.curr_time}"
+        )
+        os.makedirs(self.ckpt_path, exist_ok=True)
+
+        # save configuration
+        shutil.copy(self.args.cfg_path, os.path.join(self.ckpt_path, "config.py"))
 
         if isinstance(env.action_space, Discrete):
             self.is_discrete = True
@@ -49,7 +58,6 @@ class Agent(ABC):
             self.is_discrete = False
 
         # for logging
-        self.env_name = str(self.env.env).split("<")[2].replace(">>", "")
         self.sha = (
             subprocess.check_output(["git", "rev-parse", "--short", "HEAD"])[:-1]
             .decode("ascii")
@@ -76,12 +84,9 @@ class Agent(ABC):
 
     @abstractmethod
     def save_params(self, params: dict, n_episode: int):
-        if not os.path.exists("./save"):
-            os.mkdir("./save")
+        os.makedirs(self.ckpt_path, exist_ok=True)
 
-        save_name = self.env_name + "_" + self.args.algo + "_" + self.sha
-
-        path = os.path.join("./save/" + save_name + "_ep_" + str(n_episode) + ".pt")
+        path = os.path.join(self.ckpt_path + self.sha + "_ep_" + str(n_episode) + ".pt")
         torch.save(params, path)
 
         print("[INFO] Saved the model and optimizer to", path)

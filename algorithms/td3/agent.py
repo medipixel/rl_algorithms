@@ -8,6 +8,7 @@
 
 import argparse
 import os
+import shutil
 import time
 from typing import Tuple
 
@@ -15,16 +16,21 @@ import gym
 import numpy as np
 import torch
 import torch.nn.functional as F
+import torch.optim as optim
 import wandb
 
 from algorithms.common.abstract.agent import Agent
 from algorithms.common.buffer.replay_buffer import ReplayBuffer
 import algorithms.common.helper_functions as common_utils
+from algorithms.common.networks.mlp import MLP, FlattenMLP
 from algorithms.common.noise import GaussianNoise
+from algorithms.registry import AGENTS
+from algorithms.utils.config import ConfigDict
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
+@AGENTS.register_module
 class TD3Agent(Agent):
     """ActorCritic interacting with environment.
 
@@ -40,7 +46,6 @@ class TD3Agent(Agent):
         actor_target (nn.Module): target actor model to select actions
         critic_optim (Optimizer): optimizer for training critic
         actor_optim (Optimizer): optimizer for training actor
-        hyper_params (dict): hyper-parameters
         curr_state (np.ndarray): temporary storage of the current state
         total_steps (int): total step numbers
         episode_steps (int): step number of the current episode
@@ -51,39 +56,114 @@ class TD3Agent(Agent):
         self,
         env: gym.Env,
         args: argparse.Namespace,
-        hyper_params: dict,
-        models: tuple,
-        optims: tuple,
-        exploration_noise: GaussianNoise,
-        target_policy_noise: GaussianNoise,
+        gamma: float,
+        tau: float,
+        buffer_size: int,
+        batch_size: int,
+        initial_random_action: int,
+        policy_update_freq: int,
+        optim_cfg: ConfigDict,
+        network_cfg: ConfigDict,
+        noise_cfg: ConfigDict,
+        log_cfg: ConfigDict,
     ):
         """Initialization.
 
         Args:
             env (gym.Env): openAI Gym environment
             args (argparse.Namespace): arguments including hyperparameters and training settings
-            hyper_params (dict): hyper-parameters
-            models (tuple): models including actor and critic
-            optims (tuple): optimizers for actor and critic
-            exploration_noise (GaussianNoise): random noise for exploration
-            target_policy_noise (GaussianNoise): random noise for target values
 
         """
-        Agent.__init__(self, env, args)
+        Agent.__init__(self, env, args, log_cfg)
 
-        self.actor, self.actor_target = models[0:2]
-        self.critic1, self.critic2 = models[2:4]
-        self.critic_target1, self.critic_target2 = models[4:6]
-        self.actor_optim = optims[0]
-        self.critic_optim = optims[1]
-        self.hyper_params = hyper_params
         self.curr_state = np.zeros((1,))
-        self.exploration_noise = exploration_noise
-        self.target_policy_noise = target_policy_noise
         self.total_step = 0
         self.episode_step = 0
         self.update_step = 0
         self.i_episode = 0
+
+        self.gamma = gamma
+        self.tau = tau
+        self.buffer_size = buffer_size
+        self.batch_size = batch_size
+        self.initial_random_action = initial_random_action
+        self.noise_cfg = noise_cfg
+
+        self.policy_update_freq = policy_update_freq
+
+        state_dim = self.env.observation_space.shape[0]
+        action_dim = self.env.action_space.shape[0]
+
+        # create actor
+        self.actor = MLP(
+            input_size=state_dim,
+            output_size=action_dim,
+            hidden_sizes=network_cfg.hidden_sizes_actor,
+            output_activation=torch.tanh,
+        ).to(device)
+
+        self.actor_target = MLP(
+            input_size=state_dim,
+            output_size=action_dim,
+            hidden_sizes=network_cfg.hidden_sizes_actor,
+            output_activation=torch.tanh,
+        ).to(device)
+        self.actor_target.load_state_dict(self.actor.state_dict())
+
+        # create critic
+        self.critic1 = FlattenMLP(
+            input_size=state_dim + action_dim,
+            output_size=1,
+            hidden_sizes=network_cfg.hidden_sizes_critic,
+        ).to(device)
+
+        self.critic2 = FlattenMLP(
+            input_size=state_dim + action_dim,
+            output_size=1,
+            hidden_sizes=network_cfg.hidden_sizes_critic,
+        ).to(device)
+
+        self.critic_target1 = FlattenMLP(
+            input_size=state_dim + action_dim,
+            output_size=1,
+            hidden_sizes=network_cfg.hidden_sizes_critic,
+        ).to(device)
+
+        self.critic_target2 = FlattenMLP(
+            input_size=state_dim + action_dim,
+            output_size=1,
+            hidden_sizes=network_cfg.hidden_sizes_critic,
+        ).to(device)
+
+        self.critic_target1.load_state_dict(self.critic1.state_dict())
+        self.critic_target2.load_state_dict(self.critic2.state_dict())
+
+        # concat critic parameters to use one optim
+        critic_parameters = list(self.critic1.parameters()) + list(
+            self.critic2.parameters()
+        )
+
+        # create optimizers
+        self.actor_optim = optim.Adam(
+            self.actor.parameters(),
+            lr=optim_cfg.lr_actor,
+            weight_decay=optim_cfg.weight_decay,
+        )
+
+        self.critic_optim = optim.Adam(
+            critic_parameters,
+            lr=optim_cfg.lr_critic,
+            weight_decay=optim_cfg.weight_decay,
+        )
+
+        # noise instance to make randomness of action
+        self.exploration_noise = GaussianNoise(
+            action_dim, noise_cfg.exploration_noise, noise_cfg.exploration_noise
+        )
+
+        self.target_policy_noise = GaussianNoise(
+            action_dim, noise_cfg.target_policy_noise, noise_cfg.target_policy_noise,
+        )
 
         # load the optimizer and model parameters
         if args.load_from is not None and os.path.exists(args.load_from):
@@ -91,14 +171,12 @@ class TD3Agent(Agent):
 
         if not self.args.test:
             # replay memory
-            self.memory = ReplayBuffer(
-                hyper_params["BUFFER_SIZE"], hyper_params["BATCH_SIZE"]
-            )
+            self.memory = ReplayBuffer(self.buffer_size, self.batch_size)
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""
         # initial training step, try random action for exploration
-        random_action_count = self.hyper_params["INITIAL_RANDOM_ACTION"]
+        random_action_count = self.initial_random_action
 
         self.curr_state = state
 
@@ -140,8 +218,8 @@ class TD3Agent(Agent):
         noise = torch.FloatTensor(self.target_policy_noise.sample()).to(device)
         clipped_noise = torch.clamp(
             noise,
-            -self.hyper_params["TARGET_POLICY_NOISE_CLIP"],
-            self.hyper_params["TARGET_POLICY_NOISE_CLIP"],
+            -self.noise_cfg.target_policy_noise_clip,
+            self.noise_cfg.target_policy_noise_clip,
         )
         next_actions = (self.actor_target(next_states) + clipped_noise).clamp(-1.0, 1.0)
 
@@ -152,7 +230,7 @@ class TD3Agent(Agent):
 
         # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
         #       = r                       otherwise
-        curr_returns = rewards + self.hyper_params["GAMMA"] * next_values * masks
+        curr_returns = rewards + self.gamma * next_values * masks
         curr_returns = curr_returns.detach()
 
         # critic loss
@@ -167,7 +245,7 @@ class TD3Agent(Agent):
         critic_loss.backward()
         self.critic_optim.step()
 
-        if self.update_step % self.hyper_params["POLICY_UPDATE_FREQ"] == 0:
+        if self.update_step % self.policy_update_freq == 0:
             # policy loss
             actions = self.actor(states)
             actor_loss = -self.critic1(states, actions).mean()
@@ -178,10 +256,9 @@ class TD3Agent(Agent):
             self.actor_optim.step()
 
             # update target networks
-            tau = self.hyper_params["TAU"]
-            common_utils.soft_update(self.critic1, self.critic_target1, tau)
-            common_utils.soft_update(self.critic2, self.critic_target2, tau)
-            common_utils.soft_update(self.actor, self.actor_target, tau)
+            common_utils.soft_update(self.critic1, self.critic_target1, self.tau)
+            common_utils.soft_update(self.critic2, self.critic_target2, self.tau)
+            common_utils.soft_update(self.actor, self.actor_target, self.tau)
         else:
             actor_loss = torch.zeros(1)
 
@@ -262,8 +339,11 @@ class TD3Agent(Agent):
         """Train the agent."""
         # logger
         if self.args.log:
-            wandb.init()
-            wandb.config.update(self.hyper_params)
+            wandb.init(
+                project=self.log_cfg.env,
+                name=f"{self.log_cfg.agent}/{self.log_cfg.curr_time}",
+            )
+            shutil.copy(self.args.cfg_path, os.path.join(wandb.run.dir, "config.py"))
             # wandb.watch([self.actor, self.critic1, self.critic2], log="parameters")
 
         for self.i_episode in range(1, self.args.episode_num + 1):
@@ -287,7 +367,7 @@ class TD3Agent(Agent):
                 state = next_state
                 score += reward
 
-                if len(self.memory) >= self.hyper_params["BATCH_SIZE"]:
+                if len(self.memory) >= self.batch_size:
                     experiences = self.memory.sample()
                     loss = self.update_model(experiences)
                     loss_episode.append(loss)  # for logging
@@ -302,7 +382,7 @@ class TD3Agent(Agent):
                     self.i_episode,
                     avg_loss,
                     score,
-                    self.hyper_params["POLICY_UPDATE_FREQ"],
+                    self.policy_update_freq,
                     avg_time_cost,
                 )
             if self.i_episode % self.args.save_period == 0:

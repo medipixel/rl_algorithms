@@ -8,9 +8,9 @@ from .fd.dqn_agent import DQfDAgent
 from .fd.sac_agent import SACfDAgent
 from .per.ddpg_agent import PERDDPGAgent
 from .ppo.agent import PPOAgent
+from .registry import build_agent
 from .sac.agent import SACAgent
 from .td3.agent import TD3Agent
-from .registry import build_agent
 
 __all__ = [
     "A2CAgent",

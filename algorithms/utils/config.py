@@ -26,6 +26,12 @@ class ConfigDict(Dict):
             return value
         raise ex
 
+    def __setitem__(self, name, value):
+        if isinstance(value, dict):
+            value = ConfigDict(value)
+
+        super(ConfigDict, self).__setitem__(name, value)
+
 
 def add_args(parser, cfg, prefix=""):
     for k, v in cfg.items():
@@ -72,6 +78,22 @@ class Config(object):
 
     """
 
+    def __init__(self, cfg_dict=None, filename=None):
+        if cfg_dict is None:
+            cfg_dict = dict()
+        elif not isinstance(cfg_dict, dict):
+            raise TypeError(
+                "cfg_dict must be a dict, but got {}".format(type(cfg_dict))
+            )
+
+        super(Config, self).__setattr__("_cfg_dict", ConfigDict(cfg_dict))
+        super(Config, self).__setattr__("_filename", filename)
+        if filename:
+            with open(filename, "r", encoding="utf-8") as f:
+                super(Config, self).__setattr__("_text", f.read())
+        else:
+            super(Config, self).__setattr__("_text", "")
+
     @staticmethod
     def fromfile(filename):
         filename = osp.abspath(osp.expanduser(filename))
@@ -106,22 +128,6 @@ class Config(object):
         parser.add_argument("config", help="config file path")
         add_args(parser, cfg)
         return parser, cfg
-
-    def __init__(self, cfg_dict=None, filename=None):
-        if cfg_dict is None:
-            cfg_dict = dict()
-        elif not isinstance(cfg_dict, dict):
-            raise TypeError(
-                "cfg_dict must be a dict, but got {}".format(type(cfg_dict))
-            )
-
-        super(Config, self).__setattr__("_cfg_dict", ConfigDict(cfg_dict))
-        super(Config, self).__setattr__("_filename", filename)
-        if filename:
-            with open(filename, "r", encoding="utf-8") as f:
-                super(Config, self).__setattr__("_text", f.read())
-        else:
-            super(Config, self).__setattr__("_text", "")
 
     @property
     def filename(self):
