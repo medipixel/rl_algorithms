@@ -1,24 +1,34 @@
-"""Config for SAC on Reacher-v2.
+"""Config for SACfD on LunarLanderContinuous-v2.
 
 - Author: Kyunghwan Kim
 - Contact: kh.kim@medipixel.io
 """
 
 agent = dict(
-    type="SACAgent",
+    type="SACfDAgent",
     params=dict(
         gamma=0.99,
-        tau=5e-3,
-        buffer_size=int(1e6),
-        batch_size=512,
-        initial_random_action=int(2e4),
-        multiple_learn=1,  # multiple learning updates
+        tau=1e-3,
+        buffer_size=int(1e5),
+        batch_size=64,
+        initial_random_action=int(1e4),
+        multiple_learn=2,  # multiple learning updates
         policy_update_freq=2,
         w_entropy=1e-3,
         w_mean_reg=1e-3,
         w_std_reg=1e-3,
         w_pre_activation_reg=0.0,
         auto_entropy_tuning=True,
+        # fD
+        n_step=3,
+        pretrain_step=100,
+        lambda1=1.0,  # N-step return weight
+        # lambda2 = weight_decay
+        lambda3=1.0,  # actor loss contribution of prior weight
+        per_alpha=0.6,
+        per_beta=0.4,
+        per_eps=1e-6,
+        per_eps_demo=1.0,
     ),
     network_cfg=dict(
         hidden_sizes_actor=[256, 256],
@@ -31,6 +41,6 @@ agent = dict(
         lr_qf1=3e-4,
         lr_qf2=3e-4,
         lr_entropy=3e-4,
-        weight_decay=0.0,
+        weight_decay=1e-5,
     ),
 )

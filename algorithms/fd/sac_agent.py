@@ -19,11 +19,13 @@ import torch
 from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
 from algorithms.common.buffer.replay_buffer import ReplayBuffer
 import algorithms.common.helper_functions as common_utils
+from algorithms.registry import AGENTS
 from algorithms.sac.agent import SACAgent
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
+@AGENTS.register_module
 class SACfDAgent(SACAgent):
     """SAC agent interacting with environment.
 
@@ -36,7 +38,16 @@ class SACfDAgent(SACAgent):
     # pylint: disable=attribute-defined-outside-init
     def _initialize(self):
         """Initialize non-common things."""
-        self.use_n_step = self.hyper_params["N_STEP"] > 1
+        self.n_step = self.params.n_step
+        self.pretrain_step = self.params.pretrain_step
+        self.lambda1 = self.params.lambda1
+        self.lambda3 = self.params.lambda3
+        self.per_alpha = self.params.per_alpha
+        self.per_beta = self.params.per_beta
+        self.per_eps = self.params.per_eps
+        self.per_eps_demo = self.params.per_eps_demo
+
+        self.use_n_step = self.n_step > 1
 
         if not self.args.test:
             # load demo replay memory
@@ -45,25 +56,24 @@ class SACfDAgent(SACAgent):
 
             if self.use_n_step:
                 demos, demos_n_step = common_utils.get_n_step_info_from_demo(
-                    demos, self.hyper_params["N_STEP"], self.hyper_params["GAMMA"]
+                    demos, self.n_step, self.gamma
                 )
 
                 # replay memory for multi-steps
                 self.memory_n = ReplayBuffer(
-                    buffer_size=self.hyper_params["BUFFER_SIZE"],
-                    n_step=self.hyper_params["N_STEP"],
-                    gamma=self.hyper_params["GAMMA"],
+                    buffer_size=self.buffer_size,
+                    n_step=self.n_step,
+                    gamma=self.gamma,
                     demo=demos_n_step,
                 )
 
             # replay memory
-            self.beta = self.hyper_params["PER_BETA"]
             self.memory = PrioritizedReplayBuffer(
-                self.hyper_params["BUFFER_SIZE"],
-                self.hyper_params["BATCH_SIZE"],
+                self.buffer_size,
+                self.batch_size,
                 demo=demos,
-                alpha=self.hyper_params["PER_ALPHA"],
-                epsilon_d=self.hyper_params["PER_EPS_DEMO"],
+                alpha=self.per_alpha,
+                epsilon_d=self.per_eps_demo,
             )
 
     def _add_transition_to_memory(self, transition: Tuple[np.ndarray, ...]):
@@ -82,7 +92,7 @@ class SACfDAgent(SACAgent):
         """Train the model after each episode."""
         self.update_step += 1
 
-        experiences = self.memory.sample(self.beta)
+        experiences = self.memory.sample(self.per_beta)
         (
             states,
             actions,
@@ -96,7 +106,7 @@ class SACfDAgent(SACAgent):
         new_actions, log_prob, pre_tanh_value, mu, std = self.actor(states)
 
         # train alpha
-        if self.hyper_params["AUTO_ENTROPY_TUNING"]:
+        if self.auto_entropy_tuning:
             alpha_loss = torch.mean(
                 (-self.log_alpha * (log_prob + self.target_entropy).detach()) * weights
             )
@@ -108,23 +118,22 @@ class SACfDAgent(SACAgent):
             alpha = self.log_alpha.exp()
         else:
             alpha_loss = torch.zeros(1)
-            alpha = self.hyper_params["W_ENTROPY"]
+            alpha = self.w_entropy
 
         # Q function loss
         masks = 1 - dones
-        gamma = self.hyper_params["GAMMA"]
+        gamma = self.gamma
         q_1_pred = self.qf_1(states, actions)
         q_2_pred = self.qf_2(states, actions)
         v_target = self.vf_target(next_states)
-        q_target = rewards + self.hyper_params["GAMMA"] * v_target * masks
+        q_target = rewards + self.gamma * v_target * masks
         qf_1_loss = torch.mean((q_1_pred - q_target.detach()).pow(2) * weights)
         qf_2_loss = torch.mean((q_2_pred - q_target.detach()).pow(2) * weights)
 
         if self.use_n_step:
             experiences_n = self.memory_n.sample(indices)
             _, _, rewards, next_states, dones = experiences_n
-            gamma = gamma ** self.hyper_params["N_STEP"]
-            lambda1 = self.hyper_params["LAMBDA1"]
+            gamma = gamma ** self.n_step
             masks = 1 - dones
 
             v_target = self.vf_target(next_states)
@@ -133,8 +142,8 @@ class SACfDAgent(SACAgent):
             qf_2_loss_n = torch.mean((q_2_pred - q_target.detach()).pow(2) * weights)
 
             # to update loss and priorities
-            qf_1_loss = qf_1_loss + qf_1_loss_n * lambda1
-            qf_2_loss = qf_2_loss + qf_2_loss_n * lambda1
+            qf_1_loss = qf_1_loss + qf_1_loss_n * self.lambda1
+            qf_2_loss = qf_2_loss + qf_2_loss_n * self.lambda1
 
         # V function loss
         v_pred = self.vf(states)
@@ -159,7 +168,7 @@ class SACfDAgent(SACAgent):
         vf_loss.backward()
         self.vf_optimizer.step()
 
-        if self.update_step % self.hyper_params["POLICY_UPDATE_FREQ"] == 0:
+        if self.update_step % self.policy_update_freq == 0:
             # actor loss
             advantage = q_pred - v_pred.detach()
             actor_loss_element_wise = alpha * log_prob - advantage
@@ -167,9 +176,9 @@ class SACfDAgent(SACAgent):
 
             # regularization
             if not self.is_discrete:  # iff the action is continuous
-                mean_reg = self.hyper_params["W_MEAN_REG"] * mu.pow(2).mean()
-                std_reg = self.hyper_params["W_STD_REG"] * std.pow(2).mean()
-                pre_activation_reg = self.hyper_params["W_PRE_ACTIVATION_REG"] * (
+                mean_reg = self.w_mean_reg * mu.pow(2).mean()
+                std_reg = self.w_std_reg * std.pow(2).mean()
+                pre_activation_reg = self.w_pre_activation_reg * (
                     pre_tanh_value.pow(2).sum(dim=-1).mean()
                 )
                 actor_reg = mean_reg + std_reg + pre_activation_reg
@@ -183,21 +192,19 @@ class SACfDAgent(SACAgent):
             self.actor_optimizer.step()
 
             # update target networks
-            common_utils.soft_update(self.vf, self.vf_target, self.hyper_params["TAU"])
+            common_utils.soft_update(self.vf, self.vf_target, self.tau)
 
             # update priorities
             new_priorities = vf_loss_element_wise
-            new_priorities += self.hyper_params[
-                "LAMBDA3"
-            ] * actor_loss_element_wise.pow(2)
-            new_priorities += self.hyper_params["PER_EPS"]
+            new_priorities += self.lambda3 * actor_loss_element_wise.pow(2)
+            new_priorities += self.per_eps
             new_priorities = new_priorities.data.cpu().numpy().squeeze()
             new_priorities += eps_d
             self.memory.update_priorities(indices, new_priorities)
 
             # increase beta
             fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)
-            self.beta = self.beta + fraction * (1.0 - self.beta)
+            self.per_beta = self.per_beta + fraction * (1.0 - self.per_beta)
         else:
             actor_loss = torch.zeros(1)
 
@@ -212,8 +219,8 @@ class SACfDAgent(SACAgent):
     def pretrain(self):
         """Pretraining steps."""
         pretrain_loss = list()
-        print("[INFO] Pre-Train %d steps." % self.hyper_params["PRETRAIN_STEP"])
-        for i_step in range(1, self.hyper_params["PRETRAIN_STEP"] + 1):
+        print("[INFO] Pre-Train %d steps." % self.pretrain_step)
+        for i_step in range(1, self.pretrain_step + 1):
             t_begin = time.time()
             loss = self.update_model()
             t_end = time.time()
@@ -227,7 +234,7 @@ class SACfDAgent(SACAgent):
                     0,
                     avg_loss,
                     0,
-                    policy_update_freq=self.hyper_params["POLICY_UPDATE_FREQ"],
+                    policy_update_freq=self.policy_update_freq,
                     avg_time_cost=t_end - t_begin,
                 )
         print("[INFO] Pre-Train Complete!\n")

@@ -56,12 +56,7 @@ class TD3Agent(Agent):
         env: gym.Env,
         args: argparse.Namespace,
         log_cfg: ConfigDict,
-        gamma: float,
-        tau: float,
-        buffer_size: int,
-        batch_size: int,
-        initial_random_action: int,
-        policy_update_freq: int,
+        params: ConfigDict,
         optim_cfg: ConfigDict,
         network_cfg: ConfigDict,
         noise_cfg: ConfigDict,
@@ -81,14 +76,14 @@ class TD3Agent(Agent):
         self.update_step = 0
         self.i_episode = 0
 
-        self.gamma = gamma
-        self.tau = tau
-        self.buffer_size = buffer_size
-        self.batch_size = batch_size
-        self.initial_random_action = initial_random_action
+        self.gamma = params.gamma
+        self.tau = params.tau
+        self.buffer_size = params.buffer_size
+        self.batch_size = params.batch_size
+        self.initial_random_action = params.initial_random_action
         self.noise_cfg = noise_cfg
 
-        self.policy_update_freq = policy_update_freq
+        self.policy_update_freq = params.policy_update_freq
 
         state_dim = self.env.observation_space.shape[0]
         action_dim = self.env.action_space.shape[0]

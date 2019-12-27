@@ -61,18 +61,7 @@ class SACAgent(Agent):
         env: gym.Env,
         args: argparse.Namespace,
         log_cfg: ConfigDict,
-        gamma: float,
-        tau: float,
-        buffer_size: int,
-        batch_size: int,
-        initial_random_action: int,
-        multiple_learn: int,
-        policy_update_freq: int,
-        w_entropy: float,
-        w_mean_reg: float,
-        w_std_reg: float,
-        w_pre_activation_reg: float,
-        auto_entropy_tuning: bool,
+        params: ConfigDict,
         network_cfg: ConfigDict,
         optim_cfg: ConfigDict,
     ):
@@ -91,19 +80,20 @@ class SACAgent(Agent):
         self.update_step = 0
         self.i_episode = 0
 
-        self.gamma = gamma
-        self.tau = tau
-        self.buffer_size = buffer_size
-        self.batch_size = batch_size
-        self.initial_random_action = initial_random_action
+        self.params = params
+        self.gamma = params.gamma
+        self.tau = params.tau
+        self.buffer_size = params.buffer_size
+        self.batch_size = params.batch_size
+        self.initial_random_action = params.initial_random_action
 
-        self.multiple_learn = multiple_learn
-        self.policy_update_freq = policy_update_freq
-        self.w_entropy = w_entropy
-        self.w_mean_reg = w_mean_reg
-        self.w_std_reg = w_std_reg
-        self.w_pre_activation_reg = w_pre_activation_reg
-        self.auto_entropy_tuning = auto_entropy_tuning
+        self.multiple_learn = params.multiple_learn
+        self.policy_update_freq = params.policy_update_freq
+        self.w_entropy = params.w_entropy
+        self.w_mean_reg = params.w_mean_reg
+        self.w_std_reg = params.w_std_reg
+        self.w_pre_activation_reg = params.w_pre_activation_reg
+        self.auto_entropy_tuning = params.auto_entropy_tuning
 
         state_dim = self.env.observation_space.shape[0]
         action_dim = self.env.action_space.shape[0]

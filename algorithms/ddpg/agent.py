@@ -67,14 +67,7 @@ class DDPGAgent(Agent):
         env: gym.Env,
         args: argparse.Namespace,
         log_cfg: ConfigDict,
-        gamma: float,
-        tau: float,
-        buffer_size: int,
-        batch_size: int,
-        initial_random_action: int,
-        multiple_learn: int,
-        gradient_clip_ac: float,
-        gradient_clip_cr: float,
+        params: ConfigDict,
         network_cfg: ConfigDict,
         optim_cfg: ConfigDict,
         noise_cfg: ConfigDict,
@@ -93,15 +86,16 @@ class DDPGAgent(Agent):
         self.episode_step = 0
         self.i_episode = 0
 
-        self.gamma = gamma
-        self.tau = tau
-        self.buffer_size = buffer_size
-        self.batch_size = batch_size
-        self.initial_random_action = initial_random_action
+        self.params = params
+        self.gamma = params.gamma
+        self.tau = params.tau
+        self.buffer_size = params.buffer_size
+        self.batch_size = params.batch_size
+        self.initial_random_action = params.initial_random_action
 
-        self.multiple_learn = multiple_learn
-        self.gradient_clip_ac = gradient_clip_ac
-        self.gradient_clip_cr = gradient_clip_cr
+        self.multiple_learn = params.multiple_learn
+        self.gradient_clip_ac = params.gradient_clip_ac
+        self.gradient_clip_cr = params.gradient_clip_cr
 
         state_dim = self.env.observation_space.shape[0]
         action_dim = self.env.action_space.shape[0]

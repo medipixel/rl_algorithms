@@ -54,22 +54,7 @@ class PPOAgent(Agent):
         env: gym.Env,  # for testing
         args: argparse.Namespace,
         log_cfg: ConfigDict,
-        gamma: float,
-        batch_size: int,
-        initial_random_action: int,
-        lambda_: int,
-        epsilon: float,
-        min_epsilon: float,
-        epsilon_decay_period: int,
-        w_value: float,
-        w_entropy: float,
-        gradient_clip_ac: float,
-        gradient_clip_cr: float,
-        epoch: int,
-        rollout_len: int,
-        n_workers: int,
-        use_clipped_value_loss: bool,
-        standardize_advantage: bool,
+        params: ConfigDict,
         network_cfg: ConfigDict,
         optim_cfg: ConfigDict,
     ):
@@ -82,11 +67,11 @@ class PPOAgent(Agent):
         """
         env_single = env
         env_gen = env_generator(env.spec.id, args)
-        env_multi = make_envs(env_gen, n_envs=n_workers)
+        env_multi = make_envs(env_gen, n_envs=params.n_workers)
 
         Agent.__init__(self, env_single, args, log_cfg)
 
-        self.episode_steps = np.zeros(n_workers, dtype=np.int)
+        self.episode_steps = np.zeros(params.n_workers, dtype=np.int)
         self.states: list = []
         self.actions: list = []
         self.rewards: list = []
@@ -95,21 +80,21 @@ class PPOAgent(Agent):
         self.log_probs: list = []
         self.i_episode = 0
 
-        self.gamma = gamma
-        self.batch_size = batch_size
-        self.initial_random_action = initial_random_action
-        self.lambda_ = lambda_
-        self.epsilon = epsilon
-        self.min_epsilon = min_epsilon
-        self.epsilon_decay_period = epsilon_decay_period
-        self.w_value = w_value
-        self.w_entropy = w_entropy
-        self.gradient_clip_ac = gradient_clip_ac
-        self.gradient_clip_cr = gradient_clip_cr
-        self.epoch = epoch
-        self.rollout_len = rollout_len
-        self.use_clipped_value_loss = use_clipped_value_loss
-        self.standardize_advantage = standardize_advantage
+        self.gamma = params.gamma
+        self.batch_size = params.batch_size
+        self.initial_random_action = params.initial_random_action
+        self.lambda_ = params.lambda_
+        self.epsilon = params.epsilon
+        self.min_epsilon = params.min_epsilon
+        self.epsilon_decay_period = params.epsilon_decay_period
+        self.w_value = params.w_value
+        self.w_entropy = params.w_entropy
+        self.gradient_clip_ac = params.gradient_clip_ac
+        self.gradient_clip_cr = params.gradient_clip_cr
+        self.epoch = params.epoch
+        self.rollout_len = params.rollout_len
+        self.use_clipped_value_loss = params.use_clipped_value_loss
+        self.standardize_advantage = params.standardize_advantage
 
         state_dim = self.env.observation_space.shape[0]
         action_dim = self.env.action_space.shape[0]
