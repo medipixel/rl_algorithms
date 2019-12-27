@@ -14,15 +14,21 @@ import gym
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.optim as optim
 import wandb
 
 from algorithms.common.abstract.agent import Agent
 from algorithms.common.env.multiprocessing_env import SubprocVecEnv
+from algorithms.common.env.utils import env_generator, make_envs
+from algorithms.common.networks.mlp import MLP, GaussianDist
 import algorithms.ppo.utils as ppo_utils
+from algorithms.registry import AGENTS
+from algorithms.utils.config import ConfigDict
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
+@AGENTS.register_module
 class PPOAgent(Agent):
     """PPO Agent.
 
@@ -32,7 +38,6 @@ class PPOAgent(Agent):
         critic (nn.Module): policy gradient model to predict values
         actor_optimizer (Optimizer): optimizer for training actor
         critic_optimizer (Optimizer): optimizer for training critic
-        hyper_params (dict): hyper-parameters
         episode_steps (np.ndarray): step numbers of the current episode
         states (list): memory for experienced states
         actions (list): memory for experienced actions
@@ -46,33 +51,42 @@ class PPOAgent(Agent):
 
     def __init__(
         self,
-        env_single: gym.Env,  # for testing
-        env_multi: SubprocVecEnv,  # for training
+        env: gym.Env,  # for testing
         args: argparse.Namespace,
-        hyper_params: dict,
-        models: tuple,
-        optims: tuple,
+        log_cfg: ConfigDict,
+        gamma: float,
+        batch_size: int,
+        initial_random_action: int,
+        lambda_: int,
+        epsilon: float,
+        min_epsilon: float,
+        epsilon_decay_period: int,
+        w_value: float,
+        w_entropy: float,
+        gradient_clip_ac: float,
+        gradient_clip_cr: float,
+        epoch: int,
+        rollout_len: int,
+        n_workers: int,
+        use_clipped_value_loss: bool,
+        standardize_advantage: bool,
+        network_cfg: ConfigDict,
+        optim_cfg: ConfigDict,
     ):
         """Initialization.
 
         Args:
-            env_single (gym.Env): openAI Gym environment for testing
-            env_multi (SubprocVecEnv): Gym env with multiprocessing for training
+            env (gym.Env): openAI Gym environment
             args (argparse.Namespace): arguments including hyperparameters and training settings
-            hyper_params (dict): hyper-parameters
-            models (tuple): models including actor and critic
-            optims (tuple): optimizers for actor and critic
 
         """
-        Agent.__init__(self, env_single, args)
+        env_single = env
+        env_gen = env_generator(env.spec.id, args)
+        env_multi = make_envs(env_gen, n_envs=n_workers)
 
-        if not self.args.test:
-            self.env = env_multi
-        self.actor, self.critic = models
-        self.actor_optimizer, self.critic_optimizer = optims
-        self.epsilon = hyper_params["EPSILON"]
-        self.hyper_params = hyper_params
-        self.episode_steps = np.zeros(hyper_params["N_WORKERS"], dtype=np.int)
+        Agent.__init__(self, env_single, args, log_cfg)
+
+        self.episode_steps = np.zeros(n_workers, dtype=np.int)
         self.states: list = []
         self.actions: list = []
         self.rewards: list = []
@@ -80,6 +94,55 @@ class PPOAgent(Agent):
         self.masks: list = []
         self.log_probs: list = []
         self.i_episode = 0
+
+        self.gamma = gamma
+        self.batch_size = batch_size
+        self.initial_random_action = initial_random_action
+        self.lambda_ = lambda_
+        self.epsilon = epsilon
+        self.min_epsilon = min_epsilon
+        self.epsilon_decay_period = epsilon_decay_period
+        self.w_value = w_value
+        self.w_entropy = w_entropy
+        self.gradient_clip_ac = gradient_clip_ac
+        self.gradient_clip_cr = gradient_clip_cr
+        self.epoch = epoch
+        self.rollout_len = rollout_len
+        self.use_clipped_value_loss = use_clipped_value_loss
+        self.standardize_advantage = standardize_advantage
+
+        state_dim = self.env.observation_space.shape[0]
+        action_dim = self.env.action_space.shape[0]
+
+        if not self.args.test:
+            self.env = env_multi
+
+        self.actor = GaussianDist(
+            input_size=state_dim,
+            output_size=action_dim,
+            hidden_sizes=network_cfg.hidden_sizes_actor,
+            hidden_activation=torch.tanh,
+        ).to(device)
+
+        self.critic = MLP(
+            input_size=state_dim,
+            output_size=1,
+            hidden_sizes=network_cfg.hidden_sizes_critic,
+            hidden_activation=torch.tanh,
+        ).to(device)
+
+        # create optimizer
+        self.actor_optim = optim.Adam(
+            self.actor.parameters(),
+            lr=optim_cfg.lr_actor,
+            weight_decay=optim_cfg.weight_decay,
+        )
+
+        self.critic_optim = optim.Adam(
+            self.critic.parameters(),
+            lr=optim_cfg.lr_critic,
+            weight_decay=optim_cfg.weight_decay,
+        )
 
         # load model parameters
         if self.args.load_from is not None and os.path.exists(self.args.load_from):
@@ -140,14 +203,14 @@ class PPOAgent(Agent):
             actions = actions.unsqueeze(1)
             log_probs = log_probs.unsqueeze(1)
 
-        if self.hyper_params["STANDARDIZE_ADVANTAGE"]:
+        if self.starndardize_advantage:
             advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-7)
 
         actor_losses, critic_losses, total_losses = [], [], []
 
         for state, action, old_value, old_log_prob, return_, adv in ppo_utils.ppo_iter(
-            self.hyper_params["EPOCH"],
-            self.hyper_params["BATCH_SIZE"],
+            self.epoch,
+            self.batch_size,
             states,
             actions,
             values,
@@ -169,7 +232,7 @@ class PPOAgent(Agent):
 
             # critic_loss
             value = self.critic(state)
-            if self.hyper_params["USE_CLIPPED_VALUE_LOSS"]:
+            if self.use_clipped_value_loss:
                 value_pred_clipped = old_value + torch.clamp(
                     (value - old_value), -self.epsilon, self.epsilon
                 )
@@ -184,25 +247,19 @@ class PPOAgent(Agent):
 
             # total_loss
             total_loss = (
-                actor_loss
-                + self.hyper_params["W_VALUE"] * critic_loss
-                - self.hyper_params["W_ENTROPY"] * entropy
+                actor_loss + self.w_value * critic_loss - self.w_entropy * entropy
             )
 
             # train critic
             self.critic_optimizer.zero_grad()
             total_loss.backward(retain_graph=True)
-            nn.utils.clip_grad_norm_(
-                self.critic.parameters(), self.hyper_params["GRADIENT_CLIP_AC"]
-            )
+            nn.utils.clip_grad_norm_(self.critic.parameters(), self.gradient_clip_ac)
             self.critic_optimizer.step()
 
             # train actor
             self.actor_optimizer.zero_grad()
             total_loss.backward()
-            nn.utils.clip_grad_norm_(
-                self.critic.parameters(), self.hyper_params["GRADIENT_CLIP_CR"]
-            )
+            nn.utils.clip_grad_norm_(self.critic.parameters(), self.gradient_clip_cr)
             self.actor_optimizer.step()
 
             actor_losses.append(actor_loss.item())
@@ -220,9 +277,9 @@ class PPOAgent(Agent):
 
     def decay_epsilon(self, t: int = 0):
         """Decay epsilon until reaching the minimum value."""
-        max_epsilon = self.hyper_params["EPSILON"]
-        min_epsilon = self.hyper_params["MIN_EPSILON"]
-        epsilon_decay_period = self.hyper_params["EPSILON_DECAY_PERIOD"]
+        max_epsilon = self.epsilon
+        min_epsilon = self.min_epsilon
+        epsilon_decay_period = self.epsilon_decay_period
 
         self.epsilon = max_epsilon - (max_epsilon - min_epsilon) * min(
             1.0, t / (epsilon_decay_period + 1e-7)
@@ -280,8 +337,7 @@ class PPOAgent(Agent):
         """Train the agent."""
         # logger
         if self.args.log:
-            wandb.init()
-            wandb.config.update(self.hyper_params)
+            self.set_wandb(is_training=True)
             # wandb.watch([self.actor, self.critic], log="parameters")
 
         score = 0
@@ -290,7 +346,7 @@ class PPOAgent(Agent):
         state = self.env.reset()
 
         while self.i_episode <= self.args.episode_num:
-            for _ in range(self.hyper_params["ROLLOUT_LEN"]):
+            for _ in range(self.rollout_len):
                 if self.args.render and self.i_episode >= self.args.render_after:
                     self.env.render()
 

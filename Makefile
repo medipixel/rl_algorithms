@@ -1,11 +1,11 @@
 test:
-	black . --check --exclude checkpoint
-	isort -y --check-only --skip checkpoint
-	env PYTHONPATH=. pytest --pylint --flake8 --mypy --ignore=checkpoint
+	black . --check --exclude checkpoint wandb
+	isort -y --check-only --skip checkpoint --skip wandb
+	env PYTHONPATH=. pytest --pylint --flake8 --mypy --ignore=checkpoint --ignore=wandb
 
 format:
-	black .
-	isort -y
+	black . --exclude checkpoint wandb
+	isort -y --skip checkpoint --skip wandb
 
 dev:
 	pip install -r requirements-dev.txt

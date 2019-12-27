@@ -8,7 +8,6 @@
 
 import argparse
 import os
-import shutil
 import time
 from typing import Tuple
 
@@ -56,6 +55,7 @@ class TD3Agent(Agent):
         self,
         env: gym.Env,
         args: argparse.Namespace,
+        log_cfg: ConfigDict,
         gamma: float,
         tau: float,
         buffer_size: int,
@@ -65,7 +65,6 @@ class TD3Agent(Agent):
         optim_cfg: ConfigDict,
         network_cfg: ConfigDict,
         noise_cfg: ConfigDict,
-        log_cfg: ConfigDict,
     ):
         """Initialization.
 
@@ -162,7 +161,7 @@ class TD3Agent(Agent):
         )
 
         self.target_policy_noise = GaussianNoise(
-            action_dim, noise_cfg.target_policy_noise, noise_cfg.target_policy_noise,
+            action_dim, noise_cfg.target_policy_noise, noise_cfg.target_policy_noise
         )
 
         # load the optimizer and model parameters
@@ -339,11 +338,7 @@ class TD3Agent(Agent):
         """Train the agent."""
         # logger
         if self.args.log:
-            wandb.init(
-                project=self.log_cfg.env,
-                name=f"{self.log_cfg.agent}/{self.log_cfg.curr_time}",
-            )
-            shutil.copy(self.args.cfg_path, os.path.join(wandb.run.dir, "config.py"))
+            self.set_wandb(is_training=True)
             # wandb.watch([self.actor, self.critic1, self.critic2], log="parameters")
 
         for self.i_episode in range(1, self.args.episode_num + 1):

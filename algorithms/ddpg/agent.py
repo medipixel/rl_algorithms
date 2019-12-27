@@ -66,6 +66,7 @@ class DDPGAgent(Agent):
         self,
         env: gym.Env,
         args: argparse.Namespace,
+        log_cfg: ConfigDict,
         gamma: float,
         tau: float,
         buffer_size: int,
@@ -77,7 +78,6 @@ class DDPGAgent(Agent):
         network_cfg: ConfigDict,
         optim_cfg: ConfigDict,
         noise_cfg: ConfigDict,
-        log_cfg: ConfigDict,
     ):
         """Initialization.
 
@@ -87,6 +87,11 @@ class DDPGAgent(Agent):
 
         """
         Agent.__init__(self, env, args, log_cfg)
+
+        self.curr_state = np.zeros((1,))
+        self.total_step = 0
+        self.episode_step = 0
+        self.i_episode = 0
 
         self.gamma = gamma
         self.tau = tau
@@ -143,13 +148,10 @@ class DDPGAgent(Agent):
             lr=optim_cfg.lr_critic,
             weight_decay=optim_cfg.weight_decay,
         )
-        self.curr_state = np.zeros((1,))
+
         self.noise = OUNoise(
-            action_dim, theta=noise_cfg.ou_noise_theta, sigma=noise_cfg.ou_noise_sigma,
+            action_dim, theta=noise_cfg.ou_noise_theta, sigma=noise_cfg.ou_noise_sigma
         )
-        self.total_step = 0
-        self.episode_step = 0
-        self.i_episode = 0
 
         # load the optimizer and model parameters
         if args.load_from is not None and os.path.exists(args.load_from):
@@ -161,7 +163,7 @@ class DDPGAgent(Agent):
         """Initialize non-common things."""
         if not self.args.test:
             # replay memory
-            self.memory = ReplayBuffer(self.buffer_size, self.batch_size,)
+            self.memory = ReplayBuffer(self.buffer_size, self.batch_size)
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""
@@ -306,12 +308,7 @@ class DDPGAgent(Agent):
         # logger
         os.makedirs(self.ckpt_path, exist_ok=True)
         if self.args.log:
-            wandb.init(
-                project=self.log_cfg.env,
-                name=f"{self.log_cfg.agent}/{self.log_cfg.curr_time}",
-            )
-            shutil.copy(self.args.cfg_path, os.path.join(wandb.run.dir, "config.py"))
-
+            self.set_wandb(is_training=True)
             # wandb.watch([self.actor, self.critic], log="parameters")
 
         # save configuration

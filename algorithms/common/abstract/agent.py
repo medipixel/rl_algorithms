@@ -45,7 +45,7 @@ class Agent(ABC):
         self.env = env
         self.log_cfg = log_cfg
         self.ckpt_path = (
-            f"./checkpoint/{log_cfg.env}/{log_cfg.agent}/{log_cfg.curr_time}"
+            f"./checkpoint/{env.spec.id}/{log_cfg.agent}/{log_cfg.curr_time}"
         )
         os.makedirs(self.ckpt_path, exist_ok=True)
 
@@ -99,6 +99,13 @@ class Agent(ABC):
     def train(self):
         pass
 
+    def set_wandb(self, is_training=False):
+        wandb.init(
+            project=self.log_cfg.env,
+            name=f"{self.log_cfg.agent}/{self.log_cfg.curr_time}",
+        )
+        shutil.copy(self.args.cfg_path, os.path.join(wandb.run.dir, "config.py"))
+
     def interim_test(self):
         self.args.test = True
 
@@ -120,7 +127,7 @@ class Agent(ABC):
         """Test the agent."""
         # logger
         if self.args.log:
-            wandb.init()
+            self.set_wandb()
 
         self._test()
 

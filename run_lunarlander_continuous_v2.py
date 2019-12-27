@@ -74,8 +74,9 @@ def parse_args() -> argparse.Namespace:
 
 def main():
     """Main."""
-    # env initialization
     args = parse_args()
+
+    # env initialization
     env = gym.make("LunarLanderContinuous-v2")
     env_utils.set_env(env, args)
 

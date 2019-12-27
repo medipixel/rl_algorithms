@@ -1,4 +1,4 @@
-"""Config for TD3 on LunarLanderContinuous-v2.
+"""Config for TD3 on Reacher-v2.
 
 - Author: Kyunghwan Kim
 - Contact: kh.kim@medipixel.io
@@ -6,7 +6,7 @@
 
 agent = dict(
     type="TD3Agent",
-    gamma=0.99,
+    gamma=0.95,
     tau=5e-3,
     buffer_size=int(1e6),
     batch_size=100,
