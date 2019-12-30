@@ -7,14 +7,18 @@ This module has DQN util functions.
 - Contact: curt.park@medipixel.io
 """
 
-from typing import Tuple, Union
+from typing import List, Tuple, Union
 
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 
-from algorithms.common.networks.cnn import CNN
-from algorithms.common.networks.mlp import MLP
-from algorithms.dqn.networks import C51CNN, IQNCNN, IQNMLP, C51DuelingMLP
+from algorithms.common.helper_functions import identity
+from algorithms.common.networks.cnn import CNN, CNNLayer
+from algorithms.common.networks.mlp import MLP, init_layer_uniform
+from algorithms.dqn.linear import NoisyLinearConstructor
+from algorithms.dqn.networks import C51CNN, IQNCNN, IQNMLP, C51DuelingMLP, DuelingMLP
+from algorithms.utils.config import ConfigDict
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -217,3 +221,71 @@ def calculate_dqn_loss(
     )
 
     return dq_loss_element_wise, q_values
+
+
+def get_fc_model(
+    cfg: ConfigDict, input_size: int, output_size: int, hidden_sizes: List[int],
+):
+    """Get FC model depends on type."""
+    # use noisy net
+    if cfg.use_noisy_net:
+        linear_layer = NoisyLinearConstructor(cfg.std_init)
+        init_fn = identity
+        cfg.max_epsilon = 0.0
+        cfg.min_epsilon = 0.0
+    else:
+        linear_layer = nn.Linear
+        init_fn = init_layer_uniform
+
+    if cfg.use_dist_q == "C51":
+        fc_model = C51DuelingMLP(
+            input_size=input_size,
+            action_size=output_size,
+            hidden_sizes=hidden_sizes,
+            v_min=cfg.v_min,
+            v_max=cfg.v_max,
+            atom_size=cfg.atoms,
+            linear_layer=linear_layer,
+            init_fn=init_fn,
+        ).to(device)
+
+    elif cfg.use_dist_q == "IQN":
+        fc_model = IQNMLP(
+            input_size=input_size,
+            output_size=output_size,
+            hidden_sizes=hidden_sizes,
+            n_quantiles=cfg.n_quantile_samples,
+            quantile_embedding_dim=cfg.quantile_embedding_dim,
+            linear_layer=linear_layer,
+            init_fn=init_fn,
+        ).to(device)
+
+    else:
+        fc_model = DuelingMLP(
+            input_size=input_size, output_size=output_size, hidden_sizes=hidden_sizes,
+        ).to(device)
+
+    return fc_model
+
+
+def get_cnn_model(
+    use_dist_q: str, fc_model: MLP,
+):
+    """Get CNN model with FC model input depends on type."""
+    if use_dist_q == "C51":
+        Model = C51CNN
+    elif use_dist_q == "IQN":
+        Model = IQNCNN
+    else:
+        Model = CNN
+
+    cnn_model = Model(
+        cnn_layers=[
+            CNNLayer(input_size=4, output_size=32, kernel_size=8, stride=4, padding=1),
+            CNNLayer(input_size=32, output_size=64, kernel_size=4, stride=2),
+            CNNLayer(input_size=64, output_size=64, kernel_size=3),
+        ],
+        fc_layers=fc_model,
+    ).to(device)
+
+    return cnn_model

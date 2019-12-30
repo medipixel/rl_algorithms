@@ -38,17 +38,6 @@ class DDPGAgent(Agent):
     Attributes:
         memory (ReplayBuffer): replay memory
         noise (OUNoise): random noise for exploration
-        gamma (float):
-        tau (float):
-        buffer_size (int):
-        batch_size (int):
-        initial_random_action (int):
-        multiple_learn (int):
-        gradient_clip_ac (float):
-        gradient_clip_cr (float):
-        network_cfg (ConfigDict):
-        optim_cfg (ConfigDict):
-        noise_cfg (ConfigDict):
         actor (nn.Module): actor model to select actions
         actor_target (nn.Module): target actor model to select actions
         critic (nn.Module): critic model to predict state values

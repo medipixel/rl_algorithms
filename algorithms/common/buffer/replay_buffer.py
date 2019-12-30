@@ -76,6 +76,11 @@ class ReplayBuffer:
             for idx, d in enumerate(self.demo):
                 state, action, reward, next_state, done = d
                 if idx == 0:
+                    action = (
+                        np.array(action).astype(np.int64)
+                        if type(action) == int
+                        else action
+                    )
                     self._initialize_buffers(state, action)
                 self.obs_buf[idx] = state
                 self.acts_buf[idx] = np.array(action)
@@ -148,7 +153,6 @@ class ReplayBuffer:
     def _initialize_buffers(self, state: np.ndarray, action: np.ndarray) -> None:
         """Initialze buffers for state, action, resward, next_state, done."""
         # In case action of demo is not np.ndarray
-
         self.obs_buf = np.zeros(
             [self.buffer_size] + list(state.shape), dtype=state.dtype
         )
