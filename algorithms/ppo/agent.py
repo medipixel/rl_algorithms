@@ -36,8 +36,8 @@ class PPOAgent(Agent):
         env (gym.Env or SubprocVecEnv): Gym env with multiprocessing for training
         actor (nn.Module): policy gradient model to select actions
         critic (nn.Module): policy gradient model to predict values
-        actor_optimizer (Optimizer): optimizer for training actor
-        critic_optimizer (Optimizer): optimizer for training critic
+        actor_optim (Optimizer): optimizer for training actor
+        critic_optim (Optimizer): optimizer for training critic
         episode_steps (np.ndarray): step numbers of the current episode
         states (list): memory for experienced states
         actions (list): memory for experienced actions
@@ -95,38 +95,44 @@ class PPOAgent(Agent):
         self.rollout_len = params.rollout_len
         self.use_clipped_value_loss = params.use_clipped_value_loss
         self.standardize_advantage = params.standardize_advantage
+        self.network_cfg = network_cfg
+        self.optim_cfg = optim_cfg
 
-        state_dim = self.env.observation_space.shape[0]
-        action_dim = self.env.action_space.shape[0]
+        self.state_dim = self.env.observation_space.shape[0]
+        self.action_dim = self.env.action_space.shape[0]
 
         if not self.args.test:
             self.env = env_multi
 
+        self._init_network()
+
+    def _init_network(self):
+        """Initialize networks and optimizers."""
         self.actor = GaussianDist(
-            input_size=state_dim,
-            output_size=action_dim,
-            hidden_sizes=network_cfg.hidden_sizes_actor,
+            input_size=self.state_dim,
+            output_size=self.action_dim,
+            hidden_sizes=self.network_cfg.hidden_sizes_actor,
             hidden_activation=torch.tanh,
         ).to(device)
 
         self.critic = MLP(
-            input_size=state_dim,
+            input_size=self.state_dim,
             output_size=1,
-            hidden_sizes=network_cfg.hidden_sizes_critic,
+            hidden_sizes=self.network_cfg.hidden_sizes_critic,
             hidden_activation=torch.tanh,
         ).to(device)
 
         # create optimizer
         self.actor_optim = optim.Adam(
             self.actor.parameters(),
-            lr=optim_cfg.lr_actor,
-            weight_decay=optim_cfg.weight_decay,
+            lr=self.optim_cfg.lr_actor,
+            weight_decay=self.optim_cfg.weight_decay,
         )
 
         self.critic_optim = optim.Adam(
             self.critic.parameters(),
-            lr=optim_cfg.lr_critic,
-            weight_decay=optim_cfg.weight_decay,
+            lr=self.optim_cfg.lr_critic,
+            weight_decay=self.optim_cfg.weight_decay,
         )
 
         # load model parameters
@@ -188,7 +194,7 @@ class PPOAgent(Agent):
             actions = actions.unsqueeze(1)
             log_probs = log_probs.unsqueeze(1)
 
-        if self.starndardize_advantage:
+        if self.standardize_advantage:
             advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-7)
 
         actor_losses, critic_losses, total_losses = [], [], []
@@ -236,16 +242,16 @@ class PPOAgent(Agent):
             )
 
             # train critic
-            self.critic_optimizer.zero_grad()
+            self.critic_optim.zero_grad()
             total_loss.backward(retain_graph=True)
             nn.utils.clip_grad_norm_(self.critic.parameters(), self.gradient_clip_ac)
-            self.critic_optimizer.step()
+            self.critic_optim.step()
 
             # train actor
-            self.actor_optimizer.zero_grad()
+            self.actor_optim.zero_grad()
             total_loss.backward()
             nn.utils.clip_grad_norm_(self.critic.parameters(), self.gradient_clip_cr)
-            self.actor_optimizer.step()
+            self.actor_optim.step()
 
             actor_losses.append(actor_loss.item())
             critic_losses.append(critic_loss.item())
@@ -279,8 +285,8 @@ class PPOAgent(Agent):
         params = torch.load(path)
         self.actor.load_state_dict(params["actor_state_dict"])
         self.critic.load_state_dict(params["critic_state_dict"])
-        self.actor_optimizer.load_state_dict(params["actor_optim_state_dict"])
-        self.critic_optimizer.load_state_dict(params["critic_optim_state_dict"])
+        self.actor_optim.load_state_dict(params["actor_optim_state_dict"])
+        self.critic_optim.load_state_dict(params["critic_optim_state_dict"])
         print("[INFO] loaded the model and optimizer from", path)
 
     def save_params(self, n_episode: int):
@@ -288,8 +294,8 @@ class PPOAgent(Agent):
         params = {
             "actor_state_dict": self.actor.state_dict(),
             "critic_state_dict": self.critic.state_dict(),
-            "actor_optim_state_dict": self.actor_optimizer.state_dict(),
-            "critic_optim_state_dict": self.critic_optimizer.state_dict(),
+            "actor_optim_state_dict": self.actor_optim.state_dict(),
+            "critic_optim_state_dict": self.critic_optim.state_dict(),
         }
         Agent.save_params(self, params, n_episode)
 

@@ -49,6 +49,9 @@ class SACfDAgent(SACAgent):
 
         self.use_n_step = self.n_step > 1
 
+        # create network
+        self._init_network()
+
         if not self.args.test:
             # load demo replay memory
             with open(self.args.demo_path, "rb") as f:
@@ -111,9 +114,9 @@ class SACfDAgent(SACAgent):
                 (-self.log_alpha * (log_prob + self.target_entropy).detach()) * weights
             )
 
-            self.alpha_optimizer.zero_grad()
+            self.alpha_optim.zero_grad()
             alpha_loss.backward()
-            self.alpha_optimizer.step()
+            self.alpha_optim.step()
 
             alpha = self.log_alpha.exp()
         else:
@@ -155,18 +158,18 @@ class SACfDAgent(SACAgent):
         vf_loss = torch.mean(vf_loss_element_wise * weights)
 
         # train Q functions
-        self.qf_1_optimizer.zero_grad()
+        self.qf_1_optim.zero_grad()
         qf_1_loss.backward()
-        self.qf_1_optimizer.step()
+        self.qf_1_optim.step()
 
-        self.qf_2_optimizer.zero_grad()
+        self.qf_2_optim.zero_grad()
         qf_2_loss.backward()
-        self.qf_2_optimizer.step()
+        self.qf_2_optim.step()
 
         # train V function
-        self.vf_optimizer.zero_grad()
+        self.vf_optim.zero_grad()
         vf_loss.backward()
-        self.vf_optimizer.step()
+        self.vf_optim.step()
 
         if self.update_step % self.policy_update_freq == 0:
             # actor loss
@@ -187,9 +190,9 @@ class SACfDAgent(SACAgent):
                 actor_loss += actor_reg
 
             # train actor
-            self.actor_optimizer.zero_grad()
+            self.actor_optim.zero_grad()
             actor_loss.backward()
-            self.actor_optimizer.step()
+            self.actor_optim.step()
 
             # update target networks
             common_utils.soft_update(self.vf, self.vf_target, self.tau)

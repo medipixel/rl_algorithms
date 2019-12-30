@@ -137,10 +137,10 @@ class BCDDPGAgent(DDPGAgent):
 
         # train critic
         gradient_clip_cr = self.gradient_clip_cr
-        self.critic_optimizer.zero_grad()
+        self.critic_optim.zero_grad()
         critic_loss.backward()
         nn.utils.clip_grad_norm_(self.critic.parameters(), gradient_clip_cr)
-        self.critic_optimizer.step()
+        self.critic_optim.step()
 
         # policy loss
         actions = self.actor(states)
@@ -166,10 +166,10 @@ class BCDDPGAgent(DDPGAgent):
         actor_loss = self.lambda1 * policy_loss + self.lambda2 * bc_loss
 
         gradient_clip_ac = self.gradient_clip_ac
-        self.actor_optimizer.zero_grad()
+        self.actor_optim.zero_grad()
         actor_loss.backward()
         nn.utils.clip_grad_norm_(self.actor.parameters(), gradient_clip_ac)
-        self.actor_optimizer.step()
+        self.actor_optim.step()
 
         # update target networks
         common_utils.soft_update(self.actor, self.actor_target, self.tau)

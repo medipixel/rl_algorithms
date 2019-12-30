@@ -53,8 +53,8 @@ class DDPGAgent(Agent):
         actor_target (nn.Module): target actor model to select actions
         critic (nn.Module): critic model to predict state values
         critic_target (nn.Module): target critic model to predict state values
-        actor_optimizer (Optimizer): optimizer for training actor
-        critic_optimizer (Optimizer): optimizer for training critic
+        actor_optim (Optimizer): optimizer for training actor
+        critic_optim (Optimizer): optimizer for training critic
         curr_state (np.ndarray): temporary storage of the current state
         total_step (int): total step numbers
         episode_step (int): step number of the current episode
@@ -145,16 +145,16 @@ class DDPGAgent(Agent):
         self.critic_target.load_state_dict(self.critic.state_dict())
 
         # create optimizer
-        self.actor_optimizer = optim.Adam(
+        self.actor_optim = optim.Adam(
             self.actor.parameters(),
             lr=self.optim_cfg.lr_actor,
-            weight_decay=optim_cfg.weight_decay,
+            weight_decay=self.optim_cfg.weight_decay,
         )
 
-        self.critic_optimizer = optim.Adam(
+        self.critic_optim = optim.Adam(
             self.critic.parameters(),
             lr=self.optim_cfg.lr_critic,
-            weight_decay=optim_cfg.weight_decay,
+            weight_decay=self.optim_cfg.weight_decay,
         )
 
         # load the optimizer and model parameters
@@ -227,18 +227,18 @@ class DDPGAgent(Agent):
         # train critic
         values = self.critic(torch.cat((states, actions), dim=-1))
         critic_loss = F.mse_loss(values, curr_returns)
-        self.critic_optimizer.zero_grad()
+        self.critic_optim.zero_grad()
         critic_loss.backward()
         nn.utils.clip_grad_norm_(self.critic.parameters(), self.gradient_clip_cr)
-        self.critic_optimizer.step()
+        self.critic_optim.step()
 
         # train actor
         actions = self.actor(states)
         actor_loss = -self.critic(torch.cat((states, actions), dim=-1)).mean()
-        self.actor_optimizer.zero_grad()
+        self.actor_optim.zero_grad()
         actor_loss.backward()
         nn.utils.clip_grad_norm_(self.actor.parameters(), self.gradient_clip_ac)
-        self.actor_optimizer.step()
+        self.actor_optim.step()
 
         # update target networks
         common_utils.soft_update(self.actor, self.actor_target, self.tau)
@@ -257,8 +257,8 @@ class DDPGAgent(Agent):
         self.actor_target.load_state_dict(params["actor_target_state_dict"])
         self.critic.load_state_dict(params["critic_state_dict"])
         self.critic_target.load_state_dict(params["critic_target_state_dict"])
-        self.actor_optimizer.load_state_dict(params["actor_optim_state_dict"])
-        self.critic_optimizer.load_state_dict(params["critic_optim_state_dict"])
+        self.actor_optim.load_state_dict(params["actor_optim_state_dict"])
+        self.critic_optim.load_state_dict(params["critic_optim_state_dict"])
         print("[INFO] loaded the model and optimizer from", path)
 
     def save_params(self, n_episode: int):
@@ -268,8 +268,8 @@ class DDPGAgent(Agent):
             "actor_target_state_dict": self.actor_target.state_dict(),
             "critic_state_dict": self.critic.state_dict(),
             "critic_target_state_dict": self.critic_target.state_dict(),
-            "actor_optim_state_dict": self.actor_optimizer.state_dict(),
-            "critic_optim_state_dict": self.critic_optimizer.state_dict(),
+            "actor_optim_state_dict": self.actor_optim.state_dict(),
+            "critic_optim_state_dict": self.critic_optim.state_dict(),
         }
         Agent.save_params(self, params, n_episode)
 
@@ -311,13 +311,9 @@ class DDPGAgent(Agent):
     def train(self):
         """Train the agent."""
         # logger
-        os.makedirs(self.ckpt_path, exist_ok=True)
         if self.args.log:
             self.set_wandb(is_training=True)
             # wandb.watch([self.actor, self.critic], log="parameters")
-
-        # save configuration
-        shutil.copy(self.args.cfg_path, os.path.join(self.ckpt_path, "config.py"))
 
         # pre-training if needed
         self.pretrain()

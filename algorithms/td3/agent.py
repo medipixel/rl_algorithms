@@ -57,8 +57,8 @@ class TD3Agent(Agent):
         args: argparse.Namespace,
         log_cfg: ConfigDict,
         params: ConfigDict,
-        optim_cfg: ConfigDict,
         network_cfg: ConfigDict,
+        optim_cfg: ConfigDict,
         noise_cfg: ConfigDict,
     ):
         """Initialization.
@@ -84,49 +84,71 @@ class TD3Agent(Agent):
         self.noise_cfg = noise_cfg
 
         self.policy_update_freq = params.policy_update_freq
+        self.network_cfg = network_cfg
+        self.optim_cfg = optim_cfg
 
-        state_dim = self.env.observation_space.shape[0]
-        action_dim = self.env.action_space.shape[0]
+        self.state_dim = self.env.observation_space.shape[0]
+        self.action_dim = self.env.action_space.shape[0]
 
+        # create network
+        self._init_network()
+
+        # noise instance to make randomness of action
+        self.exploration_noise = GaussianNoise(
+            self.action_dim, noise_cfg.exploration_noise, noise_cfg.exploration_noise
+        )
+
+        self.target_policy_noise = GaussianNoise(
+            self.action_dim,
+            noise_cfg.target_policy_noise,
+            noise_cfg.target_policy_noise,
+        )
+
+        if not self.args.test:
+            # replay memory
+            self.memory = ReplayBuffer(self.buffer_size, self.batch_size)
+
+    def _init_network(self):
+        """Initialize networks and optimizers."""
         # create actor
         self.actor = MLP(
-            input_size=state_dim,
-            output_size=action_dim,
-            hidden_sizes=network_cfg.hidden_sizes_actor,
+            input_size=self.state_dim,
+            output_size=self.action_dim,
+            hidden_sizes=self.network_cfg.hidden_sizes_actor,
             output_activation=torch.tanh,
         ).to(device)
 
         self.actor_target = MLP(
-            input_size=state_dim,
-            output_size=action_dim,
-            hidden_sizes=network_cfg.hidden_sizes_actor,
+            input_size=self.state_dim,
+            output_size=self.action_dim,
+            hidden_sizes=self.network_cfg.hidden_sizes_actor,
             output_activation=torch.tanh,
         ).to(device)
         self.actor_target.load_state_dict(self.actor.state_dict())
 
         # create critic
         self.critic1 = FlattenMLP(
-            input_size=state_dim + action_dim,
+            input_size=self.state_dim + self.action_dim,
             output_size=1,
-            hidden_sizes=network_cfg.hidden_sizes_critic,
+            hidden_sizes=self.network_cfg.hidden_sizes_critic,
         ).to(device)
 
         self.critic2 = FlattenMLP(
-            input_size=state_dim + action_dim,
+            input_size=self.state_dim + self.action_dim,
             output_size=1,
-            hidden_sizes=network_cfg.hidden_sizes_critic,
+            hidden_sizes=self.network_cfg.hidden_sizes_critic,
         ).to(device)
 
         self.critic_target1 = FlattenMLP(
-            input_size=state_dim + action_dim,
+            input_size=self.state_dim + self.action_dim,
             output_size=1,
-            hidden_sizes=network_cfg.hidden_sizes_critic,
+            hidden_sizes=self.network_cfg.hidden_sizes_critic,
         ).to(device)
 
         self.critic_target2 = FlattenMLP(
-            input_size=state_dim + action_dim,
+            input_size=self.state_dim + self.action_dim,
             output_size=1,
-            hidden_sizes=network_cfg.hidden_sizes_critic,
+            hidden_sizes=self.network_cfg.hidden_sizes_critic,
         ).to(device)
 
         self.critic_target1.load_state_dict(self.critic1.state_dict())
@@ -140,32 +162,19 @@ class TD3Agent(Agent):
         # create optimizers
         self.actor_optim = optim.Adam(
             self.actor.parameters(),
-            lr=optim_cfg.lr_actor,
-            weight_decay=optim_cfg.weight_decay,
+            lr=self.optim_cfg.lr_actor,
+            weight_decay=self.optim_cfg.weight_decay,
         )
 
         self.critic_optim = optim.Adam(
             critic_parameters,
-            lr=optim_cfg.lr_critic,
-            weight_decay=optim_cfg.weight_decay,
-        )
-
-        # noise instance to make randomness of action
-        self.exploration_noise = GaussianNoise(
-            action_dim, noise_cfg.exploration_noise, noise_cfg.exploration_noise
-        )
-
-        self.target_policy_noise = GaussianNoise(
-            action_dim, noise_cfg.target_policy_noise, noise_cfg.target_policy_noise
+            lr=self.optim_cfg.lr_critic,
+            weight_decay=self.optim_cfg.weight_decay,
         )
 
         # load the optimizer and model parameters
-        if args.load_from is not None and os.path.exists(args.load_from):
-            self.load_params(args.load_from)
-
-        if not self.args.test:
-            # replay memory
-            self.memory = ReplayBuffer(self.buffer_size, self.batch_size)
+        if self.args.load_from is not None and os.path.exists(self.args.load_from):
+            self.load_params(self.args.load_from)
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""

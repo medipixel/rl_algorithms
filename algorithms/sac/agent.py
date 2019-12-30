@@ -37,18 +37,18 @@ class SACAgent(Agent):
         memory (ReplayBuffer): replay memory
         actor (nn.Module): actor model to select actions
         actor_target (nn.Module): target actor model to select actions
-        actor_optimizer (Optimizer): optimizer for training actor
+        actor_optim (Optimizer): optimizer for training actor
         critic_1 (nn.Module): critic model to predict state values
         critic_2 (nn.Module): critic model to predict state values
         critic_target1 (nn.Module): target critic model to predict state values
         critic_target2 (nn.Module): target critic model to predict state values
-        critic_optimizer1 (Optimizer): optimizer for training critic_1
-        critic_optimizer2 (Optimizer): optimizer for training critic_2
+        critic_optim1 (Optimizer): optimizer for training critic_1
+        critic_optim2 (Optimizer): optimizer for training critic_2
         curr_state (np.ndarray): temporary storage of the current state
         target_entropy (int): desired entropy used for the inequality constraint
         beta (float): beta parameter for prioritized replay buffer
         alpha (torch.Tensor): weight for entropy
-        alpha_optimizer (Optimizer): optimizer for alpha
+        alpha_optim (Optimizer): optimizer for alpha
         total_step (int): total step numbers
         episode_step (int): step number of the current episode
         update_step (int): step number of updates
@@ -107,7 +107,7 @@ class SACAgent(Agent):
         if self.auto_entropy_tuning:
             self.target_entropy = target_entropy
             self.log_alpha = torch.zeros(1, requires_grad=True, device=device)
-            self.alpha_optimizer = optim.Adam([self.log_alpha], lr=optim_cfg.lr_entropy)
+            self.alpha_optim = optim.Adam([self.log_alpha], lr=optim_cfg.lr_entropy)
 
         self._initialize()
 
@@ -147,22 +147,22 @@ class SACAgent(Agent):
         ).to(device)
 
         # create optimizers
-        self.actor_optimizer = optim.Adam(
+        self.actor_optim = optim.Adam(
             self.actor.parameters(),
             lr=self.optim_cfg.lr_actor,
             weight_decay=self.optim_cfg.weight_decay,
         )
-        self.vf_optimizer = optim.Adam(
+        self.vf_optim = optim.Adam(
             self.vf.parameters(),
             lr=self.optim_cfg.lr_vf,
             weight_decay=self.optim_cfg.weight_decay,
         )
-        self.qf_1_optimizer = optim.Adam(
+        self.qf_1_optim = optim.Adam(
             self.qf_1.parameters(),
             lr=self.optim_cfg.lr_qf1,
             weight_decay=self.optim_cfg.weight_decay,
         )
-        self.qf_2_optimizer = optim.Adam(
+        self.qf_2_optim = optim.Adam(
             self.qf_2.parameters(),
             lr=self.optim_cfg.lr_qf2,
             weight_decay=self.optim_cfg.weight_decay,
@@ -236,9 +236,9 @@ class SACAgent(Agent):
                 -self.log_alpha * (log_prob + self.target_entropy).detach()
             ).mean()
 
-            self.alpha_optimizer.zero_grad()
+            self.alpha_optim.zero_grad()
             alpha_loss.backward()
-            self.alpha_optimizer.step()
+            self.alpha_optim.step()
 
             alpha = self.log_alpha.exp()
         else:
@@ -263,18 +263,18 @@ class SACAgent(Agent):
         vf_loss = F.mse_loss(v_pred, v_target.detach())
 
         # train Q functions
-        self.qf_1_optimizer.zero_grad()
+        self.qf_1_optim.zero_grad()
         qf_1_loss.backward()
-        self.qf_1_optimizer.step()
+        self.qf_1_optim.step()
 
-        self.qf_2_optimizer.zero_grad()
+        self.qf_2_optim.zero_grad()
         qf_2_loss.backward()
-        self.qf_2_optimizer.step()
+        self.qf_2_optim.step()
 
         # train V function
-        self.vf_optimizer.zero_grad()
+        self.vf_optim.zero_grad()
         vf_loss.backward()
-        self.vf_optimizer.step()
+        self.vf_optim.step()
 
         if self.update_step % self.policy_update_freq == 0:
             # actor loss
@@ -294,9 +294,9 @@ class SACAgent(Agent):
                 actor_loss += actor_reg
 
             # train actor
-            self.actor_optimizer.zero_grad()
+            self.actor_optim.zero_grad()
             actor_loss.backward()
-            self.actor_optimizer.step()
+            self.actor_optim.step()
 
             # update target networks
             common_utils.soft_update(self.vf, self.vf_target, self.tau)
@@ -323,13 +323,13 @@ class SACAgent(Agent):
         self.qf_2.load_state_dict(params["qf_2"])
         self.vf.load_state_dict(params["vf"])
         self.vf_target.load_state_dict(params["vf_target"])
-        self.actor_optimizer.load_state_dict(params["actor_optim"])
-        self.qf_1_optimizer.load_state_dict(params["qf_1_optim"])
-        self.qf_2_optimizer.load_state_dict(params["qf_2_optim"])
-        self.vf_optimizer.load_state_dict(params["vf_optim"])
+        self.actor_optim.load_state_dict(params["actor_optim"])
+        self.qf_1_optim.load_state_dict(params["qf_1_optim"])
+        self.qf_2_optim.load_state_dict(params["qf_2_optim"])
+        self.vf_optim.load_state_dict(params["vf_optim"])
 
         if self.auto_entropy_tuning:
-            self.alpha_optimizer.load_state_dict(params["alpha_optim"])
+            self.alpha_optim.load_state_dict(params["alpha_optim"])
 
         print("[INFO] loaded the model and optimizer from", path)
 
@@ -341,14 +341,14 @@ class SACAgent(Agent):
             "qf_2": self.qf_2.state_dict(),
             "vf": self.vf.state_dict(),
             "vf_target": self.vf_target.state_dict(),
-            "actor_optim": self.actor_optimizer.state_dict(),
-            "qf_1_optim": self.qf_1_optimizer.state_dict(),
-            "qf_2_optim": self.qf_2_optimizer.state_dict(),
-            "vf_optim": self.vf_optimizer.state_dict(),
+            "actor_optim": self.actor_optim.state_dict(),
+            "qf_1_optim": self.qf_1_optim.state_dict(),
+            "qf_2_optim": self.qf_2_optim.state_dict(),
+            "vf_optim": self.vf_optim.state_dict(),
         }
 
         if self.auto_entropy_tuning:
-            params["alpha_optim"] = self.alpha_optimizer.state_dict()
+            params["alpha_optim"] = self.alpha_optim.state_dict()
 
         Agent.save_params(self, params, n_episode)
 

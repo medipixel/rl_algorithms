@@ -14,23 +14,26 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.optim as optim
 import wandb
 
 from algorithms.common.abstract.agent import Agent
+from algorithms.common.networks.mlp import MLP, GaussianDist
+from algorithms.registry import AGENTS
+from algorithms.utils.config import ConfigDict
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
+@AGENTS.register_module
 class A2CAgent(Agent):
     """1-Step Advantage Actor-Critic interacting with environment.
 
     Attributes:
         actor (nn.Module): policy model to select actions
         critic (nn.Module): critic model to evaluate states
-        hyper_params (dict): hyper-parameters
-        actor_optimizer (Optimizer): optimizer for actor
-        critic_optimizer (Optimizer): optimizer for critic
-        optimizer (Optimizer): optimizer for training
+        actor_optim (Optimizer): optimizer for actor
+        critic_optim (Optimizer): optimizer for critic
         episode_step (int): step number of the current episode
         transition (list): recent transition information
         i_episode (int): current episode number
@@ -41,33 +44,67 @@ class A2CAgent(Agent):
         self,
         env: gym.Env,
         args: argparse.Namespace,
-        hyper_params: dict,
-        models: tuple,
-        optims: tuple,
+        log_cfg: ConfigDict,
+        params: ConfigDict,
+        network_cfg: ConfigDict,
+        optim_cfg: ConfigDict,
     ):
         """Initialization.
 
         Args:
             env (gym.Env): openAI Gym environment
             args (argparse.Namespace): arguments including hyperparameters and training settings
-            hyper_params (dict): hyper-parameters
-            models (tuple): models including actor and critic
-            optims (tuple): optimizers for actor and critic
 
         """
-        Agent.__init__(self, env, args)
+        Agent.__init__(self, env, args, log_cfg)
 
-        self.actor, self.critic = models
-        self.actor_optimizer, self.critic_optimizer = optims
-        self.hyper_params = hyper_params
-        self.log_prob = torch.zeros((1,))
         self.predicted_value = torch.zeros((1,))
         self.transition: list = list()
         self.episode_step = 0
         self.i_episode = 0
+        self.log_prob = torch.zeros((1,))
 
-        if args.load_from is not None and os.path.exists(args.load_from):
-            self.load_params(args.load_from)
+        self.gamma = params.gamma
+        self.w_entropy = params.w_entropy
+        self.gradient_clip_ac = params.gradient_clip_ac
+        self.gradient_clip_cr = params.gradient_clip_cr
+        self.network_cfg = network_cfg
+        self.optim_cfg = optim_cfg
+
+        self.state_dim = self.env.observation_space.shape[0]
+        self.action_dim = self.env.action_space.shape[0]
+
+        self._init_network()
+
+    def _init_network(self):
+        # create models
+        self.actor = GaussianDist(
+            input_size=self.state_dim,
+            output_size=self.action_dim,
+            hidden_sizes=self.network_cfg.hidden_sizes_actor,
+        ).to(device)
+
+        self.critic = MLP(
+            input_size=self.state_dim,
+            output_size=1,
+            hidden_sizes=self.network_cfg.hidden_sizes_critic,
+        ).to(device)
+
+        # create optimizer
+        self.actor_optim = optim.Adam(
+            self.actor.parameters(),
+            lr=self.optim_cfg.lr_actor,
+            weight_decay=self.optim_cfg.weight_decay,
+        )
+
+        self.critic_optim = optim.Adam(
+            self.critic.parameters(),
+            lr=self.optim_cfg.lr_critic,
+            weight_decay=self.optim_cfg.weight_decay,
+        )
+
+        if self.args.load_from is not None and os.path.exists(self.args.load_from):
+            self.load_params(self.args.load_from)
 
     def select_action(self, state: np.ndarray) -> torch.Tensor:
         """Select an action from the input space."""
@@ -107,7 +144,7 @@ class A2CAgent(Agent):
         #       = r                       otherwise
         mask = 1 - done
         next_value = self.critic(next_state).detach()
-        q_value = reward + self.hyper_params["GAMMA"] * next_value * mask
+        q_value = reward + self.gamma * next_value * mask
         q_value = q_value.to(device)
 
         # advantage = Q_t - V(s_t)
@@ -115,23 +152,19 @@ class A2CAgent(Agent):
 
         # calculate loss at the current step
         policy_loss = -advantage.detach() * log_prob  # adv. is not backpropagated
-        policy_loss += self.hyper_params["W_ENTROPY"] * -log_prob  # entropy
+        policy_loss += self.w_entropy * -log_prob  # entropy
         value_loss = F.smooth_l1_loss(pred_value, q_value.detach())
 
         # train
-        self.actor_optimizer.zero_grad()
+        self.actor_optim.zero_grad()
         policy_loss.backward()
-        nn.utils.clip_grad_norm_(
-            self.actor.parameters(), self.hyper_params["GRADIENT_CLIP_AC"]
-        )
-        self.actor_optimizer.step()
+        nn.utils.clip_grad_norm_(self.actor.parameters(), self.gradient_clip_ac)
+        self.actor_optim.step()
 
-        self.critic_optimizer.zero_grad()
+        self.critic_optim.zero_grad()
         value_loss.backward()
-        nn.utils.clip_grad_norm_(
-            self.critic.parameters(), self.hyper_params["GRADIENT_CLIP_CR"]
-        )
-        self.critic_optimizer.step()
+        nn.utils.clip_grad_norm_(self.critic.parameters(), self.gradient_clip_cr)
+        self.critic_optim.step()
 
         return policy_loss.item(), value_loss.item()
 
@@ -144,8 +177,8 @@ class A2CAgent(Agent):
         params = torch.load(path)
         self.actor.load_state_dict(params["actor_state_dict"])
         self.critic.load_state_dict(params["critic_state_dict"])
-        self.actor_optimizer.load_state_dict(params["actor_optim_state_dict"])
-        self.critic_optimizer.load_state_dict(params["critic_optim_state_dict"])
+        self.actor_optim.load_state_dict(params["actor_optim_state_dict"])
+        self.critic_optim.load_state_dict(params["critic_optim_state_dict"])
         print("[INFO] Loaded the model and optimizer from", path)
 
     def save_params(self, n_episode: int):
@@ -153,8 +186,8 @@ class A2CAgent(Agent):
         params = {
             "actor_state_dict": self.actor.state_dict(),
             "critic_state_dict": self.critic.state_dict(),
-            "actor_optim_state_dict": self.actor_optimizer.state_dict(),
-            "critic_optim_state_dict": self.critic_optimizer.state_dict(),
+            "actor_optim_state_dict": self.actor_optim.state_dict(),
+            "critic_optim_state_dict": self.critic_optim.state_dict(),
         }
 
         Agent.save_params(self, params, n_episode)
@@ -182,8 +215,7 @@ class A2CAgent(Agent):
         """Train the agent."""
         # logger
         if self.args.log:
-            wandb.init()
-            wandb.config.update(self.hyper_params)
+            self.set_wandb(is_training=True)
             # wandb.watch([self.actor, self.critic], log="parameters")
 
         for self.i_episode in range(1, self.args.episode_num + 1):

@@ -127,9 +127,9 @@ class BCSACAgent(SACAgent):
                 -self.log_alpha * (log_prob + self.target_entropy).detach()
             ).mean()
 
-            self.alpha_optimizer.zero_grad()
+            self.alpha_optim.zero_grad()
             alpha_loss.backward()
-            self.alpha_optimizer.step()
+            self.alpha_optim.step()
 
             alpha = self.log_alpha.exp()
         else:
@@ -154,18 +154,18 @@ class BCSACAgent(SACAgent):
         vf_loss = F.mse_loss(v_pred, v_target.detach())
 
         # train Q functions
-        self.qf_1_optimizer.zero_grad()
+        self.qf_1_optim.zero_grad()
         qf_1_loss.backward()
-        self.qf_1_optimizer.step()
+        self.qf_1_optim.step()
 
-        self.qf_2_optimizer.zero_grad()
+        self.qf_2_optim.zero_grad()
         qf_2_loss.backward()
-        self.qf_2_optimizer.step()
+        self.qf_2_optim.step()
 
         # train V function
-        self.vf_optimizer.zero_grad()
+        self.vf_optim.zero_grad()
         vf_loss.backward()
-        self.vf_optimizer.step()
+        self.vf_optim.step()
 
         if self.update_step % self.policy_update_freq == 0:
             # bc loss
@@ -201,9 +201,9 @@ class BCSACAgent(SACAgent):
                 actor_loss += actor_reg
 
             # train actor
-            self.actor_optimizer.zero_grad()
+            self.actor_optim.zero_grad()
             actor_loss.backward()
-            self.actor_optimizer.step()
+            self.actor_optim.step()
 
             # update target networks
             common_utils.soft_update(self.vf, self.vf_target, self.tau)

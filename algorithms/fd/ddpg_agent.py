@@ -49,6 +49,9 @@ class DDPGfDAgent(DDPGAgent):
 
         self.use_n_step = self.n_step > 1
 
+        # create network
+        self._init_network()
+
         if not self.args.test:
             # load demo replay memory
             with open(self.args.demo_path, "rb") as f:
@@ -127,19 +130,19 @@ class DDPGfDAgent(DDPGAgent):
             critic_loss_element_wise += critic_loss_n_element_wise * self.lambda1
             critic_loss = torch.mean(critic_loss_element_wise * weights)
 
-        self.critic_optimizer.zero_grad()
+        self.critic_optim.zero_grad()
         critic_loss.backward()
         nn.utils.clip_grad_norm_(self.critic.parameters(), self.gradient_clip_cr)
-        self.critic_optimizer.step()
+        self.critic_optim.step()
 
         # train actor
         actions = self.actor(states)
         actor_loss_element_wise = -self.critic(torch.cat((states, actions), dim=-1))
         actor_loss = torch.mean(actor_loss_element_wise * weights)
-        self.actor_optimizer.zero_grad()
+        self.actor_optim.zero_grad()
         actor_loss.backward()
         nn.utils.clip_grad_norm_(self.actor.parameters(), self.gradient_clip_ac)
-        self.actor_optimizer.step()
+        self.actor_optim.step()
 
         # update target networks
         common_utils.soft_update(self.actor, self.actor_target, self.tau)
