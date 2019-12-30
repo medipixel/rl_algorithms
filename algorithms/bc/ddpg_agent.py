@@ -22,10 +22,13 @@ from algorithms.common.buffer.replay_buffer import ReplayBuffer
 import algorithms.common.helper_functions as common_utils
 from algorithms.common.noise import OUNoise
 from algorithms.ddpg.agent import DDPGAgent
+from algorithms.registry import AGENTS, build_her
+from algorithms.utils.config import ConfigDict
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
+@AGENTS.register_module
 class BCDDPGAgent(DDPGAgent):
     """BC with DDPG agent interacting with environment.
 
@@ -40,57 +43,53 @@ class BCDDPGAgent(DDPGAgent):
 
     """
 
-    def __init__(
-        self,
-        env: gym.Env,
-        args: argparse.Namespace,
-        hyper_params: dict,
-        models: tuple,
-        optims: tuple,
-        noise: OUNoise,
-        her: HER,
-    ):
-        """Initialization.
-        Args:
-            her (HER): hinsight experience replay
-
-        """
-        self.her = her
-        DDPGAgent.__init__(self, env, args, hyper_params, models, optims, noise)
-
     # pylint: disable=attribute-defined-outside-init
     def _initialize(self):
         """Initialize non-common things."""
+        self.demo_batch_size = self.params.demo_batch_size
+        self.lambda1 = self.params.lambda1
+        self.lambda2 = self.params.lambda2
+        self.use_her = self.params.use_her
+        self.success_score = self.params.success_score
+        self.desired_states_from_demo = self.params.desired_states_from_demo
+
         # load demo replay memory
         with open(self.args.demo_path, "rb") as f:
             demo = list(pickle.load(f))
 
         # HER
-        if self.hyper_params["USE_HER"]:
-            if self.hyper_params["DESIRED_STATES_FROM_DEMO"]:
+        if self.use_her:
+            self.her = build_her(self.params.her)
+            print(f"[INFO] Build {str(self.her)}.")
+
+            if self.desired_states_from_demo:
                 self.her.fetch_desired_states_from_demo(demo)
 
             self.transitions_epi: list = list()
             self.desired_state = np.zeros((1,))
             demo = self.her.generate_demo_transitions(demo)
 
+            if not self.her.is_goal_in_state:
+                self.state_dim *= 2
+        else:
+            self.her = None
+
+        self._init_network()
+
         if not self.args.test:
             # Replay buffers
-            demo_batch_size = self.hyper_params["DEMO_BATCH_SIZE"]
-            self.demo_memory = ReplayBuffer(len(demo), demo_batch_size)
+            self.demo_memory = ReplayBuffer(len(demo), self.demo_batch_size)
             self.demo_memory.extend(demo)
 
-            self.memory = ReplayBuffer(
-                self.hyper_params["BUFFER_SIZE"], self.hyper_params["BATCH_SIZE"]
-            )
+            self.memory = ReplayBuffer(self.buffer_size, self.batch_size)
 
             # set hyper parameters
-            self.lambda1 = self.hyper_params["LAMBDA1"]
-            self.lambda2 = self.hyper_params["LAMBDA2"] / demo_batch_size
+            self.lambda1 = self.lambda1
+            self.lambda2 = self.lambda2 / self.demo_batch_size
 
     def _preprocess_state(self, state: np.ndarray) -> torch.Tensor:
         """Preprocess state so that actor selects an action."""
-        if self.hyper_params["USE_HER"]:
+        if self.use_her:
             self.desired_state = self.her.get_desired_state()
             state = np.concatenate((state, self.desired_state), axis=-1)
         state = torch.FloatTensor(state).to(device)
@@ -98,15 +97,13 @@ class BCDDPGAgent(DDPGAgent):
 
     def _add_transition_to_memory(self, transition: Tuple[np.ndarray, ...]):
         """Add 1 step and n step transitions to memory."""
-        if self.hyper_params["USE_HER"]:
+        if self.use_her:
             self.transitions_epi.append(transition)
             done = transition[-1] or self.episode_step == self.args.max_episode_steps
             if done:
                 # insert generated transitions if the episode is done
                 transitions = self.her.generate_transitions(
-                    self.transitions_epi,
-                    self.desired_state,
-                    self.hyper_params["SUCCESS_SCORE"],
+                    self.transitions_epi, self.desired_state, self.success_score,
                 )
                 self.memory.extend(transitions)
                 self.transitions_epi.clear()
@@ -131,7 +128,7 @@ class BCDDPGAgent(DDPGAgent):
         masks = 1 - dones
         next_actions = self.actor_target(next_states)
         next_values = self.critic_target(torch.cat((next_states, next_actions), dim=-1))
-        curr_returns = rewards + (self.hyper_params["GAMMA"] * next_values * masks)
+        curr_returns = rewards + (self.gamma * next_values * masks)
         curr_returns = curr_returns.to(device)
 
         # critic loss
@@ -139,7 +136,7 @@ class BCDDPGAgent(DDPGAgent):
         critic_loss = F.mse_loss(values, curr_returns)
 
         # train critic
-        gradient_clip_cr = self.hyper_params["GRADIENT_CLIP_CR"]
+        gradient_clip_cr = self.gradient_clip_cr
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
         nn.utils.clip_grad_norm_(self.critic.parameters(), gradient_clip_cr)
@@ -168,16 +165,15 @@ class BCDDPGAgent(DDPGAgent):
         # train actor: pg loss + BC loss
         actor_loss = self.lambda1 * policy_loss + self.lambda2 * bc_loss
 
-        gradient_clip_ac = self.hyper_params["GRADIENT_CLIP_AC"]
+        gradient_clip_ac = self.gradient_clip_ac
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
         nn.utils.clip_grad_norm_(self.actor.parameters(), gradient_clip_ac)
         self.actor_optimizer.step()
 
         # update target networks
-        tau = self.hyper_params["TAU"]
-        common_utils.soft_update(self.actor, self.actor_target, tau)
-        common_utils.soft_update(self.critic, self.critic_target, tau)
+        common_utils.soft_update(self.actor, self.actor_target, self.tau)
+        common_utils.soft_update(self.critic, self.critic_target, self.tau)
 
         return actor_loss.item(), critic_loss.item(), n_qf_mask
 

@@ -96,3 +96,6 @@ class HER(ABC):
                 self._append_new_transitions(new_transitions, transition, final_state)
 
         return origin_transitions + new_transitions
+
+    def __str__(self):
+        return self.__class__.__name__

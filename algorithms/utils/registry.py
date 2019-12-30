@@ -1,5 +1,7 @@
 import inspect
 
+from algorithms.utils.config import ConfigDict
+
 
 class Registry(object):
     def __init__(self, name):
@@ -44,10 +46,10 @@ class Registry(object):
         return cls
 
 
-def build_from_cfg(cfg: dict, registry: Registry, default_args: dict = None):
+def build_from_cfg(cfg: ConfigDict, registry: Registry, default_args: dict = None):
     """Build a module from config dict.
     Args:
-        cfg (dict): Config dict. It should at least contain the key "type".
+        cfg (:obj: `ConfigDict`): Config dict. It should at least contain the key "type".
         registry (:obj:`Registry`): The registry to search the type from.
         default_args (dict, optional): Default initialization arguments.
     Returns:

@@ -22,7 +22,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--seed", type=int, default=777, help="random seed for reproducibility"
     )
-    parser.add_argument("--algo", type=str, default="ddpg", help="choose an algorithm")
     parser.add_argument(
         "--cfg-path",
         type=str,
@@ -88,9 +87,7 @@ def main():
     curr_time = NOWTIMES.strftime("%y%m%d_%H%M%S")
 
     cfg = Config.fromfile(args.cfg_path)
-    cfg.agent["log_cfg"] = dict(
-        env="lunarlander_continuous_v2", agent=cfg.agent.type, curr_time=curr_time
-    )
+    cfg.agent["log_cfg"] = dict(agent=cfg.agent.type, curr_time=curr_time)
     default_args = dict(args=args, env=env)
     agent = build_agent(cfg.agent, default_args)
 

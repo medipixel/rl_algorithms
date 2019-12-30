@@ -15,10 +15,12 @@ import torch.nn as nn
 from algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
 import algorithms.common.helper_functions as common_utils
 from algorithms.ddpg.agent import DDPGAgent
+from algorithms.registry import AGENTS
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
+@AGENTS.register_module
 class PERDDPGAgent(DDPGAgent):
     """ActorCritic interacting with environment.
 
@@ -31,18 +33,19 @@ class PERDDPGAgent(DDPGAgent):
     # pylint: disable=attribute-defined-outside-init
     def _initialize(self):
         """Initialize non-common things."""
+        self.per_alpha = self.params.per_alpha
+        self.per_beta = self.params.per_beta
+        self.per_eps = self.params.per_eps
+
         if not self.args.test:
             # replay memory
-            self.beta = self.hyper_params["PER_BETA"]
             self.memory = PrioritizedReplayBuffer(
-                self.hyper_params["BUFFER_SIZE"],
-                self.hyper_params["BATCH_SIZE"],
-                alpha=self.hyper_params["PER_ALPHA"],
+                self.buffer_size, self.batch_size, alpha=self.per_alpha,
             )
 
     def update_model(self) -> Tuple[torch.Tensor, ...]:
         """Train the model after each episode."""
-        experiences = self.memory.sample(self.beta)
+        experiences = self.memory.sample(self.per_beta)
         states, actions, rewards, next_states, dones, weights, indices, _ = experiences
 
         # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
@@ -50,11 +53,11 @@ class PERDDPGAgent(DDPGAgent):
         masks = 1 - dones
         next_actions = self.actor_target(next_states)
         next_values = self.critic_target(torch.cat((next_states, next_actions), dim=-1))
-        curr_returns = rewards + self.hyper_params["GAMMA"] * next_values * masks
+        curr_returns = rewards + self.gamma * next_values * masks
         curr_returns = curr_returns.to(device).detach()
 
         # train critic
-        gradient_clip_cr = self.hyper_params["GRADIENT_CLIP_CR"]
+        gradient_clip_cr = self.gradient_clip_cr
         values = self.critic(torch.cat((states, actions), dim=-1))
         critic_loss_element_wise = (values - curr_returns).pow(2)
         critic_loss = torch.mean(critic_loss_element_wise * weights)
@@ -64,7 +67,7 @@ class PERDDPGAgent(DDPGAgent):
         self.critic_optimizer.step()
 
         # train actor
-        gradient_clip_ac = self.hyper_params["GRADIENT_CLIP_AC"]
+        gradient_clip_ac = self.gradient_clip_ac
         actions = self.actor(states)
         actor_loss_element_wise = -self.critic(torch.cat((states, actions), dim=-1))
         actor_loss = torch.mean(actor_loss_element_wise * weights)
@@ -74,19 +77,16 @@ class PERDDPGAgent(DDPGAgent):
         self.actor_optimizer.step()
 
         # update target networks
-        tau = self.hyper_params["TAU"]
-        common_utils.soft_update(self.actor, self.actor_target, tau)
-        common_utils.soft_update(self.critic, self.critic_target, tau)
+        common_utils.soft_update(self.actor, self.actor_target, self.tau)
+        common_utils.soft_update(self.critic, self.critic_target, self.tau)
 
         # update priorities in PER
         new_priorities = critic_loss_element_wise
-        new_priorities = (
-            new_priorities.data.cpu().numpy() + self.hyper_params["PER_EPS"]
-        )
+        new_priorities = new_priorities.data.cpu().numpy() + self.per_eps
         self.memory.update_priorities(indices, new_priorities)
 
         # increase beta
         fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)
-        self.beta = self.beta + fraction * (1.0 - self.beta)
+        self.per_beta = self.per_beta + fraction * (1.0 - self.per_beta)
 
         return actor_loss.item(), critic_loss.item()

@@ -8,9 +8,10 @@ from .fd.dqn_agent import DQfDAgent
 from .fd.sac_agent import SACfDAgent
 from .per.ddpg_agent import PERDDPGAgent
 from .ppo.agent import PPOAgent
-from .registry import build_agent
+from .registry import build_agent, build_her
 from .sac.agent import SACAgent
 from .td3.agent import TD3Agent
+from .bc.her import LunarLanderContinuousHER, ReacherHER
 
 __all__ = [
     "A2CAgent",
@@ -25,5 +26,8 @@ __all__ = [
     "PPOAgent",
     "SACAgent",
     "TD3Agent",
+    "LunarLanderContinuousHER",
+    "ReacherHER",
     "build_agent",
+    "build_her",
 ]

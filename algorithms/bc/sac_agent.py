@@ -21,11 +21,14 @@ import wandb
 from algorithms.common.abstract.her import HER
 from algorithms.common.buffer.replay_buffer import ReplayBuffer
 import algorithms.common.helper_functions as common_utils
+from algorithms.registry import AGENTS, build_her
 from algorithms.sac.agent import SACAgent
+from algorithms.utils.config import ConfigDict
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
+@AGENTS.register_module
 class BCSACAgent(SACAgent):
     """BC with SAC agent interacting with environment.
 
@@ -40,57 +43,53 @@ class BCSACAgent(SACAgent):
 
     """
 
-    def __init__(
-        self,
-        env: gym.Env,
-        args: argparse.Namespace,
-        hyper_params: dict,
-        models: tuple,
-        optims: tuple,
-        target_entropy: float,
-        her: HER,
-    ):
-        """Initialization.
-        Args:
-            her (HER): hinsight experience replay
-
-        """
-        self.her = her
-        SACAgent.__init__(self, env, args, hyper_params, models, optims, target_entropy)
-
     # pylint: disable=attribute-defined-outside-init
     def _initialize(self):
         """Initialize non-common things."""
+        self.demo_batch_size = self.params.demo_batch_size
+        self.lambda1 = self.params.lambda1
+        self.lambda2 = self.params.lambda2
+        self.use_her = self.params.use_her
+        self.success_score = self.params.success_score
+        self.desired_states_from_demo = self.params.desired_states_from_demo
+
         # load demo replay memory
         with open(self.args.demo_path, "rb") as f:
             demo = list(pickle.load(f))
 
         # HER
-        if self.hyper_params["USE_HER"]:
-            if self.hyper_params["DESIRED_STATES_FROM_DEMO"]:
+        if self.use_her:
+            self.her = build_her(self.params.her)
+            print(f"[INFO] Build {str(self.her)}.")
+
+            if self.desired_states_from_demo:
                 self.her.fetch_desired_states_from_demo(demo)
 
             self.transitions_epi: list = list()
             self.desired_state = np.zeros((1,))
             demo = self.her.generate_demo_transitions(demo)
 
+            if not self.her.is_goal_in_state:
+                self.state_dim *= 2
+        else:
+            self.her = None
+
+        self._init_network()
+
         if not self.args.test:
             # Replay buffers
-            demo_batch_size = self.hyper_params["DEMO_BATCH_SIZE"]
-            self.demo_memory = ReplayBuffer(len(demo), demo_batch_size)
+            self.demo_memory = ReplayBuffer(len(demo), self.demo_batch_size)
             self.demo_memory.extend(demo)
 
-            self.memory = ReplayBuffer(
-                self.hyper_params["BUFFER_SIZE"], self.hyper_params["BATCH_SIZE"]
-            )
+            self.memory = ReplayBuffer(self.buffer_size, self.batch_size)
 
             # set hyper parameters
-            self.lambda1 = self.hyper_params["LAMBDA1"]
-            self.lambda2 = self.hyper_params["LAMBDA2"] / demo_batch_size
+            self.lambda1 = self.lambda1
+            self.lambda2 = self.lambda2 / self.demo_batch_size
 
     def _preprocess_state(self, state: np.ndarray) -> torch.Tensor:
         """Preprocess state so that actor selects an action."""
-        if self.hyper_params["USE_HER"]:
+        if self.use_her:
             self.desired_state = self.her.get_desired_state()
             state = np.concatenate((state, self.desired_state), axis=-1)
         state = torch.FloatTensor(state).to(device)
@@ -98,15 +97,13 @@ class BCSACAgent(SACAgent):
 
     def _add_transition_to_memory(self, transition: Tuple[np.ndarray, ...]):
         """Add 1 step and n step transitions to memory."""
-        if self.hyper_params["USE_HER"]:
+        if self.use_her:
             self.transitions_epi.append(transition)
             done = transition[-1] or self.episode_step == self.args.max_episode_steps
             if done:
                 # insert generated transitions if the episode is done
                 transitions = self.her.generate_transitions(
-                    self.transitions_epi,
-                    self.desired_state,
-                    self.hyper_params["SUCCESS_SCORE"],
+                    self.transitions_epi, self.desired_state, self.success_score,
                 )
                 self.memory.extend(transitions)
                 self.transitions_epi.clear()
@@ -125,7 +122,7 @@ class BCSACAgent(SACAgent):
         pred_actions, _, _, _, _ = self.actor(demo_states)
 
         # train alpha
-        if self.hyper_params["AUTO_ENTROPY_TUNING"]:
+        if self.auto_entropy_tuning:
             alpha_loss = (
                 -self.log_alpha * (log_prob + self.target_entropy).detach()
             ).mean()
@@ -137,14 +134,14 @@ class BCSACAgent(SACAgent):
             alpha = self.log_alpha.exp()
         else:
             alpha_loss = torch.zeros(1)
-            alpha = self.hyper_params["W_ENTROPY"]
+            alpha = self.w_entropy
 
         # Q function loss
         masks = 1 - dones
         q_1_pred = self.qf_1(states, actions)
         q_2_pred = self.qf_2(states, actions)
         v_target = self.vf_target(next_states)
-        q_target = rewards + self.hyper_params["GAMMA"] * v_target * masks
+        q_target = rewards + self.gamma * v_target * masks
         qf_1_loss = F.mse_loss(q_1_pred, q_target.detach())
         qf_2_loss = F.mse_loss(q_2_pred, q_target.detach())
 
@@ -170,7 +167,7 @@ class BCSACAgent(SACAgent):
         vf_loss.backward()
         self.vf_optimizer.step()
 
-        if self.update_step % self.hyper_params["POLICY_UPDATE_FREQ"] == 0:
+        if self.update_step % self.policy_update_freq == 0:
             # bc loss
             qf_mask = torch.gt(
                 self.qf_1(demo_states, demo_actions),
@@ -193,9 +190,9 @@ class BCSACAgent(SACAgent):
 
             # regularization
             if not self.is_discrete:  # iff the action is continuous
-                mean_reg = self.hyper_params["W_MEAN_REG"] * mu.pow(2).mean()
-                std_reg = self.hyper_params["W_STD_REG"] * std.pow(2).mean()
-                pre_activation_reg = self.hyper_params["W_PRE_ACTIVATION_REG"] * (
+                mean_reg = self.w_mean_reg * mu.pow(2).mean()
+                std_reg = self.w_std_reg * std.pow(2).mean()
+                pre_activation_reg = self.w_pre_activation_reg * (
                     pre_tanh_value.pow(2).sum(dim=-1).mean()
                 )
                 actor_reg = mean_reg + std_reg + pre_activation_reg
@@ -209,7 +206,7 @@ class BCSACAgent(SACAgent):
             self.actor_optimizer.step()
 
             # update target networks
-            common_utils.soft_update(self.vf, self.vf_target, self.hyper_params["TAU"])
+            common_utils.soft_update(self.vf, self.vf_target, self.tau)
         else:
             actor_loss = torch.zeros(1)
             n_qf_mask = 0

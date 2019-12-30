@@ -94,66 +94,14 @@ class SACAgent(Agent):
         self.w_std_reg = params.w_std_reg
         self.w_pre_activation_reg = params.w_pre_activation_reg
         self.auto_entropy_tuning = params.auto_entropy_tuning
+        self.network_cfg = network_cfg
+        self.optim_cfg = optim_cfg
 
-        state_dim = self.env.observation_space.shape[0]
-        action_dim = self.env.action_space.shape[0]
+        self.state_dim = self.env.observation_space.shape[0]
+        self.action_dim = self.env.action_space.shape[0]
 
         # target entropy
-        target_entropy = -np.prod((action_dim,)).item()  # heuristic
-
-        # create actor
-        self.actor = TanhGaussianDistParams(
-            input_size=state_dim,
-            output_size=action_dim,
-            hidden_sizes=network_cfg.hidden_sizes_actor,
-        ).to(device)
-
-        # create v_critic
-        self.vf = MLP(
-            input_size=state_dim,
-            output_size=1,
-            hidden_sizes=network_cfg.hidden_sizes_vf,
-        ).to(device)
-        self.vf_target = MLP(
-            input_size=state_dim,
-            output_size=1,
-            hidden_sizes=network_cfg.hidden_sizes_vf,
-        ).to(device)
-        self.vf_target.load_state_dict(self.vf.state_dict())
-
-        # create q_critic
-        self.qf_1 = FlattenMLP(
-            input_size=state_dim + action_dim,
-            output_size=1,
-            hidden_sizes=network_cfg.hidden_sizes_qf,
-        ).to(device)
-        self.qf_2 = FlattenMLP(
-            input_size=state_dim + action_dim,
-            output_size=1,
-            hidden_sizes=network_cfg.hidden_sizes_qf,
-        ).to(device)
-
-        # create optimizers
-        self.actor_optimizer = optim.Adam(
-            self.actor.parameters(),
-            lr=optim_cfg.lr_actor,
-            weight_decay=optim_cfg.weight_decay,
-        )
-        self.vf_optimizer = optim.Adam(
-            self.vf.parameters(),
-            lr=optim_cfg.lr_vf,
-            weight_decay=optim_cfg.weight_decay,
-        )
-        self.qf_1_optimizer = optim.Adam(
-            self.qf_1.parameters(),
-            lr=optim_cfg.lr_qf1,
-            weight_decay=optim_cfg.weight_decay,
-        )
-        self.qf_2_optimizer = optim.Adam(
-            self.qf_2.parameters(),
-            lr=optim_cfg.lr_qf2,
-            weight_decay=optim_cfg.weight_decay,
-        )
+        target_entropy = -np.prod((self.action_dim,)).item()  # heuristic
 
         # automatic entropy tuning
         if self.auto_entropy_tuning:
@@ -161,15 +109,75 @@ class SACAgent(Agent):
             self.log_alpha = torch.zeros(1, requires_grad=True, device=device)
             self.alpha_optimizer = optim.Adam([self.log_alpha], lr=optim_cfg.lr_entropy)
 
-        # load the optimizer and model parameters
-        if args.load_from is not None and os.path.exists(args.load_from):
-            self.load_params(args.load_from)
-
         self._initialize()
+
+    # pylint: disable=attribute-defined-outside-init
+    def _init_network(self):
+        """Initialize networks and optimizers."""
+        # create actor
+        self.actor = TanhGaussianDistParams(
+            input_size=self.state_dim,
+            output_size=self.action_dim,
+            hidden_sizes=self.network_cfg.hidden_sizes_actor,
+        ).to(device)
+
+        # create v_critic
+        self.vf = MLP(
+            input_size=self.state_dim,
+            output_size=1,
+            hidden_sizes=self.network_cfg.hidden_sizes_vf,
+        ).to(device)
+        self.vf_target = MLP(
+            input_size=self.state_dim,
+            output_size=1,
+            hidden_sizes=self.network_cfg.hidden_sizes_vf,
+        ).to(device)
+        self.vf_target.load_state_dict(self.vf.state_dict())
+
+        # create q_critic
+        self.qf_1 = FlattenMLP(
+            input_size=self.state_dim + self.action_dim,
+            output_size=1,
+            hidden_sizes=self.network_cfg.hidden_sizes_qf,
+        ).to(device)
+        self.qf_2 = FlattenMLP(
+            input_size=self.state_dim + self.action_dim,
+            output_size=1,
+            hidden_sizes=self.network_cfg.hidden_sizes_qf,
+        ).to(device)
+
+        # create optimizers
+        self.actor_optimizer = optim.Adam(
+            self.actor.parameters(),
+            lr=self.optim_cfg.lr_actor,
+            weight_decay=self.optim_cfg.weight_decay,
+        )
+        self.vf_optimizer = optim.Adam(
+            self.vf.parameters(),
+            lr=self.optim_cfg.lr_vf,
+            weight_decay=self.optim_cfg.weight_decay,
+        )
+        self.qf_1_optimizer = optim.Adam(
+            self.qf_1.parameters(),
+            lr=self.optim_cfg.lr_qf1,
+            weight_decay=self.optim_cfg.weight_decay,
+        )
+        self.qf_2_optimizer = optim.Adam(
+            self.qf_2.parameters(),
+            lr=self.optim_cfg.lr_qf2,
+            weight_decay=self.optim_cfg.weight_decay,
+        )
+
+        # load the optimizer and model parameters
+        if self.args.load_from is not None and os.path.exists(self.args.load_from):
+            self.load_params(self.args.load_from)
 
     # pylint: disable=attribute-defined-outside-init
     def _initialize(self):
         """Initialize non-common things."""
+        # create network
+        self._init_network()
+
         if not self.args.test:
             # replay memory
             self.memory = ReplayBuffer(self.buffer_size, self.batch_size)
