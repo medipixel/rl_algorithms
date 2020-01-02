@@ -10,7 +10,6 @@ install:
 
 script:
     # run static analysis and format check
-    - pip list | grep numpy
     - make test
 
 cache:

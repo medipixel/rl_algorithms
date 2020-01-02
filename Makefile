@@ -1,5 +1,5 @@
 test:
-	black . --check --exclude checkpoint wandb
+	black . --check
 	isort -y --check-only --skip checkpoint --skip wandb
 	env PYTHONPATH=. pytest --pylint --flake8 --mypy --ignore=checkpoint --ignore=wandb
 
