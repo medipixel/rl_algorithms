@@ -49,7 +49,7 @@ class Agent(ABC):
 
         self.env_name = env.spec.id
         self.ckpt_path = (
-            f"./checkpoint/{self.env_name}/{log_cfg.agent}/{log_cfg.curr_time}"
+            f"./checkpoint/{self.env_name}/{log_cfg.agent}/{log_cfg.curr_time}/"
         )
         os.makedirs(self.ckpt_path, exist_ok=True)
 
