@@ -42,9 +42,6 @@ class DQfDAgent(DQNAgent):
         self.pretrain_step = self.params.pretrain_step
         self.per_eps_demo = self.params.per_eps_demo
 
-        # create network
-        self._init_network()
-
         if not self.args.test:
             # load demo replay memory
             demos = self._load_demos()

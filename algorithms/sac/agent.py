@@ -110,6 +110,7 @@ class SACAgent(Agent):
             self.alpha_optim = optim.Adam([self.log_alpha], lr=optim_cfg.lr_entropy)
 
         self._initialize()
+        self._init_network()
 
     # pylint: disable=attribute-defined-outside-init
     def _init_network(self):
@@ -175,9 +176,6 @@ class SACAgent(Agent):
     # pylint: disable=attribute-defined-outside-init
     def _initialize(self):
         """Initialize non-common things."""
-        # create network
-        self._init_network()
-
         if not self.args.test:
             # replay memory
             self.memory = ReplayBuffer(self.buffer_size, self.batch_size)

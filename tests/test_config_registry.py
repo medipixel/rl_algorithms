@@ -40,9 +40,7 @@ def test_config_registry():
     curr_time = NOWTIMES.strftime("%y%m%d_%H%M%S")
 
     cfg = Config.fromfile(args.cfg_path)
-    cfg.agent["log_cfg"] = dict(
-        env="lunarlander_continuous_v2", agent=cfg.agent.type, curr_time=curr_time
-    )
+    cfg.agent["log_cfg"] = dict(agent=cfg.agent.type, curr_time=curr_time)
     default_args = dict(args=args, env=env)
     agent = build_agent(cfg.agent, default_args)
     assert isinstance(agent, Agent)

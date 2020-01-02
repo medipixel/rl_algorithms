@@ -98,6 +98,7 @@ class DDPGAgent(Agent):
         )
 
         self._initialize()
+        self._init_network()
 
     # pylint: disable=attribute-defined-outside-init
     def _init_network(self):
@@ -151,9 +152,6 @@ class DDPGAgent(Agent):
 
     def _initialize(self):
         """Initialize non-common things."""
-        # create network
-        self._init_network()
-
         if not self.args.test:
             # replay memory
             self.memory = ReplayBuffer(self.buffer_size, self.batch_size)

@@ -113,6 +113,7 @@ class DQNAgent(Agent):
         self.use_noisy_net = params.use_noisy_net
 
         self._initialize()
+        self._init_network()
 
     # pylint: disable=attribute-defined-outside-init
     def _init_network(self):
@@ -166,9 +167,6 @@ class DQNAgent(Agent):
     # pylint: disable=attribute-defined-outside-init
     def _initialize(self):
         """Initialize non-common things."""
-        # create network
-        self._init_network()
-
         if not self.args.test:
             # replay memory for a single step
             self.memory = PrioritizedReplayBuffer(

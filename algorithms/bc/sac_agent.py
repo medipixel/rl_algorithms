@@ -70,8 +70,6 @@ class BCSACAgent(SACAgent):
         else:
             self.her = None
 
-        self._init_network()
-
         if not self.args.test:
             # Replay buffers
             self.demo_memory = ReplayBuffer(len(demo), self.demo_batch_size)

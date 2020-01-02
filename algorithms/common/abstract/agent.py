@@ -47,8 +47,10 @@ class Agent(ABC):
         self.env = env
         self.log_cfg = log_cfg
 
-        env_name = env.spec.id
-        self.ckpt_path = f"./checkpoint/{env_name}/{log_cfg.agent}/{log_cfg.curr_time}"
+        self.env_name = env.spec.id
+        self.ckpt_path = (
+            f"./checkpoint/{self.env_name}/{log_cfg.agent}/{log_cfg.curr_time}"
+        )
         os.makedirs(self.ckpt_path, exist_ok=True)
 
         # save configuration
@@ -103,7 +105,7 @@ class Agent(ABC):
 
     def set_wandb(self):
         wandb.init(
-            project=self.log_cfg.env,
+            project=self.env_name,
             name=f"{self.log_cfg.agent}/{self.log_cfg.curr_time}",
         )
         shutil.copy(self.args.cfg_path, os.path.join(wandb.run.dir, "config.py"))

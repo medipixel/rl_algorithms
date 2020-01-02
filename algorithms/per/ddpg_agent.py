@@ -37,9 +37,6 @@ class PERDDPGAgent(DDPGAgent):
         self.per_beta = self.params.per_beta
         self.per_eps = self.params.per_eps
 
-        # create network
-        self._init_network()
-
         if not self.args.test:
             # replay memory
             self.memory = PrioritizedReplayBuffer(

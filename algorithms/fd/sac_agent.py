@@ -49,9 +49,6 @@ class SACfDAgent(SACAgent):
 
         self.use_n_step = self.n_step > 1
 
-        # create network
-        self._init_network()
-
         if not self.args.test:
             # load demo replay memory
             with open(self.args.demo_path, "rb") as f:

@@ -90,9 +90,6 @@ class TD3Agent(Agent):
         self.state_dim = self.env.observation_space.shape[0]
         self.action_dim = self.env.action_space.shape[0]
 
-        # create network
-        self._init_network()
-
         # noise instance to make randomness of action
         self.exploration_noise = GaussianNoise(
             self.action_dim, noise_cfg.exploration_noise, noise_cfg.exploration_noise
@@ -107,6 +104,8 @@ class TD3Agent(Agent):
         if not self.args.test:
             # replay memory
             self.memory = ReplayBuffer(self.buffer_size, self.batch_size)
+
+        self._init_network()
 
     def _init_network(self):
         """Initialize networks and optimizers."""
