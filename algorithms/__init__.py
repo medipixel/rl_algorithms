@@ -1,5 +1,6 @@
 from .a2c.agent import A2CAgent
 from .bc.ddpg_agent import BCDDPGAgent
+from .bc.her import LunarLanderContinuousHER, ReacherHER
 from .bc.sac_agent import BCSACAgent
 from .ddpg.agent import DDPGAgent
 from .dqn.agent import DQNAgent
@@ -11,7 +12,6 @@ from .ppo.agent import PPOAgent
 from .registry import build_agent, build_her
 from .sac.agent import SACAgent
 from .td3.agent import TD3Agent
-from .bc.her import LunarLanderContinuousHER, ReacherHER
 
 __all__ = [
     "A2CAgent",

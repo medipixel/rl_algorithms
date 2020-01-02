@@ -6,24 +6,19 @@
 - Paper: https://arxiv.org/pdf/1709.10089.pdf
 """
 
-import argparse
 import pickle
 from typing import Tuple
 
-import gym
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import wandb
 
-from algorithms.common.abstract.her import HER
 from algorithms.common.buffer.replay_buffer import ReplayBuffer
 import algorithms.common.helper_functions as common_utils
-from algorithms.common.noise import OUNoise
 from algorithms.ddpg.agent import DDPGAgent
 from algorithms.registry import AGENTS, build_her
-from algorithms.utils.config import ConfigDict
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 

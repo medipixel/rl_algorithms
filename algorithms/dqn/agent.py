@@ -262,7 +262,7 @@ class DQNAgent(Agent):
                 gamma=gamma,
             )
 
-    def update_model(self) -> Tuple[torch.Tensor, torch.Tensor]:
+    def update_model(self) -> Tuple[torch.Tensor, ...]:
         """Train the model after each episode."""
         # 1 step loss
         experiences_1 = self.memory.sample(self.per_beta)
@@ -372,7 +372,7 @@ class DQNAgent(Agent):
         """Train the agent."""
         # logger
         if self.args.log:
-            self.set_wandb(is_training=True)
+            self.set_wandb()
             # wandb.watch([self.dqn], log="parameters")
 
         # pre-training if needed

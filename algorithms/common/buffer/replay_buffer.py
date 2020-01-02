@@ -78,7 +78,7 @@ class ReplayBuffer:
                 if idx == 0:
                     action = (
                         np.array(action).astype(np.int64)
-                        if type(action) == int
+                        if isinstance(action, int)
                         else action
                     )
                     self._initialize_buffers(state, action)

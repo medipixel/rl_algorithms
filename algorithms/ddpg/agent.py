@@ -8,7 +8,6 @@
 
 import argparse
 import os
-import shutil
 import time
 from typing import Tuple
 
@@ -200,7 +199,7 @@ class DDPGAgent(Agent):
         """Add 1 step and n step transitions to memory."""
         self.memory.add(transition)
 
-    def update_model(self) -> Tuple[torch.Tensor, torch.Tensor]:
+    def update_model(self) -> Tuple[torch.Tensor, ...]:
         """Train the model after each episode."""
         experiences = self.memory.sample()
         states, actions, rewards, next_states, dones = experiences
@@ -301,7 +300,7 @@ class DDPGAgent(Agent):
         """Train the agent."""
         # logger
         if self.args.log:
-            self.set_wandb(is_training=True)
+            self.set_wandb()
             # wandb.watch([self.actor, self.critic], log="parameters")
 
         # pre-training if needed

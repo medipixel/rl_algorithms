@@ -18,7 +18,6 @@ import torch.optim as optim
 import wandb
 
 from algorithms.common.abstract.agent import Agent
-from algorithms.common.env.multiprocessing_env import SubprocVecEnv
 from algorithms.common.env.utils import env_generator, make_envs
 from algorithms.common.networks.mlp import MLP, GaussianDist
 import algorithms.ppo.utils as ppo_utils
@@ -33,7 +32,7 @@ class PPOAgent(Agent):
     """PPO Agent.
 
     Attributes:
-        env (gym.Env or SubprocVecEnv): Gym env with multiprocessing for training
+        env (gym.Env): openAI Gym environment
         actor (nn.Module): policy gradient model to select actions
         critic (nn.Module): policy gradient model to predict values
         actor_optim (Optimizer): optimizer for training actor
@@ -65,11 +64,10 @@ class PPOAgent(Agent):
             args (argparse.Namespace): arguments including hyperparameters and training settings
 
         """
-        env_single = env
         env_gen = env_generator(env.spec.id, args)
         env_multi = make_envs(env_gen, n_envs=params.n_workers)
 
-        Agent.__init__(self, env_single, args, log_cfg)
+        Agent.__init__(self, env, args, log_cfg)
 
         self.episode_steps = np.zeros(params.n_workers, dtype=np.int)
         self.states: list = []
@@ -98,11 +96,11 @@ class PPOAgent(Agent):
         self.network_cfg = network_cfg
         self.optim_cfg = optim_cfg
 
-        self.state_dim = self.env.observation_space.shape[0]
-        self.action_dim = self.env.action_space.shape[0]
-
         if not self.args.test:
             self.env = env_multi
+
+        self.state_dim = self.env.observation_space.shape[0]
+        self.action_dim = self.env.action_space.shape[0]
 
         self._init_network()
 
@@ -328,7 +326,7 @@ class PPOAgent(Agent):
         """Train the agent."""
         # logger
         if self.args.log:
-            self.set_wandb(is_training=True)
+            self.set_wandb()
             # wandb.watch([self.actor, self.critic], log="parameters")
 
         score = 0

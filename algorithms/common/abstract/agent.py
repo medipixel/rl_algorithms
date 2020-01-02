@@ -18,6 +18,8 @@ import numpy as np
 import torch
 import wandb
 
+from algorithms.utils.config import ConfigDict
+
 
 class Agent(ABC):
     """Abstract Agent used for all agents.
@@ -33,7 +35,7 @@ class Agent(ABC):
 
     """
 
-    def __init__(self, env: gym.Env, args: argparse.Namespace, log_cfg: dict):
+    def __init__(self, env: gym.Env, args: argparse.Namespace, log_cfg: ConfigDict):
         """Initialization.
 
         Args:
@@ -44,9 +46,9 @@ class Agent(ABC):
         self.args = args
         self.env = env
         self.log_cfg = log_cfg
-        self.ckpt_path = (
-            f"./checkpoint/{env.spec.id}/{log_cfg.agent}/{log_cfg.curr_time}"
-        )
+
+        env_name = env.spec.id
+        self.ckpt_path = f"./checkpoint/{env_name}/{log_cfg.agent}/{log_cfg.curr_time}"
         os.makedirs(self.ckpt_path, exist_ok=True)
 
         # save configuration
@@ -99,7 +101,7 @@ class Agent(ABC):
     def train(self):
         pass
 
-    def set_wandb(self, is_training=False):
+    def set_wandb(self):
         wandb.init(
             project=self.log_cfg.env,
             name=f"{self.log_cfg.agent}/{self.log_cfg.curr_time}",

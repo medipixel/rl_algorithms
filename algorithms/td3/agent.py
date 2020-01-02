@@ -342,7 +342,7 @@ class TD3Agent(Agent):
         """Train the agent."""
         # logger
         if self.args.log:
-            self.set_wandb(is_training=True)
+            self.set_wandb()
             # wandb.watch([self.actor, self.critic1, self.critic2], log="parameters")
 
         for self.i_episode in range(1, self.args.episode_num + 1):

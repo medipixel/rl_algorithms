@@ -3,7 +3,7 @@ import inspect
 from algorithms.utils.config import ConfigDict
 
 
-class Registry(object):
+class Registry:
     def __init__(self, name):
         self._name = name
         self._module_dict = dict()

@@ -3,12 +3,12 @@ import datetime
 
 import gym
 
-from algorithms import DDPGAgent, build_agent
+from algorithms import build_agent
+from algorithms.common.abstract.agent import Agent
 from algorithms.utils import Config
 
 
-def test_config_registry():
-    # configurations
+def parse_args(args: list):
     parser = argparse.ArgumentParser(description="Pytorch RL algorithms")
     parser.add_argument(
         "--load-from",
@@ -25,7 +25,12 @@ def test_config_registry():
         default="./configs/lunarlander_continuous_v2/ddpg.py",
         help="config path",
     )
-    args = parser.parse_args()
+    return parser.parse_args(args)
+
+
+def test_config_registry():
+    # configurations
+    args = parse_args(["--test"])
 
     # set env
     env = gym.make("LunarLanderContinuous-v2")
@@ -40,7 +45,7 @@ def test_config_registry():
     )
     default_args = dict(args=args, env=env)
     agent = build_agent(cfg.agent, default_args)
-    assert isinstance(agent, DDPGAgent)
+    assert isinstance(agent, Agent)
 
 
 if __name__ == "__main__":

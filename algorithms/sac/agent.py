@@ -405,7 +405,7 @@ class SACAgent(Agent):
         """Train the agent."""
         # logger
         if self.args.log:
-            self.set_wandb(is_training=True)
+            self.set_wandb()
             # wandb.watch([self.actor, self.vf, self.qf_1, self.qf_2], log="parameters")
 
         # pre-training if needed

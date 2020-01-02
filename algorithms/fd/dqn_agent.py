@@ -20,7 +20,6 @@ from algorithms.common.buffer.replay_buffer import ReplayBuffer
 import algorithms.common.helper_functions as common_utils
 from algorithms.dqn.agent import DQNAgent
 from algorithms.registry import AGENTS
-from algorithms.utils.config import ConfigDict
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -144,7 +143,7 @@ class DQfDAgent(DQNAgent):
 
         # increase beta
         fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)
-        self.per_beta = self.per_beta + fraction * (1.0 - self.per_beta)
+        self.per_beta: float = self.per_beta + fraction * (1.0 - self.per_beta)
 
         if self.use_noisy_net:
             self.dqn.reset_noise()
