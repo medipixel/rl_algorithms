@@ -155,8 +155,7 @@ disable=print-statement,
         too-many-instance-attributes,
 	    fixme,
         wrong-import-order,
-        ungrouped-imports,
-        too-many-arguments
+        ungrouped-imports
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
