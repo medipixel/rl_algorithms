@@ -31,6 +31,6 @@ agent = dict(
         lr_qf1=3e-4,
         lr_qf2=3e-4,
         lr_entropy=3e-4,
-        weight_decay=1e-6,
+        weight_decay=0.0,
     ),
 )

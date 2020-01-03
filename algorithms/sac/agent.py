@@ -113,6 +113,13 @@ class SACAgent(Agent):
         self._init_network()
 
     # pylint: disable=attribute-defined-outside-init
+    def _initialize(self):
+        """Initialize non-common things."""
+        if not self.args.test:
+            # replay memory
+            self.memory = ReplayBuffer(self.buffer_size, self.batch_size)
+
+    # pylint: disable=attribute-defined-outside-init
     def _init_network(self):
         """Initialize networks and optimizers."""
         # create actor
@@ -172,13 +179,6 @@ class SACAgent(Agent):
         # load the optimizer and model parameters
         if self.args.load_from is not None and os.path.exists(self.args.load_from):
             self.load_params(self.args.load_from)
-
-    # pylint: disable=attribute-defined-outside-init
-    def _initialize(self):
-        """Initialize non-common things."""
-        if not self.args.test:
-            # replay memory
-            self.memory = ReplayBuffer(self.buffer_size, self.batch_size)
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""

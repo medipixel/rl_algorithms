@@ -24,7 +24,7 @@ agent = dict(
         lambda1=1e-3,
         lambda2=1.0,
         # HER
-        use_her=True,
+        use_her=False,
         her=dict(type="LunarLanderContinuousHER",),
         success_score=250.0,
         desired_states_from_demo=True,

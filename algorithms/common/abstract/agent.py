@@ -48,13 +48,15 @@ class Agent(ABC):
         self.log_cfg = log_cfg
 
         self.env_name = env.spec.id
-        self.ckpt_path = (
-            f"./checkpoint/{self.env_name}/{log_cfg.agent}/{log_cfg.curr_time}/"
-        )
-        os.makedirs(self.ckpt_path, exist_ok=True)
 
-        # save configuration
-        shutil.copy(self.args.cfg_path, os.path.join(self.ckpt_path, "config.py"))
+        if not self.args.test:
+            self.ckpt_path = (
+                f"./checkpoint/{self.env_name}/{log_cfg.agent}/{log_cfg.curr_time}/"
+            )
+            os.makedirs(self.ckpt_path, exist_ok=True)
+
+            # save configuration
+            shutil.copy(self.args.cfg_path, os.path.join(self.ckpt_path, "config.py"))
 
         if isinstance(env.action_space, Discrete):
             self.is_discrete = True

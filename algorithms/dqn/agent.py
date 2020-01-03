@@ -92,7 +92,6 @@ class DQNAgent(Agent):
         self.train_freq = params.train_freq
         self.gradient_clip = params.gradient_clip
         self.n_step = params.n_step
-        self.epsilon = params.max_epsilon
 
         self.w_n_step = params.w_n_step
         self.w_q_reg = params.w_q_reg
@@ -111,6 +110,12 @@ class DQNAgent(Agent):
         self.use_n_step = self.n_step > 1
         self.use_dist_q = params.use_dist_q
         self.use_noisy_net = params.use_noisy_net
+        if self.use_noisy_net:
+            self.params.max_epsilon = 0.0
+            self.params.min_epsilon = 0.0
+            self.epsilon = 0.0
+        else:
+            self.epsilon = self.params.max_epsilon
 
         self._initialize()
         self._init_network()
