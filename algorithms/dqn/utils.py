@@ -262,7 +262,11 @@ def get_fc_model(
 
     else:
         fc_model = DuelingMLP(
-            input_size=input_size, output_size=output_size, hidden_sizes=hidden_sizes,
+            input_size=input_size,
+            output_size=output_size,
+            hidden_sizes=hidden_sizes,
+            linear_layer=linear_layer,
+            init_fn=init_fn,
         ).to(device)
 
     return fc_model

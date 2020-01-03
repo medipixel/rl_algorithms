@@ -116,6 +116,21 @@ class DQNAgent(Agent):
         self._init_network()
 
     # pylint: disable=attribute-defined-outside-init
+    def _initialize(self):
+        """Initialize non-common things."""
+        if not self.args.test:
+            # replay memory for a single step
+            self.memory = PrioritizedReplayBuffer(
+                self.buffer_size, self.batch_size, alpha=self.per_alpha,
+            )
+
+            # replay memory for multi-steps
+            if self.use_n_step:
+                self.memory_n = ReplayBuffer(
+                    self.buffer_size, n_step=self.n_step, gamma=self.gamma,
+                )
+
+    # pylint: disable=attribute-defined-outside-init
     def _init_network(self):
         """Initialize networks and optimizers."""
         fc_input_size = (
@@ -130,10 +145,16 @@ class DQNAgent(Agent):
                 self.action_dim,
                 self.network_cfg.hidden_sizes,
             )
+            fc_model2 = dqn_utils.get_fc_model(
+                self.params,
+                fc_input_size,
+                self.action_dim,
+                self.network_cfg.hidden_sizes,
+            )
 
             # create CNN
             self.dqn = dqn_utils.get_cnn_model(self.use_dist_q, fc_model)
-            self.dqn_target = dqn_utils.get_cnn_model(self.use_dist_q, fc_model)
+            self.dqn_target = dqn_utils.get_cnn_model(self.use_dist_q, fc_model2)
 
         else:
             # create FC
@@ -163,21 +184,6 @@ class DQNAgent(Agent):
         # load the optimizer and model parameters
         if self.args.load_from is not None and os.path.exists(self.args.load_from):
             self.load_params(self.args.load_from)
-
-    # pylint: disable=attribute-defined-outside-init
-    def _initialize(self):
-        """Initialize non-common things."""
-        if not self.args.test:
-            # replay memory for a single step
-            self.memory = PrioritizedReplayBuffer(
-                self.buffer_size, self.batch_size, alpha=self.per_alpha,
-            )
-
-            # replay memory for multi-steps
-            if self.use_n_step:
-                self.memory_n = ReplayBuffer(
-                    self.buffer_size, n_step=self.n_step, gamma=self.gamma,
-                )
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""

@@ -37,7 +37,7 @@ agent = dict(
         v_max=300,
         atoms=1530,
         # NoisyNet
-        use_noisy_net=True,
+        use_noisy_net=False,
         std_init=0.5,
     ),
     network_cfg=dict(hidden_sizes=[128, 64]),
