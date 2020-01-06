@@ -60,13 +60,16 @@ def parse_args() -> argparse.Namespace:
         "--max-episode-steps", type=int, default=-1, help="max episode step"
     )
     parser.add_argument(
-        "--interim-test-num", type=int, default=10, help="interim test number"
+        "--interim-test-num",
+        type=int,
+        default=10,
+        help="number of test during training",
     )
     parser.add_argument(
         "--demo-path",
         type=str,
         default="data/reacher_demo.pkl",
-        help="demonstration path",
+        help="demonstration path for learning from demo",
     )
 
     return parser.parse_args()

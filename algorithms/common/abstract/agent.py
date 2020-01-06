@@ -27,6 +27,7 @@ class Agent(ABC):
     Attributes:
         env (gym.Env): openAI Gym environment
         args (argparse.Namespace): arguments including hyperparameters and training settings
+        log_cfg (ConfigDict): configuration for saving log and checkpoint
         env_name (str) : gym env name for logging
         sha (str): sha code of current git commit
         state_dim (int): dimension of states
@@ -36,13 +37,7 @@ class Agent(ABC):
     """
 
     def __init__(self, env: gym.Env, args: argparse.Namespace, log_cfg: ConfigDict):
-        """Initialize.
-
-        Args:
-            env (gym.Env): openAI Gym environment
-            args (argparse.Namespace): arguments including hyperparameters and training settings
-            log_cfg (ConfigDict): configuration for saving log and checkpoint
-        """
+        """Initialize."""
         self.args = args
         self.env = env
         self.log_cfg = log_cfg

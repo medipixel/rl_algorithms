@@ -68,7 +68,7 @@ def parse_args() -> argparse.Namespace:
         "--demo-path",
         type=str,
         default="data/lunarlander_continuous_demo.pkl",
-        help="demonstration path for learning from demo.",
+        help="demonstration path for learning from demo",
     )
 
     return parser.parse_args()
