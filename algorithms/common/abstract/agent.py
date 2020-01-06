@@ -108,6 +108,7 @@ class Agent(ABC):
             project=self.env_name,
             name=f"{self.log_cfg.agent}/{self.log_cfg.curr_time}",
         )
+        wandb.config.update(vars(self.args))
         shutil.copy(self.args.cfg_path, os.path.join(wandb.run.dir, "config.py"))
 
     def interim_test(self):

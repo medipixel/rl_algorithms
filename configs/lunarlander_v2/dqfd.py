@@ -24,8 +24,8 @@ agent = dict(
         per_alpha=0.6,  # openai baselines: 0.6
         per_beta=0.4,
         per_eps=1e-3,
-        per_eps_demo=1.0,
         # fD
+        per_eps_demo=1.0,
         lambda1=1.0,  # N-step return weight
         lambda2=1.0,  # Supervised loss weight
         # lambda3 = weight_decay (l2 regularization weight)
