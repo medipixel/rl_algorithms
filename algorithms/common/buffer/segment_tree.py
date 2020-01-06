@@ -19,7 +19,7 @@ class SegmentTree:
     """
 
     def __init__(self, capacity: int, operation: Callable, init_value: float):
-        """Initialization.
+        """Initialize.
 
         Args:
             capacity (int)
@@ -86,7 +86,7 @@ class SumSegmentTree(SegmentTree):
     """
 
     def __init__(self, capacity: int):
-        """Initialization.
+        """Initialize.
 
         Args:
             capacity (int)
@@ -127,7 +127,7 @@ class MinSegmentTree(SegmentTree):
     """
 
     def __init__(self, capacity: int):
-        """Initialization.
+        """Initialize.
 
         Args:
             capacity (int)

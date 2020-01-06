@@ -34,7 +34,6 @@ class BCSACAgent(SACAgent):
         desired_state (np.ndarray): desired state of current episode
         memory (ReplayBuffer): replay memory
         demo_memory (ReplayBuffer): replay memory for demo
-        lambda1 (float): proportion of policy loss
         lambda2 (float): proportion of BC loss
 
     """
@@ -42,23 +41,16 @@ class BCSACAgent(SACAgent):
     # pylint: disable=attribute-defined-outside-init
     def _initialize(self):
         """Initialize non-common things."""
-        self.demo_batch_size = self.params.demo_batch_size
-        self.lambda1 = self.params.lambda1
-        self.lambda2 = self.params.lambda2
-        self.use_her = self.params.use_her
-        self.success_score = self.params.success_score
-        self.desired_states_from_demo = self.params.desired_states_from_demo
-
         # load demo replay memory
         with open(self.args.demo_path, "rb") as f:
             demo = list(pickle.load(f))
 
         # HER
-        if self.use_her:
-            self.her = build_her(self.params.her)
+        if self.hyper_params.use_her:
+            self.her = build_her(self.hyper_params.her)
             print(f"[INFO] Build {str(self.her)}.")
 
-            if self.desired_states_from_demo:
+            if self.hyper_params.desired_states_from_demo:
                 self.her.fetch_desired_states_from_demo(demo)
 
             self.transitions_epi: list = list()
@@ -72,18 +64,18 @@ class BCSACAgent(SACAgent):
 
         if not self.args.test:
             # Replay buffers
-            self.demo_memory = ReplayBuffer(len(demo), self.demo_batch_size)
+            demo_batch_size = self.hyper_params.demo_batch_size
+            self.demo_memory = ReplayBuffer(len(demo), demo_batch_size)
             self.demo_memory.extend(demo)
 
-            self.memory = ReplayBuffer(self.buffer_size, self.batch_size)
+            self.memory = ReplayBuffer(self.hyper_params.buffer_size, demo_batch_size)
 
             # set hyper parameters
-            self.lambda1 = self.lambda1
-            self.lambda2 = self.lambda2 / self.demo_batch_size
+            self.lambda2 = 1.0 / demo_batch_size
 
     def _preprocess_state(self, state: np.ndarray) -> torch.Tensor:
         """Preprocess state so that actor selects an action."""
-        if self.use_her:
+        if self.hyper_params.use_her:
             self.desired_state = self.her.get_desired_state()
             state = np.concatenate((state, self.desired_state), axis=-1)
         state = torch.FloatTensor(state).to(device)
@@ -91,13 +83,15 @@ class BCSACAgent(SACAgent):
 
     def _add_transition_to_memory(self, transition: Tuple[np.ndarray, ...]):
         """Add 1 step and n step transitions to memory."""
-        if self.use_her:
+        if self.hyper_params.use_her:
             self.transitions_epi.append(transition)
             done = transition[-1] or self.episode_step == self.args.max_episode_steps
             if done:
                 # insert generated transitions if the episode is done
                 transitions = self.her.generate_transitions(
-                    self.transitions_epi, self.desired_state, self.success_score,
+                    self.transitions_epi,
+                    self.desired_state,
+                    self.hyper_params.success_score,
                 )
                 self.memory.extend(transitions)
                 self.transitions_epi.clear()
@@ -116,7 +110,7 @@ class BCSACAgent(SACAgent):
         pred_actions, _, _, _, _ = self.actor(demo_states)
 
         # train alpha
-        if self.auto_entropy_tuning:
+        if self.hyper_params.auto_entropy_tuning:
             alpha_loss = (
                 -self.log_alpha * (log_prob + self.target_entropy).detach()
             ).mean()
@@ -128,14 +122,14 @@ class BCSACAgent(SACAgent):
             alpha = self.log_alpha.exp()
         else:
             alpha_loss = torch.zeros(1)
-            alpha = self.w_entropy
+            alpha = self.hyper_params.w_entropy
 
         # Q function loss
         masks = 1 - dones
         q_1_pred = self.qf_1(states, actions)
         q_2_pred = self.qf_2(states, actions)
         v_target = self.vf_target(next_states)
-        q_target = rewards + self.gamma * v_target * masks
+        q_target = rewards + self.hyper_params.gamma * v_target * masks
         qf_1_loss = F.mse_loss(q_1_pred, q_target.detach())
         qf_2_loss = F.mse_loss(q_2_pred, q_target.detach())
 
@@ -161,7 +155,7 @@ class BCSACAgent(SACAgent):
         vf_loss.backward()
         self.vf_optim.step()
 
-        if self.update_step % self.policy_update_freq == 0:
+        if self.update_step % self.hyper_params.policy_update_freq == 0:
             # bc loss
             qf_mask = torch.gt(
                 self.qf_1(demo_states, demo_actions),
@@ -180,13 +174,13 @@ class BCSACAgent(SACAgent):
             # actor loss
             advantage = q_pred - v_pred.detach()
             actor_loss = (alpha * log_prob - advantage).mean()
-            actor_loss = self.lambda1 * actor_loss + self.lambda2 * bc_loss
+            actor_loss = self.hyper_params.lambda1 * actor_loss + self.lambda2 * bc_loss
 
             # regularization
             if not self.is_discrete:  # iff the action is continuous
-                mean_reg = self.w_mean_reg * mu.pow(2).mean()
-                std_reg = self.w_std_reg * std.pow(2).mean()
-                pre_activation_reg = self.w_pre_activation_reg * (
+                mean_reg = self.hyper_params.w_mean_reg * mu.pow(2).mean()
+                std_reg = self.hyper_params.w_std_reg * std.pow(2).mean()
+                pre_activation_reg = self.hyper_params.w_pre_activation_reg * (
                     pre_tanh_value.pow(2).sum(dim=-1).mean()
                 )
                 actor_reg = mean_reg + std_reg + pre_activation_reg
@@ -200,7 +194,7 @@ class BCSACAgent(SACAgent):
             self.actor_optim.step()
 
             # update target networks
-            common_utils.soft_update(self.vf, self.vf_target, self.tau)
+            common_utils.soft_update(self.vf, self.vf_target, self.hyper_params.tau)
         else:
             actor_loss = torch.zeros(1)
             n_qf_mask = 0

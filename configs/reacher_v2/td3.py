@@ -6,7 +6,7 @@
 
 agent = dict(
     type="TD3Agent",
-    params=dict(
+    hyper_params=dict(
         gamma=0.95,
         tau=5e-3,
         buffer_size=int(1e6),

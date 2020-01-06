@@ -7,7 +7,6 @@
 """
 
 import argparse
-import os
 from typing import Tuple
 
 import gym
@@ -33,6 +32,12 @@ class PPOAgent(Agent):
 
     Attributes:
         env (gym.Env): openAI Gym environment
+        args (argparse.Namespace): arguments including hyperparameters and training settings
+        hyper_params (ConfigDict): hyper-parameters
+        network_cfg (ConfigDict): config of network for training agent
+        optim_cfg (ConfigDict): config of optimizer
+        state_dim (int): state size of env
+        action_dim (int): action size of env
         actor (nn.Module): policy gradient model to select actions
         critic (nn.Module): policy gradient model to predict values
         actor_optim (Optimizer): optimizer for training actor
@@ -45,6 +50,7 @@ class PPOAgent(Agent):
         masks (list): memory for masks
         log_probs (list): memory for log_probs
         i_episode (int): current episode number
+        epsilon (float): value for clipping loss
 
     """
 
@@ -53,11 +59,11 @@ class PPOAgent(Agent):
         env: gym.Env,  # for testing
         args: argparse.Namespace,
         log_cfg: ConfigDict,
-        params: ConfigDict,
+        hyper_params: ConfigDict,
         network_cfg: ConfigDict,
         optim_cfg: ConfigDict,
     ):
-        """Initialization.
+        """Initialize.
 
         Args:
             env (gym.Env): openAI Gym environment
@@ -65,11 +71,11 @@ class PPOAgent(Agent):
 
         """
         env_gen = env_generator(env.spec.id, args)
-        env_multi = make_envs(env_gen, n_envs=params.n_workers)
+        env_multi = make_envs(env_gen, n_envs=hyper_params.n_workers)
 
         Agent.__init__(self, env, args, log_cfg)
 
-        self.episode_steps = np.zeros(params.n_workers, dtype=np.int)
+        self.episode_steps = np.zeros(hyper_params.n_workers, dtype=np.int)
         self.states: list = []
         self.actions: list = []
         self.rewards: list = []
@@ -78,21 +84,7 @@ class PPOAgent(Agent):
         self.log_probs: list = []
         self.i_episode = 0
 
-        self.gamma = params.gamma
-        self.batch_size = params.batch_size
-        self.initial_random_action = params.initial_random_action
-        self.lambda_ = params.lambda_
-        self.epsilon = params.epsilon
-        self.min_epsilon = params.min_epsilon
-        self.epsilon_decay_period = params.epsilon_decay_period
-        self.w_value = params.w_value
-        self.w_entropy = params.w_entropy
-        self.gradient_clip_ac = params.gradient_clip_ac
-        self.gradient_clip_cr = params.gradient_clip_cr
-        self.epoch = params.epoch
-        self.rollout_len = params.rollout_len
-        self.use_clipped_value_loss = params.use_clipped_value_loss
-        self.standardize_advantage = params.standardize_advantage
+        self.hyper_params = hyper_params
         self.network_cfg = network_cfg
         self.optim_cfg = optim_cfg
 
@@ -101,6 +93,8 @@ class PPOAgent(Agent):
 
         self.state_dim = self.env.observation_space.shape[0]
         self.action_dim = self.env.action_space.shape[0]
+
+        self.epsilon = hyper_params.max_epsilon
 
         self._init_network()
 
@@ -134,7 +128,7 @@ class PPOAgent(Agent):
         )
 
         # load model parameters
-        if self.args.load_from is not None and os.path.exists(self.args.load_from):
+        if self.args.load_from is not None:
             self.load_params(self.args.load_from)
 
     def select_action(self, state: np.ndarray) -> torch.Tensor:
@@ -178,7 +172,12 @@ class PPOAgent(Agent):
         next_value = self.critic(next_state)
 
         returns = ppo_utils.compute_gae(
-            next_value, self.rewards, self.masks, self.values
+            next_value,
+            self.rewards,
+            self.masks,
+            self.values,
+            self.hyper_params.gamma,
+            self.hyper_params.tau,
         )
 
         states = torch.cat(self.states)
@@ -192,14 +191,14 @@ class PPOAgent(Agent):
             actions = actions.unsqueeze(1)
             log_probs = log_probs.unsqueeze(1)
 
-        if self.standardize_advantage:
+        if self.hyper_params.standardize_advantage:
             advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-7)
 
         actor_losses, critic_losses, total_losses = [], [], []
 
         for state, action, old_value, old_log_prob, return_, adv in ppo_utils.ppo_iter(
-            self.epoch,
-            self.batch_size,
+            self.hyper_params.epoch,
+            self.hyper_params.batch_size,
             states,
             actions,
             values,
@@ -221,7 +220,7 @@ class PPOAgent(Agent):
 
             # critic_loss
             value = self.critic(state)
-            if self.use_clipped_value_loss:
+            if self.hyper_params.use_clipped_value_loss:
                 value_pred_clipped = old_value + torch.clamp(
                     (value - old_value), -self.epsilon, self.epsilon
                 )
@@ -235,20 +234,24 @@ class PPOAgent(Agent):
             entropy = dist.entropy().mean()
 
             # total_loss
-            total_loss = (
-                actor_loss + self.w_value * critic_loss - self.w_entropy * entropy
-            )
+            w_value = self.hyper_params.w_value
+            w_entropy = self.hyper_params.w_entropy
+
+            total_loss = actor_loss + w_value * critic_loss - w_entropy * entropy
 
             # train critic
+            gradient_clip_ac = self.hyper_params.gradient_clip_ac
+            gradient_clip_cr = self.hyper_params.gradient_clip_cr
+
             self.critic_optim.zero_grad()
             total_loss.backward(retain_graph=True)
-            nn.utils.clip_grad_norm_(self.critic.parameters(), self.gradient_clip_ac)
+            nn.utils.clip_grad_norm_(self.critic.parameters(), gradient_clip_ac)
             self.critic_optim.step()
 
             # train actor
             self.actor_optim.zero_grad()
             total_loss.backward()
-            nn.utils.clip_grad_norm_(self.critic.parameters(), self.gradient_clip_cr)
+            nn.utils.clip_grad_norm_(self.critic.parameters(), gradient_clip_cr)
             self.actor_optim.step()
 
             actor_losses.append(actor_loss.item())
@@ -266,19 +269,17 @@ class PPOAgent(Agent):
 
     def decay_epsilon(self, t: int = 0):
         """Decay epsilon until reaching the minimum value."""
-        max_epsilon = self.epsilon
-        min_epsilon = self.min_epsilon
-        epsilon_decay_period = self.epsilon_decay_period
+        max_epsilon = self.hyper_params.max_epsilon
+        min_epsilon = self.hyper_params.min_epsilon
+        epsilon_decay_period = self.hyper_params.epsilon_decay_period
 
-        self.epsilon = max_epsilon - (max_epsilon - min_epsilon) * min(
+        self.epsilon = self.epsilon - (max_epsilon - min_epsilon) * min(
             1.0, t / (epsilon_decay_period + 1e-7)
         )
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
-        if not os.path.exists(path):
-            print("[ERROR] the input path does not exist. ->", path)
-            return
+        Agent.load_params(self, path)
 
         params = torch.load(path)
         self.actor.load_state_dict(params["actor_state_dict"])
@@ -335,7 +336,7 @@ class PPOAgent(Agent):
         state = self.env.reset()
 
         while self.i_episode <= self.args.episode_num:
-            for _ in range(self.rollout_len):
+            for _ in range(self.hyper_params.rollout_len):
                 if self.args.render and self.i_episode >= self.args.render_after:
                     self.env.render()
 

@@ -44,7 +44,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         epsilon_d: float = 1.0,
         demo: List[Tuple[np.ndarray, np.ndarray, float, np.ndarray, bool]] = None,
     ):
-        """Initialization.
+        """Initialize.
 
         Args:
             buffer_size (int): size of replay buffer for experience

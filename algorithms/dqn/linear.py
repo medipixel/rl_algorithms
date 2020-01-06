@@ -34,7 +34,7 @@ class NoisyLinear(nn.Module):
     """
 
     def __init__(self, in_features: int, out_features: int, std_init: float = 0.5):
-        """Initialization."""
+        """Initialize."""
         super(NoisyLinear, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
@@ -97,7 +97,7 @@ class NoisyLinearConstructor:
     """
 
     def __init__(self, std_init: float = 0.5):
-        """Initialization."""
+        """Initialize."""
         self.std_init = std_init
 
     def __call__(self, in_features: int, out_features: int) -> NoisyLinear:

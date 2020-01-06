@@ -26,21 +26,21 @@ class PERDDPGAgent(DDPGAgent):
 
     Attributes:
         memory (PrioritizedReplayBuffer): replay memory
-        beta (float): beta parameter for prioritized replay buffer
+        per_beta (float): beta parameter for prioritized replay buffer
 
     """
 
     # pylint: disable=attribute-defined-outside-init
     def _initialize(self):
         """Initialize non-common things."""
-        self.per_alpha = self.params.per_alpha
-        self.per_beta = self.params.per_beta
-        self.per_eps = self.params.per_eps
+        self.per_beta = self.hyper_params.per_beta
 
         if not self.args.test:
             # replay memory
             self.memory = PrioritizedReplayBuffer(
-                self.buffer_size, self.batch_size, alpha=self.per_alpha,
+                self.hyper_params.buffer_size,
+                self.hyper_params.batch_size,
+                alpha=self.hyper_params.per_alpha,
             )
 
     def update_model(self) -> Tuple[torch.Tensor, ...]:
@@ -53,11 +53,13 @@ class PERDDPGAgent(DDPGAgent):
         masks = 1 - dones
         next_actions = self.actor_target(next_states)
         next_values = self.critic_target(torch.cat((next_states, next_actions), dim=-1))
-        curr_returns = rewards + self.gamma * next_values * masks
+        curr_returns = rewards + self.hyper_params.gamma * next_values * masks
         curr_returns = curr_returns.to(device).detach()
 
         # train critic
-        gradient_clip_cr = self.gradient_clip_cr
+        gradient_clip_ac = self.hyper_params.gradient_clip_ac
+        gradient_clip_cr = self.hyper_params.gradient_clip_cr
+
         values = self.critic(torch.cat((states, actions), dim=-1))
         critic_loss_element_wise = (values - curr_returns).pow(2)
         critic_loss = torch.mean(critic_loss_element_wise * weights)
@@ -67,7 +69,6 @@ class PERDDPGAgent(DDPGAgent):
         self.critic_optim.step()
 
         # train actor
-        gradient_clip_ac = self.gradient_clip_ac
         actions = self.actor(states)
         actor_loss_element_wise = -self.critic(torch.cat((states, actions), dim=-1))
         actor_loss = torch.mean(actor_loss_element_wise * weights)
@@ -77,12 +78,12 @@ class PERDDPGAgent(DDPGAgent):
         self.actor_optim.step()
 
         # update target networks
-        common_utils.soft_update(self.actor, self.actor_target, self.tau)
-        common_utils.soft_update(self.critic, self.critic_target, self.tau)
+        common_utils.soft_update(self.actor, self.actor_target, self.hyper_params.tau)
+        common_utils.soft_update(self.critic, self.critic_target, self.hyper_params.tau)
 
         # update priorities in PER
         new_priorities = critic_loss_element_wise
-        new_priorities = new_priorities.data.cpu().numpy() + self.per_eps
+        new_priorities = new_priorities.data.cpu().numpy() + self.hyper_params.per_eps
         self.memory.update_priorities(indices, new_priorities)
 
         # increase beta

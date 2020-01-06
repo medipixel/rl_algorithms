@@ -6,7 +6,7 @@
 
 agent = dict(
     type="A2CAgent",
-    params=dict(
+    hyper_params=dict(
         gamma=0.99,
         w_entropy=1e-3,  # multiple learning updates
         gradient_clip_ac=0.1,

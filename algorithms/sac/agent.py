@@ -8,7 +8,6 @@
 """
 
 import argparse
-import os
 import time
 from typing import Tuple
 
@@ -34,6 +33,13 @@ class SACAgent(Agent):
     """SAC agent interacting with environment.
 
     Attrtibutes:
+        env (gym.Env): openAI Gym environment
+        args (argparse.Namespace): arguments including hyperparameters and training settings
+        hyper_params (ConfigDict): hyper-parameters
+        network_cfg (ConfigDict): config of network for training agent
+        optim_cfg (ConfigDict): config of optimizer
+        state_dim (int): state size of env
+        action_dim (int): action size of env
         memory (ReplayBuffer): replay memory
         actor (nn.Module): actor model to select actions
         actor_target (nn.Module): target actor model to select actions
@@ -45,14 +51,13 @@ class SACAgent(Agent):
         critic_optim1 (Optimizer): optimizer for training critic_1
         critic_optim2 (Optimizer): optimizer for training critic_2
         curr_state (np.ndarray): temporary storage of the current state
-        target_entropy (int): desired entropy used for the inequality constraint
-        beta (float): beta parameter for prioritized replay buffer
-        alpha (torch.Tensor): weight for entropy
-        alpha_optim (Optimizer): optimizer for alpha
         total_step (int): total step numbers
         episode_step (int): step number of the current episode
         update_step (int): step number of updates
         i_episode (int): current episode number
+        target_entropy (int): desired entropy used for the inequality constraint
+        log_alpha (torch.Tensor): weight for entropy
+        alpha_optim (Optimizer): optimizer for alpha
 
     """
 
@@ -61,11 +66,11 @@ class SACAgent(Agent):
         env: gym.Env,
         args: argparse.Namespace,
         log_cfg: ConfigDict,
-        params: ConfigDict,
+        hyper_params: ConfigDict,
         network_cfg: ConfigDict,
         optim_cfg: ConfigDict,
     ):
-        """Initialization.
+        """Initialize.
 
         Args:
             env (gym.Env): openAI Gym environment
@@ -80,20 +85,7 @@ class SACAgent(Agent):
         self.update_step = 0
         self.i_episode = 0
 
-        self.params = params
-        self.gamma = params.gamma
-        self.tau = params.tau
-        self.buffer_size = params.buffer_size
-        self.batch_size = params.batch_size
-        self.initial_random_action = params.initial_random_action
-
-        self.multiple_learn = params.multiple_learn
-        self.policy_update_freq = params.policy_update_freq
-        self.w_entropy = params.w_entropy
-        self.w_mean_reg = params.w_mean_reg
-        self.w_std_reg = params.w_std_reg
-        self.w_pre_activation_reg = params.w_pre_activation_reg
-        self.auto_entropy_tuning = params.auto_entropy_tuning
+        self.hyper_params = hyper_params
         self.network_cfg = network_cfg
         self.optim_cfg = optim_cfg
 
@@ -102,9 +94,8 @@ class SACAgent(Agent):
 
         # target entropy
         target_entropy = -np.prod((self.action_dim,)).item()  # heuristic
-
         # automatic entropy tuning
-        if self.auto_entropy_tuning:
+        if hyper_params.auto_entropy_tuning:
             self.target_entropy = target_entropy
             self.log_alpha = torch.zeros(1, requires_grad=True, device=device)
             self.alpha_optim = optim.Adam([self.log_alpha], lr=optim_cfg.lr_entropy)
@@ -117,7 +108,9 @@ class SACAgent(Agent):
         """Initialize non-common things."""
         if not self.args.test:
             # replay memory
-            self.memory = ReplayBuffer(self.buffer_size, self.batch_size)
+            self.memory = ReplayBuffer(
+                self.hyper_params.buffer_size, self.hyper_params.batch_size
+            )
 
     # pylint: disable=attribute-defined-outside-init
     def _init_network(self):
@@ -177,7 +170,7 @@ class SACAgent(Agent):
         )
 
         # load the optimizer and model parameters
-        if self.args.load_from is not None and os.path.exists(self.args.load_from):
+        if self.args.load_from is not None:
             self.load_params(self.args.load_from)
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
@@ -186,7 +179,10 @@ class SACAgent(Agent):
         state = self._preprocess_state(state)
 
         # if initial random action should be conducted
-        if self.total_step < self.initial_random_action and not self.args.test:
+        if (
+            self.total_step < self.hyper_params.initial_random_action
+            and not self.args.test
+        ):
             return np.array(self.env.action_space.sample())
 
         if self.args.test and not self.is_discrete:
@@ -229,7 +225,7 @@ class SACAgent(Agent):
         new_actions, log_prob, pre_tanh_value, mu, std = self.actor(states)
 
         # train alpha
-        if self.auto_entropy_tuning:
+        if self.hyper_params.auto_entropy_tuning:
             alpha_loss = (
                 -self.log_alpha * (log_prob + self.target_entropy).detach()
             ).mean()
@@ -241,14 +237,14 @@ class SACAgent(Agent):
             alpha = self.log_alpha.exp()
         else:
             alpha_loss = torch.zeros(1)
-            alpha = self.w_entropy
+            alpha = self.hyper_params.w_entropy
 
         # Q function loss
         masks = 1 - dones
         q_1_pred = self.qf_1(states, actions)
         q_2_pred = self.qf_2(states, actions)
         v_target = self.vf_target(next_states)
-        q_target = rewards + self.gamma * v_target * masks
+        q_target = rewards + self.hyper_params.gamma * v_target * masks
         qf_1_loss = F.mse_loss(q_1_pred, q_target.detach())
         qf_2_loss = F.mse_loss(q_2_pred, q_target.detach())
 
@@ -274,16 +270,16 @@ class SACAgent(Agent):
         vf_loss.backward()
         self.vf_optim.step()
 
-        if self.update_step % self.policy_update_freq == 0:
+        if self.update_step % self.hyper_params.policy_update_freq == 0:
             # actor loss
             advantage = q_pred - v_pred.detach()
             actor_loss = (alpha * log_prob - advantage).mean()
 
             # regularization
             if not self.is_discrete:  # iff the action is continuous
-                mean_reg = self.w_mean_reg * mu.pow(2).mean()
-                std_reg = self.w_std_reg * std.pow(2).mean()
-                pre_activation_reg = self.w_pre_activation_reg * (
+                mean_reg = self.hyper_params.w_mean_reg * mu.pow(2).mean()
+                std_reg = self.hyper_params.w_std_reg * std.pow(2).mean()
+                pre_activation_reg = self.hyper_params.w_pre_activation_reg * (
                     pre_tanh_value.pow(2).sum(dim=-1).mean()
                 )
                 actor_reg = mean_reg + std_reg + pre_activation_reg
@@ -297,7 +293,7 @@ class SACAgent(Agent):
             self.actor_optim.step()
 
             # update target networks
-            common_utils.soft_update(self.vf, self.vf_target, self.tau)
+            common_utils.soft_update(self.vf, self.vf_target, self.hyper_params.tau)
         else:
             actor_loss = torch.zeros(1)
 
@@ -311,9 +307,7 @@ class SACAgent(Agent):
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
-        if not os.path.exists(path):
-            print("[ERROR] the input path does not exist. ->", path)
-            return
+        Agent.load_params(self, path)
 
         params = torch.load(path)
         self.actor.load_state_dict(params["actor"])
@@ -326,7 +320,7 @@ class SACAgent(Agent):
         self.qf_2_optim.load_state_dict(params["qf_2_optim"])
         self.vf_optim.load_state_dict(params["vf_optim"])
 
-        if self.auto_entropy_tuning:
+        if self.hyper_params.auto_entropy_tuning:
             self.alpha_optim.load_state_dict(params["alpha_optim"])
 
         print("[INFO] loaded the model and optimizer from", path)
@@ -345,7 +339,7 @@ class SACAgent(Agent):
             "vf_optim": self.vf_optim.state_dict(),
         }
 
-        if self.auto_entropy_tuning:
+        if self.hyper_params.auto_entropy_tuning:
             params["alpha_optim"] = self.alpha_optim.state_dict()
 
         Agent.save_params(self, params, n_episode)
@@ -431,8 +425,8 @@ class SACAgent(Agent):
                 score += reward
 
                 # training
-                if len(self.memory) >= self.batch_size:
-                    for _ in range(self.multiple_learn):
+                if len(self.memory) >= self.hyper_params.batch_size:
+                    for _ in range(self.hyper_params.multiple_update):
                         loss = self.update_model()
                         loss_episode.append(loss)  # for logging
 
@@ -446,7 +440,7 @@ class SACAgent(Agent):
                     self.i_episode,
                     avg_loss,
                     score,
-                    self.policy_update_freq,
+                    self.hyper_params.policy_update_freq,
                     avg_time_cost,
                 )
 

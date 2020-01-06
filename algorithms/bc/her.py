@@ -34,7 +34,7 @@ class LunarLanderContinuousHER(HER):
     """
 
     def __init__(self, reward_func: RewardFn = L1DistanceRewardFn):
-        """Initialization."""
+        """Initialize."""
         HER.__init__(self, reward_func=reward_func)
         self.is_goal_in_state = False
 
@@ -89,7 +89,7 @@ class ReacherHER(HER):
     """HER for Reacher-v2 environment."""
 
     def __init__(self, reward_func: RewardFn = ReacherRewardFn):
-        """Initialization."""
+        """Initialize."""
         HER.__init__(self, reward_func=reward_func)
         self.is_goal_in_state = True
 

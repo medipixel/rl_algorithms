@@ -14,7 +14,6 @@
 """
 
 import argparse
-import os
 import time
 from typing import Tuple
 
@@ -41,18 +40,25 @@ class DQNAgent(Agent):
     """DQN interacting with environment.
 
     Attribute:
+        env (gym.Env): openAI Gym environment
+        args (argparse.Namespace): arguments including hyperparameters and training settings
+        hyper_params (ConfigDict): hyper-parameters
+        network_cfg (ConfigDict): config of network for training agent
+        optim_cfg (ConfigDict): config of optimizer
+        state_dim (int): state size of env
+        action_dim (int): action size of env
         memory (PrioritizedReplayBuffer): replay memory
         dqn (nn.Module): actor model to select actions
         dqn_target (nn.Module): target actor model to select actions
         dqn_optim (Optimizer): optimizer for training actor
-        params (dict): hyper-parameters
-        beta (float): beta parameter for prioritized replay buffer
         curr_state (np.ndarray): temporary storage of the current state
         total_step (int): total step number
         episode_step (int): step number of the current episode
-        epsilon (float): parameter for epsilon greedy policy
         i_episode (int): current episode number
+        epsilon (float): parameter for epsilon greedy policy
         n_step_buffer (deque): n-size buffer to calculate n-step returns
+        per_beta (float): beta parameter for prioritized replay buffer
+        use_conv (bool): whether or not to use convolution layer
         use_n_step (bool): whether or not to use n-step returns
 
     """
@@ -62,18 +68,11 @@ class DQNAgent(Agent):
         env: gym.Env,
         args: argparse.Namespace,
         log_cfg: ConfigDict,
-        params: ConfigDict,
+        hyper_params: ConfigDict,
         network_cfg: ConfigDict,
         optim_cfg: ConfigDict,
     ):
-        """Initialization.
-
-        Args:
-            env (gym.Env): openAI Gym environment
-            args (argparse.Namespace): arguments including hyperparameters and training settings
-            params (dict): hyper-parameters
-
-        """
+        """Initialize."""
         Agent.__init__(self, env, args, log_cfg)
 
         self.curr_state = np.zeros(1)
@@ -81,41 +80,23 @@ class DQNAgent(Agent):
         self.total_step = 0
         self.i_episode = 0
 
-        self.params = params
-        self.gamma = params.gamma
-        self.tau = params.tau
-        self.batch_size = params.batch_size
-        self.buffer_size = params.buffer_size
-        self.update_starts_from = params.update_starts_from
-
-        self.multiple_learn = params.multiple_learn
-        self.train_freq = params.train_freq
-        self.gradient_clip = params.gradient_clip
-        self.n_step = params.n_step
-
-        self.w_n_step = params.w_n_step
-        self.w_q_reg = params.w_q_reg
-
-        self.per_alpha = params.per_alpha
-        self.per_beta = params.per_beta
-        self.per_eps = params.per_eps
-
+        self.hyper_params = hyper_params
         self.network_cfg = network_cfg
         self.optim_cfg = optim_cfg
 
         self.state_dim = self.env.observation_space.shape
         self.action_dim = self.env.action_space.n
 
+        self.per_beta = hyper_params.per_beta
         self.use_conv = len(self.state_dim) > 1
-        self.use_n_step = self.n_step > 1
-        self.use_dist_q = params.use_dist_q
-        self.use_noisy_net = params.use_noisy_net
-        if self.use_noisy_net:
-            self.params.max_epsilon = 0.0
-            self.params.min_epsilon = 0.0
+        self.use_n_step = hyper_params.n_step > 1
+
+        if hyper_params.use_noisy_net:
+            self.hyper_params.max_epsilon = 0.0
+            self.hyper_params.min_epsilon = 0.0
             self.epsilon = 0.0
         else:
-            self.epsilon = self.params.max_epsilon
+            self.epsilon = self.hyper_params.max_epsilon
 
         self._initialize()
         self._init_network()
@@ -126,13 +107,17 @@ class DQNAgent(Agent):
         if not self.args.test:
             # replay memory for a single step
             self.memory = PrioritizedReplayBuffer(
-                self.buffer_size, self.batch_size, alpha=self.per_alpha,
+                self.hyper_params.buffer_size,
+                self.hyper_params.batch_size,
+                alpha=self.hyper_params.per_alpha,
             )
 
             # replay memory for multi-steps
             if self.use_n_step:
                 self.memory_n = ReplayBuffer(
-                    self.buffer_size, n_step=self.n_step, gamma=self.gamma,
+                    self.hyper_params.buffer_size,
+                    n_step=self.hyper_params.n_step,
+                    gamma=self.hyper_params.gamma,
                 )
 
     # pylint: disable=attribute-defined-outside-init
@@ -145,32 +130,33 @@ class DQNAgent(Agent):
         if self.use_conv:
             # create FC
             fc_model = dqn_utils.get_fc_model(
-                self.params,
+                self.hyper_params,
                 fc_input_size,
                 self.action_dim,
                 self.network_cfg.hidden_sizes,
             )
             fc_model2 = dqn_utils.get_fc_model(
-                self.params,
+                self.hyper_params,
                 fc_input_size,
                 self.action_dim,
                 self.network_cfg.hidden_sizes,
             )
 
             # create CNN
-            self.dqn = dqn_utils.get_cnn_model(self.use_dist_q, fc_model)
-            self.dqn_target = dqn_utils.get_cnn_model(self.use_dist_q, fc_model2)
+            use_dist_q = self.hyper_params.use_dist_q
+            self.dqn = dqn_utils.get_cnn_model(use_dist_q, fc_model)
+            self.dqn_target = dqn_utils.get_cnn_model(use_dist_q, fc_model2)
 
         else:
             # create FC
             self.dqn = dqn_utils.get_fc_model(
-                self.params,
+                self.hyper_params,
                 fc_input_size,
                 self.action_dim,
                 self.network_cfg.hidden_sizes,
             )
             self.dqn_target = dqn_utils.get_fc_model(
-                self.params,
+                self.hyper_params,
                 fc_input_size,
                 self.action_dim,
                 self.network_cfg.hidden_sizes,
@@ -187,7 +173,7 @@ class DQNAgent(Agent):
         )
 
         # load the optimizer and model parameters
-        if self.args.load_from is not None and os.path.exists(self.args.load_from):
+        if self.args.load_from is not None:
             self.load_params(self.args.load_from)
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
@@ -241,27 +227,27 @@ class DQNAgent(Agent):
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Return element-wise dqn loss and Q-values."""
 
-        if self.use_dist_q == "IQN":
+        if self.hyper_params.use_dist_q == "IQN":
             return dqn_utils.calculate_iqn_loss(
                 model=self.dqn,
                 target_model=self.dqn_target,
                 experiences=experiences,
                 gamma=gamma,
-                batch_size=self.batch_size,
-                n_tau_samples=self.params.n_tau_samples,
-                n_tau_prime_samples=self.params.n_tau_prime_samples,
-                kappa=self.params.kappa,
+                batch_size=self.hyper_params.batch_size,
+                n_tau_samples=self.hyper_params.n_tau_samples,
+                n_tau_prime_samples=self.hyper_params.n_tau_prime_samples,
+                kappa=self.hyper_params.kappa,
             )
-        elif self.use_dist_q == "C51":
+        elif self.hyper_params.use_dist_q == "C51":
             return dqn_utils.calculate_c51_loss(
                 model=self.dqn,
                 target_model=self.dqn_target,
                 experiences=experiences,
                 gamma=gamma,
-                batch_size=self.batch_size,
-                v_min=self.params.v_min,
-                v_max=self.params.v_max,
-                atom_size=self.params.atoms,
+                batch_size=self.hyper_params.batch_size,
+                v_min=self.hyper_params.v_min,
+                v_max=self.hyper_params.v_max,
+                atom_size=self.hyper_params.atoms,
             )
         else:
             return dqn_utils.calculate_dqn_loss(
@@ -276,47 +262,47 @@ class DQNAgent(Agent):
         # 1 step loss
         experiences_1 = self.memory.sample(self.per_beta)
         weights, indices = experiences_1[-3:-1]
-        gamma = self.gamma
+        gamma = self.hyper_params.gamma
         dq_loss_element_wise, q_values = self._get_dqn_loss(experiences_1, gamma)
         dq_loss = torch.mean(dq_loss_element_wise * weights)
 
         # n step loss
         if self.use_n_step:
             experiences_n = self.memory_n.sample(indices)
-            gamma = self.gamma ** self.n_step
+            gamma = self.hyper_params.gamma ** self.hyper_params.n_step
             dq_loss_n_element_wise, q_values_n = self._get_dqn_loss(
                 experiences_n, gamma
             )
 
             # to update loss and priorities
             q_values = 0.5 * (q_values + q_values_n)
-            dq_loss_element_wise += dq_loss_n_element_wise * self.w_n_step
+            dq_loss_element_wise += dq_loss_n_element_wise * self.hyper_params.w_n_step
             dq_loss = torch.mean(dq_loss_element_wise * weights)
 
         # q_value regularization
-        q_regular = torch.norm(q_values, 2).mean() * self.w_q_reg
+        q_regular = torch.norm(q_values, 2).mean() * self.hyper_params.w_q_reg
 
         # total loss
         loss = dq_loss + q_regular
 
         self.dqn_optim.zero_grad()
         loss.backward()
-        clip_grad_norm_(self.dqn.parameters(), self.gradient_clip)
+        clip_grad_norm_(self.dqn.parameters(), self.hyper_params.gradient_clip)
         self.dqn_optim.step()
 
         # update target networks
-        common_utils.soft_update(self.dqn, self.dqn_target, self.tau)
+        common_utils.soft_update(self.dqn, self.dqn_target, self.hyper_params.tau)
 
         # update priorities in PER
         loss_for_prior = dq_loss_element_wise.detach().cpu().numpy()
-        new_priorities = loss_for_prior + self.per_eps
+        new_priorities = loss_for_prior + self.hyper_params.per_eps
         self.memory.update_priorities(indices, new_priorities)
 
         # increase beta
         fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)
         self.per_beta = self.per_beta + fraction * (1.0 - self.per_beta)
 
-        if self.use_noisy_net:
+        if self.hyper_params.use_noisy_net:
             self.dqn.reset_noise()
             self.dqn_target.reset_noise()
 
@@ -324,9 +310,7 @@ class DQNAgent(Agent):
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
-        if not os.path.exists(path):
-            print("[ERROR] the input path does not exist. ->", path)
-            return
+        Agent.load_params(self, path)
 
         params = torch.load(path)
         self.dqn.load_state_dict(params["dqn_state_dict"])
@@ -388,9 +372,9 @@ class DQNAgent(Agent):
         self.pretrain()
 
         max_epsilon, min_epsilon, epsilon_decay = (
-            self.params.max_epsilon,
-            self.params.min_epsilon,
-            self.params.epsilon_decay,
+            self.hyper_params.max_epsilon,
+            self.hyper_params.min_epsilon,
+            self.hyper_params.epsilon_decay,
         )
 
         for self.i_episode in range(1, self.args.episode_num + 1):
@@ -411,9 +395,9 @@ class DQNAgent(Agent):
                 self.total_step += 1
                 self.episode_step += 1
 
-                if len(self.memory) >= self.update_starts_from:
-                    if self.total_step % self.train_freq == 0:
-                        for _ in range(self.multiple_learn):
+                if len(self.memory) >= self.hyper_params.update_starts_from:
+                    if self.total_step % self.hyper_params.train_freq == 0:
+                        for _ in range(self.hyper_params.multiple_update):
                             loss = self.update_model()
                             losses.append(loss)  # for logging
 

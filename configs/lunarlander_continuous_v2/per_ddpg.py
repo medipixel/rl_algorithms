@@ -6,13 +6,13 @@
 
 agent = dict(
     type="PERDDPGAgent",
-    params=dict(
+    hyper_params=dict(
         gamma=0.99,
         tau=5e-3,
         buffer_size=int(1e6),
         batch_size=128,
         initial_random_action=int(1e4),
-        multiple_learn=1,  # multiple learning updates
+        multiple_update=1,  # multiple learning updates
         gradient_clip_ac=0.5,
         gradient_clip_cr=1.0,
         # PER

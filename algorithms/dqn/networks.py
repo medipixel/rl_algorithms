@@ -32,7 +32,7 @@ class DuelingMLP(MLP, NoisyMLPHandler):
         linear_layer: nn.Module = nn.Linear,
         init_fn: Callable = init_layer_uniform,
     ):
-        """Initialization."""
+        """Initialize."""
         super(DuelingMLP, self).__init__(
             input_size=input_size,
             output_size=output_size,
@@ -102,7 +102,7 @@ class C51DuelingMLP(MLP, NoisyMLPHandler):
         linear_layer: nn.Module = nn.Linear,
         init_fn: Callable = init_layer_uniform,
     ):
-        """Initialization."""
+        """Initialize."""
         super(C51DuelingMLP, self).__init__(
             input_size=input_size,
             output_size=action_size,
@@ -187,7 +187,7 @@ class IQNMLP(MLP, NoisyMLPHandler):
         linear_layer: nn.Module = nn.Linear,
         init_fn: Callable = init_layer_uniform,
     ):
-        """Initialization."""
+        """Initialize."""
         super(IQNMLP, self).__init__(
             input_size=input_size,
             output_size=output_size,

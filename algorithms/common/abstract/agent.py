@@ -36,7 +36,7 @@ class Agent(ABC):
     """
 
     def __init__(self, env: gym.Env, args: argparse.Namespace, log_cfg: ConfigDict):
-        """Initialization.
+        """Initialize.
 
         Args:
             env (gym.Env): openAI Gym environment
@@ -85,8 +85,11 @@ class Agent(ABC):
         pass
 
     @abstractmethod
-    def load_params(self, *args):
-        pass
+    def load_params(self, path: str):
+        if not os.path.exists(path):
+            raise Exception(
+                f"[ERROR] the input path does not exist. Wrong path: {path}"
+            )
 
     @abstractmethod
     def save_params(self, params: dict, n_episode: int):

@@ -6,19 +6,18 @@
 
 agent = dict(
     type="BCDDPGAgent",
-    params=dict(
+    hyper_params=dict(
         gamma=0.99,
         tau=1e-3,
         buffer_size=int(1e5),
         batch_size=512,
         initial_random_action=int(1e4),
-        multiple_learn=1,  # multiple learning updates
+        multiple_update=1,  # multiple learning updates
         gradient_clip_ac=0.5,
         gradient_clip_cr=0.5,
         # BC
         demo_batch_size=64,
         lambda1=1e-3,
-        lambda2=1.0,
         # HER
         use_her=False,
         her=dict(type="LunarLanderContinuousHER",),

@@ -31,23 +31,17 @@ class DDPGfDAgent(DDPGAgent):
 
     Attributes:
         memory (PrioritizedReplayBuffer): replay memory
-        beta (float): beta parameter for prioritized replay buffer
+        per_beta (float): beta parameter for prioritized replay buffer
+        use_n_step (bool): whether or not to use n-step returns
 
     """
 
     # pylint: disable=attribute-defined-outside-init
     def _initialize(self):
         """Initialize non-common things."""
-        self.n_step = self.params.n_step
-        self.pretrain_step = self.params.pretrain_step
-        self.lambda1 = self.params.lambda1
-        self.lambda3 = self.params.lambda3
-        self.per_alpha = self.params.per_alpha
-        self.per_beta = self.params.per_beta
-        self.per_eps = self.params.per_eps
-        self.per_eps_demo = self.params.per_eps_demo
+        self.per_beta = self.hyper_params.per_beta
 
-        self.use_n_step = self.n_step > 1
+        self.use_n_step = self.hyper_params.n_step > 1
 
         if not self.args.test:
             # load demo replay memory
@@ -56,24 +50,24 @@ class DDPGfDAgent(DDPGAgent):
 
             if self.use_n_step:
                 demos, demos_n_step = common_utils.get_n_step_info_from_demo(
-                    demos, self.n_step, self.gamma
+                    demos, self.hyper_params.n_step, self.hyper_params.gamma
                 )
 
                 # replay memory for multi-steps
                 self.memory_n = ReplayBuffer(
-                    buffer_size=self.buffer_size,
-                    n_step=self.n_step,
-                    gamma=self.gamma,
+                    buffer_size=self.hyper_params.buffer_size,
+                    n_step=self.hyper_params.n_step,
+                    gamma=self.hyper_params.gamma,
                     demo=demos_n_step,
                 )
 
             # replay memory for a single step
             self.memory = PrioritizedReplayBuffer(
-                self.buffer_size,
-                self.batch_size,
+                self.hyper_params.buffer_size,
+                self.hyper_params.batch_size,
                 demo=demos,
-                alpha=self.per_alpha,
-                epsilon_d=self.per_eps_demo,
+                alpha=self.hyper_params.per_alpha,
+                epsilon_d=self.hyper_params.per_eps_demo,
             )
 
     def _add_transition_to_memory(self, transition: Tuple[np.ndarray, ...]):
@@ -113,23 +107,28 @@ class DDPGfDAgent(DDPGAgent):
         experiences_1 = self.memory.sample(self.per_beta)
         states, actions = experiences_1[:2]
         weights, indices, eps_d = experiences_1[-3:]
-        gamma = self.gamma
+        gamma = self.hyper_params.gamma
 
         # train critic
+        gradient_clip_ac = self.hyper_params.gradient_clip_ac
+        gradient_clip_cr = self.hyper_params.gradient_clip_cr
+
         critic_loss_element_wise = self._get_critic_loss(experiences_1, gamma)
         critic_loss = torch.mean(critic_loss_element_wise * weights)
 
         if self.use_n_step:
             experiences_n = self.memory_n.sample(indices)
-            gamma = gamma ** self.n_step
+            gamma = gamma ** self.hyper_params.n_step
             critic_loss_n_element_wise = self._get_critic_loss(experiences_n, gamma)
             # to update loss and priorities
-            critic_loss_element_wise += critic_loss_n_element_wise * self.lambda1
+            critic_loss_element_wise += (
+                critic_loss_n_element_wise * self.hyper_params.lambda1
+            )
             critic_loss = torch.mean(critic_loss_element_wise * weights)
 
         self.critic_optim.zero_grad()
         critic_loss.backward()
-        nn.utils.clip_grad_norm_(self.critic.parameters(), self.gradient_clip_cr)
+        nn.utils.clip_grad_norm_(self.critic.parameters(), gradient_clip_cr)
         self.critic_optim.step()
 
         # train actor
@@ -138,17 +137,17 @@ class DDPGfDAgent(DDPGAgent):
         actor_loss = torch.mean(actor_loss_element_wise * weights)
         self.actor_optim.zero_grad()
         actor_loss.backward()
-        nn.utils.clip_grad_norm_(self.actor.parameters(), self.gradient_clip_ac)
+        nn.utils.clip_grad_norm_(self.actor.parameters(), gradient_clip_ac)
         self.actor_optim.step()
 
         # update target networks
-        common_utils.soft_update(self.actor, self.actor_target, self.tau)
-        common_utils.soft_update(self.critic, self.critic_target, self.tau)
+        common_utils.soft_update(self.actor, self.actor_target, self.hyper_params.tau)
+        common_utils.soft_update(self.critic, self.critic_target, self.hyper_params.tau)
 
         # update priorities
         new_priorities = critic_loss_element_wise
-        new_priorities += self.lambda3 * actor_loss_element_wise.pow(2)
-        new_priorities += self.per_eps
+        new_priorities += self.hyper_params.lambda3 * actor_loss_element_wise.pow(2)
+        new_priorities += self.hyper_params.per_eps
         new_priorities = new_priorities.data.cpu().numpy().squeeze()
         new_priorities += eps_d
         self.memory.update_priorities(indices, new_priorities)
@@ -162,8 +161,9 @@ class DDPGfDAgent(DDPGAgent):
     def pretrain(self):
         """Pretraining steps."""
         pretrain_loss = list()
-        print("[INFO] Pre-Train %d step." % self.pretrain_step)
-        for i_step in range(1, self.pretrain_step + 1):
+        pretrain_step = self.hyper_params.pretrain_step
+        print("[INFO] Pre-Train %d step." % pretrain_step)
+        for i_step in range(1, pretrain_step + 1):
             t_begin = time.time()
             loss = self.update_model()
             t_end = time.time()

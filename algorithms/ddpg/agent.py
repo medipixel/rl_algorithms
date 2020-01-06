@@ -7,7 +7,6 @@
 """
 
 import argparse
-import os
 import time
 from typing import Tuple
 
@@ -35,6 +34,13 @@ class DDPGAgent(Agent):
     """ActorCritic interacting with environment.
 
     Attributes:
+        env (gym.Env): openAI Gym environment
+        args (argparse.Namespace): arguments including hyperparameters and training settings
+        hyper_params (ConfigDict): hyper-parameters
+        network_cfg (ConfigDict): config of network for training agent
+        optim_cfg (ConfigDict): config of optimizer
+        state_dim (int): state size of env
+        action_dim (int): action size of env
         memory (ReplayBuffer): replay memory
         noise (OUNoise): random noise for exploration
         actor (nn.Module): actor model to select actions
@@ -55,18 +61,12 @@ class DDPGAgent(Agent):
         env: gym.Env,
         args: argparse.Namespace,
         log_cfg: ConfigDict,
-        params: ConfigDict,
+        hyper_params: ConfigDict,
         network_cfg: ConfigDict,
         optim_cfg: ConfigDict,
         noise_cfg: ConfigDict,
     ):
-        """Initialization.
-
-        Args:
-            env (gym.Env): openAI Gym environment
-            args (argparse.Namespace): arguments including hyperparameters and training settings
-
-        """
+        """Initialize."""
         Agent.__init__(self, env, args, log_cfg)
 
         self.curr_state = np.zeros((1,))
@@ -74,16 +74,7 @@ class DDPGAgent(Agent):
         self.episode_step = 0
         self.i_episode = 0
 
-        self.params = params
-        self.gamma = params.gamma
-        self.tau = params.tau
-        self.buffer_size = params.buffer_size
-        self.batch_size = params.batch_size
-        self.initial_random_action = params.initial_random_action
-
-        self.multiple_learn = params.multiple_learn
-        self.gradient_clip_ac = params.gradient_clip_ac
-        self.gradient_clip_cr = params.gradient_clip_cr
+        self.hyper_params = hyper_params
         self.network_cfg = network_cfg
         self.optim_cfg = optim_cfg
 
@@ -105,7 +96,9 @@ class DDPGAgent(Agent):
         """Initialize non-common things."""
         if not self.args.test:
             # replay memory
-            self.memory = ReplayBuffer(self.buffer_size, self.batch_size)
+            self.memory = ReplayBuffer(
+                self.hyper_params.buffer_size, self.hyper_params.batch_size
+            )
 
     # pylint: disable=attribute-defined-outside-init
     def _init_network(self):
@@ -154,7 +147,7 @@ class DDPGAgent(Agent):
         )
 
         # load the optimizer and model parameters
-        if self.args.load_from is not None and os.path.exists(self.args.load_from):
+        if self.args.load_from is not None:
             self.load_params(self.args.load_from)
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
@@ -163,7 +156,10 @@ class DDPGAgent(Agent):
         state = self._preprocess_state(state)
 
         # if initial random action should be conducted
-        if self.total_step < self.initial_random_action and not self.args.test:
+        if (
+            self.total_step < self.hyper_params.initial_random_action
+            and not self.args.test
+        ):
             return np.array(self.env.action_space.sample())
 
         selected_action = self.actor(state).detach().cpu().numpy()
@@ -208,15 +204,18 @@ class DDPGAgent(Agent):
         masks = 1 - dones
         next_actions = self.actor_target(next_states)
         next_values = self.critic_target(torch.cat((next_states, next_actions), dim=-1))
-        curr_returns = rewards + self.gamma * next_values * masks
+        curr_returns = rewards + self.hyper_params.gamma * next_values * masks
         curr_returns = curr_returns.to(device)
 
         # train critic
+        gradient_clip_ac = self.hyper_params.gradient_clip_ac
+        gradient_clip_cr = self.hyper_params.gradient_clip_cr
+
         values = self.critic(torch.cat((states, actions), dim=-1))
         critic_loss = F.mse_loss(values, curr_returns)
         self.critic_optim.zero_grad()
         critic_loss.backward()
-        nn.utils.clip_grad_norm_(self.critic.parameters(), self.gradient_clip_cr)
+        nn.utils.clip_grad_norm_(self.critic.parameters(), gradient_clip_cr)
         self.critic_optim.step()
 
         # train actor
@@ -224,20 +223,18 @@ class DDPGAgent(Agent):
         actor_loss = -self.critic(torch.cat((states, actions), dim=-1)).mean()
         self.actor_optim.zero_grad()
         actor_loss.backward()
-        nn.utils.clip_grad_norm_(self.actor.parameters(), self.gradient_clip_ac)
+        nn.utils.clip_grad_norm_(self.actor.parameters(), gradient_clip_ac)
         self.actor_optim.step()
 
         # update target networks
-        common_utils.soft_update(self.actor, self.actor_target, self.tau)
-        common_utils.soft_update(self.critic, self.critic_target, self.tau)
+        common_utils.soft_update(self.actor, self.actor_target, self.hyper_params.tau)
+        common_utils.soft_update(self.critic, self.critic_target, self.hyper_params.tau)
 
         return actor_loss.item(), critic_loss.item()
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
-        if not os.path.exists(path):
-            print("[ERROR] the input path does not exist. ->", path)
-            return
+        Agent.load_params(self, path)
 
         params = torch.load(path)
         self.actor.load_state_dict(params["actor_state_dict"])
@@ -323,8 +320,8 @@ class DDPGAgent(Agent):
                 self.total_step += 1
                 self.episode_step += 1
 
-                if len(self.memory) >= self.batch_size:
-                    for _ in range(self.multiple_learn):
+                if len(self.memory) >= self.hyper_params.batch_size:
+                    for _ in range(self.hyper_params.multiple_update):
                         loss = self.update_model()
                         losses.append(loss)  # for logging
 

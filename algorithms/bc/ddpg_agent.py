@@ -33,7 +33,6 @@ class BCDDPGAgent(DDPGAgent):
         desired_state (np.ndarray): desired state of current episode
         memory (ReplayBuffer): replay memory
         demo_memory (ReplayBuffer): replay memory for demo
-        lambda1 (float): proportion of policy loss
         lambda2 (float): proportion of BC loss
 
     """
@@ -41,23 +40,16 @@ class BCDDPGAgent(DDPGAgent):
     # pylint: disable=attribute-defined-outside-init
     def _initialize(self):
         """Initialize non-common things."""
-        self.demo_batch_size = self.params.demo_batch_size
-        self.lambda1 = self.params.lambda1
-        self.lambda2 = self.params.lambda2
-        self.use_her = self.params.use_her
-        self.success_score = self.params.success_score
-        self.desired_states_from_demo = self.params.desired_states_from_demo
-
         # load demo replay memory
         with open(self.args.demo_path, "rb") as f:
             demo = list(pickle.load(f))
 
         # HER
-        if self.use_her:
-            self.her = build_her(self.params.her)
+        if self.hyper_params.use_her:
+            self.her = build_her(self.hyper_params.her)
             print(f"[INFO] Build {str(self.her)}.")
 
-            if self.desired_states_from_demo:
+            if self.hyper_params.desired_states_from_demo:
                 self.her.fetch_desired_states_from_demo(demo)
 
             self.transitions_epi: list = list()
@@ -71,18 +63,20 @@ class BCDDPGAgent(DDPGAgent):
 
         if not self.args.test:
             # Replay buffers
-            self.demo_memory = ReplayBuffer(len(demo), self.demo_batch_size)
+            demo_batch_size = self.hyper_params.demo_batch_size
+            self.demo_memory = ReplayBuffer(len(demo), demo_batch_size)
             self.demo_memory.extend(demo)
 
-            self.memory = ReplayBuffer(self.buffer_size, self.batch_size)
+            self.memory = ReplayBuffer(
+                self.hyper_params.buffer_size, self.hyper_params.batch_size
+            )
 
             # set hyper parameters
-            self.lambda1 = self.lambda1
-            self.lambda2 = self.lambda2 / self.demo_batch_size
+            self.lambda2 = 1.0 / demo_batch_size
 
     def _preprocess_state(self, state: np.ndarray) -> torch.Tensor:
         """Preprocess state so that actor selects an action."""
-        if self.use_her:
+        if self.hyper_params.use_her:
             self.desired_state = self.her.get_desired_state()
             state = np.concatenate((state, self.desired_state), axis=-1)
         state = torch.FloatTensor(state).to(device)
@@ -90,13 +84,15 @@ class BCDDPGAgent(DDPGAgent):
 
     def _add_transition_to_memory(self, transition: Tuple[np.ndarray, ...]):
         """Add 1 step and n step transitions to memory."""
-        if self.use_her:
+        if self.hyper_params.use_her:
             self.transitions_epi.append(transition)
             done = transition[-1] or self.episode_step == self.args.max_episode_steps
             if done:
                 # insert generated transitions if the episode is done
                 transitions = self.her.generate_transitions(
-                    self.transitions_epi, self.desired_state, self.success_score,
+                    self.transitions_epi,
+                    self.desired_state,
+                    self.hyper_params.success_score,
                 )
                 self.memory.extend(transitions)
                 self.transitions_epi.clear()
@@ -121,15 +117,17 @@ class BCDDPGAgent(DDPGAgent):
         masks = 1 - dones
         next_actions = self.actor_target(next_states)
         next_values = self.critic_target(torch.cat((next_states, next_actions), dim=-1))
-        curr_returns = rewards + (self.gamma * next_values * masks)
+        curr_returns = rewards + (self.hyper_params.gamma * next_values * masks)
         curr_returns = curr_returns.to(device)
 
         # critic loss
+        gradient_clip_ac = self.hyper_params.gradient_clip_ac
+        gradient_clip_cr = self.hyper_params.gradient_clip_cr
+
         values = self.critic(torch.cat((states, actions), dim=-1))
         critic_loss = F.mse_loss(values, curr_returns)
 
         # train critic
-        gradient_clip_cr = self.gradient_clip_cr
         self.critic_optim.zero_grad()
         critic_loss.backward()
         nn.utils.clip_grad_norm_(self.critic.parameters(), gradient_clip_cr)
@@ -156,17 +154,15 @@ class BCDDPGAgent(DDPGAgent):
             ).pow(2).sum() / n_qf_mask
 
         # train actor: pg loss + BC loss
-        actor_loss = self.lambda1 * policy_loss + self.lambda2 * bc_loss
-
-        gradient_clip_ac = self.gradient_clip_ac
+        actor_loss = self.hyper_params.lambda1 * policy_loss + self.lambda2 * bc_loss
         self.actor_optim.zero_grad()
         actor_loss.backward()
         nn.utils.clip_grad_norm_(self.actor.parameters(), gradient_clip_ac)
         self.actor_optim.step()
 
         # update target networks
-        common_utils.soft_update(self.actor, self.actor_target, self.tau)
-        common_utils.soft_update(self.critic, self.critic_target, self.tau)
+        common_utils.soft_update(self.actor, self.actor_target, self.hyper_params.tau)
+        common_utils.soft_update(self.critic, self.critic_target, self.hyper_params.tau)
 
         return actor_loss.item(), critic_loss.item(), n_qf_mask
 

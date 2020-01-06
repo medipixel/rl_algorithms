@@ -66,7 +66,7 @@ class MLP(nn.Module):
         n_category: int = -1,
         init_fn: Callable = init_layer_uniform,
     ):
-        """Initialization.
+        """Initialize.
 
         Args:
             input_size (int): size of input
@@ -149,7 +149,7 @@ class GaussianDist(MLP):
         log_std_max: float = 2,
         init_fn: Callable = init_layer_uniform,
     ):
-        """Initialization."""
+        """Initialize."""
         super(GaussianDist, self).__init__(
             input_size=input_size,
             output_size=output_size,
@@ -202,7 +202,7 @@ class TanhGaussianDistParams(GaussianDist):
     """Multilayer perceptron with Gaussian distribution output."""
 
     def __init__(self, **kwargs):
-        """Initialization."""
+        """Initialize."""
         super(TanhGaussianDistParams, self).__init__(**kwargs, mu_activation=identity)
 
     def forward(
@@ -239,7 +239,7 @@ class CategoricalDist(MLP):
         hidden_activation: Callable = F.relu,
         init_fn: Callable = init_layer_uniform,
     ):
-        """Initialization."""
+        """Initialize."""
         super(CategoricalDist, self).__init__(
             input_size=input_size,
             output_size=output_size,
@@ -269,7 +269,7 @@ class CategoricalDistParams(CategoricalDist):
     """Multilayer perceptron with Categorical distribution output."""
 
     def __init__(self, compatible_with_tanh_normal=False, **kwargs):
-        """Initialization."""
+        """Initialize."""
         super(CategoricalDistParams, self).__init__(**kwargs)
 
         self.compatible_with_tanh_normal = compatible_with_tanh_normal

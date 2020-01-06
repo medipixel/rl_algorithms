@@ -23,7 +23,7 @@ class HER(ABC):
     """
 
     def __init__(self, reward_func: RewardFn):
-        """Initialization.
+        """Initialize.
 
         Args:
             reward_func (Callable): returns reward from state, action, next_state

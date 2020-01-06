@@ -6,13 +6,13 @@
 
 agent = dict(
     type="SACfDAgent",
-    params=dict(
+    hyper_params=dict(
         gamma=0.99,
         tau=1e-3,
         buffer_size=int(1e5),
         batch_size=64,
         initial_random_action=int(5e3),
-        multiple_learn=2,  # multiple learning updates
+        multiple_update=2,  # multiple learning updates
         policy_update_freq=2,
         w_entropy=1e-3,
         w_mean_reg=1e-3,

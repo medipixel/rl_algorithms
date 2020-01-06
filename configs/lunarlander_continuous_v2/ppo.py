@@ -6,12 +6,11 @@
 
 agent = dict(
     type="PPOAgent",
-    params=dict(
+    hyper_params=dict(
         gamma=0.99,
+        tau=0.95,
         batch_size=32,
-        initial_random_action=int(1e4),
-        lambda_=0.95,
-        epsilon=0.2,
+        max_epsilon=0.2,
         min_epsilon=0.2,
         epsilon_decay_period=1500,
         w_value=1.0,

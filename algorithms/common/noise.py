@@ -20,7 +20,7 @@ class GaussianNoise:
         max_sigma: float = 1.0,
         decay_period: int = 1000000,
     ):
-        """Initialization."""
+        """Initialize."""
         self.action_dim = action_dim
         self.max_sigma = max_sigma
         self.min_sigma = min_sigma

@@ -6,13 +6,13 @@
 
 agent = dict(
     type="BCSACAgent",
-    params=dict(
+    hyper_params=dict(
         gamma=0.99,
         tau=5e-3,
         buffer_size=int(1e6),
         batch_size=512,
         initial_random_action=int(1e4),
-        multiple_learn=1,  # multiple learning updates
+        multiple_update=1,  # multiple learning updates
         policy_update_freq=2,
         w_entropy=1e-3,
         w_mean_reg=1e-3,
@@ -22,7 +22,6 @@ agent = dict(
         # BC
         demo_batch_size=64,
         lambda1=1e-3,
-        lambda2=1.0,
         # HER
         use_her=False,
         her=dict(type="LunarLanderContinuousHER",),

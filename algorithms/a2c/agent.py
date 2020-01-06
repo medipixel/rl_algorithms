@@ -6,7 +6,6 @@
 """
 
 import argparse
-import os
 from typing import Tuple
 
 import gym
@@ -30,13 +29,20 @@ class A2CAgent(Agent):
     """1-Step Advantage Actor-Critic interacting with environment.
 
     Attributes:
+        env (gym.Env): openAI Gym environment
+        args (argparse.Namespace): arguments including hyperparameters and training settings
+        hyper_params (ConfigDict): hyper-parameters
+        network_cfg (ConfigDict): config of network for training agent
+        optim_cfg (ConfigDict): config of optimizer
+        state_dim (int): state size of env
+        action_dim (int): action size of env
         actor (nn.Module): policy model to select actions
         critic (nn.Module): critic model to evaluate states
         actor_optim (Optimizer): optimizer for actor
         critic_optim (Optimizer): optimizer for critic
         episode_step (int): step number of the current episode
-        transition (list): recent transition information
         i_episode (int): current episode number
+        transition (list): recent transition information
 
     """
 
@@ -45,29 +51,18 @@ class A2CAgent(Agent):
         env: gym.Env,
         args: argparse.Namespace,
         log_cfg: ConfigDict,
-        params: ConfigDict,
+        hyper_params: ConfigDict,
         network_cfg: ConfigDict,
         optim_cfg: ConfigDict,
     ):
-        """Initialization.
-
-        Args:
-            env (gym.Env): openAI Gym environment
-            args (argparse.Namespace): arguments including hyperparameters and training settings
-
-        """
+        """Initialize."""
         Agent.__init__(self, env, args, log_cfg)
 
-        self.predicted_value = torch.zeros((1,))
         self.transition: list = list()
         self.episode_step = 0
         self.i_episode = 0
-        self.log_prob = torch.zeros((1,))
 
-        self.gamma = params.gamma
-        self.w_entropy = params.w_entropy
-        self.gradient_clip_ac = params.gradient_clip_ac
-        self.gradient_clip_cr = params.gradient_clip_cr
+        self.hyper_params = hyper_params
         self.network_cfg = network_cfg
         self.optim_cfg = optim_cfg
 
@@ -103,7 +98,7 @@ class A2CAgent(Agent):
             weight_decay=self.optim_cfg.weight_decay,
         )
 
-        if self.args.load_from is not None and os.path.exists(self.args.load_from):
+        if self.args.load_from is not None:
             self.load_params(self.args.load_from)
 
     def select_action(self, state: np.ndarray) -> torch.Tensor:
@@ -144,7 +139,7 @@ class A2CAgent(Agent):
         #       = r                       otherwise
         mask = 1 - done
         next_value = self.critic(next_state).detach()
-        q_value = reward + self.gamma * next_value * mask
+        q_value = reward + self.hyper_params.gamma * next_value * mask
         q_value = q_value.to(device)
 
         # advantage = Q_t - V(s_t)
@@ -152,27 +147,28 @@ class A2CAgent(Agent):
 
         # calculate loss at the current step
         policy_loss = -advantage.detach() * log_prob  # adv. is not backpropagated
-        policy_loss += self.w_entropy * -log_prob  # entropy
+        policy_loss += self.hyper_params.w_entropy * -log_prob  # entropy
         value_loss = F.smooth_l1_loss(pred_value, q_value.detach())
 
         # train
+        gradient_clip_ac = self.hyper_params.gradient_clip_ac
+        gradient_clip_cr = self.hyper_params.gradient_clip_cr
+
         self.actor_optim.zero_grad()
         policy_loss.backward()
-        nn.utils.clip_grad_norm_(self.actor.parameters(), self.gradient_clip_ac)
+        nn.utils.clip_grad_norm_(self.actor.parameters(), gradient_clip_ac)
         self.actor_optim.step()
 
         self.critic_optim.zero_grad()
         value_loss.backward()
-        nn.utils.clip_grad_norm_(self.critic.parameters(), self.gradient_clip_cr)
+        nn.utils.clip_grad_norm_(self.critic.parameters(), gradient_clip_cr)
         self.critic_optim.step()
 
         return policy_loss.item(), value_loss.item()
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
-        if not os.path.exists(path):
-            print("[INFO] The input path does not exist. ->", path)
-            return
+        Agent.load_params(self, path)
 
         params = torch.load(path)
         self.actor.load_state_dict(params["actor_state_dict"])

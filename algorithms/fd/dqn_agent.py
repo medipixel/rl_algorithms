@@ -36,35 +36,29 @@ class DQfDAgent(DQNAgent):
     # pylint: disable=attribute-defined-outside-init
     def _initialize(self):
         """Initialize non-common things."""
-        self.lambda1 = self.params.lambda1
-        self.lambda2 = self.params.lambda2
-        self.margin = self.params.margin
-        self.pretrain_step = self.params.pretrain_step
-        self.per_eps_demo = self.params.per_eps_demo
-
         if not self.args.test:
             # load demo replay memory
             demos = self._load_demos()
 
             if self.use_n_step:
                 demos, demos_n_step = common_utils.get_n_step_info_from_demo(
-                    demos, self.n_step, self.gamma
+                    demos, self.hyper_params.n_step, self.hyper_params.gamma
                 )
 
                 self.memory_n = ReplayBuffer(
-                    buffer_size=self.buffer_size,
-                    n_step=self.n_step,
-                    gamma=self.gamma,
+                    buffer_size=self.hyper_params.buffer_size,
+                    n_step=self.hyper_params.n_step,
+                    gamma=self.hyper_params.gamma,
                     demo=demos_n_step,
                 )
 
             # replay memory
             self.memory = PrioritizedReplayBuffer(
-                self.buffer_size,
-                self.batch_size,
+                self.hyper_params.buffer_size,
+                self.hyper_params.batch_size,
                 demo=demos,
-                alpha=self.per_alpha,
-                epsilon_d=self.per_eps_demo,
+                alpha=self.hyper_params.per_alpha,
+                epsilon_d=self.hyper_params.per_eps_demo,
             )
 
     def _load_demos(self) -> list:
@@ -82,21 +76,21 @@ class DQfDAgent(DQNAgent):
         actions = experiences_1[1]
 
         # 1 step loss
-        gamma = self.gamma
+        gamma = self.hyper_params.gamma
         dq_loss_element_wise, q_values = self._get_dqn_loss(experiences_1, gamma)
         dq_loss = torch.mean(dq_loss_element_wise * weights)
 
         # n step loss
         if self.use_n_step:
             experiences_n = self.memory_n.sample(indices)
-            gamma = self.gamma ** self.n_step
+            gamma = self.hyper_params.gamma ** self.hyper_params.n_step
             dq_loss_n_element_wise, q_values_n = self._get_dqn_loss(
                 experiences_n, gamma
             )
 
             # to update loss and priorities
             q_values = 0.5 * (q_values + q_values_n)
-            dq_loss_element_wise += dq_loss_n_element_wise * self.lambda1
+            dq_loss_element_wise += dq_loss_n_element_wise * self.hyper_params.lambda1
             dq_loss = torch.mean(dq_loss_element_wise * weights)
 
         # supervised loss using demo for only demo transitions
@@ -105,7 +99,7 @@ class DQfDAgent(DQNAgent):
         if n_demo != 0:  # if 1 or more demos are sampled
             # get margin for each demo transition
             action_idxs = actions[demo_idxs].long()
-            margin = torch.ones(q_values.size()) * self.margin
+            margin = torch.ones(q_values.size()) * self.hyper_params.margin
             margin[demo_idxs, action_idxs] = 0.0  # demo actions have 0 margins
             margin = margin.to(device)
 
@@ -113,12 +107,12 @@ class DQfDAgent(DQNAgent):
             demo_q_values = q_values[demo_idxs, action_idxs].squeeze()
             supervised_loss = torch.max(q_values + margin, dim=-1)[0]
             supervised_loss = supervised_loss[demo_idxs] - demo_q_values
-            supervised_loss = torch.mean(supervised_loss) * self.lambda2
+            supervised_loss = torch.mean(supervised_loss) * self.hyper_params.lambda2
         else:  # no demo sampled
             supervised_loss = torch.zeros(1, device=device)
 
         # q_value regularization
-        q_regular = torch.norm(q_values, 2).mean() * self.w_q_reg
+        q_regular = torch.norm(q_values, 2).mean() * self.hyper_params.w_q_reg
 
         # total loss
         loss = dq_loss + supervised_loss + q_regular
@@ -126,15 +120,15 @@ class DQfDAgent(DQNAgent):
         # train dqn
         self.dqn_optim.zero_grad()
         loss.backward()
-        clip_grad_norm_(self.dqn.parameters(), self.gradient_clip)
+        clip_grad_norm_(self.dqn.parameters(), self.hyper_params.gradient_clip)
         self.dqn_optim.step()
 
         # update target networks
-        common_utils.soft_update(self.dqn, self.dqn_target, self.tau)
+        common_utils.soft_update(self.dqn, self.dqn_target, self.hyper_params.tau)
 
         # update priorities in PER
         loss_for_prior = dq_loss_element_wise.detach().cpu().numpy().squeeze()
-        new_priorities = loss_for_prior + self.per_eps
+        new_priorities = loss_for_prior + self.hyper_params.per_eps
         new_priorities += eps_d
         self.memory.update_priorities(indices, new_priorities)
 
@@ -142,7 +136,7 @@ class DQfDAgent(DQNAgent):
         fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)
         self.per_beta: float = self.per_beta + fraction * (1.0 - self.per_beta)
 
-        if self.use_noisy_net:
+        if self.hyper_params.use_noisy_net:
             self.dqn.reset_noise()
             self.dqn_target.reset_noise()
 
@@ -194,8 +188,9 @@ class DQfDAgent(DQNAgent):
     def pretrain(self):
         """Pretraining steps."""
         pretrain_loss = list()
-        print("[INFO] Pre-Train %d step." % self.pretrain_step)
-        for i_step in range(1, self.pretrain_step + 1):
+        pretrain_step = self.hyper_params.pretrain_step
+        print("[INFO] Pre-Train %d step." % pretrain_step)
+        for i_step in range(1, pretrain_step + 1):
             t_begin = time.time()
             loss = self.update_model()
             t_end = time.time()

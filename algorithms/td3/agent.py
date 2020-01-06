@@ -7,7 +7,6 @@
 """
 
 import argparse
-import os
 import time
 from typing import Tuple
 
@@ -34,6 +33,13 @@ class TD3Agent(Agent):
     """ActorCritic interacting with environment.
 
     Attributes:
+        env (gym.Env): openAI Gym environment
+        args (argparse.Namespace): arguments including hyperparameters and training settings
+        hyper_params (ConfigDict): hyper-parameters
+        network_cfg (ConfigDict): config of network for training agent
+        optim_cfg (ConfigDict): config of optimizer
+        state_dim (int): state size of env
+        action_dim (int): action size of env
         memory (ReplayBuffer): replay memory
         exploration_noise (GaussianNoise): random noise for exploration
         target_policy_noise (GaussianNoise): random noise for target values
@@ -48,6 +54,8 @@ class TD3Agent(Agent):
         curr_state (np.ndarray): temporary storage of the current state
         total_steps (int): total step numbers
         episode_steps (int): step number of the current episode
+        i_episode (int): current episode number
+        noise_cfg (ConfigDict): config of noise
 
     """
 
@@ -56,12 +64,12 @@ class TD3Agent(Agent):
         env: gym.Env,
         args: argparse.Namespace,
         log_cfg: ConfigDict,
-        params: ConfigDict,
+        hyper_params: ConfigDict,
         network_cfg: ConfigDict,
         optim_cfg: ConfigDict,
         noise_cfg: ConfigDict,
     ):
-        """Initialization.
+        """Initialize.
 
         Args:
             env (gym.Env): openAI Gym environment
@@ -76,14 +84,8 @@ class TD3Agent(Agent):
         self.update_step = 0
         self.i_episode = 0
 
-        self.gamma = params.gamma
-        self.tau = params.tau
-        self.buffer_size = params.buffer_size
-        self.batch_size = params.batch_size
-        self.initial_random_action = params.initial_random_action
+        self.hyper_params = hyper_params
         self.noise_cfg = noise_cfg
-
-        self.policy_update_freq = params.policy_update_freq
         self.network_cfg = network_cfg
         self.optim_cfg = optim_cfg
 
@@ -103,7 +105,9 @@ class TD3Agent(Agent):
 
         if not self.args.test:
             # replay memory
-            self.memory = ReplayBuffer(self.buffer_size, self.batch_size)
+            self.memory = ReplayBuffer(
+                self.hyper_params.buffer_size, self.hyper_params.batch_size
+            )
 
         self._init_network()
 
@@ -172,17 +176,18 @@ class TD3Agent(Agent):
         )
 
         # load the optimizer and model parameters
-        if self.args.load_from is not None and os.path.exists(self.args.load_from):
+        if self.args.load_from is not None:
             self.load_params(self.args.load_from)
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""
         # initial training step, try random action for exploration
-        random_action_count = self.initial_random_action
-
         self.curr_state = state
 
-        if self.total_step < random_action_count and not self.args.test:
+        if (
+            self.total_step < self.hyper_params.initial_random_action
+            and not self.args.test
+        ):
             return np.array(self.env.action_space.sample())
 
         state = torch.FloatTensor(state).to(device)
@@ -232,7 +237,7 @@ class TD3Agent(Agent):
 
         # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
         #       = r                       otherwise
-        curr_returns = rewards + self.gamma * next_values * masks
+        curr_returns = rewards + self.hyper_params.gamma * next_values * masks
         curr_returns = curr_returns.detach()
 
         # critic loss
@@ -247,7 +252,7 @@ class TD3Agent(Agent):
         critic_loss.backward()
         self.critic_optim.step()
 
-        if self.update_step % self.policy_update_freq == 0:
+        if self.update_step % self.hyper_params.policy_update_freq == 0:
             # policy loss
             actions = self.actor(states)
             actor_loss = -self.critic1(states, actions).mean()
@@ -258,9 +263,10 @@ class TD3Agent(Agent):
             self.actor_optim.step()
 
             # update target networks
-            common_utils.soft_update(self.critic1, self.critic_target1, self.tau)
-            common_utils.soft_update(self.critic2, self.critic_target2, self.tau)
-            common_utils.soft_update(self.actor, self.actor_target, self.tau)
+            tau = self.hyper_params.tau
+            common_utils.soft_update(self.critic1, self.critic_target1, tau)
+            common_utils.soft_update(self.critic2, self.critic_target2, tau)
+            common_utils.soft_update(self.actor, self.actor_target, tau)
         else:
             actor_loss = torch.zeros(1)
 
@@ -268,9 +274,7 @@ class TD3Agent(Agent):
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
-        if not os.path.exists(path):
-            print("[ERROR] the input path does not exist. ->", path)
-            return
+        Agent.load_params(self, path)
 
         params = torch.load(path)
         self.critic1.load_state_dict(params["critic1"])
@@ -365,7 +369,7 @@ class TD3Agent(Agent):
                 state = next_state
                 score += reward
 
-                if len(self.memory) >= self.batch_size:
+                if len(self.memory) >= self.hyper_params.batch_size:
                     experiences = self.memory.sample()
                     loss = self.update_model(experiences)
                     loss_episode.append(loss)  # for logging
@@ -380,7 +384,7 @@ class TD3Agent(Agent):
                     self.i_episode,
                     avg_loss,
                     score,
-                    self.policy_update_freq,
+                    self.hyper_params.policy_update_freq,
                     avg_time_cost,
                 )
             if self.i_episode % self.args.save_period == 0:
