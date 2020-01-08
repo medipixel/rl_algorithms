@@ -10,6 +10,7 @@ from typing import Callable, List
 
 import gym
 from gym.spaces import Discrete
+
 from rl_algorithms.common.env.multiprocessing_env import SubprocVecEnv
 from rl_algorithms.common.env.normalizers import ActionNormalizer
 

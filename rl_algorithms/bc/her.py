@@ -7,6 +7,7 @@
 from typing import Callable, Tuple
 
 import numpy as np
+
 from rl_algorithms.common.abstract.her import HER
 from rl_algorithms.common.abstract.reward_fn import RewardFn
 from rl_algorithms.registry import HERS

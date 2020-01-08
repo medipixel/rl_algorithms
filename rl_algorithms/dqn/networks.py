@@ -9,12 +9,13 @@ import math
 from typing import Callable, Optional, Tuple
 
 import numpy as np
-from rl_algorithms.common.networks.cnn import CNN
-from rl_algorithms.common.networks.mlp import MLP, init_layer_uniform
-from rl_algorithms.dqn.linear import NoisyMLPHandler
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+from rl_algorithms.common.networks.cnn import CNN
+from rl_algorithms.common.networks.mlp import MLP, init_layer_uniform
+from rl_algorithms.dqn.linear import NoisyMLPHandler
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 

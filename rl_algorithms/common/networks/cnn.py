@@ -8,11 +8,12 @@
 
 from typing import Callable, List
 
-from rl_algorithms.common.helper_functions import identity
-from rl_algorithms.common.networks.mlp import MLP
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+from rl_algorithms.common.helper_functions import identity
+from rl_algorithms.common.networks.mlp import MLP
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 

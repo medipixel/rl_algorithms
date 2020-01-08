@@ -12,13 +12,14 @@ import pickle
 from typing import Tuple
 
 import numpy as np
+import torch
+import torch.nn.functional as F
+import wandb
+
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
 import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.registry import AGENTS, build_her
 from rl_algorithms.sac.agent import SACAgent
-import torch
-import torch.nn.functional as F
-import wandb
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 

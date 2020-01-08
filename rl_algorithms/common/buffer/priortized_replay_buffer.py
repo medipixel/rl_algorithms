@@ -11,9 +11,10 @@ import random
 from typing import Any, List, Tuple
 
 import numpy as np
+import torch
+
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
 from rl_algorithms.common.buffer.segment_tree import MinSegmentTree, SumSegmentTree
-import torch
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -103,15 +104,12 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             indices.append(idx)
         return indices
 
-    def sample(
-        self, indices: List[int] = None, beta: float = 0.4
-    ) -> Tuple[torch.Tensor, ...]:
+    def sample(self, beta: float = 0.4) -> Tuple[torch.Tensor, ...]:  # type: ignore
         """Sample a batch of experiences."""
         assert len(self) >= self.batch_size
         assert beta > 0
 
-        if indices is None:
-            indices = self._sample_proportional(self.batch_size)
+        indices = self._sample_proportional(self.batch_size)
 
         # get max weight
         p_min = self.min_tree.min() / self.sum_tree.sum()

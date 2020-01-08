@@ -7,11 +7,12 @@
 
 from typing import Callable, Tuple
 
-from rl_algorithms.common.helper_functions import identity, make_one_hot
 import torch
 from torch.distributions import Categorical, Normal
 import torch.nn as nn
 import torch.nn.functional as F
+
+from rl_algorithms.common.helper_functions import identity, make_one_hot
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 

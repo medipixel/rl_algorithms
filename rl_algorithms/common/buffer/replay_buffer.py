@@ -5,8 +5,9 @@ from collections import deque
 from typing import Any, Deque, List, Tuple
 
 import numpy as np
-from rl_algorithms.common.helper_functions import get_n_step_info
 import torch
+
+from rl_algorithms.common.helper_functions import get_n_step_info
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 

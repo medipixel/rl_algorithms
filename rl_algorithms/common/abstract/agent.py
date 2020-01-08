@@ -15,9 +15,10 @@ from typing import Tuple, Union
 import gym
 from gym.spaces import Discrete
 import numpy as np
-from rl_algorithms.utils.config import ConfigDict
 import torch
 import wandb
+
+from rl_algorithms.utils.config import ConfigDict
 
 
 class Agent(ABC):

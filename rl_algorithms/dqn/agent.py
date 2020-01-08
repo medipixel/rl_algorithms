@@ -19,6 +19,11 @@ from typing import Tuple
 
 import gym
 import numpy as np
+import torch
+from torch.nn.utils import clip_grad_norm_
+import torch.optim as optim
+import wandb
+
 from rl_algorithms.common.abstract.agent import Agent
 from rl_algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
@@ -26,10 +31,6 @@ import rl_algorithms.common.helper_functions as common_utils
 import rl_algorithms.dqn.utils as dqn_utils
 from rl_algorithms.registry import AGENTS
 from rl_algorithms.utils.config import ConfigDict
-import torch
-from torch.nn.utils import clip_grad_norm_
-import torch.optim as optim
-import wandb
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 

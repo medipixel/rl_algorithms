@@ -9,15 +9,16 @@ This module has DQN util functions.
 
 from typing import Callable, List, Tuple, Union
 
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
 from rl_algorithms.common.helper_functions import identity
 from rl_algorithms.common.networks.cnn import CNN, CNNLayer
 from rl_algorithms.common.networks.mlp import MLP, init_layer_uniform
 from rl_algorithms.dqn.linear import NoisyLinearConstructor
 from rl_algorithms.dqn.networks import C51CNN, IQNCNN, IQNMLP, C51DuelingMLP, DuelingMLP
 from rl_algorithms.utils.config import ConfigDict
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 

@@ -14,12 +14,13 @@ import time
 from typing import Tuple
 
 import numpy as np
+import torch
+
 from rl_algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
 import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.registry import AGENTS
 from rl_algorithms.sac.agent import SACAgent
-import torch
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
