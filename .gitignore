@@ -6,3 +6,8 @@ checkpoint
 .vscode
 MUJOCO_LOG.TXT
 .coverage
+
+# build
+build
+dist
+*.egg-info

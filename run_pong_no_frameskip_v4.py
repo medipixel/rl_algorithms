@@ -8,10 +8,10 @@
 import argparse
 import datetime
 
-from algorithms import build_agent
-from algorithms.common.env.atari_wrappers import atari_env_generator
-import algorithms.common.helper_functions as common_utils
-from algorithms.utils import Config
+from rl_algorithms import build_agent
+from rl_algorithms.common.env.atari_wrappers import atari_env_generator
+import rl_algorithms.common.helper_functions as common_utils
+from rl_algorithms.utils import Config
 
 
 def parse_args() -> argparse.Namespace:

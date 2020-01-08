@@ -2,14 +2,13 @@ import argparse
 import datetime
 
 import gym
-
-from algorithms import build_agent
-from algorithms.common.abstract.agent import Agent
-from algorithms.utils import Config
+from rl_algorithms import build_agent
+from rl_algorithms.common.abstract.agent import Agent
+from rl_algorithms.utils import Config
 
 
 def parse_args(args: list):
-    parser = argparse.ArgumentParser(description="Pytorch RL algorithms")
+    parser = argparse.ArgumentParser(description="Pytorch RL rl_algorithms")
     parser.add_argument(
         "--load-from",
         default=None,

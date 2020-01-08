@@ -9,16 +9,15 @@ import argparse
 import datetime
 
 import gym
-
-from algorithms import build_agent
-import algorithms.common.env.utils as env_utils
-import algorithms.common.helper_functions as common_utils
-from algorithms.utils import Config
+from rl_algorithms import build_agent
+import rl_algorithms.common.env.utils as env_utils
+import rl_algorithms.common.helper_functions as common_utils
+from rl_algorithms.utils import Config
 
 
 def parse_args() -> argparse.Namespace:
     # configurations
-    parser = argparse.ArgumentParser(description="Pytorch RL algorithms")
+    parser = argparse.ArgumentParser(description="Pytorch RL rl_algorithms")
     parser.add_argument(
         "--seed", type=int, default=777, help="random seed for reproducibility"
     )

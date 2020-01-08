@@ -11,3 +11,6 @@ wandb
 addict
 
 # mujoco
+
+setuptools
+wheel
