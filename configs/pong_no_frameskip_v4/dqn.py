@@ -32,7 +32,7 @@ agent = dict(
         use_noisy_net=True,
         std_init=0.5,
         # Epsilon Greedy
-        max_epsilon=0.0,  # use epsilon greedy
+        max_epsilon=0.0,
         min_epsilon=0.0,  # openai baselines: 0.01
         epsilon_decay=1e-6,  # openai baselines: 1e-7 / 1e-1
     ),

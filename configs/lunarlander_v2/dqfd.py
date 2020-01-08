@@ -37,8 +37,8 @@ agent = dict(
         use_noisy_net=False,
         std_init=0.5,
         # Epsilon Greedy
-        max_epsilon=0.0,  # use epsilon greedy
-        min_epsilon=0.0,  # openai baselines: 0.01
+        max_epsilon=1.0,
+        min_epsilon=0.01,  # openai baselines: 0.01
         epsilon_decay=2e-5,  # openai baselines: 1e-7 / 1e-1
     ),
     network_cfg=dict(hidden_sizes=[128, 64]),

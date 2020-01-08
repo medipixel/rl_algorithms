@@ -91,7 +91,14 @@ class DQNAgent(Agent):
         self.use_conv = len(self.state_dim) > 1
         self.use_n_step = hyper_params.n_step > 1
 
-        self.epsilon = self.hyper_params.max_epsilon
+        if hyper_params.use_noisy_net:
+            self.max_epsilon = 0.0
+            self.min_epsilon = 0.0
+            self.epsilon = 0.0
+        else:
+            self.max_epsilon = hyper_params.max_epsilon
+            self.min_epsilon = hyper_params.min_epsilon
+            self.epsilon = hyper_params.max_epsilon
 
         self._initialize()
         self._init_network()
@@ -367,12 +374,6 @@ class DQNAgent(Agent):
         # pre-training if needed
         self.pretrain()
 
-        max_epsilon, min_epsilon, epsilon_decay = (
-            self.hyper_params.max_epsilon,
-            self.hyper_params.min_epsilon,
-            self.hyper_params.epsilon_decay,
-        )
-
         for self.i_episode in range(1, self.args.episode_num + 1):
             state = self.env.reset()
             self.episode_step = 0
@@ -399,8 +400,10 @@ class DQNAgent(Agent):
 
                     # decrease epsilon
                     self.epsilon = max(
-                        self.epsilon - (max_epsilon - min_epsilon) * epsilon_decay,
-                        min_epsilon,
+                        self.epsilon
+                        - (self.max_epsilon - self.min_epsilon)
+                        * self.hyper_params.epsilon_decay,
+                        self.min_epsilon,
                     )
 
                 state = next_state
