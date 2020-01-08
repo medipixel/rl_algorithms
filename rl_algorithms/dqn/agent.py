@@ -91,12 +91,7 @@ class DQNAgent(Agent):
         self.use_conv = len(self.state_dim) > 1
         self.use_n_step = hyper_params.n_step > 1
 
-        if hyper_params.use_noisy_net:
-            self.hyper_params.max_epsilon = 0.0
-            self.hyper_params.min_epsilon = 0.0
-            self.epsilon = 0.0
-        else:
-            self.epsilon = self.hyper_params.max_epsilon
+        self.epsilon = self.hyper_params.max_epsilon
 
         self._initialize()
         self._init_network()
