@@ -51,14 +51,14 @@ This project follows the [all-contributors](https://github.com/all-contributors/
 
 0. [Advantage Actor-Critic (A2C)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/a2c)
 1. [Deep Deterministic Policy Gradient (DDPG)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/ddpg)
-2. [Proximal Policy Optimization Algorithms (PPO)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/ppo)
+2. [Proximal Policy Optimization Algorithms (PPO)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/ppo)
 3. [Twin Delayed Deep Deterministic Policy Gradient Algorithm (TD3)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/td3)
 4. [Soft Actor Critic Algorithm (SAC)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/sac)
 5. [Behaviour Cloning (BC with DDPG, SAC)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/bc)
 6. [Prioritized Experience Replay (PER with DDPG)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/per)
 7. [From Demonstrations (DDPGfD, SACfD, DQfD)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/fd)
 8. [Rainbow DQN](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/dqn)
-9. [Rainbow IQN (without DuelingNet)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/dqn) - DuelingNet [degrades performance](https://github.com/medipixel/algorithms/pull/137)
+9. [Rainbow IQN (without DuelingNet)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/dqn) - DuelingNet [degrades performance](https://github.com/medipixel/rl_algorithms/pull/137)
 
 
 ## Performance
@@ -168,7 +168,7 @@ e.g. running soft actor-critic on LunarLanderContinuous-v2.
 python run_lunarlander_continuous_v2.py --cfg-path ./configs/lunarlander_continuous_v2/sac.py <other-options>
 ```
 
-e.g. running a custom agent, **if you have written your own example**: `configs/env_name/ddpg-custom.py`.
+e.g. running a custom agent, **if you have written your own configs**: `configs/env_name/ddpg-custom.py`.
 ```
 python run_env_name.py --cfg-path ./configs/lunarlander_continuous_v2/ddpg-custom.py
 ```
