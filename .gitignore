@@ -1,6 +1,13 @@
 __pycache__
 wandb*
-save
+checkpoint
 .idea
 .mypy_cache
+.vscode
 MUJOCO_LOG.TXT
+.coverage
+
+# build
+build
+dist
+*.egg-info

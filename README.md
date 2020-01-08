@@ -49,25 +49,25 @@ This project follows the [all-contributors](https://github.com/all-contributors/
 
 ## Algorithms
 
-0. [Advantage Actor-Critic (A2C)](https://github.com/medipixel/rl_algorithms/blob/master/algorithms/a2c)
-1. [Deep Deterministic Policy Gradient (DDPG)](https://github.com/medipixel/rl_algorithms/blob/master/algorithms/ddpg)
-2. [Proximal Policy Optimization Algorithms (PPO)](https://github.com/medipixel/rl_algorithms/blob/master/algorithms/ppo)
-3. [Twin Delayed Deep Deterministic Policy Gradient Algorithm (TD3)](https://github.com/medipixel/rl_algorithms/blob/master/algorithms/td3)
-4. [Soft Actor Critic Algorithm (SAC)](https://github.com/medipixel/rl_algorithms/blob/master/algorithms/sac/agent.py)
-5. [Behaviour Cloning (BC with DDPG, SAC)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/bc)
-6. [Prioritized Experience Replay (PER with DDPG)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/per)
-7. [From Demonstrations (DDPGfD, SACfD, DQfD)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/fd)
-8. [Rainbow DQN](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/dqn)
-9. [Rainbow IQN (without DuelingNet)](https://github.com/medipixel/rl_algorithms/tree/master/algorithms/dqn) - DuelingNet [degrades performance](https://github.com/medipixel/rl_algorithms/pull/137)
+0. [Advantage Actor-Critic (A2C)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/a2c)
+1. [Deep Deterministic Policy Gradient (DDPG)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/ddpg)
+2. [Proximal Policy Optimization Algorithms (PPO)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/ppo)
+3. [Twin Delayed Deep Deterministic Policy Gradient Algorithm (TD3)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/td3)
+4. [Soft Actor Critic Algorithm (SAC)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/sac)
+5. [Behaviour Cloning (BC with DDPG, SAC)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/bc)
+6. [Prioritized Experience Replay (PER with DDPG)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/per)
+7. [From Demonstrations (DDPGfD, SACfD, DQfD)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/fd)
+8. [Rainbow DQN](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/dqn)
+9. [Rainbow IQN (without DuelingNet)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/dqn) - DuelingNet [degrades performance](https://github.com/medipixel/rl_algorithms/pull/137)
 
 
 ## Performance
 
 We have tested each algorithm on some of the following environments.
-- [LunarLanderContinuous-v2](https://github.com/medipixel/rl_algorithms/tree/master/examples/lunarlander_continuous_v2)
-- [LunarLander_v2](https://github.com/medipixel/rl_algorithms/tree/master/examples/lunarlander_v2)
-- [Reacher-v2](https://github.com/medipixel/rl_algorithms/tree/master/examples/reacher-v2)
-- [PongNoFrameskip-v4](https://github.com/medipixel/rl_algorithms/tree/master/examples/pong_no_frameskip_v4)
+- [LunarLanderContinuous-v2](https://github.com/medipixel/rl_algorithms/tree/master/configs/lunarlander_continuous_v2)
+- [LunarLander_v2](https://github.com/medipixel/rl_algorithms/tree/master/configs/lunarlander_v2)
+- [Reacher-v2](https://github.com/medipixel/rl_algorithms/tree/master/configs/reacher-v2)
+- [PongNoFrameskip-v4](https://github.com/medipixel/rl_algorithms/tree/master/configs/pong_no_frameskip_v4)
 
 The performance is measured on the commit [4248057](https://github.com/medipixel/rl_algorithms/pull/158). Please note that this won't be frequently updated.
 
@@ -139,7 +139,7 @@ First, clone the repository.
 git clone https://github.com/medipixel/rl_algorithms.git
 cd rl_algorithms
 ```
-Secondly, install packages required to execute the code. Just type:
+Secondly, install packages required to execute the code. Also it includes `python setup.py install`. Just type:
 ```
 make dep
 ```
@@ -158,19 +158,19 @@ make test  # for linting
 ```
 
 #### Usages
-You can train or test `algorithm` on `env_name` if `examples/env_name/algorithm.py` exists. (`examples/env_name/algorithm.py` contains hyper-parameters and details of networks.)
+You can train or test `algorithm` on `env_name` if `configs/env_name/algorithm.py` exists. (`configs/env_name/algorithm.py` contains hyper-parameters)
 ```
-python run_env_name.py --algo algorithm
+python run_env_name.py --cfg-path <config-path>
 ``` 
 
 e.g. running soft actor-critic on LunarLanderContinuous-v2.
 ```
-python run_lunarlander_continuous_v2.py --algo sac <other-options>
+python run_lunarlander_continuous_v2.py --cfg-path ./configs/lunarlander_continuous_v2/sac.py <other-options>
 ```
 
-e.g. running a custom agent, **if you have written your own example**: `examples/env_name/ddpg-custom.py`.
+e.g. running a custom agent, **if you have written your own configs**: `configs/env_name/ddpg-custom.py`.
 ```
-python run_env_name.py --algo ddpg-custom
+python run_env_name.py --cfg-path ./configs/lunarlander_continuous_v2/ddpg-custom.py
 ```
 You will see the agent run with hyper parameter and model settings you configured.
 

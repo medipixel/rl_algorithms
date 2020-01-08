@@ -8,5 +8,9 @@ typing
 cloudpickle
 opencv-python
 wandb
+addict
 
 # mujoco
+
+setuptools
+wheel

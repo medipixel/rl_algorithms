@@ -1,0 +1,10 @@
+python run_lunarlander_continuous_v2.py --cfg-path ./configs/lunarlander_continuous_v2/a2c.py --off-render --log
+python run_lunarlander_continuous_v2.py --cfg-path ./configs/lunarlander_continuous_v2/ddpg.py --off-render --log
+python run_lunarlander_continuous_v2.py --cfg-path ./configs/lunarlander_continuous_v2/td3.py --off-render --log
+python run_lunarlander_continuous_v2.py --cfg-path ./configs/lunarlander_continuous_v2/sac.py --off-render --log
+python run_lunarlander_continuous_v2.py --cfg-path ./configs/lunarlander_continuous_v2/ppo.py --off-render --log
+python run_lunarlander_continuous_v2.py --cfg-path ./configs/lunarlander_continuous_v2/bc_ddpg.py --off-render --log
+python run_lunarlander_continuous_v2.py --cfg-path ./configs/lunarlander_continuous_v2/bc_sac.py --off-render --log
+python run_lunarlander_continuous_v2.py --cfg-path ./configs/lunarlander_continuous_v2/per_ddpg.py --off-render --log
+python run_lunarlander_continuous_v2.py --cfg-path ./configs/lunarlander_continuous_v2/ddpgfd.py --off-render --log
+python run_lunarlander_continuous_v2.py --cfg-path ./configs/lunarlander_continuous_v2/sacfd.py --off-render --log
