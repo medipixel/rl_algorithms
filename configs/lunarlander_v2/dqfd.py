@@ -16,9 +16,6 @@ agent = dict(
         train_freq=8,  # in openai baselines, train_freq = 4
         gradient_clip=0.5,  # dueling: 10.0
         n_step=3,
-        max_epsilon=1.0,
-        min_epsilon=0.01,  # openai baselines: 0.01
-        epsilon_decay=2e-5,  # openai baselines: 1e-7 / 1e-1
         w_n_step=1.0,
         w_q_reg=1e-7,
         per_alpha=0.6,  # openai baselines: 0.6
@@ -39,6 +36,10 @@ agent = dict(
         # NoisyNet
         use_noisy_net=False,
         std_init=0.5,
+        # Epsilon Greedy
+        max_epsilon=1.0,
+        min_epsilon=0.01,  # openai baselines: 0.01
+        epsilon_decay=2e-5,  # openai baselines: 1e-7 / 1e-1
     ),
     network_cfg=dict(hidden_sizes=[128, 64]),
     optim_cfg=dict(lr_dqn=1e-4, weight_decay=1e-5, adam_eps=1e-8),
