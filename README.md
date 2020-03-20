@@ -139,13 +139,15 @@ First, clone the repository.
 git clone https://github.com/medipixel/rl_algorithms.git
 cd rl_algorithms
 ```
-Secondly, install packages required to execute the code. Also it includes `python setup.py install`. Just type:
+
+###### For users
+Install packages required to execute the code. It includes `python setup.py install`. Just type:
 ```
 make dep
 ```
 
 ###### For developers
-You need to type the additional command which configures formatting and linting settings. It automatically runs formatting and linting when you commit the code.
+If you want to modify code you should configure formatting and linting settings. It automatically runs formatting and linting when you commit the code. Contrary to `make dep` command, it includes `python setup.py develop`. Just type:
 
 ```
 make dev
