@@ -1,17 +1,50 @@
 {
-  "files": ["README.md"],
+  "files": [
+    "README.md"
+  ],
   "imageSize": 100,
+  "commit": false,
+  "contributors": [
+    {
+      "login": "Curt-Park",
+      "name": "Jinwoo Park (Curt)",
+      "avatar_url": "https://avatars3.githubusercontent.com/u/14961526?v=4",
+      "profile": "https://github.com/Curt-Park",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "MrSyee",
+      "name": "Kyunghwan Kim",
+      "avatar_url": "https://avatars3.githubusercontent.com/u/17582508?v=4",
+      "profile": "https://github.com/MrSyee",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "darthegg",
+      "name": "darthegg",
+      "avatar_url": "https://avatars0.githubusercontent.com/u/16010242?v=4",
+      "profile": "https://github.com/darthegg",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "mclearning2",
+      "name": "Mincehol Kim",
+      "avatar_url": "https://avatars3.githubusercontent.com/u/43226417?v=4",
+      "profile": "https://github.com/mclearning2",
+      "contributions": [
+        "code"
+      ]
+    },
+  ],
   "contributorsPerLine": 7,
-  "contributorsSortAlphabetically": false,
-  "badgeTemplate": "[![All Contributors](https://img.shields.io/badge/all_contributors-<%= contributors.length %>-orange.svg?style=flat-square)](#contributors)",
-  "contributorTemplate": "<a href=\"<%= contributor.profile %>\"><img src=\"<%= contributor.avatar_url %>\" width=\"<%= options.imageSize %>px;\" alt=\"\"/><br /><sub><b><%= contributor.name %></b></sub></a>",
-  "types": {
-    "custom": {
-      "symbol": "🔭",
-      "description": "A custom contribution type.",
-      "link": "[<%= symbol %>](<%= url %> \"<%= description %>\"),"
-    }
-  },
-  "skipCi": "true",
-  "contributors": []
+  "projectName": "rl_algorithms",
+  "projectOwner": "medipixel",
+  "repoType": "github",
+  "repoHost": "https://github.com"
 }
