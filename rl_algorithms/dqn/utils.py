@@ -303,7 +303,7 @@ def calculate_fc_input_size(state_dim: tuple, cnn_cfg: ConfigDict):
 
     final_volume_size = cnn_cfg.output_sizes[-1]
 
-    output_size = state_dim[2]
+    output_size = state_dim[-1]
     for kernel_size, padding_size, stride in cnn_cfg_zip:
         input_size = output_size
         output_size = int(((input_size - kernel_size + 2 * padding_size) / stride) + 1)
