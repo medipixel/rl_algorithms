@@ -5,8 +5,7 @@ python:
     - "3.6.8"
 
 install:
-     - make dep
-     - make dev
+    - make dev
 
 script:
     # run static analysis and format check
