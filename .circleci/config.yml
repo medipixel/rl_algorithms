@@ -3,7 +3,7 @@ version: 2.1
 jobs:
   build-and-test:
     docker:
-        - image: circleci/python:3.6.9
+        - image: medipixel/rl_algorithms
     steps:
       - checkout
       - run:

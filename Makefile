@@ -8,6 +8,10 @@ format:
 	black . --exclude checkpoint wandb
 	isort -y --skip checkpoint --skip wandb
 
+docker-push:
+	docker build -t medipixel/rl_algorithms .
+	docker push medipixel/rl_algorithms
+
 dev:
 	pip install -r requirements.txt
 	pip install -r requirements-dev.txt
