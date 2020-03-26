@@ -46,6 +46,6 @@
   "projectName": "rl_algorithms",
   "projectOwner": "medipixel",
   "repoType": "github",
-  "repoHost": "https://github.com"
+  "repoHost": "https://github.com",
   "skipCi": true
 }
