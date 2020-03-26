@@ -6,10 +6,8 @@ jobs:
         - image: circleci/python:3.6.9
     steps:
       - checkout
-      - python/load-cache
       - run:
           command: make dev
-      - python/save-cache
       - run:
           command: make test
           name: Test
