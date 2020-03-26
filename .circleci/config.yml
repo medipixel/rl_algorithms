@@ -1,0 +1,18 @@
+version: 2.1
+
+jobs:
+  build-and-test:
+    docker:
+        - image: medipixel/rl_algorithms
+    steps:
+      - checkout
+      - run:
+          command: make dev
+      - run:
+          command: make test
+          name: Test
+
+workflows:
+  main:
+    jobs:
+      - build-and-test
