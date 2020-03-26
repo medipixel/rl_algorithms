@@ -9,7 +9,8 @@ jobs:
     steps:
       - checkout
       - python/load-cache
-      - python/install-deps
+      - run:
+          command: make dev
       - python/save-cache
       - run:
           command: make test
