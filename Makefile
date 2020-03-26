@@ -9,8 +9,8 @@ format:
 	isort -y --skip checkpoint --skip wandb
 
 dev:
-	pip install -r -U requirements.txt
-	pip install -r -U requirements-dev.txt
+	pip install -U -r requirements.txt
+	pip install -U -r requirements-dev.txt
 	pre-commit install
 	python setup.py develop
 
