@@ -13,9 +13,3 @@ RUN apt-get update
 # set workspace
 RUN mkdir /workspace/
 WORKDIR /workspace
-
-COPY requirements.txt /workspace/requirements.txt
-COPY requirements-dev.txt /workspace/requirements-dev.txt
-
-RUN pip install -U -r requirements.txt
-RUN pip install -U -r requirements-dev.txt
