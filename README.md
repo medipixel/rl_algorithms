@@ -1,13 +1,13 @@
 <p align="center">
-
 <img src="https://user-images.githubusercontent.com/17582508/52845370-4a930200-314a-11e9-9889-e00007043872.jpg" align="center">
 
 ![Build Status](https://travis-ci.org/medipixel/rl_algorithms.svg?branch=master)
 [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/medipixel/rl_algorithms.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/medipixel/rl_algorithms/context:python)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-4-orange.svg?style=flat-square)](#contributors)
-<!-- ALL-CONTRIBUTORS-BADGE:END --> 
+[![All Contributors](https://img.shields.io/badge/all_contributors-4-orange.svg?style=flat-square)](#contributors-)
+<!-- ALL-CONTRIBUTORS-BADGE:END -->
+
 </p>
 
 ## Contents
@@ -32,20 +32,21 @@ We are warmly welcoming external contributors! :)
 ## Contributors
 
 Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
-
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
-<!-- prettier-ignore -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
 <table>
   <tr>
-    <td align="center"><a href="https://github.com/Curt-Park"><img src="https://avatars3.githubusercontent.com/u/14961526?v=4" width="100px;" alt="Jinwoo Park (Curt)"/><br /><sub><b>Jinwoo Park (Curt)</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=Curt-Park" title="Code">💻</a></td>
-    <td align="center"><a href="https://github.com/MrSyee"><img src="https://avatars3.githubusercontent.com/u/17582508?v=4" width="100px;" alt="Kyunghwan Kim"/><br /><sub><b>Kyunghwan Kim</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=MrSyee" title="Code">💻</a></td>
-    <td align="center"><a href="https://github.com/darthegg"><img src="https://avatars0.githubusercontent.com/u/16010242?v=4" width="100px;" alt="darthegg"/><br /><sub><b>darthegg</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=darthegg" title="Code">💻</a></td>
-    <td align="center"><a href="https://mclearninglab.tistory.com"><img src="https://avatars0.githubusercontent.com/u/43226417?v=4" width="100px;" alt="Mincheol Kim"/><br /><sub><b>Mincheol Kim</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=mclearning2" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/Curt-Park/"><img src="https://avatars3.githubusercontent.com/u/14961526?v=4" width="100px;" alt=""/><br /><sub><b>Jinwoo Park (Curt)</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=Curt-Park" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/MrSyee/"><img src="https://avatars3.githubusercontent.com/u/17582508?v=4" width="100px;" alt=""/><br /><sub><b>Kyunghwan Kim</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=MrSyee" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/darthegg/"><img src="https://avatars3.githubusercontent.com/u/16010242?v=4" width="100px;" alt=""/><br /><sub><b>darthegg</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=darthegg" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/mclearning2/"><img src="https://avatars3.githubusercontent.com/u/43226417?v=4" width="100px;" alt=""/><br /><sub><b>Mincheol Kim</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=mclearning2" title="Code">💻</a></td>
   </tr>
 </table>
 
+<!-- markdownlint-enable -->
+<!-- prettier-ignore-end -->
 <!-- ALL-CONTRIBUTORS-LIST:END -->
-
 This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification.
 
 ## Algorithms

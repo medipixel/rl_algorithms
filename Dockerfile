@@ -1,23 +1,15 @@
-FROM ubuntu:16.04
+FROM nvidia/cuda:10.2-cudnn7-devel-ubuntu18.04
 
 RUN apt-get update
 RUN apt-get install -y software-properties-common vim
-RUN add-apt-repository ppa:jonathonf/python-3.6
+RUN apt-get install -y libsm6 libxext6 libxrender-dev libusb-1.0-0-dev && apt-get update
+RUN apt-get install -y git
+RUN apt-get install -y python3-pip python3-dev \
+    && cd /usr/local/bin \
+    && ln -s /usr/bin/python3 python \
+    && pip3 install --upgrade pip
 RUN apt-get update
 
-RUN apt-get install -y build-essential python3.6 python3.6-dev python3-pip python3.6-venv
-RUN apt-get install -y git
-
-# update pip
-RUN python3.6 -m pip install pip --upgrade
-RUN python3.6 -m pip install wheel
-
-# copy requirements
-RUN mkdir /data/
-COPY requirements.txt /data/requirements.txt
-COPY requirements-dev.txt /data/requirements-dev.txt
-
-# install requirements
-WORKDIR /data
-RUN python3.6 -m pip install -r requirements.txt
-RUN python3.6 -m pip install -r requirements-dev.txt
+# set workspace
+RUN mkdir /workspace/
+WORKDIR /workspace
