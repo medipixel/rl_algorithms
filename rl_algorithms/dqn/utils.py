@@ -273,9 +273,10 @@ def get_fc_model(
 
 
 def get_cnn_model(
-    use_dist_q: str, fc_model: MLP,
+    hyper_params: ConfigDict, action_dim: int, state_dim: tuple, network_cfg: ConfigDict
 ):
     """Get CNN model with FC model input depends on type."""
+    use_dist_q = hyper_params.use_dist_q
     if use_dist_q == "C51":
         Model = C51CNN
     elif use_dist_q == "IQN":
@@ -283,13 +284,28 @@ def get_cnn_model(
     else:
         Model = CNN
 
+    cnn_cfg = network_cfg.cnn_cfg
+    fc_input_size = calculate_fc_input_size(state_dim, cnn_cfg)
+
+    fc_model = get_fc_model(
+        hyper_params, fc_input_size, action_dim, network_cfg.hidden_sizes,
+    )
+
     cnn_model = Model(
-        cnn_layers=[
-            CNNLayer(input_size=4, output_size=32, kernel_size=8, stride=4, padding=1),
-            CNNLayer(input_size=32, output_size=64, kernel_size=4, stride=2),
-            CNNLayer(input_size=64, output_size=64, kernel_size=3),
-        ],
-        fc_layers=fc_model,
+        cnn_layers=list(map(CNNLayer, *cnn_cfg.values())), fc_layers=fc_model,
     ).to(device)
 
     return cnn_model
+
+
+def calculate_fc_input_size(state_dim: tuple, cnn_cfg: ConfigDict):
+    cnn_cfg_zip = zip(cnn_cfg.kernel_sizes, cnn_cfg.paddings, cnn_cfg.strides)
+
+    final_volume_size = cnn_cfg.output_sizes[-1]
+
+    output_size = state_dim[-1]
+    for kernel_size, padding_size, stride in cnn_cfg_zip:
+        input_size = output_size
+        output_size = ((input_size - kernel_size + 2 * padding_size) // stride) + 1
+
+    return output_size * output_size * final_volume_size

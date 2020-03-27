@@ -125,32 +125,20 @@ class DQNAgent(Agent):
     # pylint: disable=attribute-defined-outside-init
     def _init_network(self):
         """Initialize networks and optimizers."""
-        fc_input_size = (
-            self.network_cfg.fc_input_size if self.use_conv else self.state_dim[0]
-        )
 
         if self.use_conv:
-            # create FC
-            fc_model = dqn_utils.get_fc_model(
-                self.hyper_params,
-                fc_input_size,
-                self.action_dim,
-                self.network_cfg.hidden_sizes,
-            )
-            fc_model2 = dqn_utils.get_fc_model(
-                self.hyper_params,
-                fc_input_size,
-                self.action_dim,
-                self.network_cfg.hidden_sizes,
-            )
-
             # create CNN
-            use_dist_q = self.hyper_params.use_dist_q
-            self.dqn = dqn_utils.get_cnn_model(use_dist_q, fc_model)
-            self.dqn_target = dqn_utils.get_cnn_model(use_dist_q, fc_model2)
+            self.dqn = dqn_utils.get_cnn_model(
+                self.hyper_params, self.action_dim, self.state_dim, self.network_cfg
+            )
+            self.dqn_target = dqn_utils.get_cnn_model(
+                self.hyper_params, self.action_dim, self.state_dim, self.network_cfg
+            )
 
         else:
             # create FC
+            fc_input_size = self.state_dim[0]
+
             self.dqn = dqn_utils.get_fc_model(
                 self.hyper_params,
                 fc_input_size,
