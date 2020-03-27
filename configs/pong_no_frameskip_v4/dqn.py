@@ -10,9 +10,9 @@ agent = dict(
         gamma=0.99,
         tau=5e-3,
         buffer_size=int(1e4),  # openai baselines: int(1e4)
-        batch_size=32,  # openai baselines: 32
-        update_starts_from=int(1e4),  # openai baselines: int(1e4)
-        multiple_update=1,  # multiple learning updates
+        batch_size=12,  # openai baselines: 32
+        update_starts_from=int(300),  # openai baselines: int(1e4)
+        multiple_update=3,  # multiple learning updates
         train_freq=4,  # in openai baselines, train_freq = 4
         gradient_clip=10.0,  # dueling: 10.0
         n_step=3,
@@ -22,7 +22,7 @@ agent = dict(
         per_beta=0.4,
         per_eps=1e-6,
         # Distributional Q function
-        use_dist_q="IQN",
+        use_dist_q="CNN",
         n_tau_samples=64,
         n_tau_prime_samples=64,
         n_quantile_samples=32,
@@ -38,12 +38,17 @@ agent = dict(
     ),
     network_cfg=dict(
         hidden_sizes=[512],
+        use_resnet=True,
         cnn_cfg=dict(
             input_sizes=[4, 32, 64],
             output_sizes=[32, 64, 64],
             kernel_sizes=[8, 4, 3],
             strides=[4, 2, 1],
             paddings=[1, 0, 0],
+        ),
+        resnet_cfg=dict(
+            use_bottleneck=True,
+            num_blocks_list=[2,2,2,2],
         ),
     ),
     optim_cfg=dict(

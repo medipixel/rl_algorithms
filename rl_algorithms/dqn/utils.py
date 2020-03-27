@@ -19,6 +19,7 @@ from rl_algorithms.common.networks.mlp import MLP, init_layer_uniform
 from rl_algorithms.dqn.linear import NoisyLinearConstructor
 from rl_algorithms.dqn.networks import C51CNN, IQNCNN, IQNMLP, C51DuelingMLP, DuelingMLP
 from rl_algorithms.utils.config import ConfigDict
+from rl_algorithms.common.networks.resnet import BasicBlock, Bottleneck, ResNet
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -286,14 +287,28 @@ def get_cnn_model(
 
     cnn_cfg = network_cfg.cnn_cfg
     fc_input_size = calculate_fc_input_size(state_dim, cnn_cfg)
+    if network_cfg.use_resnet:
+        fc_input_size = 8192
 
     fc_model = get_fc_model(
         hyper_params, fc_input_size, action_dim, network_cfg.hidden_sizes,
     )
+    
+    if network_cfg.use_resnet:
+        resnet_cfg = network_cfg.resnet_cfg
 
-    cnn_model = Model(
-        cnn_layers=list(map(CNNLayer, *cnn_cfg.values())), fc_layers=fc_model,
-    ).to(device)
+        if resnet_cfg.use_bottleneck:
+             cnn_model = ResNet(
+                 block=Bottleneck, num_blocks=resnet_cfg.num_blocks_list, fc_layers=fc_model,
+             ).to(device)
+        else:   
+            cnn_model = ResNet(
+                block=BasicBlock, num_blocks=resnet_cfg.num_blocks_list, fc_layers=fc_model,
+            ).to(device)
+    else:
+        cnn_model = Model(
+            cnn_layers=list(map(CNNLayer, *cnn_cfg.values())), fc_layers=fc_model,
+        ).to(device)
 
     return cnn_model
 
