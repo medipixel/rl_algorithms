@@ -296,15 +296,10 @@ def get_cnn_model(
     
     if network_cfg.use_resnet:
         resnet_cfg = network_cfg.resnet_cfg
-
-        if resnet_cfg.use_bottleneck:
-             cnn_model = ResNet(
-                 block=Bottleneck, num_blocks=resnet_cfg.num_blocks_list, fc_layers=fc_model,
-             ).to(device)
-        else:   
-            cnn_model = ResNet(
-                block=BasicBlock, num_blocks=resnet_cfg.num_blocks_list, fc_layers=fc_model,
-            ).to(device)
+        resnet_block = Bottleneck if resnet_cfg.use_bottleneck else BasicBlock
+        cnn_model = ResNet(
+            block=resnet_block, num_blocks=resnet_cfg.num_blocks_list, fc_layers=fc_model,
+        ).to(device)
     else:
         cnn_model = Model(
             cnn_layers=list(map(CNNLayer, *cnn_cfg.values())), fc_layers=fc_model,

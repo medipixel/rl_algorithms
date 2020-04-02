@@ -36,7 +36,7 @@ class BasicBlock(nn.Module):
         if stride != 1 or in_planes != self.expansion*planes:
             self.shortcut = nn.Sequential(
                 nn.Conv2d(
-                    in_planes, self.expansion*planes, kernel_size=1, stride=stride,bias=False,
+                    in_planes, self.expansion*planes, kernel_size=1, stride=stride, bias=False,
                 ),
                 nn.BatchNorm2d(self.expansion*planes)
             )
@@ -125,3 +125,11 @@ class ResNet(nn.Module):
         x = self.get_cnn_features(x)
         x = self.fc_layers(x)
         return x
+
+    def reset_noise(self):
+        self.fc_layers.reset_noise()
+    
+    def forward_(self, x: torch.Tensor, n_tau_samples: int = None):
+        x = self.get_cnn_features(x)
+        out = self.fc_layers.forward_(x, n_tau_samples)
+        return out

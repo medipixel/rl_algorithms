@@ -10,9 +10,9 @@ agent = dict(
         gamma=0.99,
         tau=5e-3,
         buffer_size=int(1e4),  # openai baselines: int(1e4)
-        batch_size=12,  # openai baselines: 32
+        batch_size=16,  # openai baselines: 32
         update_starts_from=int(300),  # openai baselines: int(1e4)
-        multiple_update=3,  # multiple learning updates
+        multiple_update=1,  # multiple learning updates
         train_freq=4,  # in openai baselines, train_freq = 4
         gradient_clip=10.0,  # dueling: 10.0
         n_step=3,
@@ -29,7 +29,7 @@ agent = dict(
         quantile_embedding_dim=64,
         kappa=1.0,
         # NoisyNet
-        use_noisy_net=True,
+        use_noisy_net=False,
         std_init=0.5,
         # Epsilon Greedy
         max_epsilon=0.0,
@@ -48,7 +48,7 @@ agent = dict(
         ),
         resnet_cfg=dict(
             use_bottleneck=True,
-            num_blocks_list=[2,2,2,2],
+            num_blocks_list=[1,1,1,1],
         ),
     ),
     optim_cfg=dict(
