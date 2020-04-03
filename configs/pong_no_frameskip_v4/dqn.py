@@ -22,14 +22,14 @@ agent = dict(
         per_beta=0.4,
         per_eps=1e-6,
         # Distributional Q function
-        use_dist_q="CNN",
+        use_dist_q="IQN",
         n_tau_samples=64,
         n_tau_prime_samples=64,
         n_quantile_samples=32,
         quantile_embedding_dim=64,
         kappa=1.0,
         # NoisyNet
-        use_noisy_net=False,
+        use_noisy_net=True,
         std_init=0.5,
         # Epsilon Greedy
         max_epsilon=0.0,
@@ -47,7 +47,7 @@ agent = dict(
             paddings=[1, 0, 0],
         ),
         resnet_cfg=dict(
-            use_bottleneck=True,
+            use_bottleneck=False,
             num_blocks_list=[1,1,1,1],
         ),
     ),

@@ -288,7 +288,7 @@ def get_cnn_model(
     cnn_cfg = network_cfg.cnn_cfg
     fc_input_size = calculate_fc_input_size(state_dim, cnn_cfg)
     if network_cfg.use_resnet:
-        fc_input_size = 8192
+        fc_input_size = 7744
 
     fc_model = get_fc_model(
         hyper_params, fc_input_size, action_dim, network_cfg.hidden_sizes,

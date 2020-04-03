@@ -90,15 +90,15 @@ class ResNet(nn.Module):
     def __init__(self, block: Union[BasicBlock, Bottleneck], num_blocks: List, fc_layers: MLP):
         super(ResNet, self).__init__()
 
-        self.in_planes = 64
+        self.in_planes = 32
         self.conv1 = nn.Conv2d(
-            4, 64, kernel_size=3, stride=1, padding=1, bias=False,
+            4, 32, kernel_size=3, stride=1, padding=1, bias=False,
         )
-        self.bn1 = nn.BatchNorm2d(64)
-        self.layer1 = self._make_layer(block, 64, num_blocks[0], stride=1)
-        self.layer2 = self._make_layer(block, 128, num_blocks[1], stride=2)
-        self.layer3 = self._make_layer(block, 256, num_blocks[2], stride=2)
-        self.layer4 = self._make_layer(block, 512, num_blocks[3], stride=2)
+        self.bn1 = nn.BatchNorm2d(32)
+        self.layer1 = self._make_layer(block, 32, num_blocks[0], stride=1)
+        self.layer2 = self._make_layer(block, 32, num_blocks[1], stride=2)
+        self.layer3 = self._make_layer(block, 64, num_blocks[2], stride=2)
+        self.layer4 = self._make_layer(block, 64, num_blocks[3], stride=2)
         self.fc_layers = fc_layers
 
     def _make_layer(self, block, planes, num_blocks, stride):
@@ -117,7 +117,6 @@ class ResNet(nn.Module):
         x = self.layer2(x)
         x = self.layer3(x)
         x = self.layer4(x)
-        x = F.avg_pool2d(x, 4)
         x = x.view(x.size(0), -1)
         return x
 
