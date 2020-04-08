@@ -212,9 +212,9 @@ class DQNAgent(Agent):
                 experiences=experiences,
                 gamma=gamma,
                 batch_size=self.hyper_params.batch_size,
-                n_tau_samples=self.hyper_params.n_tau_samples,
-                n_tau_prime_samples=self.hyper_params.n_tau_prime_samples,
-                kappa=self.hyper_params.kappa,
+                n_tau_samples=self.head_cfg.params.n_tau_samples,
+                n_tau_prime_samples=self.head_cfg.params.n_tau_prime_samples,
+                kappa=self.head_cfg.params.kappa,
             )
         elif self.hyper_params.use_dist_q == "C51":
             return dqn_utils.calculate_c51_loss(
@@ -223,9 +223,9 @@ class DQNAgent(Agent):
                 experiences=experiences,
                 gamma=gamma,
                 batch_size=self.hyper_params.batch_size,
-                v_min=self.hyper_params.v_min,
-                v_max=self.hyper_params.v_max,
-                atom_size=self.hyper_params.atoms,
+                v_min=self.head_cfg.params.v_min,
+                v_max=self.head_cfg.params.v_max,
+                atom_size=self.head_cfg.params.atoms,
             )
         else:
             return dqn_utils.calculate_dqn_loss(

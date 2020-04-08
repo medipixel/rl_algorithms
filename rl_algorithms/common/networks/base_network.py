@@ -16,16 +16,17 @@ class Base_network(nn.Module):
 
     def forward(self, x, n_tau_samples: int = None):
         x = self.backbone(x)
-        if isinstance(self.head, IQNMLP) :
+        if isinstance(self.head, IQNMLP):
             x = self.head.forward(x, n_tau_samples)
-        else :
+        else:
             x = self.head.forward(x)
         return x
-    
+
     def forward_(self, x: torch.Tensor, n_tau_samples: int = None):
         x = self.backbone(x)
-        if isinstance(self.head, IQNMLP) :
+        if isinstance(self.head, IQNMLP):
             x = self.head.forward_(x, n_tau_samples)
-        else :
+        else:
             x = self.head.forward_(x)
         return x
+    
