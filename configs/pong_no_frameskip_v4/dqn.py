@@ -21,6 +21,8 @@ agent = dict(
         per_alpha=0.6,  # openai baselines: 0.6
         per_beta=0.4,
         per_eps=1e-6,
+        # Distributional Q function
+        use_dist_q="IQN",
         # NoisyNet
         use_noisy_net=False,
         std_init=0.5,
