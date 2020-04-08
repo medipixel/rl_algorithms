@@ -28,9 +28,13 @@ from rl_algorithms.common.abstract.agent import Agent
 from rl_algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
 import rl_algorithms.common.helper_functions as common_utils
+from rl_algorithms.common.networks.base_network import Base_network
 import rl_algorithms.dqn.utils as dqn_utils
 from rl_algorithms.registry import AGENTS
 from rl_algorithms.utils.config import ConfigDict
+
+from rl_algorithms.registry import build_backbone, build_head
+from rl_algorithms.dqn.utils import calculate_fc_input_size
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -69,6 +73,8 @@ class DQNAgent(Agent):
         args: argparse.Namespace,
         log_cfg: ConfigDict,
         hyper_params: ConfigDict,
+        backbone_cfg: ConfigDict,
+        head_cfg: ConfigDict,
         network_cfg: ConfigDict,
         optim_cfg: ConfigDict,
     ):
@@ -83,6 +89,8 @@ class DQNAgent(Agent):
         self.hyper_params = hyper_params
         self.network_cfg = network_cfg
         self.optim_cfg = optim_cfg
+        self.backbone_cfg = backbone_cfg
+        self.head_cfg = head_cfg
 
         self.state_dim = self.env.observation_space.shape
         self.action_dim = self.env.action_space.n
@@ -126,32 +134,11 @@ class DQNAgent(Agent):
     # pylint: disable=attribute-defined-outside-init
     def _init_network(self):
         """Initialize networks and optimizers."""
+        self.head_cfg.params['input_size'] = calculate_fc_input_size(self.state_dim, self.backbone_cfg.params)
+        self.head_cfg.params['output_size'] = self.action_dim
 
-        if self.use_conv:
-            # create CNN
-            self.dqn = dqn_utils.get_cnn_model(
-                self.hyper_params, self.action_dim, self.state_dim, self.network_cfg
-            )
-            self.dqn_target = dqn_utils.get_cnn_model(
-                self.hyper_params, self.action_dim, self.state_dim, self.network_cfg
-            )
-
-        else:
-            # create FC
-            fc_input_size = self.state_dim[0]
-
-            self.dqn = dqn_utils.get_fc_model(
-                self.hyper_params,
-                fc_input_size,
-                self.action_dim,
-                self.network_cfg.hidden_sizes,
-            )
-            self.dqn_target = dqn_utils.get_fc_model(
-                self.hyper_params,
-                fc_input_size,
-                self.action_dim,
-                self.network_cfg.hidden_sizes,
-            )
+        self.dqn = Base_network(build_backbone(self.backbone_cfg), build_head(self.head_cfg)).to(device)
+        self.dqn_target = Base_network(build_backbone(self.backbone_cfg), build_head(self.head_cfg)).to(device)
 
         self.dqn_target.load_state_dict(self.dqn.state_dict())
 

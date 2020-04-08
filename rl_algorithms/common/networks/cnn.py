@@ -56,14 +56,12 @@ class CNNLayer(nn.Module):
 class CNN(nn.Module):
     """Baseline of Convolution neural network."""
 
-    def __init__(self, cnn_layers: List[CNNLayer], fc_layers: MLP):
+    def __init__(self, params: dict):
         super(CNN, self).__init__()
 
-        self.cnn_layers = cnn_layers
-        self.fc_layers = fc_layers
-
+        cnn_layers = list(map(CNNLayer, *params.values()))
         self.cnn = nn.Sequential()
-        for i, cnn_layer in enumerate(self.cnn_layers):
+        for i, cnn_layer in enumerate(cnn_layers):
             self.cnn.add_module("cnn_{}".format(i), cnn_layer)
 
     def get_cnn_features(self, x: torch.Tensor) -> torch.Tensor:
@@ -77,5 +75,4 @@ class CNN(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method implementation."""
         x = self.get_cnn_features(x)
-        x = self.fc_layers(x)
         return x
