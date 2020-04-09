@@ -54,6 +54,9 @@ agent = dict(
     head_cfg=dict(
         type="IQNMLP",
         params=dict(
+            # NoisyNet
+            use_noisy_net=True,
+            std_init=0.5,
             hidden_sizes=[512],
             n_tau_samples=64,
             n_tau_prime_samples=64,

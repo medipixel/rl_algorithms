@@ -134,11 +134,16 @@ class DQNAgent(Agent):
     # pylint: disable=attribute-defined-outside-init
     def _init_network(self):
         """Initialize networks and optimizers."""
-        self.head_cfg.params['input_size'] = calculate_fc_input_size(self.state_dim, self.backbone_cfg.params)
+        self.head_cfg.params['input_size'] = calculate_fc_input_size(
+            self.state_dim, self.backbone_cfg.params)
         self.head_cfg.params['output_size'] = self.action_dim
 
-        self.dqn = Base_network(build_backbone(self.backbone_cfg), build_head(self.head_cfg)).to(device)
-        self.dqn_target = Base_network(build_backbone(self.backbone_cfg), build_head(self.head_cfg)).to(device)
+        self.dqn = Base_network(build_backbone(
+            self.backbone_cfg), build_head(self.head_cfg)
+            ).to(device)
+        self.dqn_target = Base_network(build_backbone(
+            self.backbone_cfg), build_head(self.head_cfg)
+            ).to(device)
 
         self.dqn_target.load_state_dict(self.dqn.state_dict())
 
@@ -280,9 +285,9 @@ class DQNAgent(Agent):
         fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)
         self.per_beta = self.per_beta + fraction * (1.0 - self.per_beta)
 
-        if self.hyper_params.use_noisy_net:
-            self.dqn.reset_noise()
-            self.dqn_target.reset_noise()
+        if self.head_cfg.params.use_noisy_net:
+            self.dqn.head.reset_noise()
+            self.dqn_target.head.reset_noise()
 
         return loss.item(), q_values.mean().item()
 

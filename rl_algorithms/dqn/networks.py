@@ -13,8 +13,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from rl_algorithms.common.helper_functions import identity
 from rl_algorithms.common.networks.cnn import CNN
 from rl_algorithms.common.networks.mlp import MLP, init_layer_uniform
+from rl_algorithms.dqn.linear import NoisyLinearConstructor
 from rl_algorithms.dqn.linear import NoisyMLPHandler
 from rl_algorithms.registry import BACKBONES, HEADS
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -31,6 +33,13 @@ class DuelingMLP(MLP, NoisyMLPHandler):
         init_fn: Callable = init_layer_uniform,
     ):
         """Initialize."""
+        if params["use_noisy_net"]:
+            linear_layer = NoisyLinearConstructor(params["std_init"])
+            init_fn: Callable = identity
+        else:
+            linear_layer = nn.Linear
+            init_fn = init_layer_uniform
+
         super(DuelingMLP, self).__init__(
             input_size=params['input_size'],
             output_size=params['output_size'],
@@ -103,6 +112,13 @@ class C51DuelingMLP(MLP, NoisyMLPHandler):
         init_fn: Callable = init_layer_uniform,
     ):
         """Initialize."""
+        if params["use_noisy_net"]:
+            linear_layer = NoisyLinearConstructor(params["std_init"])
+            init_fn: Callable = identity
+        else:
+            linear_layer = nn.Linear
+            init_fn = init_layer_uniform
+
         super(C51DuelingMLP, self).__init__(
             input_size=input_size,
             output_size=action_size,
@@ -175,6 +191,13 @@ class IQNMLP(MLP, NoisyMLPHandler):
         init_fn: Callable = init_layer_uniform,
     ):
         """Initialize."""
+        if params["use_noisy_net"]:
+            linear_layer = NoisyLinearConstructor(params["std_init"])
+            init_fn: Callable = identity
+        else:
+            linear_layer = nn.Linear
+            init_fn = init_layer_uniform
+
         super(IQNMLP, self).__init__(
             input_size=params['input_size'],
             output_size=params['output_size'],
