@@ -30,6 +30,12 @@ def parse_args() -> argparse.Namespace:
         "--test", dest="test", action="store_true", help="test mode (no training)"
     )
     parser.add_argument(
+        "--grad-cam",
+        dest="grad_cam",
+        action="store_true",
+        help="test mode with viewing Grad-CAM",
+    )
+    parser.add_argument(
         "--load-from",
         type=str,
         default=None,
@@ -83,6 +89,8 @@ def main():
 
     if not args.test:
         agent.train()
+    elif args.test and args.grad_cam:
+        agent.test_with_gradcam()
     else:
         agent.test()
 
