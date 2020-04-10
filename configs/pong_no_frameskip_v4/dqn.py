@@ -54,6 +54,7 @@ agent = dict(
             first_input_size=4,
             first_output_size=32,
             expansion=1,
+            channel_compression=4,  # output channel // channel_compression in last conv layer
         ),
     ),
     optim_cfg=dict(

@@ -25,6 +25,7 @@ network_cfg = ConfigDict(
             first_input_size=3,
             first_output_size=32,
             expansion=4,
+            channel_compression=4,
         ),
     )
 )

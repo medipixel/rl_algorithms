@@ -137,7 +137,7 @@ class ResNet(nn.Module):
         )
         self.conv_out = nn.Conv2d(
             block_outputs[3] * self.expansion,
-            block_outputs[3] // 4,
+            block_outputs[3] // resnet_cfg.channel_compression,
             kernel_size=1,
             stride=1,
             padding=0,
