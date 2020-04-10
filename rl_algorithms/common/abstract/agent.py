@@ -194,23 +194,33 @@ class Agent(ABC):
                 ids = torch.LongTensor([[int(action)]]).cuda()
                 gcam.backward(ids=ids)
 
-                regions = gcam.generate()
-                regions = regions.detach().cpu().numpy()
-                regions = np.squeeze(regions) * 255
-                regions = np.transpose(regions)
-                regions = cv2.applyColorMap(regions.astype(np.uint8), cv2.COLORMAP_JET)
-                regions = cv2.resize(
-                    regions, (150, 150), interpolation=cv2.INTER_LINEAR
-                )
-
                 state = state[0].detach().cpu().numpy().astype(np.uint8)
                 state = np.transpose(state)
                 state = cv2.cvtColor(state, cv2.COLOR_GRAY2BGR)
                 state = cv2.resize(state, (150, 150), interpolation=cv2.INTER_LINEAR)
-                overlay = cv2.addWeighted(state, 1.0, regions, 0.5, 0)
-                result = np.hstack([state, regions, overlay])
 
-                cv2.imshow("result", result)
+                # Get Grad-CAM image
+                result_images = None
+                for target_layer in self.hyper_params.grad_cam_layer_list:
+                    regions = gcam.generate(target_layer)
+                    regions = regions.detach().cpu().numpy()
+                    regions = np.squeeze(regions) * 255
+                    regions = np.transpose(regions)
+                    regions = cv2.applyColorMap(
+                        regions.astype(np.uint8), cv2.COLORMAP_JET
+                    )
+                    regions = cv2.resize(
+                        regions, (150, 150), interpolation=cv2.INTER_LINEAR
+                    )
+                    overlay = cv2.addWeighted(state, 1.0, regions, 0.5, 0)
+                    result = np.hstack([state, regions, overlay])
+                    result_images = (
+                        result
+                        if result_images is None
+                        else np.vstack([result_images, result])
+                    )
+
+                cv2.imshow("result", result_images)
                 key = cv2.waitKey(0)
                 if key == 27 & 0xFF:
                     cv2.destroyAllWindows()

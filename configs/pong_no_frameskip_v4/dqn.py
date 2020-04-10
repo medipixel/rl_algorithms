@@ -35,6 +35,8 @@ agent = dict(
         max_epsilon=0.0,
         min_epsilon=0.0,  # openai baselines: 0.01
         epsilon_decay=1e-6,  # openai baselines: 1e-7 / 1e-1
+        # grad_cam
+        grad_cam_layer_list=["cnn.cnn_0.cnn", "cnn.cnn_1.cnn", "cnn.cnn_2.cnn"],
     ),
     network_cfg=dict(
         hidden_sizes=[512],

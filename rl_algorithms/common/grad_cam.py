@@ -110,7 +110,7 @@ class GradCAM(CAMBaseWrapper):
         self.image_shape = image.shape[1:]
         return super(GradCAM, self).forward(image)
 
-    def generate(self, target_layer: str = "cnn.cnn_2.cnn") -> torch.Tensor:
+    def generate(self, target_layer: str) -> torch.Tensor:
         fmaps = self._find(self.fmap_pool, target_layer)
         grads = self._find(self.grad_pool, target_layer)
         weights = self._compute_grad_weights(grads)
