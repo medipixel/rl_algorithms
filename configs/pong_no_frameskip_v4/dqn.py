@@ -48,7 +48,12 @@ agent = dict(
         ),
         resnet_cfg=dict(
             use_bottleneck=False,
-            num_blocks_list=[1,1,1,1],
+            num_blocks=[1, 1, 1, 1],
+            block_output_sizes=[32, 32, 64, 64],
+            block_strides=[1, 2, 2, 2],
+            first_input_size=4,
+            first_output_size=32,
+            expansion=1,
         ),
     ),
     optim_cfg=dict(

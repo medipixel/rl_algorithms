@@ -16,10 +16,18 @@ import torch.nn.functional as F
 from rl_algorithms.common.helper_functions import identity
 from rl_algorithms.common.networks.cnn import CNN, CNNLayer
 from rl_algorithms.common.networks.mlp import MLP, init_layer_uniform
-from rl_algorithms.dqn.linear import NoisyLinearConstructor
-from rl_algorithms.dqn.networks import C51CNN, IQNCNN, IQNMLP, C51DuelingMLP, DuelingMLP
-from rl_algorithms.utils.config import ConfigDict
 from rl_algorithms.common.networks.resnet import BasicBlock, Bottleneck, ResNet
+from rl_algorithms.dqn.linear import NoisyLinearConstructor
+from rl_algorithms.dqn.networks import (
+    C51CNN,
+    IQNCNN,
+    IQNMLP,
+    C51DuelingMLP,
+    C51ResNet,
+    DuelingMLP,
+    IQNResNet,
+)
+from rl_algorithms.utils.config import ConfigDict
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -278,29 +286,28 @@ def get_cnn_model(
 ):
     """Get CNN model with FC model input depends on type."""
     use_dist_q = hyper_params.use_dist_q
+    use_resnet = network_cfg.use_resnet
     if use_dist_q == "C51":
-        Model = C51CNN
+        Model = C51ResNet if use_resnet else C51CNN
     elif use_dist_q == "IQN":
-        Model = IQNCNN
+        Model = IQNResNet if use_resnet else IQNCNN
     else:
-        Model = CNN
+        Model = ResNet if use_resnet else CNN
 
-    cnn_cfg = network_cfg.cnn_cfg
-    fc_input_size = calculate_fc_input_size(state_dim, cnn_cfg)
-    if network_cfg.use_resnet:
-        fc_input_size = 7744
+    fc_input_size = calculate_fc_input_size(state_dim, network_cfg)
 
     fc_model = get_fc_model(
         hyper_params, fc_input_size, action_dim, network_cfg.hidden_sizes,
     )
-    
-    if network_cfg.use_resnet:
+
+    if use_resnet:
         resnet_cfg = network_cfg.resnet_cfg
         resnet_block = Bottleneck if resnet_cfg.use_bottleneck else BasicBlock
-        cnn_model = ResNet(
-            block=resnet_block, num_blocks=resnet_cfg.num_blocks_list, fc_layers=fc_model,
+        cnn_model = Model(
+            block=resnet_block, resnet_cfg=resnet_cfg, fc_layers=fc_model,
         ).to(device)
     else:
+        cnn_cfg = network_cfg.cnn_cfg
         cnn_model = Model(
             cnn_layers=list(map(CNNLayer, *cnn_cfg.values())), fc_layers=fc_model,
         ).to(device)
@@ -308,14 +315,22 @@ def get_cnn_model(
     return cnn_model
 
 
-def calculate_fc_input_size(state_dim: tuple, cnn_cfg: ConfigDict):
-    cnn_cfg_zip = zip(cnn_cfg.kernel_sizes, cnn_cfg.paddings, cnn_cfg.strides)
+def calculate_fc_input_size(state_dim: tuple, network_cfg: ConfigDict):
+    use_resnet = network_cfg.use_resnet
+    x = torch.zeros(state_dim).unsqueeze(0)
 
-    final_volume_size = cnn_cfg.output_sizes[-1]
-
-    output_size = state_dim[-1]
-    for kernel_size, padding_size, stride in cnn_cfg_zip:
-        input_size = output_size
-        output_size = ((input_size - kernel_size + 2 * padding_size) // stride) + 1
-
-    return output_size * output_size * final_volume_size
+    if use_resnet:
+        resnet_cfg = network_cfg.resnet_cfg
+        resnet_block = Bottleneck if resnet_cfg.use_bottleneck else BasicBlock
+        temp_resnet = ResNet(
+            block=resnet_block, resnet_cfg=resnet_cfg, fc_layers=MLP(1, 1, [1]),
+        )
+        resnet_output = temp_resnet.get_cnn_features(x).view(-1)
+        return resnet_output.shape[0]
+    else:
+        cnn_cfg = network_cfg.cnn_cfg
+        cnn_model = CNN(
+            cnn_layers=list(map(CNNLayer, *cnn_cfg.values())), fc_layers=MLP(1, 1, [1]),
+        )
+        cnn_output = cnn_model.get_cnn_features(x).view(-1)
+        return cnn_output.shape[0]

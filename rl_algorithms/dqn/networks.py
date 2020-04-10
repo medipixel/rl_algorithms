@@ -15,6 +15,7 @@ import torch.nn.functional as F
 
 from rl_algorithms.common.networks.cnn import CNN
 from rl_algorithms.common.networks.mlp import MLP, init_layer_uniform
+from rl_algorithms.common.networks.resnet import ResNet
 from rl_algorithms.dqn.linear import NoisyMLPHandler
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -75,6 +76,20 @@ class DuelingMLP(MLP, NoisyMLPHandler):
 
 class C51CNN(CNN):
     """Convolution neural network for distributional RL."""
+
+    def forward_(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Forward method implementation."""
+        x = self.get_cnn_features(x)
+        out = self.fc_layers.forward_(x)
+        return out
+
+    def reset_noise(self):
+        """Re-sample noise for fc layers."""
+        self.fc_layers.reset_noise()
+
+
+class C51ResNet(ResNet):
+    """ResNet for distributional RL."""
 
     def forward_(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """Forward method implementation."""
@@ -155,6 +170,22 @@ class C51DuelingMLP(MLP, NoisyMLPHandler):
 
 
 class IQNCNN(CNN):
+    """Convolution neural network for distributional RL."""
+
+    def forward_(
+        self, x: torch.Tensor, n_tau_samples: int = None
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Forward method implementation."""
+        x = self.get_cnn_features(x)
+        out = self.fc_layers.forward_(x, n_tau_samples)
+        return out
+
+    def reset_noise(self):
+        """Re-sample noise for fc layers."""
+        self.fc_layers.reset_noise()
+
+
+class IQNResNet(ResNet):
     """Convolution neural network for distributional RL."""
 
     def forward_(
