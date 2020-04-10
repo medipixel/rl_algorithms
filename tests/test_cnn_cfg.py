@@ -3,6 +3,7 @@ import torch.nn as nn
 
 from rl_algorithms.common.networks.cnn import CNN, CNNLayer
 from rl_algorithms.common.networks.mlp import MLP
+from rl_algorithms.common.networks.resnet import BasicBlock, ResNet
 from rl_algorithms.dqn.utils import calculate_fc_input_size
 from rl_algorithms.utils.config import ConfigDict
 
@@ -40,6 +41,46 @@ def test_fc_size_calculator():
     assert calculate_fc_size == 16384
 
 
+def test_resnet_with_config():
+    conv_layer_size = [
+        [1, 32, 256, 256],
+        [1, 32, 256, 256],
+        [1, 128, 256, 256],
+        [1, 128, 256, 256],
+        [1, 32, 128, 128],
+        [1, 128, 128, 128],
+        [1, 128, 128, 128],
+        [1, 64, 64, 64],
+        [1, 256, 64, 64],
+        [1, 256, 64, 64],
+        [1, 64, 32, 32],
+        [1, 256, 32, 32],
+        [1, 256, 32, 32],
+        [1, 16, 32, 32],
+    ]
+    test_mlp = MLP(1, 1, [1])
+    resnet_cfg = network_cfg.resnet_cfg
+    test_resnet_model = ResNet(
+        block=BasicBlock, resnet_cfg=resnet_cfg, fc_layers=test_mlp,
+    )
+    conv_layers = [
+        module
+        for module in test_resnet_model.modules()
+        if isinstance(module, nn.Conv2d)
+    ]
+    x = torch.zeros(test_state_dim).unsqueeze(0)
+    skip_x = x
+    for i, layer in enumerate(conv_layers):
+        if i % 3 == 0:
+            layer_output = layer(skip_x)
+            skip_x = layer_output
+            x = layer_output
+        else:
+            layer_output = layer(x)
+            x = layer_output
+        assert list(x.shape) == conv_layer_size[i]
+
+
 def test_cnn_with_config():
     conv_layer_size = [[1, 32, 64, 64], [1, 32, 21, 21], [1, 64, 11, 11]]
     test_mlp = MLP(1, 1, [1])
@@ -58,5 +99,6 @@ def test_cnn_with_config():
 
 
 if __name__ == "__main__":
+    test_resnet_with_config()
     test_fc_size_calculator()
     test_cnn_with_config()
