@@ -101,12 +101,7 @@ class C51DuelingMLP(MLP, NoisyMLPHandler):
 
     def __init__(
         self,
-        input_size: int,
-        action_size: int,
-        hidden_sizes: list,
-        atom_size: int = 51,
-        v_min: int = -10,
-        v_max: int = 10,
+        params,
         hidden_activation: Callable = F.relu,
         linear_layer: nn.Module = nn.Linear,
         init_fn: Callable = init_layer_uniform,
@@ -120,18 +115,18 @@ class C51DuelingMLP(MLP, NoisyMLPHandler):
             init_fn = init_layer_uniform
 
         super(C51DuelingMLP, self).__init__(
-            input_size=input_size,
-            output_size=action_size,
-            hidden_sizes=hidden_sizes,
+            input_size=params["input_size"],
+            output_size=params["action_size"],
+            hidden_sizes=params["hidden_sizes"],
             hidden_activation=hidden_activation,
             linear_layer=linear_layer,
             use_output_layer=False,
         )
-        in_size = hidden_sizes[-1]
-        self.action_size = action_size
-        self.atom_size = atom_size
-        self.output_size = action_size * atom_size
-        self.v_min, self.v_max = v_min, v_max
+        in_size = params["hidden_sizes"][-1]
+        self.action_size = params["action_size"]
+        self.atom_size = params["atom_size"]
+        self.output_size = params["action_size"] * params["atom_size"]
+        self.v_min, self.v_max = params["v_min"], params["v_max"]
 
         # set advantage layer
         self.advantage_hidden_layer = self.linear_layer(in_size, in_size)
