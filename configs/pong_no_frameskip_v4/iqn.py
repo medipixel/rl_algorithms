@@ -24,8 +24,6 @@ agent = dict(
         # Distributional Q function
         use_dist_q="IQN",
         # NoisyNet
-        use_noisy_net=False,
-        std_init=0.5,
         # Epsilon Greedy
         max_epsilon=0.0,
         min_epsilon=0.0,  # openai baselines: 0.01
@@ -52,12 +50,17 @@ agent = dict(
         ),
     ),
     head_cfg=dict(
-        type="IQNMLP",
+        type="C51MLP",
         params=dict(
             # NoisyNet
             use_noisy_net=True,
             std_init=0.5,
             hidden_sizes=[512],
+            n_tau_samples=64,
+            n_tau_prime_samples=64,
+            n_quantile_samples=32,
+            quantile_embedding_dim=64,
+            kappa=1.0,
         ),
     ),
     optim_cfg=dict(
