@@ -49,11 +49,7 @@ agent = dict(
         ),
     ),
     head_cfg=dict(
-        type="DuelingMLP",
-        params=dict(
-            use_noisy_net=False,
-            hidden_sizes=[512],
-        ),
+        type="DuelingMLP", params=dict(use_noisy_net=False, hidden_sizes=[512],),
     ),
     optim_cfg=dict(
         lr_dqn=1e-4,  # dueling: 6.25e-5, openai baselines: 1e-4
