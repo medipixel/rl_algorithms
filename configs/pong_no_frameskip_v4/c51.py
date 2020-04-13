@@ -50,7 +50,7 @@ agent = dict(
         ),
     ),
     head_cfg=dict(
-        type="C51MLP",
+        type="C51DuelingMLP",
         params=dict(
             # NoisyNet
             use_noisy_net=True,
@@ -58,7 +58,7 @@ agent = dict(
             hidden_sizes=[512],
             v_min=-10,
             v_max=10,
-            atoms=51,
+            atom_size=51,
         ),
     ),
     optim_cfg=dict(

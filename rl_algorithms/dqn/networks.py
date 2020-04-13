@@ -100,16 +100,16 @@ class C51DuelingMLP(MLP, NoisyMLPHandler):
 
         super(C51DuelingMLP, self).__init__(
             input_size=params["input_size"],
-            output_size=params["action_size"],
+            output_size=params["output_size"],
             hidden_sizes=params["hidden_sizes"],
             hidden_activation=hidden_activation,
             linear_layer=linear_layer,
             use_output_layer=False,
         )
         in_size = params["hidden_sizes"][-1]
-        self.action_size = params["action_size"]
+        self.action_size = params["output_size"]
         self.atom_size = params["atom_size"]
-        self.output_size = params["action_size"] * params["atom_size"]
+        self.output_size = params["output_size"] * params["atom_size"]
         self.v_min, self.v_max = params["v_min"], params["v_max"]
 
         # set advantage layer

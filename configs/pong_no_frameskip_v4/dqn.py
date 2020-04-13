@@ -22,7 +22,7 @@ agent = dict(
         per_beta=0.4,
         per_eps=1e-6,
         # Distributional Q function
-        use_dist_q="IQN",
+        use_dist_q="DQN",
         # NoisyNet
         use_noisy_net=False,
         std_init=0.5,
@@ -52,7 +52,7 @@ agent = dict(
         ),
     ),
     head_cfg=dict(
-        type="IQNMLP",
+        type="DuelingMLP",
         params=dict(
             # NoisyNet
             use_noisy_net=True,

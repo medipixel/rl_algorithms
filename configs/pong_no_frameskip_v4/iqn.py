@@ -50,7 +50,7 @@ agent = dict(
         ),
     ),
     head_cfg=dict(
-        type="C51MLP",
+        type="IQNMLP",
         params=dict(
             # NoisyNet
             use_noisy_net=True,
