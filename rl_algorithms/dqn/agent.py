@@ -99,7 +99,7 @@ class DQNAgent(Agent):
         self.use_conv = len(self.state_dim) > 1
         self.use_n_step = hyper_params.n_step > 1
 
-        if hyper_params.use_noisy_net:
+        if head_cfg.params.use_noisy_net:
             self.max_epsilon = 0.0
             self.min_epsilon = 0.0
             self.epsilon = 0.0
@@ -230,7 +230,7 @@ class DQNAgent(Agent):
                 batch_size=self.hyper_params.batch_size,
                 v_min=self.head_cfg.params.v_min,
                 v_max=self.head_cfg.params.v_max,
-                atom_size=self.head_cfg.params.atoms,
+                atom_size=self.head_cfg.params.atom_size,
             )
         else:
             return dqn_utils.calculate_dqn_loss(

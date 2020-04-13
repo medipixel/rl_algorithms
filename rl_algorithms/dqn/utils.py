@@ -7,22 +7,21 @@ This module has DQN util functions.
 - Contact: curt.park@medipixel.io
 """
 
-from typing import Tuple, Union
+from typing import Tuple
 
 import torch
 import torch.nn.functional as F
 
-from rl_algorithms.common.networks.cnn import CNN
-from rl_algorithms.common.networks.mlp import MLP
-from rl_algorithms.dqn.networks import C51CNN, IQNCNN, IQNMLP, C51DuelingMLP
+from rl_algorithms.common.networks.base_network import Base_network
 from rl_algorithms.utils.config import ConfigDict
+
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 def calculate_iqn_loss(
-    model: Union[IQNMLP, IQNCNN],
-    target_model: Union[IQNMLP, IQNCNN],
+    model: Base_network,
+    target_model: Base_network,
     experiences: Tuple[torch.Tensor, ...],
     gamma: float,
     batch_size: int,
@@ -131,8 +130,8 @@ def calculate_iqn_loss(
 
 
 def calculate_c51_loss(
-    model: Union[C51DuelingMLP, C51CNN],
-    target_model: Union[C51DuelingMLP, C51CNN],
+    model: Base_network,
+    target_model: Base_network,
     experiences: Tuple[torch.Tensor, ...],
     gamma: float,
     batch_size: int,
@@ -185,8 +184,8 @@ def calculate_c51_loss(
 
 
 def calculate_dqn_loss(
-    model: Union[MLP, CNN],
-    target_model: Union[MLP, CNN],
+    model: Base_network,
+    target_model: Base_network,
     experiences: Tuple[torch.Tensor, ...],
     gamma: float,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
