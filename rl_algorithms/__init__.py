@@ -12,6 +12,7 @@ from .ppo.agent import PPOAgent
 from .registry import build_agent, build_her
 from .sac.agent import SACAgent
 from .td3.agent import TD3Agent
+from .common.networks.cnn import CNN
 
 __all__ = [
     "A2CAgent",
@@ -30,4 +31,5 @@ __all__ = [
     "ReacherHER",
     "build_agent",
     "build_her",
+    "CNN",
 ]
