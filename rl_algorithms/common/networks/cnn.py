@@ -52,6 +52,7 @@ class CNNLayer(nn.Module):
 
         return x
 
+
 @BACKBONES.register_module
 class CNN(nn.Module):
     """Baseline of Convolution neural network."""

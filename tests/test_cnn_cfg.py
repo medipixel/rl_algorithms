@@ -1,8 +1,7 @@
 import torch
 import torch.nn as nn
 
-from rl_algorithms.common.networks.cnn import CNN, CNNLayer
-from rl_algorithms.common.networks.mlp import MLP
+from rl_algorithms.common.networks.cnn import CNN
 from rl_algorithms.dqn.utils import calculate_fc_input_size
 from rl_algorithms.utils.config import ConfigDict
 
@@ -25,10 +24,8 @@ def test_fc_size_calculator():
 
 def test_cnn_with_config():
     conv_layer_size = [[1, 32, 64, 64], [1, 32, 21, 21], [1, 64, 11, 11]]
-    test_mlp = MLP(7744, 1, [1])
-    test_cnn_model = CNN(
-        cnn_layers=list(map(CNNLayer, *cnn_cfg.values())), fc_layers=test_mlp
-    )
+    # test_cnn_model = build_backbone(test_backbone_cfg_params)
+    test_cnn_model = CNN(params=cnn_cfg)
     conv_layers = [
         module for module in test_cnn_model.modules() if isinstance(module, nn.Conv2d)
     ]

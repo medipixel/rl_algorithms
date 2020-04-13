@@ -2,6 +2,7 @@ from .a2c.agent import A2CAgent
 from .bc.ddpg_agent import BCDDPGAgent
 from .bc.her import LunarLanderContinuousHER, ReacherHER
 from .bc.sac_agent import BCSACAgent
+from .common.networks.cnn import CNN
 from .ddpg.agent import DDPGAgent
 from .dqn.agent import DQNAgent
 from .fd.ddpg_agent import DDPGfDAgent
@@ -12,7 +13,6 @@ from .ppo.agent import PPOAgent
 from .registry import build_agent, build_her
 from .sac.agent import SACAgent
 from .td3.agent import TD3Agent
-from .common.networks.cnn import CNN
 
 __all__ = [
     "A2CAgent",

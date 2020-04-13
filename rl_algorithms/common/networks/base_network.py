@@ -3,11 +3,10 @@ import torch.nn as nn
 
 from rl_algorithms.dqn.networks import IQNMLP
 
+
 class Base_network(nn.Module):
     def __init__(
-        self,
-        backbone: nn.Module,
-        head: nn.Module,
+        self, backbone: nn.Module, head: nn.Module,
     ):
         super(Base_network, self).__init__()
 
@@ -29,4 +28,3 @@ class Base_network(nn.Module):
         else:
             x = self.head.forward_(x)
         return x
-    

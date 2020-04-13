@@ -14,23 +14,19 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from rl_algorithms.common.helper_functions import identity
-from rl_algorithms.common.networks.cnn import CNN
 from rl_algorithms.common.networks.mlp import MLP, init_layer_uniform
-from rl_algorithms.dqn.linear import NoisyLinearConstructor
-from rl_algorithms.dqn.linear import NoisyMLPHandler
-from rl_algorithms.registry import BACKBONES, HEADS
+from rl_algorithms.dqn.linear import NoisyLinearConstructor, NoisyMLPHandler
+from rl_algorithms.registry import HEADS
+
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 
 @HEADS.register_module
 class DuelingMLP(MLP, NoisyMLPHandler):
     """Multilayer perceptron with dueling construction."""
 
     def __init__(
-        self,
-        params: dict,
-        hidden_activation: Callable = F.relu,
-        linear_layer: nn.Module = nn.Linear,
-        init_fn: Callable = init_layer_uniform,
+        self, params: dict, hidden_activation: Callable = F.relu,
     ):
         """Initialize."""
         if params["use_noisy_net"]:
@@ -39,20 +35,19 @@ class DuelingMLP(MLP, NoisyMLPHandler):
         else:
             linear_layer = nn.Linear
             init_fn = init_layer_uniform
-
         super(DuelingMLP, self).__init__(
-            input_size=params['input_size'],
-            output_size=params['output_size'],
-            hidden_sizes=params['hidden_sizes'],
+            input_size=params["input_size"],
+            output_size=params["output_size"],
+            hidden_sizes=params["hidden_sizes"],
             hidden_activation=hidden_activation,
             linear_layer=linear_layer,
             use_output_layer=False,
         )
-        in_size = params['hidden_sizes'][-1]
+        in_size = params["hidden_sizes"][-1]
 
         # set advantage layer
         self.advantage_hidden_layer = self.linear_layer(in_size, in_size)
-        self.advantage_layer = self.linear_layer(in_size, params['output_size'])
+        self.advantage_layer = self.linear_layer(in_size, params["output_size"])
         self.advantage_layer = init_fn(self.advantage_layer)
 
         # set value layer
@@ -79,16 +74,13 @@ class DuelingMLP(MLP, NoisyMLPHandler):
 
         return x
 
+
 @HEADS.register_module
 class C51DuelingMLP(MLP, NoisyMLPHandler):
     """Multilayered perceptron for C51 with dueling construction."""
 
     def __init__(
-        self,
-        params,
-        hidden_activation: Callable = F.relu,
-        linear_layer: nn.Module = nn.Linear,
-        init_fn: Callable = init_layer_uniform,
+        self, params, hidden_activation: Callable = F.relu,
     ):
         """Initialize."""
         if params["use_noisy_net"]:
@@ -97,7 +89,6 @@ class C51DuelingMLP(MLP, NoisyMLPHandler):
         else:
             linear_layer = nn.Linear
             init_fn = init_layer_uniform
-
         super(C51DuelingMLP, self).__init__(
             input_size=params["input_size"],
             output_size=params["output_size"],
@@ -148,6 +139,7 @@ class C51DuelingMLP(MLP, NoisyMLPHandler):
 
         return q
 
+
 @HEADS.register_module
 class IQNMLP(MLP, NoisyMLPHandler):
     """Multilayered perceptron for IQN with dueling construction.
@@ -156,11 +148,7 @@ class IQNMLP(MLP, NoisyMLPHandler):
     """
 
     def __init__(
-        self,
-        params: dict,
-        hidden_activation: Callable = F.relu,
-        linear_layer: nn.Module = nn.Linear,
-        init_fn: Callable = init_layer_uniform,
+        self, params: dict, hidden_activation: Callable = F.relu,
     ):
         """Initialize."""
         if params["use_noisy_net"]:
@@ -169,20 +157,19 @@ class IQNMLP(MLP, NoisyMLPHandler):
         else:
             linear_layer = nn.Linear
             init_fn = init_layer_uniform
-
         super(IQNMLP, self).__init__(
-            input_size=params['input_size'],
-            output_size=params['output_size'],
-            hidden_sizes=params['hidden_sizes'],
+            input_size=params["input_size"],
+            output_size=params["output_size"],
+            hidden_sizes=params["hidden_sizes"],
             hidden_activation=hidden_activation,
             linear_layer=linear_layer,
             init_fn=init_fn,
         )
 
-        IQNMLP.n_quantiles = params['n_quantile_samples']
-        self.quantile_embedding_dim = params['quantile_embedding_dim']
-        self.input_size = params['input_size']
-        self.output_size = params['output_size']
+        IQNMLP.n_quantiles = params["n_quantile_samples"]
+        self.quantile_embedding_dim = params["quantile_embedding_dim"]
+        self.input_size = params["input_size"]
+        self.output_size = params["output_size"]
 
         # set quantile_net layer
         self.quantile_fc_layer = self.linear_layer(

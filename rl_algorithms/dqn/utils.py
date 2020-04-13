@@ -15,7 +15,6 @@ import torch.nn.functional as F
 from rl_algorithms.common.networks.base_network import Base_network
 from rl_algorithms.utils.config import ConfigDict
 
-
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
