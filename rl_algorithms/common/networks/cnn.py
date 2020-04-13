@@ -13,7 +13,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from rl_algorithms.common.helper_functions import identity
-from rl_algorithms.common.networks.mlp import MLP
+from rl_algorithms.registry import BACKBONES
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -52,7 +52,7 @@ class CNNLayer(nn.Module):
 
         return x
 
-
+@BACKBONES.register_module
 class CNN(nn.Module):
     """Baseline of Convolution neural network."""
 

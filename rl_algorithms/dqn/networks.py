@@ -79,22 +79,6 @@ class DuelingMLP(MLP, NoisyMLPHandler):
 
         return x
 
-@BACKBONES.register_module
-class DQNCNN(CNN):
-    """Convolution neural network for DQN."""
-
-    def reset_noise(self):
-        """Re-sample noise for fc layers."""
-        self.fc_layers.reset_noise()
-
-@BACKBONES.register_module
-class C51CNN(CNN):
-    """Convolution neural network for distributional RL."""
-
-    def reset_noise(self):
-        """Re-sample noise for fc layers."""
-        self.fc_layers.reset_noise()
-
 @HEADS.register_module
 class C51DuelingMLP(MLP, NoisyMLPHandler):
     """Multilayered perceptron for C51 with dueling construction."""
@@ -163,13 +147,6 @@ class C51DuelingMLP(MLP, NoisyMLPHandler):
         _, q = self.forward_(x)
 
         return q
-
-@BACKBONES.register_module
-class IQNCNN(CNN):
-    """Convolution neural network for distributional RL."""
-    def reset_noise(self):
-        """Re-sample noise for fc layers."""
-        self.fc_layers.reset_noise()
 
 @HEADS.register_module
 class IQNMLP(MLP, NoisyMLPHandler):
