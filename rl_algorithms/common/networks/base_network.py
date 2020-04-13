@@ -6,8 +6,8 @@ from rl_algorithms.dqn.networks import IQNMLP
 class Base_network(nn.Module):
     def __init__(
         self,
-        backbone,
-        head,
+        backbone: nn.Module,
+        head: nn.Module,
     ):
         super(Base_network, self).__init__()
 
