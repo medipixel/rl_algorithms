@@ -184,6 +184,7 @@ class Agent(ABC):
             step = 0
 
             key = 0
+            print("\nPress Any Key to move to next step... (quit: ESC key)")
             while not done:
                 state = self._preprocess_state(state)
                 action = self.dqn(state).argmax()

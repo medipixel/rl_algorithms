@@ -203,6 +203,14 @@ python <run-file> -h
 - `--load-from <save-file-path>`
     - Load the saved models and optimizers at the beginning.
 
+#### Show feature map with Grad-CAM
+You can show a feature map that the trained agent extract using **[Grad-CAM(Gradient-weighted Class Activation Mapping)](https://arxiv.org/pdf/1610.02391.pdf)**. Grad-CAM is a way of combining feature maps using the gradient signal, and produce a coarse localization map of the important regions in the image. You can use it by adding Grad-CAM config and `--grad-cam` flag when you run. For example:
+```
+python run_env_name.py --cfg-path <config-path> --test --grad-cam
+```
+It can be only used the agent that uses convolutional layers like **DQN for Pong environment**. You can see feature maps of all the configured convolution layers.
+<img src="https://user-images.githubusercontent.com/17582508/79204132-02b75a00-7e77-11ea-9c78-ab543055bd4f.gif" width="400" height="400" align="center"/>
+
 #### W&B for logging
 We use [W&B](https://www.wandb.com/) for logging of network parameters and others. For logging, please follow the steps below after requirement installation:
 
