@@ -34,7 +34,7 @@ class ReplayBuffer:
     def __init__(
         self,
         buffer_size: int,
-        batch_size: int = 32,
+        batch_size: int,
         gamma: float = 0.99,
         n_step: int = 1,
         demo: List[Tuple[np.ndarray, np.ndarray, float, np.ndarray, bool]] = None,
