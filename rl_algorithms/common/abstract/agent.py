@@ -221,14 +221,12 @@ class Agent(ABC):
                         else np.vstack([result_images, result])
                     )
                 # Show action on result image
-                font = cv2.FONT_HERSHEY_PLAIN  # hand-writing style font
-                fontScale = 1
                 cv2.putText(
                     img=result_images,
                     text=f"action: {action}",
                     org=(50, 50),
-                    fontFace=font,
-                    fontScale=fontScale,
+                    fontFace=cv2.FONT_HERSHEY_PLAIN,
+                    fontScale=1,
                     color=(0, 0, 255),
                     thickness=2,
                 )
