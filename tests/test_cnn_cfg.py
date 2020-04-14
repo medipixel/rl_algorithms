@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 
+from rl_algorithms.common.networks.base_network import calculate_fc_input_size
 from rl_algorithms.common.networks.cnn import CNN
-from rl_algorithms.dqn.utils import calculate_fc_input_size
 from rl_algorithms.utils.config import ConfigDict
 
 cnn_cfg = ConfigDict(
