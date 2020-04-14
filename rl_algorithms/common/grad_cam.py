@@ -20,12 +20,14 @@ class CAMBaseWrapper:
     """Base Wrapping module for CAM."""
 
     def __init__(self, model: nn.Module):
+        """Initialize."""
         super(CAMBaseWrapper, self).__init__()
         self.device = next(model.parameters()).device
         self.model = model
         self.handlers = []  # a set of hook function handlers
 
     def _encode_one_hot(self, ids: torch.Tensor) -> torch.Tensor:
+        """Convert input to one-hot."""
         one_hot = torch.zeros_like(self.logits).to(self.device)
         one_hot[0][ids] = 1
         return one_hot
@@ -40,7 +42,7 @@ class CAMBaseWrapper:
 
     def backward(self, ids: torch.Tensor) -> torch.Tensor:
         """
-        Class-specific backpropagation
+        Class-specific backpropagation.
         Either way works:
         1. self.logits.backward(gradient=one_hot, retain_graph=True)
         2. (self.logits * one_hot).sum().backward(retain_graph=True)
@@ -69,6 +71,7 @@ class GradCAM(CAMBaseWrapper):
     """
 
     def __init__(self, model: nn.Module, candidate_layers: list = None):
+        """Initialize."""
         super(GradCAM, self).__init__(model)
         self.fmap_pool = OrderedDict()
         self.grad_pool = OrderedDict()
@@ -97,6 +100,7 @@ class GradCAM(CAMBaseWrapper):
 
     @staticmethod
     def _find(pool: OrderedDict, target_layer: str) -> torch.Tensor:
+        """Get designated layer from model."""
         if target_layer in pool.keys():
             return pool[target_layer]
         else:
@@ -104,13 +108,16 @@ class GradCAM(CAMBaseWrapper):
 
     @staticmethod
     def _compute_grad_weights(grads: torch.Tensor) -> torch.Tensor:
+        """Compute gradient weight with average pooling."""
         return F.adaptive_avg_pool2d(grads, 1)
 
     def forward(self, image: np.ndarray) -> torch.Tensor:
+        """Forward method implementation."""
         self.image_shape = image.shape[1:]
         return super(GradCAM, self).forward(image)
 
     def generate(self, target_layer: str) -> torch.Tensor:
+        """Generate feature map of target layer with Grad-CAM."""
         fmaps = self._find(self.fmap_pool, target_layer)
         grads = self._find(self.grad_pool, target_layer)
         weights = self._compute_grad_weights(grads)
