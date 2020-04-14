@@ -13,8 +13,6 @@ import torch
 import torch.nn.functional as F
 
 from rl_algorithms.common.networks.base_network import BaseNetwork
-from rl_algorithms.common.networks.cnn import CNN
-from rl_algorithms.utils.config import ConfigDict
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -217,12 +215,3 @@ def calculate_dqn_loss(
     )
 
     return dq_loss_element_wise, q_values
-
-
-def calculate_fc_input_size(state_dim: tuple, cnn: ConfigDict):
-    x = torch.zeros(state_dim).unsqueeze(0)
-
-    cnn = cnn
-    cnn_model = CNN(cnn.configs)
-    cnn_output = cnn_model.get_cnn_features(x).view(-1)
-    return cnn_output.shape[0]

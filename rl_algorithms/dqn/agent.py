@@ -30,8 +30,7 @@ from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
 import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.common.networks.base_network import BaseNetwork
 import rl_algorithms.dqn.utils as dqn_utils
-from rl_algorithms.dqn.utils import calculate_fc_input_size
-from rl_algorithms.registry import AGENTS, build_backbone, build_head
+from rl_algorithms.registry import AGENTS
 from rl_algorithms.utils.config import ConfigDict
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -130,17 +129,11 @@ class DQNAgent(Agent):
     def _init_network(self):
         """Initialize networks and optimizers."""
 
-        self.head.configs.input_size = calculate_fc_input_size(
-            self.state_dim, self.backbone.configs
-        )
+        self.head.configs.state_size = self.state_dim
         self.head.configs.output_size = self.action_dim
 
-        self.dqn = BaseNetwork(build_backbone(self.backbone), build_head(self.head)).to(
-            device
-        )
-        self.dqn_target = BaseNetwork(
-            build_backbone(self.backbone), build_head(self.head)
-        ).to(device)
+        self.dqn = BaseNetwork(self.backbone, self.head).to(device)
+        self.dqn_target = BaseNetwork(self.backbone, self.head).to(device)
 
         self.dqn_target.load_state_dict(self.dqn.state_dict())
 
