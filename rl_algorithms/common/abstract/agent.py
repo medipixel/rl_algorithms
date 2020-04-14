@@ -194,7 +194,7 @@ class Agent(ABC):
                 ids = torch.LongTensor([[int(action)]]).cuda()
                 gcam.backward(ids=ids)
 
-                state = state[0].detach().cpu().numpy().astype(np.uint8)
+                state = state[-1].detach().cpu().numpy().astype(np.uint8)
                 state = np.transpose(state)
                 state = cv2.cvtColor(state, cv2.COLOR_GRAY2BGR)
                 state = cv2.resize(state, (150, 150), interpolation=cv2.INTER_LINEAR)
@@ -219,6 +219,19 @@ class Agent(ABC):
                         if result_images is None
                         else np.vstack([result_images, result])
                     )
+                # Show action on result image
+                location = (50, 50)
+                font = cv2.FONT_HERSHEY_PLAIN  # hand-writing style font
+                fontScale = 1
+                cv2.putText(
+                    result_images,
+                    f"action: {action}",
+                    location,
+                    font,
+                    fontScale,
+                    (0, 0, 255),
+                    2,
+                )
 
                 cv2.imshow("result", result_images)
                 key = cv2.waitKey(0)
