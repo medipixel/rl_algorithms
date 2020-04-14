@@ -9,6 +9,8 @@ from rl_algorithms.utils.config import ConfigDict
 
 
 class BaseNetwork(nn.Module):
+    """this class is for holding backbone and head networks"""
+
     def __init__(
         self, backbone_cfg: ConfigDict, head_cfg: ConfigDict,
     ):
@@ -24,6 +26,7 @@ class BaseNetwork(nn.Module):
         self.head = build_head(head_cfg)
 
     def forward(self, x, n_tau_samples: int = None):
+        """use in get_action method in agent"""
         x = self.backbone(x)
         if isinstance(self.head, IQNMLP):
             x = self.head.forward(x, n_tau_samples)
