@@ -14,6 +14,7 @@ import torch.nn.functional as F
 
 from rl_algorithms.common.helper_functions import identity
 from rl_algorithms.registry import BACKBONES
+from rl_algorithms.utils.config import ConfigDict
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -57,10 +58,10 @@ class CNNLayer(nn.Module):
 class CNN(nn.Module):
     """Baseline of Convolution neural network."""
 
-    def __init__(self, params: dict):
+    def __init__(self, configs: ConfigDict):
         super(CNN, self).__init__()
 
-        cnn_layers = list(map(CNNLayer, *params.values()))
+        cnn_layers = list(map(CNNLayer, *configs.values()))
         self.cnn = nn.Sequential()
         for i, cnn_layer in enumerate(cnn_layers):
             self.cnn.add_module("cnn_{}".format(i), cnn_layer)

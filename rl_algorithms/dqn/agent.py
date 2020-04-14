@@ -28,7 +28,7 @@ from rl_algorithms.common.abstract.agent import Agent
 from rl_algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
 import rl_algorithms.common.helper_functions as common_utils
-from rl_algorithms.common.networks.base_network import Base_network
+from rl_algorithms.common.networks.base_network import BaseNetwork
 import rl_algorithms.dqn.utils as dqn_utils
 from rl_algorithms.dqn.utils import calculate_fc_input_size
 from rl_algorithms.registry import AGENTS, build_backbone, build_head
@@ -71,9 +71,8 @@ class DQNAgent(Agent):
         args: argparse.Namespace,
         log_cfg: ConfigDict,
         hyper_params: ConfigDict,
-        backbone_cfg: ConfigDict,
-        head_cfg: ConfigDict,
-        network_cfg: ConfigDict,
+        backbone: ConfigDict,
+        head: ConfigDict,
         optim_cfg: ConfigDict,
     ):
         """Initialize."""
@@ -85,10 +84,9 @@ class DQNAgent(Agent):
         self.i_episode = 0
 
         self.hyper_params = hyper_params
-        self.network_cfg = network_cfg
         self.optim_cfg = optim_cfg
-        self.backbone_cfg = backbone_cfg
-        self.head_cfg = head_cfg
+        self.backbone = backbone
+        self.head = head
 
         self.state_dim = self.env.observation_space.shape
         self.action_dim = self.env.action_space.n
@@ -97,7 +95,7 @@ class DQNAgent(Agent):
         self.use_conv = len(self.state_dim) > 1
         self.use_n_step = hyper_params.n_step > 1
 
-        if head_cfg.params.use_noisy_net:
+        if head.configs.use_noisy_net:
             self.max_epsilon = 0.0
             self.min_epsilon = 0.0
             self.epsilon = 0.0
@@ -133,16 +131,16 @@ class DQNAgent(Agent):
     def _init_network(self):
         """Initialize networks and optimizers."""
 
-        self.head_cfg.params["input_size"] = calculate_fc_input_size(
-            self.state_dim, self.backbone_cfg.params
+        self.head.configs.input_size = calculate_fc_input_size(
+            self.state_dim, self.backbone.configs
         )
-        self.head_cfg.params["output_size"] = self.action_dim
+        self.head.configs.output_size = self.action_dim
 
-        self.dqn = Base_network(
-            build_backbone(self.backbone_cfg), build_head(self.head_cfg)
-        ).to(device)
-        self.dqn_target = Base_network(
-            build_backbone(self.backbone_cfg), build_head(self.head_cfg)
+        self.dqn = BaseNetwork(build_backbone(self.backbone), build_head(self.head)).to(
+            device
+        )
+        self.dqn_target = BaseNetwork(
+            build_backbone(self.backbone), build_head(self.head)
         ).to(device)
 
         self.dqn_target.load_state_dict(self.dqn.state_dict())
@@ -217,9 +215,9 @@ class DQNAgent(Agent):
                 experiences=experiences,
                 gamma=gamma,
                 batch_size=self.hyper_params.batch_size,
-                n_tau_samples=self.head_cfg.params.n_tau_samples,
-                n_tau_prime_samples=self.head_cfg.params.n_tau_prime_samples,
-                kappa=self.head_cfg.params.kappa,
+                n_tau_samples=self.head.configs.n_tau_samples,
+                n_tau_prime_samples=self.head.configs.n_tau_prime_samples,
+                kappa=self.head.configs.kappa,
             )
         elif self.hyper_params.use_dist_q == "C51":
             return dqn_utils.calculate_c51_loss(
@@ -228,9 +226,9 @@ class DQNAgent(Agent):
                 experiences=experiences,
                 gamma=gamma,
                 batch_size=self.hyper_params.batch_size,
-                v_min=self.head_cfg.params.v_min,
-                v_max=self.head_cfg.params.v_max,
-                atom_size=self.head_cfg.params.atom_size,
+                v_min=self.head.configs.v_min,
+                v_max=self.head.configs.v_max,
+                atom_size=self.head.configs.atom_size,
             )
         else:
             return dqn_utils.calculate_dqn_loss(
@@ -285,7 +283,7 @@ class DQNAgent(Agent):
         fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)
         self.per_beta = self.per_beta + fraction * (1.0 - self.per_beta)
 
-        if self.head_cfg.params.use_noisy_net:
+        if self.head.configs.use_noisy_net:
             self.dqn.head.reset_noise()
             self.dqn_target.head.reset_noise()
 
