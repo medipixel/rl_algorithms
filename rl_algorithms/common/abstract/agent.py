@@ -12,12 +12,14 @@ import shutil
 import subprocess
 from typing import Tuple, Union
 
+import cv2
 import gym
 from gym.spaces import Discrete
 import numpy as np
 import torch
 import wandb
 
+from rl_algorithms.common.grad_cam import GradCAM
 from rl_algorithms.utils.config import ConfigDict
 
 
@@ -170,3 +172,77 @@ class Agent(ABC):
 
             if self.args.log:
                 wandb.log({"test score": score})
+
+    def test_with_gradcam(self):
+        """Test agent with Grad-CAM."""
+        gcam = GradCAM(model=self.dqn.eval())
+
+        for i_episode in range(self.args.episode_num):
+            state = self.env.reset()
+            done = False
+            score = 0
+            step = 0
+
+            key = 0
+            print("\nPress Any Key to move to next step... (quit: ESC key)")
+            while not done:
+                state = self._preprocess_state(state)
+                action = self.dqn(state).argmax()
+                action = action.detach().cpu().numpy()
+                next_state, reward, done, _ = self.step(action)
+
+                _ = gcam.forward(state)
+                ids = torch.LongTensor([[int(action)]]).cuda()
+                gcam.backward(ids=ids)
+
+                state = state[-1].detach().cpu().numpy().astype(np.uint8)
+                state = np.transpose(state)
+                state = cv2.cvtColor(state, cv2.COLOR_GRAY2BGR)
+                state = cv2.resize(state, (150, 150), interpolation=cv2.INTER_LINEAR)
+
+                # Get Grad-CAM image
+                result_images = None
+                for target_layer in self.hyper_params.grad_cam_layer_list:
+                    regions = gcam.generate(target_layer)
+                    regions = regions.detach().cpu().numpy()
+                    regions = np.squeeze(regions) * 255
+                    regions = np.transpose(regions)
+                    regions = cv2.applyColorMap(
+                        regions.astype(np.uint8), cv2.COLORMAP_JET
+                    )
+                    regions = cv2.resize(
+                        regions, (150, 150), interpolation=cv2.INTER_LINEAR
+                    )
+                    overlay = cv2.addWeighted(state, 1.0, regions, 0.5, 0)
+                    result = np.hstack([state, regions, overlay])
+                    result_images = (
+                        result
+                        if result_images is None
+                        else np.vstack([result_images, result])
+                    )
+                # Show action on result image
+                cv2.putText(
+                    img=result_images,
+                    text=f"action: {action}",
+                    org=(50, 50),
+                    fontFace=cv2.FONT_HERSHEY_PLAIN,
+                    fontScale=1,
+                    color=(0, 0, 255),
+                    thickness=2,
+                )
+
+                cv2.imshow("result", result_images)
+                key = cv2.waitKey(0)
+                if key == 27 & 0xFF:  # ESC key
+                    cv2.destroyAllWindows()
+                    break
+
+                state = next_state
+                score += reward
+                step += 1
+
+            print(
+                "[INFO] test %d\tstep: %d\ttotal score: %d" % (i_episode, step, score)
+            )
+            if key == 27 & 0xFF:  # ESC key
+                break
