@@ -6,7 +6,7 @@ from rl_algorithms.dqn.utils import calculate_fc_input_size
 from rl_algorithms.utils.config import ConfigDict
 
 cnn_cfg = ConfigDict(
-    dict(
+    configs=dict(
         input_sizes=[3, 32, 32],
         output_sizes=[32, 32, 64],
         kernel_sizes=[5, 3, 3],
@@ -25,7 +25,7 @@ def test_fc_size_calculator():
 def test_cnn_with_config():
     conv_layer_size = [[1, 32, 64, 64], [1, 32, 21, 21], [1, 64, 11, 11]]
     # test_cnn_model = build_backbone(test_backbone_cfg_params)
-    test_cnn_model = CNN(params=cnn_cfg)
+    test_cnn_model = CNN(configs=cnn_cfg.configs)
     conv_layers = [
         module for module in test_cnn_model.modules() if isinstance(module, nn.Conv2d)
     ]

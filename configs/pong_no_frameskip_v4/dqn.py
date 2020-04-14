@@ -28,19 +28,9 @@ agent = dict(
         min_epsilon=0.01,  # openai baselines: 0.01
         epsilon_decay=1e-6,  # openai baselines: 1e-7 / 1e-1
     ),
-    network_cfg=dict(
-        hidden_sizes=[512],
-        cnn_cfg=dict(
-            input_sizes=[4, 32, 64],
-            output_sizes=[32, 64, 64],
-            kernel_sizes=[8, 4, 3],
-            strides=[4, 2, 1],
-            paddings=[1, 0, 0],
-        ),
-    ),
-    backbone_cfg=dict(
+    backbone=dict(
         type="CNN",
-        params=dict(
+        configs=dict(
             input_sizes=[4, 32, 64],
             output_sizes=[32, 64, 64],
             kernel_sizes=[8, 4, 3],
@@ -48,8 +38,8 @@ agent = dict(
             paddings=[1, 0, 0],
         ),
     ),
-    head_cfg=dict(
-        type="DuelingMLP", params=dict(use_noisy_net=False, hidden_sizes=[512],),
+    head=dict(
+        type="DuelingMLP", configs=dict(use_noisy_net=False, hidden_sizes=[512],),
     ),
     optim_cfg=dict(
         lr_dqn=1e-4,  # dueling: 6.25e-5, openai baselines: 1e-4

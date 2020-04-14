@@ -17,6 +17,7 @@ from rl_algorithms.common.helper_functions import identity
 from rl_algorithms.common.networks.mlp import MLP, init_layer_uniform
 from rl_algorithms.dqn.linear import NoisyLinearConstructor, NoisyMLPHandler
 from rl_algorithms.registry import HEADS
+from rl_algorithms.utils.config import ConfigDict
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -26,28 +27,28 @@ class DuelingMLP(MLP, NoisyMLPHandler):
     """Multilayer perceptron with dueling construction."""
 
     def __init__(
-        self, params: dict, hidden_activation: Callable = F.relu,
+        self, configs: ConfigDict, hidden_activation: Callable = F.relu,
     ):
         """Initialize."""
-        if params["use_noisy_net"]:
-            linear_layer = NoisyLinearConstructor(params["std_init"])
+        if configs.use_noisy_net:
+            linear_layer = NoisyLinearConstructor(configs.std_init)
             init_fn: Callable = identity
         else:
             linear_layer = nn.Linear
             init_fn = init_layer_uniform
         super(DuelingMLP, self).__init__(
-            input_size=params["input_size"],
-            output_size=params["output_size"],
-            hidden_sizes=params["hidden_sizes"],
+            input_size=configs.input_size,
+            output_size=configs.output_size,
+            hidden_sizes=configs.hidden_sizes,
             hidden_activation=hidden_activation,
             linear_layer=linear_layer,
             use_output_layer=False,
         )
-        in_size = params["hidden_sizes"][-1]
+        in_size = configs.hidden_sizes[-1]
 
         # set advantage layer
         self.advantage_hidden_layer = self.linear_layer(in_size, in_size)
-        self.advantage_layer = self.linear_layer(in_size, params["output_size"])
+        self.advantage_layer = self.linear_layer(in_size, configs.output_size)
         self.advantage_layer = init_fn(self.advantage_layer)
 
         # set value layer
@@ -80,28 +81,28 @@ class C51DuelingMLP(MLP, NoisyMLPHandler):
     """Multilayered perceptron for C51 with dueling construction."""
 
     def __init__(
-        self, params, hidden_activation: Callable = F.relu,
+        self, configs: ConfigDict, hidden_activation: Callable = F.relu,
     ):
         """Initialize."""
-        if params["use_noisy_net"]:
-            linear_layer = NoisyLinearConstructor(params["std_init"])
+        if configs.use_noisy_net:
+            linear_layer = NoisyLinearConstructor(configs.std_init)
             init_fn: Callable = identity
         else:
             linear_layer = nn.Linear
             init_fn = init_layer_uniform
         super(C51DuelingMLP, self).__init__(
-            input_size=params["input_size"],
-            output_size=params["output_size"],
-            hidden_sizes=params["hidden_sizes"],
+            input_size=configs.input_size,
+            output_size=configs.output_size,
+            hidden_sizes=configs.hidden_sizes,
             hidden_activation=hidden_activation,
             linear_layer=linear_layer,
             use_output_layer=False,
         )
-        in_size = params["hidden_sizes"][-1]
-        self.action_size = params["output_size"]
-        self.atom_size = params["atom_size"]
-        self.output_size = params["output_size"] * params["atom_size"]
-        self.v_min, self.v_max = params["v_min"], params["v_max"]
+        in_size = configs.hidden_sizes[-1]
+        self.action_size = configs.output_size
+        self.atom_size = configs.atom_size
+        self.output_size = configs.output_size * configs.atom_size
+        self.v_min, self.v_max = configs.v_min, configs.v_max
 
         # set advantage layer
         self.advantage_hidden_layer = self.linear_layer(in_size, in_size)
@@ -148,28 +149,28 @@ class IQNMLP(MLP, NoisyMLPHandler):
     """
 
     def __init__(
-        self, params: dict, hidden_activation: Callable = F.relu,
+        self, configs: ConfigDict, hidden_activation: Callable = F.relu,
     ):
         """Initialize."""
-        if params["use_noisy_net"]:
-            linear_layer = NoisyLinearConstructor(params["std_init"])
+        if configs.use_noisy_net:
+            linear_layer = NoisyLinearConstructor(configs.std_init)
             init_fn: Callable = identity
         else:
             linear_layer = nn.Linear
             init_fn = init_layer_uniform
         super(IQNMLP, self).__init__(
-            input_size=params["input_size"],
-            output_size=params["output_size"],
-            hidden_sizes=params["hidden_sizes"],
+            input_size=configs.input_size,
+            output_size=configs.output_size,
+            hidden_sizes=configs.hidden_sizes,
             hidden_activation=hidden_activation,
             linear_layer=linear_layer,
             init_fn=init_fn,
         )
 
-        IQNMLP.n_quantiles = params["n_quantile_samples"]
-        self.quantile_embedding_dim = params["quantile_embedding_dim"]
-        self.input_size = params["input_size"]
-        self.output_size = params["output_size"]
+        IQNMLP.n_quantiles = configs.n_quantile_samples
+        self.quantile_embedding_dim = configs.quantile_embedding_dim
+        self.input_size = configs.input_size
+        self.output_size = configs.output_size
 
         # set quantile_net layer
         self.quantile_fc_layer = self.linear_layer(

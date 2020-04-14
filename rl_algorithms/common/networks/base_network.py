@@ -4,11 +4,11 @@ import torch.nn as nn
 from rl_algorithms.dqn.networks import IQNMLP
 
 
-class Base_network(nn.Module):
+class BaseNetwork(nn.Module):
     def __init__(
         self, backbone: nn.Module, head: nn.Module,
     ):
-        super(Base_network, self).__init__()
+        super(BaseNetwork, self).__init__()
 
         self.backbone = backbone
         self.head = head

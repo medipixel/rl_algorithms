@@ -12,15 +12,16 @@ from typing import Tuple
 import torch
 import torch.nn.functional as F
 
-from rl_algorithms.common.networks.base_network import Base_network
+from rl_algorithms.common.networks.base_network import BaseNetwork
+from rl_algorithms.common.networks.cnn import CNN
 from rl_algorithms.utils.config import ConfigDict
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 def calculate_iqn_loss(
-    model: Base_network,
-    target_model: Base_network,
+    model: BaseNetwork,
+    target_model: BaseNetwork,
     experiences: Tuple[torch.Tensor, ...],
     gamma: float,
     batch_size: int,
@@ -129,8 +130,8 @@ def calculate_iqn_loss(
 
 
 def calculate_c51_loss(
-    model: Base_network,
-    target_model: Base_network,
+    model: BaseNetwork,
+    target_model: BaseNetwork,
     experiences: Tuple[torch.Tensor, ...],
     gamma: float,
     batch_size: int,
@@ -183,8 +184,8 @@ def calculate_c51_loss(
 
 
 def calculate_dqn_loss(
-    model: Base_network,
-    target_model: Base_network,
+    model: BaseNetwork,
+    target_model: BaseNetwork,
     experiences: Tuple[torch.Tensor, ...],
     gamma: float,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -218,14 +219,10 @@ def calculate_dqn_loss(
     return dq_loss_element_wise, q_values
 
 
-def calculate_fc_input_size(state_dim: tuple, cnn_cfg: ConfigDict):
-    cnn_cfg_zip = zip(cnn_cfg.kernel_sizes, cnn_cfg.paddings, cnn_cfg.strides)
+def calculate_fc_input_size(state_dim: tuple, cnn: ConfigDict):
+    x = torch.zeros(state_dim).unsqueeze(0)
 
-    final_volume_size = cnn_cfg.output_sizes[-1]
-
-    output_size = state_dim[-1]
-    for kernel_size, padding_size, stride in cnn_cfg_zip:
-        input_size = output_size
-        output_size = ((input_size - kernel_size + 2 * padding_size) // stride) + 1
-
-    return output_size * output_size * final_volume_size
+    cnn = cnn
+    cnn_model = CNN(cnn.configs)
+    cnn_output = cnn_model.get_cnn_features(x).view(-1)
+    return cnn_output.shape[0]
