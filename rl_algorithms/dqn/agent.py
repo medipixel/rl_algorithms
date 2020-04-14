@@ -84,8 +84,8 @@ class DQNAgent(Agent):
 
         self.hyper_params = hyper_params
         self.optim_cfg = optim_cfg
-        self.backbone = backbone
-        self.head = head
+        self.backbone_cfg = backbone
+        self.head_cfg = head
 
         self.state_dim = self.env.observation_space.shape
         self.action_dim = self.env.action_space.n
@@ -129,11 +129,11 @@ class DQNAgent(Agent):
     def _init_network(self):
         """Initialize networks and optimizers."""
 
-        self.head.configs.state_size = self.state_dim
-        self.head.configs.output_size = self.action_dim
+        self.head_cfg.configs.state_size = self.state_dim
+        self.head_cfg.configs.output_size = self.action_dim
 
-        self.dqn = BaseNetwork(self.backbone, self.head).to(device)
-        self.dqn_target = BaseNetwork(self.backbone, self.head).to(device)
+        self.dqn = BaseNetwork(self.backbone_cfg, self.head_cfg).to(device)
+        self.dqn_target = BaseNetwork(self.backbone_cfg, self.head_cfg).to(device)
 
         self.dqn_target.load_state_dict(self.dqn.state_dict())
 
@@ -207,9 +207,9 @@ class DQNAgent(Agent):
                 experiences=experiences,
                 gamma=gamma,
                 batch_size=self.hyper_params.batch_size,
-                n_tau_samples=self.head.configs.n_tau_samples,
-                n_tau_prime_samples=self.head.configs.n_tau_prime_samples,
-                kappa=self.head.configs.kappa,
+                n_tau_samples=self.head_cfg.configs.n_tau_samples,
+                n_tau_prime_samples=self.head_cfg.configs.n_tau_prime_samples,
+                kappa=self.head_cfg.configs.kappa,
             )
         elif self.hyper_params.use_dist_q == "C51":
             return dqn_utils.calculate_c51_loss(
@@ -218,9 +218,9 @@ class DQNAgent(Agent):
                 experiences=experiences,
                 gamma=gamma,
                 batch_size=self.hyper_params.batch_size,
-                v_min=self.head.configs.v_min,
-                v_max=self.head.configs.v_max,
-                atom_size=self.head.configs.atom_size,
+                v_min=self.head_cfg.configs.v_min,
+                v_max=self.head_cfg.configs.v_max,
+                atom_size=self.head_cfg.configs.atom_size,
             )
         else:
             return dqn_utils.calculate_dqn_loss(
@@ -275,7 +275,7 @@ class DQNAgent(Agent):
         fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)
         self.per_beta = self.per_beta + fraction * (1.0 - self.per_beta)
 
-        if self.head.configs.use_noisy_net:
+        if self.head_cfg.configs.use_noisy_net:
             self.dqn.head.reset_noise()
             self.dqn_target.head.reset_noise()
 

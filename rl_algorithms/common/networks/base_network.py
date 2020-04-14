@@ -10,18 +10,18 @@ from rl_algorithms.utils.config import ConfigDict
 
 class BaseNetwork(nn.Module):
     def __init__(
-        self, backbone, head,
+        self, backbone_cfg: ConfigDict, head_cfg: ConfigDict,
     ):
         super(BaseNetwork, self).__init__()
-        if not backbone:
+        if not backbone_cfg:
             self.backbone = identity
-            head.configs.input_size = head.configs.state_size[0]
+            head_cfg.configs.input_size = head_cfg.configs.state_size[0]
         else:
-            self.backbone = build_backbone(backbone)
-            head.configs.input_size = calculate_fc_input_size(
-                head.configs.state_size, backbone
+            self.backbone = build_backbone(backbone_cfg)
+            head_cfg.configs.input_size = calculate_fc_input_size(
+                head_cfg.configs.state_size, backbone_cfg
             )
-        self.head = build_head(head)
+        self.head = build_head(head_cfg)
 
     def forward(self, x, n_tau_samples: int = None):
         x = self.backbone(x)
@@ -41,6 +41,7 @@ class BaseNetwork(nn.Module):
 
 
 def calculate_fc_input_size(state_dim: tuple, cnn: ConfigDict):
+    """calculate fc input size according to the shape of cnn"""
     x = torch.zeros(state_dim).unsqueeze(0)
 
     cnn = cnn
