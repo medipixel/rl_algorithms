@@ -3,6 +3,7 @@
 - Author: Kyunghwan Kim
 - Contact: kh.kim@medipixel.io
 """
+from rl_algorithms.common.helper_functions import identity
 
 agent = dict(
     type="BCSACAgent",
@@ -29,10 +30,24 @@ agent = dict(
         success_score=-5.0,
         desired_states_from_demo=False,
     ),
-    network_cfg=dict(
-        hidden_sizes_actor=[256, 256],
-        hidden_sizes_vf=[256, 256],
-        hidden_sizes_qf=[256, 256],
+    backbone=dict(actor=dict(), critic_vf=dict(), critic_qf=dict()),
+    head=dict(
+        actor=dict(
+            type="TanhGaussianDistParams",
+            configs=dict(hidden_sizes=[256, 256], output_activation=identity,),
+        ),
+        critic_vf=dict(
+            type="MLP",
+            configs=dict(
+                hidden_sizes=[256, 256], output_activation=identity, output_size=1,
+            ),
+        ),
+        critic_qf=dict(
+            type="FlattenMLP",
+            configs=dict(
+                hidden_sizes=[256, 256], output_activation=identity, output_size=1,
+            ),
+        ),
     ),
     optim_cfg=dict(
         lr_actor=3e-4,
