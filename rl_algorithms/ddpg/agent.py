@@ -21,7 +21,7 @@ import wandb
 from rl_algorithms.common.abstract.agent import Agent
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
 import rl_algorithms.common.helper_functions as common_utils
-from rl_algorithms.common.networks.mlp import MLP
+from rl_algorithms.common.networks.base_network import BaseNetwork
 from rl_algorithms.common.noise import OUNoise
 from rl_algorithms.registry import AGENTS
 from rl_algorithms.utils.config import ConfigDict
@@ -62,7 +62,8 @@ class DDPGAgent(Agent):
         args: argparse.Namespace,
         log_cfg: ConfigDict,
         hyper_params: ConfigDict,
-        network_cfg: ConfigDict,
+        backbone: ConfigDict,
+        head: ConfigDict,
         optim_cfg: ConfigDict,
         noise_cfg: ConfigDict,
     ):
@@ -75,10 +76,11 @@ class DDPGAgent(Agent):
         self.i_episode = 0
 
         self.hyper_params = hyper_params
-        self.network_cfg = network_cfg
+        self.backbone_cfg = backbone
+        self.head_cfg = head
         self.optim_cfg = optim_cfg
 
-        self.state_dim = self.env.observation_space.shape[0]
+        self.state_dim = self.env.observation_space.shape
         self.action_dim = self.env.action_space.shape[0]
 
         # set noise
@@ -103,33 +105,29 @@ class DDPGAgent(Agent):
     # pylint: disable=attribute-defined-outside-init
     def _init_network(self):
         """Initialize networks and optimizers."""
-        # create actor
-        self.actor = MLP(
-            input_size=self.state_dim,
-            output_size=self.action_dim,
-            hidden_sizes=self.network_cfg.hidden_sizes_actor,
-            output_activation=torch.tanh,
-        ).to(device)
 
-        self.actor_target = MLP(
-            input_size=self.state_dim,
-            output_size=self.action_dim,
-            hidden_sizes=self.network_cfg.hidden_sizes_actor,
-            output_activation=torch.tanh,
+        self.head_cfg.actor.configs.state_size = self.state_dim
+
+        # ddpg critic gets state & action as input,
+        # and make the type to tuple to conform the gym action_space type.
+        self.head_cfg.critic.configs.state_size = (self.state_dim[0] + self.action_dim,)
+        self.head_cfg.actor.configs.output_size = self.action_dim
+
+        # create actor
+        self.actor = BaseNetwork(self.backbone_cfg.actor, self.head_cfg.actor).to(
+            device
+        )
+        self.actor_target = BaseNetwork(
+            self.backbone_cfg.actor, self.head_cfg.actor
         ).to(device)
         self.actor_target.load_state_dict(self.actor.state_dict())
 
         # create critic
-        self.critic = MLP(
-            input_size=self.state_dim + self.action_dim,
-            output_size=1,
-            hidden_sizes=self.network_cfg.hidden_sizes_critic,
-        ).to(device)
-
-        self.critic_target = MLP(
-            input_size=self.state_dim + self.action_dim,
-            output_size=1,
-            hidden_sizes=self.network_cfg.hidden_sizes_critic,
+        self.critic = BaseNetwork(self.backbone_cfg.critic, self.head_cfg.critic).to(
+            device
+        )
+        self.critic_target = BaseNetwork(
+            self.backbone_cfg.critic, self.head_cfg.critic
         ).to(device)
         self.critic_target.load_state_dict(self.critic.state_dict())
 

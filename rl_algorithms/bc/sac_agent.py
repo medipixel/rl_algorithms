@@ -126,8 +126,8 @@ class BCSACAgent(SACAgent):
 
         # Q function loss
         masks = 1 - dones
-        q_1_pred = self.qf_1(states, actions)
-        q_2_pred = self.qf_2(states, actions)
+        q_1_pred = self.qf_1(states, actions=actions)
+        q_2_pred = self.qf_2(states, actions=actions)
         v_target = self.vf_target(next_states)
         q_target = rewards + self.hyper_params.gamma * v_target * masks
         qf_1_loss = F.mse_loss(q_1_pred, q_target.detach())
@@ -136,7 +136,8 @@ class BCSACAgent(SACAgent):
         # V function loss
         v_pred = self.vf(states)
         q_pred = torch.min(
-            self.qf_1(states, new_actions), self.qf_2(states, new_actions)
+            self.qf_1(states, actions=new_actions),
+            self.qf_2(states, actions=new_actions),
         )
         v_target = q_pred - alpha * log_prob
         vf_loss = F.mse_loss(v_pred, v_target.detach())
@@ -158,8 +159,8 @@ class BCSACAgent(SACAgent):
         if self.update_step % self.hyper_params.policy_update_freq == 0:
             # bc loss
             qf_mask = torch.gt(
-                self.qf_1(demo_states, demo_actions),
-                self.qf_1(demo_states, pred_actions),
+                self.qf_1(demo_states, actions=demo_actions),
+                self.qf_1(demo_states, actions=pred_actions),
             ).to(device)
             qf_mask = qf_mask.float()
             n_qf_mask = int(qf_mask.sum().item())

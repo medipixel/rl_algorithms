@@ -117,8 +117,8 @@ class SACfDAgent(SACAgent):
         # Q function loss
         masks = 1 - dones
         gamma = self.hyper_params.gamma
-        q_1_pred = self.qf_1(states, actions)
-        q_2_pred = self.qf_2(states, actions)
+        q_1_pred = self.qf_1(states, actions=actions)
+        q_2_pred = self.qf_2(states, actions=actions)
         v_target = self.vf_target(next_states)
         q_target = rewards + self.hyper_params.gamma * v_target * masks
         qf_1_loss = torch.mean((q_1_pred - q_target.detach()).pow(2) * weights)
@@ -142,7 +142,8 @@ class SACfDAgent(SACAgent):
         # V function loss
         v_pred = self.vf(states)
         q_pred = torch.min(
-            self.qf_1(states, new_actions), self.qf_2(states, new_actions)
+            self.qf_1(states, actions=new_actions),
+            self.qf_2(states, actions=new_actions),
         )
         v_target = (q_pred - alpha * log_prob).detach()
         vf_loss_element_wise = (v_pred - v_target).pow(2)

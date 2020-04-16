@@ -137,7 +137,7 @@ class DQfDAgent(DQNAgent):
         fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)
         self.per_beta: float = self.per_beta + fraction * (1.0 - self.per_beta)
 
-        if self.hyper_params.use_noisy_net:
+        if self.head_cfg.configs.use_noisy_net:
             self.dqn.reset_noise()
             self.dqn_target.reset_noise()
 

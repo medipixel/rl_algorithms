@@ -3,6 +3,7 @@
 - Author: Kyunghwan Kim
 - Contact: kh.kim@medipixel.io
 """
+import torch.nn.functional as F
 
 agent = dict(
     type="PPOAgent",
@@ -23,6 +24,18 @@ agent = dict(
         use_clipped_value_loss=True,
         standardize_advantage=True,
     ),
-    network_cfg=dict(hidden_sizes_actor=[256, 256], hidden_sizes_critic=[256, 256]),
+    backbone=dict(actor=dict(), critic=dict(),),
+    head=dict(
+        actor=dict(
+            type="GaussianDist",
+            configs=dict(hidden_sizes=[256, 256], output_activation=F.tanh,),
+        ),
+        critic=dict(
+            type="MLP",
+            configs=dict(
+                hidden_sizes=[256, 256], output_size=1, output_activation=F.tanh,
+            ),
+        ),
+    ),
     optim_cfg=dict(lr_actor=3e-4, lr_critic=1e-3, weight_decay=0.0),
 )

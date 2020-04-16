@@ -37,9 +37,7 @@ class DuelingMLP(MLP, NoisyMLPHandler):
             linear_layer = nn.Linear
             init_fn = init_layer_uniform
         super(DuelingMLP, self).__init__(
-            input_size=configs.input_size,
-            output_size=configs.output_size,
-            hidden_sizes=configs.hidden_sizes,
+            configs=configs,
             hidden_activation=hidden_activation,
             linear_layer=linear_layer,
             use_output_layer=False,
@@ -91,9 +89,7 @@ class C51DuelingMLP(MLP, NoisyMLPHandler):
             linear_layer = nn.Linear
             init_fn = init_layer_uniform
         super(C51DuelingMLP, self).__init__(
-            input_size=configs.input_size,
-            output_size=configs.output_size,
-            hidden_sizes=configs.hidden_sizes,
+            configs=configs,
             hidden_activation=hidden_activation,
             linear_layer=linear_layer,
             use_output_layer=False,
@@ -159,9 +155,7 @@ class IQNMLP(MLP, NoisyMLPHandler):
             linear_layer = nn.Linear
             init_fn = init_layer_uniform
         super(IQNMLP, self).__init__(
-            input_size=configs.input_size,
-            output_size=configs.output_size,
-            hidden_sizes=configs.hidden_sizes,
+            configs=configs,
             hidden_activation=hidden_activation,
             linear_layer=linear_layer,
             init_fn=init_fn,

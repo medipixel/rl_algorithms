@@ -3,6 +3,7 @@ import torch.nn as nn
 
 from rl_algorithms.common.helper_functions import identity
 from rl_algorithms.common.networks.cnn import CNN
+from rl_algorithms.common.networks.mlp import FlattenMLP
 from rl_algorithms.dqn.networks import IQNMLP
 from rl_algorithms.registry import build_backbone, build_head
 from rl_algorithms.utils.config import ConfigDict
@@ -25,11 +26,13 @@ class BaseNetwork(nn.Module):
             )
         self.head = build_head(head_cfg)
 
-    def forward(self, x, n_tau_samples: int = None):
+    def forward(self, x, n_tau_samples: int = None, actions: torch.Tensor = None):
         """use in get_action method in agent"""
         x = self.backbone(x)
         if isinstance(self.head, IQNMLP):
             x = self.head.forward(x, n_tau_samples)
+        elif isinstance(self.head, FlattenMLP):
+            x = self.head.forward(x, actions)
         else:
             x = self.head.forward(x)
         return x
