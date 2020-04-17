@@ -57,7 +57,7 @@ class BCDDPGAgent(DDPGAgent):
             demo = self.her.generate_demo_transitions(demo)
 
             if not self.her.is_goal_in_state:
-                self.state_dim *= 2
+                self.state_dim = (self.state_dim[0] * 2,)
         else:
             self.her = None
 
