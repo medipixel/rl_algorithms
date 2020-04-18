@@ -14,7 +14,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from rl_algorithms.common.helper_functions import identity
-from rl_algorithms.common.networks.mlp import MLP, init_layer_uniform
+from rl_algorithms.common.networks.heads import MLP, init_layer_uniform
 from rl_algorithms.dqn.linear import NoisyLinearConstructor, NoisyMLPHandler
 from rl_algorithms.registry import HEADS
 from rl_algorithms.utils.config import ConfigDict

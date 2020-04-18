@@ -2,8 +2,9 @@ import torch
 import torch.nn as nn
 
 from rl_algorithms.common.helper_functions import identity
-from rl_algorithms.common.networks.cnn import CNN
-from rl_algorithms.common.networks.mlp import FlattenMLP
+from rl_algorithms.common.networks.backbones.cnn import CNN
+from rl_algorithms.common.networks.backbones.resnet import ResNet
+from rl_algorithms.common.networks.heads import FlattenMLP
 from rl_algorithms.dqn.networks import IQNMLP
 from rl_algorithms.registry import build_backbone, build_head
 from rl_algorithms.utils.config import ConfigDict
@@ -46,11 +47,12 @@ class BaseNetwork(nn.Module):
         return x
 
 
-def calculate_fc_input_size(state_dim: tuple, cnn: ConfigDict):
+def calculate_fc_input_size(state_dim: tuple, backbone_cfg: ConfigDict):
     """calculate fc input size according to the shape of cnn"""
     x = torch.zeros(state_dim).unsqueeze(0)
-
-    cnn = cnn
-    cnn_model = CNN(cnn.configs)
-    cnn_output = cnn_model.get_cnn_features(x).view(-1)
-    return cnn_output.shape[0]
+    if backbone_cfg.type == "ResNet":
+        model = ResNet(backbone_cfg.configs)
+    elif backbone_cfg.type == "CNN":
+        model = CNN(backbone_cfg.configs)
+    output = model(x).view(-1)
+    return output.shape[0]
