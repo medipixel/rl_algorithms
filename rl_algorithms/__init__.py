@@ -1,8 +1,9 @@
+from rl_algorithms.common.networks.backbones import CNN, ResNet
+
 from .a2c.agent import A2CAgent
 from .bc.ddpg_agent import BCDDPGAgent
 from .bc.her import LunarLanderContinuousHER, ReacherHER
 from .bc.sac_agent import BCSACAgent
-from .common.networks.cnn import CNN
 from .ddpg.agent import DDPGAgent
 from .dqn.agent import DQNAgent
 from .fd.ddpg_agent import DDPGfDAgent
@@ -32,4 +33,5 @@ __all__ = [
     "build_agent",
     "build_her",
     "CNN",
+    "ResNet",
 ]

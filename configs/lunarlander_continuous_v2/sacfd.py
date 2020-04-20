@@ -44,7 +44,7 @@ agent = dict(
             ),
         ),
         critic_qf=dict(
-            type="FlattenMLP",
+            type="MLP",
             configs=dict(
                 hidden_sizes=[256, 256], output_activation=identity, output_size=1,
             ),

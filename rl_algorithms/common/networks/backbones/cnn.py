@@ -66,15 +66,10 @@ class CNN(nn.Module):
         for i, cnn_layer in enumerate(cnn_layers):
             self.cnn.add_module("cnn_{}".format(i), cnn_layer)
 
-    def get_cnn_features(self, x: torch.Tensor) -> torch.Tensor:
-        """Get the output of CNN."""
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward method implementation."""
         if len(x.size()) == 3:
             x = x.unsqueeze(0)
         x = self.cnn(x)
         x = x.view(x.size(0), -1)
-        return x
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward method implementation."""
-        x = self.get_cnn_features(x)
         return x

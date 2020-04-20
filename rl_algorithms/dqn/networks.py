@@ -6,7 +6,7 @@
 """
 
 import math
-from typing import Callable, Optional, Tuple
+from typing import Callable, Tuple
 
 import numpy as np
 import torch
@@ -14,7 +14,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from rl_algorithms.common.helper_functions import identity
-from rl_algorithms.common.networks.mlp import MLP, init_layer_uniform
+from rl_algorithms.common.networks.heads import MLP, init_layer_uniform
 from rl_algorithms.dqn.linear import NoisyLinearConstructor, NoisyMLPHandler
 from rl_algorithms.registry import HEADS
 from rl_algorithms.utils.config import ConfigDict
@@ -173,10 +173,9 @@ class IQNMLP(MLP, NoisyMLPHandler):
         self.quantile_fc_layer = init_fn(self.quantile_fc_layer)
 
     def forward_(
-        self, state: torch.Tensor, n_tau_samples: int = None
+        self, state: torch.Tensor, n_tau_samples: int
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Get quantile values and quantiles."""
-        n_tau_samples = self.__get_n_tau_samples(n_tau_samples)
         batch_size = np.prod(state.size()) // self.input_size
 
         state_tiled = state.repeat(n_tau_samples, 1)
@@ -202,20 +201,11 @@ class IQNMLP(MLP, NoisyMLPHandler):
 
         return quantile_values, quantiles
 
-    def forward(self, state: torch.Tensor, n_tau_samples: int = None) -> torch.Tensor:
+    def forward(self, state: torch.Tensor) -> torch.Tensor:
         """Forward method implementation."""
-        n_tau_samples = self.__get_n_tau_samples(n_tau_samples)
 
-        quantile_values, _ = self.forward_(state, n_tau_samples)
-        quantile_values = quantile_values.view(n_tau_samples, -1, self.output_size)
+        quantile_values, _ = self.forward_(state, IQNMLP.n_quantiles)
+        quantile_values = quantile_values.view(IQNMLP.n_quantiles, -1, self.output_size)
         q = torch.mean(quantile_values, dim=0)
 
         return q
-
-    @staticmethod
-    def __get_n_tau_samples(n_tau_samples: Optional[int]) -> int:
-        """Get sample tau number."""
-        if not n_tau_samples:
-            return IQNMLP.n_quantiles
-        else:
-            return n_tau_samples

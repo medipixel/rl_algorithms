@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """MLP module for model of algorithms
 
-- Author: Kh Kim
+- Author: Kyunghwan Kim
 - Contact: kh.kim@medipixel.io
 """
 
@@ -12,25 +12,11 @@ from torch.distributions import Categorical, Normal
 import torch.nn as nn
 import torch.nn.functional as F
 
-from rl_algorithms.common.helper_functions import identity, make_one_hot
+from rl_algorithms.common.helper_functions import identity
 from rl_algorithms.registry import HEADS
 from rl_algorithms.utils.config import ConfigDict
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-
-def concat(
-    in_1: torch.Tensor, in_2: torch.Tensor, n_category: int = -1
-) -> torch.Tensor:
-    """Concatenate state and action tensors properly depending on the action."""
-    in_2 = make_one_hot(in_2, n_category) if n_category > 0 else in_2
-
-    if len(in_2.size()) == 1:
-        in_2 = in_2.unsqueeze(0)
-
-    in_concat = torch.cat((in_1, in_2), dim=-1)
-
-    return in_concat
 
 
 def init_layer_uniform(layer: nn.Linear, init_w: float = 3e-3) -> nn.Linear:
@@ -66,20 +52,7 @@ class MLP(nn.Module):
         n_category: int = -1,
         init_fn: Callable = init_layer_uniform,
     ):
-        """Initialize.
-
-        Args:
-            input_size (int): size of input
-            output_size (int): size of output layer
-            hidden_sizes (list): number of hidden layers
-            hidden_activation (function): activation function of hidden layers
-            output_activation (function): activation function of output layer
-            linear_layer (nn.Module): linear layer of mlp
-            use_output_layer (bool): whether or not to use the last layer
-            n_category (int): category number (-1 if the action is continuous)
-            init_fn (Callable): weight initialization function bound for the last layer
-
-        """
+        """Initialize."""
         super(MLP, self).__init__()
 
         self.hidden_sizes = configs.hidden_sizes
@@ -115,17 +88,6 @@ class MLP(nn.Module):
         x = self.output_activation(self.output_layer(x))
 
         return x
-
-
-@HEADS.register_module
-class FlattenMLP(MLP):
-    """Baseline of Multilayered perceptron for Flatten input."""
-
-    def forward(self, *args: torch.Tensor) -> torch.Tensor:
-        """Forward method implementation."""
-        states, actions = args
-        flat_inputs = concat(states, actions, self.n_category)
-        return super(FlattenMLP, self).forward(flat_inputs)
 
 
 @HEADS.register_module

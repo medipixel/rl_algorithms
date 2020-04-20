@@ -126,19 +126,18 @@ class BCSACAgent(SACAgent):
 
         # Q function loss
         masks = 1 - dones
-        q_1_pred = self.qf_1(states, actions=actions)
-        q_2_pred = self.qf_2(states, actions=actions)
+        states_actions = torch.cat((states, actions), dim=-1)
+        q_1_pred = self.qf_1(states_actions)
+        q_2_pred = self.qf_2(states_actions)
         v_target = self.vf_target(next_states)
         q_target = rewards + self.hyper_params.gamma * v_target * masks
         qf_1_loss = F.mse_loss(q_1_pred, q_target.detach())
         qf_2_loss = F.mse_loss(q_2_pred, q_target.detach())
 
         # V function loss
+        states_actions = torch.cat((states, new_actions), dim=-1)
         v_pred = self.vf(states)
-        q_pred = torch.min(
-            self.qf_1(states, actions=new_actions),
-            self.qf_2(states, actions=new_actions),
-        )
+        q_pred = torch.min(self.qf_1(states_actions), self.qf_2(states_actions))
         v_target = q_pred - alpha * log_prob
         vf_loss = F.mse_loss(v_pred, v_target.detach())
 
@@ -156,11 +155,14 @@ class BCSACAgent(SACAgent):
         vf_loss.backward()
         self.vf_optim.step()
 
+        # update actor
+        actor_loss = torch.zeros(1)
+        n_qf_mask = 0
         if self.update_step % self.hyper_params.policy_update_freq == 0:
             # bc loss
             qf_mask = torch.gt(
-                self.qf_1(demo_states, actions=demo_actions),
-                self.qf_1(demo_states, actions=pred_actions),
+                self.qf_1(torch.cat((demo_states, demo_actions), dim=-1)),
+                self.qf_1(torch.cat((demo_states, pred_actions), dim=-1)),
             ).to(device)
             qf_mask = qf_mask.float()
             n_qf_mask = int(qf_mask.sum().item())
@@ -178,16 +180,15 @@ class BCSACAgent(SACAgent):
             actor_loss = self.hyper_params.lambda1 * actor_loss + self.lambda2 * bc_loss
 
             # regularization
-            if not self.is_discrete:  # iff the action is continuous
-                mean_reg = self.hyper_params.w_mean_reg * mu.pow(2).mean()
-                std_reg = self.hyper_params.w_std_reg * std.pow(2).mean()
-                pre_activation_reg = self.hyper_params.w_pre_activation_reg * (
-                    pre_tanh_value.pow(2).sum(dim=-1).mean()
-                )
-                actor_reg = mean_reg + std_reg + pre_activation_reg
+            mean_reg = self.hyper_params.w_mean_reg * mu.pow(2).mean()
+            std_reg = self.hyper_params.w_std_reg * std.pow(2).mean()
+            pre_activation_reg = self.hyper_params.w_pre_activation_reg * (
+                pre_tanh_value.pow(2).sum(dim=-1).mean()
+            )
+            actor_reg = mean_reg + std_reg + pre_activation_reg
 
-                # actor loss + regularization
-                actor_loss += actor_reg
+            # actor loss + regularization
+            actor_loss += actor_reg
 
             # train actor
             self.actor_optim.zero_grad()
@@ -196,9 +197,6 @@ class BCSACAgent(SACAgent):
 
             # update target networks
             common_utils.soft_update(self.vf, self.vf_target, self.hyper_params.tau)
-        else:
-            actor_loss = torch.zeros(1)
-            n_qf_mask = 0
 
         return (
             actor_loss.item(),

@@ -31,13 +31,16 @@ agent = dict(
         epsilon_decay=1e-6,  # openai baselines: 1e-7 / 1e-1
     ),
     backbone=dict(
-        type="CNN",
+        type="ResNet",
         configs=dict(
-            input_sizes=[4, 32, 64],
-            output_sizes=[32, 64, 64],
-            kernel_sizes=[8, 4, 3],
-            strides=[4, 2, 1],
-            paddings=[1, 0, 0],
+            use_bottleneck=True,
+            num_blocks=[1, 1, 1, 1],
+            block_output_sizes=[32, 32, 64, 64],
+            block_strides=[1, 2, 2, 2],
+            first_input_size=4,
+            first_output_size=32,
+            expansion=1,
+            channel_compression=4,  # output channel // channel_compression in last conv layer
         ),
     ),
     head=dict(
