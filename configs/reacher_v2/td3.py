@@ -24,7 +24,7 @@ agent = dict(
             configs=dict(hidden_sizes=[400, 300], output_activation=F.tanh,),
         ),
         critic=dict(
-            type="FlattenMLP",
+            type="MLP",
             configs=dict(
                 hidden_sizes=[400, 300], output_size=1, output_activation=identity,
             ),

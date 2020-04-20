@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 """ResNet modules for RL algorithms.
-- Authors: Kh Kim & MS Kim
-- Contacts: kh.kim@medipixel.io
-            minseop.kim@medipixel.io
+
+- Authors: Minseop Kim & Kyunghwan Kim
+- Contacts: minseop.kim@medipixel.io
+            kh.kim@medipixel.io
+- Paper: https://arxiv.org/pdf/1512.03385.pdf
 """
 
 import torch
@@ -16,7 +18,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 class BasicBlock(nn.Module):
-    """basic building block proposed in ResNet paper(https://arxiv.org/pdf/1512.03385.pdf)."""
+    """Basic building block for ResNet."""
 
     def __init__(
         self, in_planes: int, planes: int, stride: int = 1, expansion: int = 1
@@ -60,7 +62,7 @@ class BasicBlock(nn.Module):
 
 
 class Bottleneck(nn.Module):
-    """bottleneck building block proposed in ResNet paper(https://arxiv.org/pdf/1512.03385.pdf)."""
+    """Bottleneck building block."""
 
     def __init__(
         self, in_planes: int, planes: int, stride: int = 1, expansion: int = 1

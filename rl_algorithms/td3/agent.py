@@ -220,8 +220,9 @@ class TD3Agent(Agent):
         next_actions = (self.actor_target(next_states) + clipped_noise).clamp(-1.0, 1.0)
 
         # min (Q_1', Q_2')
-        next_values1 = self.critic_target1(next_states, actions=next_actions)
-        next_values2 = self.critic_target2(next_states, actions=next_actions)
+        next_states_actions = torch.cat((next_states, next_actions), dim=-1)
+        next_values1 = self.critic_target1(next_states_actions)
+        next_values2 = self.critic_target2(next_states_actions)
         next_values = torch.min(next_values1, next_values2)
 
         # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
@@ -230,8 +231,9 @@ class TD3Agent(Agent):
         curr_returns = curr_returns.detach()
 
         # critic loss
-        values1 = self.critic1(states, actions=actions)
-        values2 = self.critic2(states, actions=actions)
+        state_actions = torch.cat((states, actions), dim=-1)
+        values1 = self.critic1(state_actions)
+        values2 = self.critic2(state_actions)
         critic1_loss = F.mse_loss(values1, curr_returns)
         critic2_loss = F.mse_loss(values2, curr_returns)
 
@@ -244,7 +246,8 @@ class TD3Agent(Agent):
         if self.update_step % self.hyper_params.policy_update_freq == 0:
             # policy loss
             actions = self.actor(states)
-            actor_loss = -self.critic1(states, actions=actions).mean()
+            state_actions = torch.cat((states, actions), dim=-1)
+            actor_loss = -self.critic1(state_actions).mean()
 
             # train actor
             self.actor_optim.zero_grad()
