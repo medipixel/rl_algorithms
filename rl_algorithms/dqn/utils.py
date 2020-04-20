@@ -7,25 +7,19 @@ This module has DQN util functions.
 - Contact: curt.park@medipixel.io
 """
 
-from typing import Callable, List, Tuple, Union
+from typing import Tuple
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 
-from rl_algorithms.common.helper_functions import identity
-from rl_algorithms.common.networks.cnn import CNN, CNNLayer
-from rl_algorithms.common.networks.mlp import MLP, init_layer_uniform
-from rl_algorithms.dqn.linear import NoisyLinearConstructor
-from rl_algorithms.dqn.networks import C51CNN, IQNCNN, IQNMLP, C51DuelingMLP, DuelingMLP
-from rl_algorithms.utils.config import ConfigDict
+from rl_algorithms.common.networks.base_network import BaseNetwork
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 def calculate_iqn_loss(
-    model: Union[IQNMLP, IQNCNN],
-    target_model: Union[IQNMLP, IQNCNN],
+    model: BaseNetwork,
+    target_model: BaseNetwork,
     experiences: Tuple[torch.Tensor, ...],
     gamma: float,
     batch_size: int,
@@ -134,8 +128,8 @@ def calculate_iqn_loss(
 
 
 def calculate_c51_loss(
-    model: Union[C51DuelingMLP, C51CNN],
-    target_model: Union[C51DuelingMLP, C51CNN],
+    model: BaseNetwork,
+    target_model: BaseNetwork,
     experiences: Tuple[torch.Tensor, ...],
     gamma: float,
     batch_size: int,
@@ -188,8 +182,8 @@ def calculate_c51_loss(
 
 
 def calculate_dqn_loss(
-    model: Union[MLP, CNN],
-    target_model: Union[MLP, CNN],
+    model: BaseNetwork,
+    target_model: BaseNetwork,
     experiences: Tuple[torch.Tensor, ...],
     gamma: float,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -221,91 +215,3 @@ def calculate_dqn_loss(
     )
 
     return dq_loss_element_wise, q_values
-
-
-def get_fc_model(
-    cfg: ConfigDict, input_size: int, output_size: int, hidden_sizes: List[int],
-):
-    """Get FC model depends on type."""
-    # use noisy net
-    if cfg.use_noisy_net:
-        linear_layer = NoisyLinearConstructor(cfg.std_init)
-        init_fn: Callable = identity
-        cfg.max_epsilon = 0.0
-        cfg.min_epsilon = 0.0
-    else:
-        linear_layer = nn.Linear
-        init_fn = init_layer_uniform
-
-    if cfg.use_dist_q == "C51":
-        fc_model = C51DuelingMLP(
-            input_size=input_size,
-            action_size=output_size,
-            hidden_sizes=hidden_sizes,
-            v_min=cfg.v_min,
-            v_max=cfg.v_max,
-            atom_size=cfg.atoms,
-            linear_layer=linear_layer,
-            init_fn=init_fn,
-        ).to(device)
-
-    elif cfg.use_dist_q == "IQN":
-        fc_model = IQNMLP(
-            input_size=input_size,
-            output_size=output_size,
-            hidden_sizes=hidden_sizes,
-            n_quantiles=cfg.n_quantile_samples,
-            quantile_embedding_dim=cfg.quantile_embedding_dim,
-            linear_layer=linear_layer,
-            init_fn=init_fn,
-        ).to(device)
-
-    else:
-        fc_model = DuelingMLP(
-            input_size=input_size,
-            output_size=output_size,
-            hidden_sizes=hidden_sizes,
-            linear_layer=linear_layer,
-            init_fn=init_fn,
-        ).to(device)
-
-    return fc_model
-
-
-def get_cnn_model(
-    hyper_params: ConfigDict, action_dim: int, state_dim: tuple, network_cfg: ConfigDict
-):
-    """Get CNN model with FC model input depends on type."""
-    use_dist_q = hyper_params.use_dist_q
-    if use_dist_q == "C51":
-        Model = C51CNN
-    elif use_dist_q == "IQN":
-        Model = IQNCNN
-    else:
-        Model = CNN
-
-    cnn_cfg = network_cfg.cnn_cfg
-    fc_input_size = calculate_fc_input_size(state_dim, cnn_cfg)
-
-    fc_model = get_fc_model(
-        hyper_params, fc_input_size, action_dim, network_cfg.hidden_sizes,
-    )
-
-    cnn_model = Model(
-        cnn_layers=list(map(CNNLayer, *cnn_cfg.values())), fc_layers=fc_model,
-    ).to(device)
-
-    return cnn_model
-
-
-def calculate_fc_input_size(state_dim: tuple, cnn_cfg: ConfigDict):
-    cnn_cfg_zip = zip(cnn_cfg.kernel_sizes, cnn_cfg.paddings, cnn_cfg.strides)
-
-    final_volume_size = cnn_cfg.output_sizes[-1]
-
-    output_size = state_dim[-1]
-    for kernel_size, padding_size, stride in cnn_cfg_zip:
-        input_size = output_size
-        output_size = ((input_size - kernel_size + 2 * padding_size) // stride) + 1
-
-    return output_size * output_size * final_volume_size

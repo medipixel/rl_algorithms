@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """MLP module for model of algorithms
 
-- Author: Kh Kim
+- Author: Kyunghwan Kim
 - Contact: kh.kim@medipixel.io
 """
 
@@ -12,23 +12,11 @@ from torch.distributions import Categorical, Normal
 import torch.nn as nn
 import torch.nn.functional as F
 
-from rl_algorithms.common.helper_functions import identity, make_one_hot
+from rl_algorithms.common.helper_functions import identity
+from rl_algorithms.registry import HEADS
+from rl_algorithms.utils.config import ConfigDict
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-
-def concat(
-    in_1: torch.Tensor, in_2: torch.Tensor, n_category: int = -1
-) -> torch.Tensor:
-    """Concatenate state and action tensors properly depending on the action."""
-    in_2 = make_one_hot(in_2, n_category) if n_category > 0 else in_2
-
-    if len(in_2.size()) == 1:
-        in_2 = in_2.unsqueeze(0)
-
-    in_concat = torch.cat((in_1, in_2), dim=-1)
-
-    return in_concat
 
 
 def init_layer_uniform(layer: nn.Linear, init_w: float = 3e-3) -> nn.Linear:
@@ -39,6 +27,7 @@ def init_layer_uniform(layer: nn.Linear, init_w: float = 3e-3) -> nn.Linear:
     return layer
 
 
+@HEADS.register_module
 class MLP(nn.Module):
     """Baseline of Multilayer perceptron.
 
@@ -56,37 +45,21 @@ class MLP(nn.Module):
 
     def __init__(
         self,
-        input_size: int,
-        output_size: int,
-        hidden_sizes: list,
+        configs: ConfigDict,
         hidden_activation: Callable = F.relu,
-        output_activation: Callable = identity,
         linear_layer: nn.Module = nn.Linear,
         use_output_layer: bool = True,
         n_category: int = -1,
         init_fn: Callable = init_layer_uniform,
     ):
-        """Initialize.
-
-        Args:
-            input_size (int): size of input
-            output_size (int): size of output layer
-            hidden_sizes (list): number of hidden layers
-            hidden_activation (function): activation function of hidden layers
-            output_activation (function): activation function of output layer
-            linear_layer (nn.Module): linear layer of mlp
-            use_output_layer (bool): whether or not to use the last layer
-            n_category (int): category number (-1 if the action is continuous)
-            init_fn (Callable): weight initialization function bound for the last layer
-
-        """
+        """Initialize."""
         super(MLP, self).__init__()
 
-        self.hidden_sizes = hidden_sizes
-        self.input_size = input_size
-        self.output_size = output_size
+        self.hidden_sizes = configs.hidden_sizes
+        self.input_size = configs.input_size
+        self.output_size = configs.output_size
         self.hidden_activation = hidden_activation
-        self.output_activation = output_activation
+        self.output_activation = configs.output_activation
         self.linear_layer = linear_layer
         self.use_output_layer = use_output_layer
         self.n_category = n_category
@@ -94,7 +67,7 @@ class MLP(nn.Module):
         # set hidden layers
         self.hidden_layers: list = []
         in_size = self.input_size
-        for i, next_size in enumerate(hidden_sizes):
+        for i, next_size in enumerate(configs.hidden_sizes):
             fc = self.linear_layer(in_size, next_size)
             in_size = next_size
             self.__setattr__("hidden_fc{}".format(i), fc)
@@ -102,7 +75,7 @@ class MLP(nn.Module):
 
         # set output layers
         if self.use_output_layer:
-            self.output_layer = self.linear_layer(in_size, output_size)
+            self.output_layer = self.linear_layer(in_size, configs.output_size)
             self.output_layer = init_fn(self.output_layer)
         else:
             self.output_layer = identity
@@ -117,16 +90,7 @@ class MLP(nn.Module):
         return x
 
 
-class FlattenMLP(MLP):
-    """Baseline of Multilayered perceptron for Flatten input."""
-
-    def forward(self, *args: torch.Tensor) -> torch.Tensor:
-        """Forward method implementation."""
-        states, actions = args
-        flat_inputs = concat(states, actions, self.n_category)
-        return super(FlattenMLP, self).forward(flat_inputs)
-
-
+@HEADS.register_module
 class GaussianDist(MLP):
     """Multilayer perceptron with Gaussian distribution output.
 
@@ -140,9 +104,7 @@ class GaussianDist(MLP):
 
     def __init__(
         self,
-        input_size: int,
-        output_size: int,
-        hidden_sizes: list,
+        configs: ConfigDict,
         hidden_activation: Callable = F.relu,
         mu_activation: Callable = torch.tanh,
         log_std_min: float = -20,
@@ -151,9 +113,7 @@ class GaussianDist(MLP):
     ):
         """Initialize."""
         super(GaussianDist, self).__init__(
-            input_size=input_size,
-            output_size=output_size,
-            hidden_sizes=hidden_sizes,
+            configs=configs,
             hidden_activation=hidden_activation,
             use_output_layer=False,
         )
@@ -161,14 +121,14 @@ class GaussianDist(MLP):
         self.mu_activation = mu_activation
         self.log_std_min = log_std_min
         self.log_std_max = log_std_max
-        in_size = hidden_sizes[-1]
+        in_size = configs.hidden_sizes[-1]
 
         # set log_std layer
-        self.log_std_layer = nn.Linear(in_size, output_size)
+        self.log_std_layer = nn.Linear(in_size, configs.output_size)
         self.log_std_layer = init_fn(self.log_std_layer)
 
         # set mean layer
-        self.mu_layer = nn.Linear(in_size, output_size)
+        self.mu_layer = nn.Linear(in_size, configs.output_size)
         self.mu_layer = init_fn(self.mu_layer)
 
     def get_dist_params(self, x: torch.Tensor) -> Tuple[torch.Tensor, ...]:
@@ -198,6 +158,7 @@ class GaussianDist(MLP):
         return action, dist
 
 
+@HEADS.register_module
 class TanhGaussianDistParams(GaussianDist):
     """Multilayer perceptron with Gaussian distribution output."""
 

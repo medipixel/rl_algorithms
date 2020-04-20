@@ -23,28 +23,39 @@ agent = dict(
         per_beta=0.4,
         per_eps=1e-6,
         # Distributional Q function
-        use_dist_q="DQN",
+        use_dist_q="IQN",
+        # NoisyNet
         # Epsilon Greedy
-        max_epsilon=1.0,
-        min_epsilon=0.01,  # openai baselines: 0.01
+        max_epsilon=0.0,
+        min_epsilon=0.0,  # openai baselines: 0.01
         epsilon_decay=1e-6,  # openai baselines: 1e-7 / 1e-1
-        # grad_cam
-        grad_cam_layer_list=["cnn.cnn_0.cnn", "cnn.cnn_1.cnn", "cnn.cnn_2.cnn"],
     ),
     backbone=dict(
-        type="CNN",
+        type="ResNet",
         configs=dict(
-            input_sizes=[4, 32, 64],
-            output_sizes=[32, 64, 64],
-            kernel_sizes=[8, 4, 3],
-            strides=[4, 2, 1],
-            paddings=[1, 0, 0],
+            use_bottleneck=True,
+            num_blocks=[1, 1, 1, 1],
+            block_output_sizes=[32, 32, 64, 64],
+            block_strides=[1, 2, 2, 2],
+            first_input_size=4,
+            first_output_size=32,
+            expansion=1,
+            channel_compression=4,  # output channel // channel_compression in last conv layer
         ),
     ),
     head=dict(
-        type="DuelingMLP",
+        type="IQNMLP",
         configs=dict(
-            use_noisy_net=False, hidden_sizes=[512], output_activation=identity
+            hidden_sizes=[512],
+            n_tau_samples=64,
+            n_tau_prime_samples=64,
+            n_quantile_samples=32,
+            quantile_embedding_dim=64,
+            kappa=1.0,
+            output_activation=identity,
+            # NoisyNet
+            use_noisy_net=True,
+            std_init=0.5,
         ),
     ),
     optim_cfg=dict(

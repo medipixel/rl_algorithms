@@ -18,7 +18,7 @@ import wandb
 
 from rl_algorithms.common.abstract.agent import Agent
 from rl_algorithms.common.env.utils import env_generator, make_envs
-from rl_algorithms.common.networks.mlp import MLP, GaussianDist
+from rl_algorithms.common.networks.base_network import BaseNetwork
 import rl_algorithms.ppo.utils as ppo_utils
 from rl_algorithms.registry import AGENTS
 from rl_algorithms.utils.config import ConfigDict
@@ -60,7 +60,8 @@ class PPOAgent(Agent):
         args: argparse.Namespace,
         log_cfg: ConfigDict,
         hyper_params: ConfigDict,
-        network_cfg: ConfigDict,
+        backbone: ConfigDict,
+        head: ConfigDict,
         optim_cfg: ConfigDict,
     ):
         """Initialize.
@@ -86,13 +87,14 @@ class PPOAgent(Agent):
         self.next_state = np.zeros((1,))
 
         self.hyper_params = hyper_params
-        self.network_cfg = network_cfg
+        self.backbone_cfg = backbone
+        self.head_cfg = head
         self.optim_cfg = optim_cfg
 
         if not self.args.test:
             self.env = env_multi
 
-        self.state_dim = self.env.observation_space.shape[0]
+        self.state_dim = self.env.observation_space.shape
         self.action_dim = self.env.action_space.shape[0]
 
         self.epsilon = hyper_params.max_epsilon
@@ -101,19 +103,19 @@ class PPOAgent(Agent):
 
     def _init_network(self):
         """Initialize networks and optimizers."""
-        self.actor = GaussianDist(
-            input_size=self.state_dim,
-            output_size=self.action_dim,
-            hidden_sizes=self.network_cfg.hidden_sizes_actor,
-            hidden_activation=torch.tanh,
-        ).to(device)
+        self.head_cfg.actor.configs.state_size = (
+            self.head_cfg.critic.configs.state_size
+        ) = self.state_dim
+        self.head_cfg.actor.configs.output_size = self.action_dim
 
-        self.critic = MLP(
-            input_size=self.state_dim,
-            output_size=1,
-            hidden_sizes=self.network_cfg.hidden_sizes_critic,
-            hidden_activation=torch.tanh,
-        ).to(device)
+        # create actor
+        self.actor = BaseNetwork(self.backbone_cfg.actor, self.head_cfg.actor).to(
+            device
+        )
+
+        self.critic = BaseNetwork(self.backbone_cfg.critic, self.head_cfg.critic).to(
+            device
+        )
 
         # create optimizer
         self.actor_optim = optim.Adam(

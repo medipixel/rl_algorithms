@@ -20,7 +20,7 @@ import wandb
 from rl_algorithms.common.abstract.agent import Agent
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
 import rl_algorithms.common.helper_functions as common_utils
-from rl_algorithms.common.networks.mlp import MLP, FlattenMLP
+from rl_algorithms.common.networks.base_network import BaseNetwork
 from rl_algorithms.common.noise import GaussianNoise
 from rl_algorithms.registry import AGENTS
 from rl_algorithms.utils.config import ConfigDict
@@ -65,7 +65,8 @@ class TD3Agent(Agent):
         args: argparse.Namespace,
         log_cfg: ConfigDict,
         hyper_params: ConfigDict,
-        network_cfg: ConfigDict,
+        backbone: ConfigDict,
+        head: ConfigDict,
         optim_cfg: ConfigDict,
         noise_cfg: ConfigDict,
     ):
@@ -86,10 +87,11 @@ class TD3Agent(Agent):
 
         self.hyper_params = hyper_params
         self.noise_cfg = noise_cfg
-        self.network_cfg = network_cfg
+        self.backbone_cfg = backbone
+        self.head_cfg = head
         self.optim_cfg = optim_cfg
 
-        self.state_dim = self.env.observation_space.shape[0]
+        self.state_dim = self.env.observation_space.shape
         self.action_dim = self.env.action_space.shape[0]
 
         # noise instance to make randomness of action
@@ -113,45 +115,33 @@ class TD3Agent(Agent):
 
     def _init_network(self):
         """Initialize networks and optimizers."""
-        # create actor
-        self.actor = MLP(
-            input_size=self.state_dim,
-            output_size=self.action_dim,
-            hidden_sizes=self.network_cfg.hidden_sizes_actor,
-            output_activation=torch.tanh,
-        ).to(device)
 
-        self.actor_target = MLP(
-            input_size=self.state_dim,
-            output_size=self.action_dim,
-            hidden_sizes=self.network_cfg.hidden_sizes_actor,
-            output_activation=torch.tanh,
+        self.head_cfg.actor.configs.state_size = self.state_dim
+        self.head_cfg.critic.configs.state_size = (self.state_dim[0] + self.action_dim,)
+        self.head_cfg.actor.configs.output_size = self.action_dim
+
+        # create actor
+        self.actor = BaseNetwork(self.backbone_cfg.actor, self.head_cfg.actor).to(
+            device
+        )
+        self.actor_target = BaseNetwork(
+            self.backbone_cfg.actor, self.head_cfg.actor
         ).to(device)
         self.actor_target.load_state_dict(self.actor.state_dict())
 
-        # create critic
-        self.critic1 = FlattenMLP(
-            input_size=self.state_dim + self.action_dim,
-            output_size=1,
-            hidden_sizes=self.network_cfg.hidden_sizes_critic,
-        ).to(device)
+        # create q_critic
+        self.critic1 = BaseNetwork(self.backbone_cfg.critic, self.head_cfg.critic).to(
+            device
+        )
+        self.critic2 = BaseNetwork(self.backbone_cfg.critic, self.head_cfg.critic).to(
+            device
+        )
 
-        self.critic2 = FlattenMLP(
-            input_size=self.state_dim + self.action_dim,
-            output_size=1,
-            hidden_sizes=self.network_cfg.hidden_sizes_critic,
+        self.critic_target1 = BaseNetwork(
+            self.backbone_cfg.critic, self.head_cfg.critic
         ).to(device)
-
-        self.critic_target1 = FlattenMLP(
-            input_size=self.state_dim + self.action_dim,
-            output_size=1,
-            hidden_sizes=self.network_cfg.hidden_sizes_critic,
-        ).to(device)
-
-        self.critic_target2 = FlattenMLP(
-            input_size=self.state_dim + self.action_dim,
-            output_size=1,
-            hidden_sizes=self.network_cfg.hidden_sizes_critic,
+        self.critic_target2 = BaseNetwork(
+            self.backbone_cfg.critic, self.head_cfg.critic
         ).to(device)
 
         self.critic_target1.load_state_dict(self.critic1.state_dict())
@@ -230,8 +220,9 @@ class TD3Agent(Agent):
         next_actions = (self.actor_target(next_states) + clipped_noise).clamp(-1.0, 1.0)
 
         # min (Q_1', Q_2')
-        next_values1 = self.critic_target1(next_states, next_actions)
-        next_values2 = self.critic_target2(next_states, next_actions)
+        next_states_actions = torch.cat((next_states, next_actions), dim=-1)
+        next_values1 = self.critic_target1(next_states_actions)
+        next_values2 = self.critic_target2(next_states_actions)
         next_values = torch.min(next_values1, next_values2)
 
         # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
@@ -240,8 +231,9 @@ class TD3Agent(Agent):
         curr_returns = curr_returns.detach()
 
         # critic loss
-        values1 = self.critic1(states, actions)
-        values2 = self.critic2(states, actions)
+        state_actions = torch.cat((states, actions), dim=-1)
+        values1 = self.critic1(state_actions)
+        values2 = self.critic2(state_actions)
         critic1_loss = F.mse_loss(values1, curr_returns)
         critic2_loss = F.mse_loss(values2, curr_returns)
 
@@ -254,7 +246,8 @@ class TD3Agent(Agent):
         if self.update_step % self.hyper_params.policy_update_freq == 0:
             # policy loss
             actions = self.actor(states)
-            actor_loss = -self.critic1(states, actions).mean()
+            state_actions = torch.cat((states, actions), dim=-1)
+            actor_loss = -self.critic1(state_actions).mean()
 
             # train actor
             self.actor_optim.zero_grad()

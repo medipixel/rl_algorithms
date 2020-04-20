@@ -21,7 +21,7 @@ import wandb
 from rl_algorithms.common.abstract.agent import Agent
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
 import rl_algorithms.common.helper_functions as common_utils
-from rl_algorithms.common.networks.mlp import MLP, FlattenMLP, TanhGaussianDistParams
+from rl_algorithms.common.networks.base_network import BaseNetwork
 from rl_algorithms.registry import AGENTS
 from rl_algorithms.utils.config import ConfigDict
 
@@ -67,7 +67,8 @@ class SACAgent(Agent):
         args: argparse.Namespace,
         log_cfg: ConfigDict,
         hyper_params: ConfigDict,
-        network_cfg: ConfigDict,
+        backbone: ConfigDict,
+        head: ConfigDict,
         optim_cfg: ConfigDict,
     ):
         """Initialize.
@@ -86,10 +87,11 @@ class SACAgent(Agent):
         self.i_episode = 0
 
         self.hyper_params = hyper_params
-        self.network_cfg = network_cfg
+        self.backbone_cfg = backbone
+        self.head_cfg = head
         self.optim_cfg = optim_cfg
 
-        self.state_dim = self.env.observation_space.shape[0]
+        self.state_dim = self.env.observation_space.shape
         self.action_dim = self.env.action_space.shape[0]
 
         # target entropy
@@ -115,36 +117,35 @@ class SACAgent(Agent):
     # pylint: disable=attribute-defined-outside-init
     def _init_network(self):
         """Initialize networks and optimizers."""
+
+        self.head_cfg.actor.configs.state_size = (
+            self.head_cfg.critic_vf.configs.state_size
+        ) = self.state_dim
+        self.head_cfg.critic_qf.configs.state_size = (
+            self.state_dim[0] + self.action_dim,
+        )
+        self.head_cfg.actor.configs.output_size = self.action_dim
+
         # create actor
-        self.actor = TanhGaussianDistParams(
-            input_size=self.state_dim,
-            output_size=self.action_dim,
-            hidden_sizes=self.network_cfg.hidden_sizes_actor,
-        ).to(device)
+        self.actor = BaseNetwork(self.backbone_cfg.actor, self.head_cfg.actor).to(
+            device
+        )
 
         # create v_critic
-        self.vf = MLP(
-            input_size=self.state_dim,
-            output_size=1,
-            hidden_sizes=self.network_cfg.hidden_sizes_vf,
-        ).to(device)
-        self.vf_target = MLP(
-            input_size=self.state_dim,
-            output_size=1,
-            hidden_sizes=self.network_cfg.hidden_sizes_vf,
+        self.vf = BaseNetwork(self.backbone_cfg.critic_vf, self.head_cfg.critic_vf).to(
+            device
+        )
+        self.vf_target = BaseNetwork(
+            self.backbone_cfg.critic_vf, self.head_cfg.critic_vf
         ).to(device)
         self.vf_target.load_state_dict(self.vf.state_dict())
 
         # create q_critic
-        self.qf_1 = FlattenMLP(
-            input_size=self.state_dim + self.action_dim,
-            output_size=1,
-            hidden_sizes=self.network_cfg.hidden_sizes_qf,
+        self.qf_1 = BaseNetwork(
+            self.backbone_cfg.critic_qf, self.head_cfg.critic_qf
         ).to(device)
-        self.qf_2 = FlattenMLP(
-            input_size=self.state_dim + self.action_dim,
-            output_size=1,
-            hidden_sizes=self.network_cfg.hidden_sizes_qf,
+        self.qf_2 = BaseNetwork(
+            self.backbone_cfg.critic_qf, self.head_cfg.critic_qf
         ).to(device)
 
         # create optimizers
@@ -185,7 +186,7 @@ class SACAgent(Agent):
         ):
             return np.array(self.env.action_space.sample())
 
-        if self.args.test and not self.is_discrete:
+        if self.args.test:
             _, _, _, selected_action, _ = self.actor(state)
         else:
             selected_action, _, _, _, _ = self.actor(state)
@@ -241,18 +242,18 @@ class SACAgent(Agent):
 
         # Q function loss
         masks = 1 - dones
-        q_1_pred = self.qf_1(states, actions)
-        q_2_pred = self.qf_2(states, actions)
+        states_actions = torch.cat((states, actions), dim=-1)
+        q_1_pred = self.qf_1(states_actions)
+        q_2_pred = self.qf_2(states_actions)
         v_target = self.vf_target(next_states)
         q_target = rewards + self.hyper_params.gamma * v_target * masks
         qf_1_loss = F.mse_loss(q_1_pred, q_target.detach())
         qf_2_loss = F.mse_loss(q_2_pred, q_target.detach())
 
         # V function loss
+        states_actions = torch.cat((states, new_actions), dim=-1)
         v_pred = self.vf(states)
-        q_pred = torch.min(
-            self.qf_1(states, new_actions), self.qf_2(states, new_actions)
-        )
+        q_pred = torch.min(self.qf_1(states_actions), self.qf_2(states_actions))
         v_target = q_pred - alpha * log_prob
         vf_loss = F.mse_loss(v_pred, v_target.detach())
 
@@ -276,16 +277,15 @@ class SACAgent(Agent):
             actor_loss = (alpha * log_prob - advantage).mean()
 
             # regularization
-            if not self.is_discrete:  # iff the action is continuous
-                mean_reg = self.hyper_params.w_mean_reg * mu.pow(2).mean()
-                std_reg = self.hyper_params.w_std_reg * std.pow(2).mean()
-                pre_activation_reg = self.hyper_params.w_pre_activation_reg * (
-                    pre_tanh_value.pow(2).sum(dim=-1).mean()
-                )
-                actor_reg = mean_reg + std_reg + pre_activation_reg
+            mean_reg = self.hyper_params.w_mean_reg * mu.pow(2).mean()
+            std_reg = self.hyper_params.w_std_reg * std.pow(2).mean()
+            pre_activation_reg = self.hyper_params.w_pre_activation_reg * (
+                pre_tanh_value.pow(2).sum(dim=-1).mean()
+            )
+            actor_reg = mean_reg + std_reg + pre_activation_reg
 
-                # actor loss + regularization
-                actor_loss += actor_reg
+            # actor loss + regularization
+            actor_loss += actor_reg
 
             # train actor
             self.actor_optim.zero_grad()

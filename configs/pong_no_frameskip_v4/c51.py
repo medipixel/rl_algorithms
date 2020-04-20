@@ -23,13 +23,12 @@ agent = dict(
         per_beta=0.4,
         per_eps=1e-6,
         # Distributional Q function
-        use_dist_q="DQN",
+        use_dist_q="C51",
+        # NoisyNet
         # Epsilon Greedy
-        max_epsilon=1.0,
-        min_epsilon=0.01,  # openai baselines: 0.01
+        max_epsilon=0.0,
+        min_epsilon=0.0,  # openai baselines: 0.01
         epsilon_decay=1e-6,  # openai baselines: 1e-7 / 1e-1
-        # grad_cam
-        grad_cam_layer_list=["cnn.cnn_0.cnn", "cnn.cnn_1.cnn", "cnn.cnn_2.cnn"],
     ),
     backbone=dict(
         type="CNN",
@@ -42,9 +41,16 @@ agent = dict(
         ),
     ),
     head=dict(
-        type="DuelingMLP",
+        type="C51DuelingMLP",
         configs=dict(
-            use_noisy_net=False, hidden_sizes=[512], output_activation=identity
+            # NoisyNet
+            use_noisy_net=True,
+            std_init=0.5,
+            hidden_sizes=[512],
+            v_min=-10,
+            v_max=10,
+            atom_size=51,
+            output_activation=identity,
         ),
     ),
     optim_cfg=dict(

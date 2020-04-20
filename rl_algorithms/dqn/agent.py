@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """DQN agent for episodic tasks in OpenAI Gym.
 
-- Author: Kh Kim
+- Author: Kyunghwan Kim
 - Contact: kh.kim@medipixel.io
 - Paper: https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf (DQN)
          https://arxiv.org/pdf/1509.06461.pdf (Double DQN)
@@ -28,6 +28,7 @@ from rl_algorithms.common.abstract.agent import Agent
 from rl_algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
 import rl_algorithms.common.helper_functions as common_utils
+from rl_algorithms.common.networks.base_network import BaseNetwork
 import rl_algorithms.dqn.utils as dqn_utils
 from rl_algorithms.registry import AGENTS
 from rl_algorithms.utils.config import ConfigDict
@@ -69,7 +70,8 @@ class DQNAgent(Agent):
         args: argparse.Namespace,
         log_cfg: ConfigDict,
         hyper_params: ConfigDict,
-        network_cfg: ConfigDict,
+        backbone: ConfigDict,
+        head: ConfigDict,
         optim_cfg: ConfigDict,
     ):
         """Initialize."""
@@ -81,8 +83,9 @@ class DQNAgent(Agent):
         self.i_episode = 0
 
         self.hyper_params = hyper_params
-        self.network_cfg = network_cfg
         self.optim_cfg = optim_cfg
+        self.backbone_cfg = backbone
+        self.head_cfg = head
 
         self.state_dim = self.env.observation_space.shape
         self.action_dim = self.env.action_space.n
@@ -91,7 +94,7 @@ class DQNAgent(Agent):
         self.use_conv = len(self.state_dim) > 1
         self.use_n_step = hyper_params.n_step > 1
 
-        if hyper_params.use_noisy_net:
+        if head.configs.use_noisy_net:
             self.max_epsilon = 0.0
             self.min_epsilon = 0.0
             self.epsilon = 0.0
@@ -127,31 +130,11 @@ class DQNAgent(Agent):
     def _init_network(self):
         """Initialize networks and optimizers."""
 
-        if self.use_conv:
-            # create CNN
-            self.dqn = dqn_utils.get_cnn_model(
-                self.hyper_params, self.action_dim, self.state_dim, self.network_cfg
-            )
-            self.dqn_target = dqn_utils.get_cnn_model(
-                self.hyper_params, self.action_dim, self.state_dim, self.network_cfg
-            )
+        self.head_cfg.configs.state_size = self.state_dim
+        self.head_cfg.configs.output_size = self.action_dim
 
-        else:
-            # create FC
-            fc_input_size = self.state_dim[0]
-
-            self.dqn = dqn_utils.get_fc_model(
-                self.hyper_params,
-                fc_input_size,
-                self.action_dim,
-                self.network_cfg.hidden_sizes,
-            )
-            self.dqn_target = dqn_utils.get_fc_model(
-                self.hyper_params,
-                fc_input_size,
-                self.action_dim,
-                self.network_cfg.hidden_sizes,
-            )
+        self.dqn = BaseNetwork(self.backbone_cfg, self.head_cfg).to(device)
+        self.dqn_target = BaseNetwork(self.backbone_cfg, self.head_cfg).to(device)
 
         self.dqn_target.load_state_dict(self.dqn.state_dict())
 
@@ -225,9 +208,9 @@ class DQNAgent(Agent):
                 experiences=experiences,
                 gamma=gamma,
                 batch_size=self.hyper_params.batch_size,
-                n_tau_samples=self.hyper_params.n_tau_samples,
-                n_tau_prime_samples=self.hyper_params.n_tau_prime_samples,
-                kappa=self.hyper_params.kappa,
+                n_tau_samples=self.head_cfg.configs.n_tau_samples,
+                n_tau_prime_samples=self.head_cfg.configs.n_tau_prime_samples,
+                kappa=self.head_cfg.configs.kappa,
             )
         elif self.hyper_params.use_dist_q == "C51":
             return dqn_utils.calculate_c51_loss(
@@ -236,9 +219,9 @@ class DQNAgent(Agent):
                 experiences=experiences,
                 gamma=gamma,
                 batch_size=self.hyper_params.batch_size,
-                v_min=self.hyper_params.v_min,
-                v_max=self.hyper_params.v_max,
-                atom_size=self.hyper_params.atoms,
+                v_min=self.head_cfg.configs.v_min,
+                v_max=self.head_cfg.configs.v_max,
+                atom_size=self.head_cfg.configs.atom_size,
             )
         else:
             return dqn_utils.calculate_dqn_loss(
@@ -293,9 +276,9 @@ class DQNAgent(Agent):
         fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)
         self.per_beta = self.per_beta + fraction * (1.0 - self.per_beta)
 
-        if self.hyper_params.use_noisy_net:
-            self.dqn.reset_noise()
-            self.dqn_target.reset_noise()
+        if self.head_cfg.configs.use_noisy_net:
+            self.dqn.head.reset_noise()
+            self.dqn_target.head.reset_noise()
 
         return loss.item(), q_values.mean().item()
 

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """DDPG agent with PER for episodic tasks in OpenAI Gym.
 
-- Author: Kh Kim
+- Author: Kyunghwan Kim
 - Contact: kh.kim@medipixel.io
 - Paper: https://arxiv.org/pdf/1509.02971.pdf
          https://arxiv.org/pdf/1511.05952.pdf

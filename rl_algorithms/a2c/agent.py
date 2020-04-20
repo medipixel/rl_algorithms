@@ -17,7 +17,7 @@ import torch.optim as optim
 import wandb
 
 from rl_algorithms.common.abstract.agent import Agent
-from rl_algorithms.common.networks.mlp import MLP, GaussianDist
+from rl_algorithms.common.networks.base_network import BaseNetwork
 from rl_algorithms.registry import AGENTS
 from rl_algorithms.utils.config import ConfigDict
 
@@ -52,7 +52,8 @@ class A2CAgent(Agent):
         args: argparse.Namespace,
         log_cfg: ConfigDict,
         hyper_params: ConfigDict,
-        network_cfg: ConfigDict,
+        backbone: ConfigDict,
+        head: ConfigDict,
         optim_cfg: ConfigDict,
     ):
         """Initialize."""
@@ -63,27 +64,29 @@ class A2CAgent(Agent):
         self.i_episode = 0
 
         self.hyper_params = hyper_params
-        self.network_cfg = network_cfg
+        self.backbone_cfg = backbone
+        self.head_cfg = head
         self.optim_cfg = optim_cfg
 
-        self.state_dim = self.env.observation_space.shape[0]
+        self.state_dim = self.env.observation_space.shape
         self.action_dim = self.env.action_space.shape[0]
 
         self._init_network()
 
     def _init_network(self):
         # create models
-        self.actor = GaussianDist(
-            input_size=self.state_dim,
-            output_size=self.action_dim,
-            hidden_sizes=self.network_cfg.hidden_sizes_actor,
-        ).to(device)
 
-        self.critic = MLP(
-            input_size=self.state_dim,
-            output_size=1,
-            hidden_sizes=self.network_cfg.hidden_sizes_critic,
-        ).to(device)
+        self.head_cfg.actor.configs.state_size = (
+            self.head_cfg.critic.configs.state_size
+        ) = self.state_dim
+        self.head_cfg.actor.configs.output_size = self.action_dim
+
+        self.actor = BaseNetwork(self.backbone_cfg.actor, self.head_cfg.actor).to(
+            device
+        )
+        self.critic = BaseNetwork(self.backbone_cfg.critic, self.head_cfg.critic).to(
+            device
+        )
 
         # create optimizer
         self.actor_optim = optim.Adam(

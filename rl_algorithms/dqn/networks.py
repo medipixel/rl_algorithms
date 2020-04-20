@@ -1,51 +1,52 @@
 # -*- coding: utf-8 -*-
 """MLP module for dqn algorithms
 
-- Author: Kh Kim
+- Author: Kyunghwan Kim
 - Contact: kh.kim@medipixel.io
 """
 
 import math
-from typing import Callable, Optional, Tuple
+from typing import Callable, Tuple
 
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from rl_algorithms.common.networks.cnn import CNN
-from rl_algorithms.common.networks.mlp import MLP, init_layer_uniform
-from rl_algorithms.dqn.linear import NoisyMLPHandler
+from rl_algorithms.common.helper_functions import identity
+from rl_algorithms.common.networks.heads import MLP, init_layer_uniform
+from rl_algorithms.dqn.linear import NoisyLinearConstructor, NoisyMLPHandler
+from rl_algorithms.registry import HEADS
+from rl_algorithms.utils.config import ConfigDict
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
+@HEADS.register_module
 class DuelingMLP(MLP, NoisyMLPHandler):
     """Multilayer perceptron with dueling construction."""
 
     def __init__(
-        self,
-        input_size: int,
-        output_size: int,
-        hidden_sizes: list,
-        hidden_activation: Callable = F.relu,
-        linear_layer: nn.Module = nn.Linear,
-        init_fn: Callable = init_layer_uniform,
+        self, configs: ConfigDict, hidden_activation: Callable = F.relu,
     ):
         """Initialize."""
+        if configs.use_noisy_net:
+            linear_layer = NoisyLinearConstructor(configs.std_init)
+            init_fn: Callable = identity
+        else:
+            linear_layer = nn.Linear
+            init_fn = init_layer_uniform
         super(DuelingMLP, self).__init__(
-            input_size=input_size,
-            output_size=output_size,
-            hidden_sizes=hidden_sizes,
+            configs=configs,
             hidden_activation=hidden_activation,
             linear_layer=linear_layer,
             use_output_layer=False,
         )
-        in_size = hidden_sizes[-1]
+        in_size = configs.hidden_sizes[-1]
 
         # set advantage layer
         self.advantage_hidden_layer = self.linear_layer(in_size, in_size)
-        self.advantage_layer = self.linear_layer(in_size, output_size)
+        self.advantage_layer = self.linear_layer(in_size, configs.output_size)
         self.advantage_layer = init_fn(self.advantage_layer)
 
         # set value layer
@@ -53,7 +54,7 @@ class DuelingMLP(MLP, NoisyMLPHandler):
         self.value_layer = self.linear_layer(in_size, 1)
         self.value_layer = init_fn(self.value_layer)
 
-    def _forward_dueling(self, x: torch.Tensor) -> torch.Tensor:
+    def forward_(self, x: torch.Tensor) -> torch.Tensor:
         adv_x = self.hidden_activation(self.advantage_hidden_layer(x))
         val_x = self.hidden_activation(self.value_hidden_layer(x))
 
@@ -68,54 +69,36 @@ class DuelingMLP(MLP, NoisyMLPHandler):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward method implementation."""
         x = super(DuelingMLP, self).forward(x)
-        x = self._forward_dueling(x)
+        x = self.forward_(x)
 
         return x
 
 
-class C51CNN(CNN):
-    """Convolution neural network for distributional RL."""
-
-    def forward_(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Forward method implementation."""
-        x = self.get_cnn_features(x)
-        out = self.fc_layers.forward_(x)
-        return out
-
-    def reset_noise(self):
-        """Re-sample noise for fc layers."""
-        self.fc_layers.reset_noise()
-
-
+@HEADS.register_module
 class C51DuelingMLP(MLP, NoisyMLPHandler):
     """Multilayered perceptron for C51 with dueling construction."""
 
     def __init__(
-        self,
-        input_size: int,
-        action_size: int,
-        hidden_sizes: list,
-        atom_size: int = 51,
-        v_min: int = -10,
-        v_max: int = 10,
-        hidden_activation: Callable = F.relu,
-        linear_layer: nn.Module = nn.Linear,
-        init_fn: Callable = init_layer_uniform,
+        self, configs: ConfigDict, hidden_activation: Callable = F.relu,
     ):
         """Initialize."""
+        if configs.use_noisy_net:
+            linear_layer = NoisyLinearConstructor(configs.std_init)
+            init_fn: Callable = identity
+        else:
+            linear_layer = nn.Linear
+            init_fn = init_layer_uniform
         super(C51DuelingMLP, self).__init__(
-            input_size=input_size,
-            output_size=action_size,
-            hidden_sizes=hidden_sizes,
+            configs=configs,
             hidden_activation=hidden_activation,
             linear_layer=linear_layer,
             use_output_layer=False,
         )
-        in_size = hidden_sizes[-1]
-        self.action_size = action_size
-        self.atom_size = atom_size
-        self.output_size = action_size * atom_size
-        self.v_min, self.v_max = v_min, v_max
+        in_size = configs.hidden_sizes[-1]
+        self.action_size = configs.output_size
+        self.atom_size = configs.atom_size
+        self.output_size = configs.output_size * configs.atom_size
+        self.v_min, self.v_max = configs.v_min, configs.v_max
 
         # set advantage layer
         self.advantage_hidden_layer = self.linear_layer(in_size, in_size)
@@ -154,22 +137,7 @@ class C51DuelingMLP(MLP, NoisyMLPHandler):
         return q
 
 
-class IQNCNN(CNN):
-    """Convolution neural network for distributional RL."""
-
-    def forward_(
-        self, x: torch.Tensor, n_tau_samples: int = None
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Forward method implementation."""
-        x = self.get_cnn_features(x)
-        out = self.fc_layers.forward_(x, n_tau_samples)
-        return out
-
-    def reset_noise(self):
-        """Re-sample noise for fc layers."""
-        self.fc_layers.reset_noise()
-
-
+@HEADS.register_module
 class IQNMLP(MLP, NoisyMLPHandler):
     """Multilayered perceptron for IQN with dueling construction.
 
@@ -177,30 +145,26 @@ class IQNMLP(MLP, NoisyMLPHandler):
     """
 
     def __init__(
-        self,
-        input_size: int,
-        output_size: int,
-        hidden_sizes: list,
-        n_quantiles: int,
-        quantile_embedding_dim: int,
-        hidden_activation: Callable = F.relu,
-        linear_layer: nn.Module = nn.Linear,
-        init_fn: Callable = init_layer_uniform,
+        self, configs: ConfigDict, hidden_activation: Callable = F.relu,
     ):
         """Initialize."""
+        if configs.use_noisy_net:
+            linear_layer = NoisyLinearConstructor(configs.std_init)
+            init_fn: Callable = identity
+        else:
+            linear_layer = nn.Linear
+            init_fn = init_layer_uniform
         super(IQNMLP, self).__init__(
-            input_size=input_size,
-            output_size=output_size,
-            hidden_sizes=hidden_sizes,
+            configs=configs,
             hidden_activation=hidden_activation,
             linear_layer=linear_layer,
             init_fn=init_fn,
         )
 
-        IQNMLP.n_quantiles = n_quantiles
-        self.quantile_embedding_dim = quantile_embedding_dim
-        self.input_size = input_size
-        self.output_size = output_size
+        IQNMLP.n_quantiles = configs.n_quantile_samples
+        self.quantile_embedding_dim = configs.quantile_embedding_dim
+        self.input_size = configs.input_size
+        self.output_size = configs.output_size
 
         # set quantile_net layer
         self.quantile_fc_layer = self.linear_layer(
@@ -209,10 +173,9 @@ class IQNMLP(MLP, NoisyMLPHandler):
         self.quantile_fc_layer = init_fn(self.quantile_fc_layer)
 
     def forward_(
-        self, state: torch.Tensor, n_tau_samples: int = None
+        self, state: torch.Tensor, n_tau_samples: int
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Get quantile values and quantiles."""
-        n_tau_samples = self.__get_n_tau_samples(n_tau_samples)
         batch_size = np.prod(state.size()) // self.input_size
 
         state_tiled = state.repeat(n_tau_samples, 1)
@@ -238,20 +201,11 @@ class IQNMLP(MLP, NoisyMLPHandler):
 
         return quantile_values, quantiles
 
-    def forward(self, state: torch.Tensor, n_tau_samples: int = None) -> torch.Tensor:
+    def forward(self, state: torch.Tensor) -> torch.Tensor:
         """Forward method implementation."""
-        n_tau_samples = self.__get_n_tau_samples(n_tau_samples)
 
-        quantile_values, _ = self.forward_(state, n_tau_samples)
-        quantile_values = quantile_values.view(n_tau_samples, -1, self.output_size)
+        quantile_values, _ = self.forward_(state, IQNMLP.n_quantiles)
+        quantile_values = quantile_values.view(IQNMLP.n_quantiles, -1, self.output_size)
         q = torch.mean(quantile_values, dim=0)
 
         return q
-
-    @staticmethod
-    def __get_n_tau_samples(n_tau_samples: Optional[int]) -> int:
-        """Get sample tau number."""
-        if not n_tau_samples:
-            return IQNMLP.n_quantiles
-        else:
-            return n_tau_samples

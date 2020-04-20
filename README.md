@@ -4,7 +4,7 @@
 [![CircleCI](https://circleci.com/gh/circleci/circleci-docs.svg?style=shield)](https://circleci.com/gh/medipixel)
 [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/medipixel/rl_algorithms.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/medipixel/rl_algorithms/context:python)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-5-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-6-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 </p>
@@ -41,6 +41,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
     <td align="center"><a href="https://github.com/darthegg"><img src="https://avatars3.githubusercontent.com/u/16010242?v=4" width="100px;" alt=""/><br /><sub><b>darthegg</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=darthegg" title="Code">💻</a></td>
     <td align="center"><a href="https://github.com/mclearning2"><img src="https://avatars3.githubusercontent.com/u/43226417?v=4" width="100px;" alt=""/><br /><sub><b>Mincheol Kim</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=mclearning2" title="Code">💻</a></td>
     <td align="center"><a href="https://github.com/minseop4898"><img src="https://avatars1.githubusercontent.com/u/34338299?v=4" width="100px;" alt=""/><br /><sub><b>김민섭</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=minseop4898" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/jinPrelude"><img src="https://avatars1.githubusercontent.com/u/16518993?v=4" width="100px;" alt=""/><br /><sub><b>Leejin Jung</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=jinPrelude" title="Code">💻</a></td>
   </tr>
 </table>
 
@@ -61,6 +62,7 @@ This project follows the [all-contributors](https://github.com/all-contributors/
 7. [From Demonstrations (DDPGfD, SACfD, DQfD)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/fd)
 8. [Rainbow DQN](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/dqn)
 9. [Rainbow IQN (without DuelingNet)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/dqn) - DuelingNet [degrades performance](https://github.com/medipixel/rl_algorithms/pull/137)
+10. Rainbow IQN (with [ResNet](https://github.com/medipixel/rl_algorithms/blob/master/rl_algorithms/common/networks/backbones/resnet.py))
 
 
 ## Performance
@@ -246,3 +248,4 @@ This won't be frequently updated.
 15. [M. Hessel et al., "Rainbow: Combining Improvements in Deep Reinforcement Learning." arXiv preprint arXiv:1710.02298, 2017.](https://arxiv.org/pdf/1710.02298.pdf)
 16. [W. Dabney et al., "Implicit Quantile Networks for Distributional Reinforcement Learning." arXiv preprint arXiv:1806.06923, 2018.](https://arxiv.org/pdf/1806.06923.pdf)
 17. [Ramprasaath R. Selvaraju et al., "Grad-CAM: Visual Explanations from Deep Networks via Gradient-based Localization." arXiv preprint arXiv:1610.02391, 2016.](https://arxiv.org/pdf/1610.02391.pdf)
+18. [Kaiming He et al., "Deep Residual Learning for Image Recognition." arXiv preprint arXiv:1512.03385, 2015.](https://arxiv.org/pdf/1512.03385)

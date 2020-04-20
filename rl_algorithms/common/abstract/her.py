@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Abstract class used for Hindsight Experience Replay.
 
-- Author: Kh Kim
+- Author: Kyunghwan Kim
 - Contact: kh.kim@medipixel.io
 - Paper: https://arxiv.org/pdf/1707.01495.pdf
 """
