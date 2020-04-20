@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """DQfD agent using demo agent for episodic tasks in OpenAI Gym.
 
-- Author: Kh Kim, Curt Park
+- Author: Kyunghwan Kim, Curt Park
 - Contact: kh.kim@medipixel.io, curt.park@medipixel.io
 - Paper: https://arxiv.org/pdf/1704.03732.pdf (DQfD)
 """

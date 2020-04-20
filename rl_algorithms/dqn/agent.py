@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """DQN agent for episodic tasks in OpenAI Gym.
 
-- Author: Kh Kim
+- Author: Kyunghwan Kim
 - Contact: kh.kim@medipixel.io
 - Paper: https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf (DQN)
          https://arxiv.org/pdf/1509.06461.pdf (Double DQN)

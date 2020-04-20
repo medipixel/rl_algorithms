@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Train or test algorithms on Reacher-v2 of Mujoco.
 
-- Author: Kh Kim
+- Author: Kyunghwan Kim
 - Contact: kh.kim@medipixel.io
 """
 

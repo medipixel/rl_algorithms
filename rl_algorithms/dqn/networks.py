@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """MLP module for dqn algorithms
 
-- Author: Kh Kim
+- Author: Kyunghwan Kim
 - Contact: kh.kim@medipixel.io
 """
 

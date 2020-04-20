@@ -1,6 +1,6 @@
 """Grad-CAM class for analyzing CNN network.
 
-- Author: Kh Kim
+- Author: Kyunghwan Kim
 - Contact: kh.kim@medipixel.io
 - Paper: https://arxiv.org/pdf/1610.02391v1.pdf
 - Reference: https://github.com/RRoundTable/XAI

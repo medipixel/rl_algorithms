@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Prioritized Replay buffer for algorithms.
 
-- Author: Kh Kim
+- Author: Kyunghwan Kim
 - Contact: kh.kim@medipixel.io
 - Paper: https://arxiv.org/pdf/1511.05952.pdf
          https://arxiv.org/pdf/1707.08817.pdf

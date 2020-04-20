@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """HER class and reward function for Behavior Cloning.
 
-- Author: Kh Kim
+- Author: Kyunghwan Kim
 - Contact: kh.kim@medipixel.io
 """
 from typing import Callable, Tuple

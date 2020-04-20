@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Behaviour Cloning with DDPG agent for episodic tasks in OpenAI Gym.
 
-- Author: Kh Kim
+- Author: Kyunghwan Kim
 - Contact: kh.kim@medipixel.io
 - Paper: https://arxiv.org/pdf/1709.10089.pdf
 """

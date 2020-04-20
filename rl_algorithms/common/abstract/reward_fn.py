@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Abstract class for computing reward.
 
-- Author: Kh Kim
+- Author: Kyunghwan Kim
 - Contact: kh.kim@medipixel.io
 """
 from abc import ABC, abstractmethod

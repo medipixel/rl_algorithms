@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """CNN modules for RL algorithms.
 
-- Authors: Kh Kim & Curt Park
+- Authors: Kyunghwan Kim & Curt Park
 - Contacts: kh.kim@medipixel.io
             curt.park@medipixel.io
 """
