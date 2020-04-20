@@ -46,9 +46,6 @@ agent = dict(
     head=dict(
         type="IQNMLP",
         configs=dict(
-            # NoisyNet
-            use_noisy_net=True,
-            std_init=0.5,
             hidden_sizes=[512],
             n_tau_samples=64,
             n_tau_prime_samples=64,
@@ -56,6 +53,9 @@ agent = dict(
             quantile_embedding_dim=64,
             kappa=1.0,
             output_activation=identity,
+            # NoisyNet
+            use_noisy_net=True,
+            std_init=0.5,
         ),
     ),
     optim_cfg=dict(

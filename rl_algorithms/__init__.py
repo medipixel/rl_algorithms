@@ -1,5 +1,4 @@
-from rl_algorithms.common.networks.backbones.cnn import CNN
-from rl_algorithms.common.networks.backbones.resnet import ResNet
+from rl_algorithms.common.networks.backbones import CNN, ResNet
 
 from .a2c.agent import A2CAgent
 from .bc.ddpg_agent import BCDDPGAgent

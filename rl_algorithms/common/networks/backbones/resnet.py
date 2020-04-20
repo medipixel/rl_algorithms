@@ -16,6 +16,8 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 class BasicBlock(nn.Module):
+    """basic building block proposed in ResNet paper(https://arxiv.org/pdf/1512.03385.pdf)."""
+
     def __init__(
         self, in_planes: int, planes: int, stride: int = 1, expansion: int = 1
     ):
@@ -58,6 +60,8 @@ class BasicBlock(nn.Module):
 
 
 class Bottleneck(nn.Module):
+    """bottleneck building block proposed in ResNet paper(https://arxiv.org/pdf/1512.03385.pdf)."""
+
     def __init__(
         self, in_planes: int, planes: int, stride: int = 1, expansion: int = 1
     ):
@@ -99,6 +103,8 @@ class Bottleneck(nn.Module):
 
 @BACKBONES.register_module
 class ResNet(nn.Module):
+    """Baseline of ResNet(https://arxiv.org/pdf/1512.03385.pdf)."""
+
     def __init__(
         self, configs: ConfigDict,
     ):

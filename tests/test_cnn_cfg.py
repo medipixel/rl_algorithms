@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
 
-from rl_algorithms.common.networks.backbones.cnn import CNN
-from rl_algorithms.common.networks.backbones.resnet import ResNet
-from rl_algorithms.common.networks.base_network import calculate_fc_input_size
+from rl_algorithms.common.helper_functions import identity
+from rl_algorithms.common.networks.backbones import CNN, ResNet
+from rl_algorithms.common.networks.base_network import BaseNetwork
 from rl_algorithms.utils.config import ConfigDict
 
 cnn_cfg = ConfigDict(
@@ -31,12 +31,35 @@ resnet_cfg = ConfigDict(
     ),
 )
 
+head_cfg = ConfigDict(
+    type="IQNMLP",
+    configs=dict(
+        hidden_sizes=[512],
+        n_tau_samples=64,
+        n_tau_prime_samples=64,
+        n_quantile_samples=32,
+        quantile_embedding_dim=64,
+        kappa=1.0,
+        output_activation=identity,
+        # NoisyNet
+        use_noisy_net=True,
+        std_init=0.5,
+    ),
+)
+
 test_state_dim = (3, 256, 256)
 
 
-def test_fc_size_calculator():
-    calculated_fc_size = calculate_fc_input_size(test_state_dim, cnn_cfg)
-    assert calculated_fc_size == 7744
+def test_base_network():
+    """Test wheter base_network make fc layer based on backbone's output size."""
+
+    head_cfg.configs.state_size = test_state_dim
+    head_cfg.configs.output_size = 8
+
+    try:
+        _ = BaseNetwork(resnet_cfg, head_cfg)
+    except Exception as e:
+        raise e
 
 
 def test_cnn_with_config():
@@ -90,5 +113,5 @@ def test_resnet_with_config():
 
 
 if __name__ == "__main__":
-    test_fc_size_calculator()
+    test_base_network()
     test_cnn_with_config()
