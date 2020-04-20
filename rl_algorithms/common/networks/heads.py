@@ -52,20 +52,7 @@ class MLP(nn.Module):
         n_category: int = -1,
         init_fn: Callable = init_layer_uniform,
     ):
-        """Initialize.
-
-        Args:
-            input_size (int): size of input
-            output_size (int): size of output layer
-            hidden_sizes (list): number of hidden layers
-            hidden_activation (function): activation function of hidden layers
-            output_activation (function): activation function of output layer
-            linear_layer (nn.Module): linear layer of mlp
-            use_output_layer (bool): whether or not to use the last layer
-            n_category (int): category number (-1 if the action is continuous)
-            init_fn (Callable): weight initialization function bound for the last layer
-
-        """
+        """Initialize."""
         super(MLP, self).__init__()
 
         self.hidden_sizes = configs.hidden_sizes
