@@ -243,7 +243,7 @@ class DDPGAgent(Agent):
         self.critic_optim.load_state_dict(params["critic_optim_state_dict"])
         print("[INFO] loaded the model and optimizer from", path)
 
-    def save_params(self, n_episode: int):  # type: ignore
+    def save_params(self, n_episode: int):
         """Save model and optimizer parameters."""
         params = {
             "actor_state_dict": self.actor.state_dict(),
@@ -253,7 +253,7 @@ class DDPGAgent(Agent):
             "actor_optim_state_dict": self.actor_optim.state_dict(),
             "critic_optim_state_dict": self.critic_optim.state_dict(),
         }
-        Agent.save_params(self, params, n_episode)
+        Agent._save_params(self, params, n_episode)
 
     def write_log(self, log_value: tuple):
         """Write log about loss and score"""

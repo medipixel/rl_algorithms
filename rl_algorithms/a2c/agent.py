@@ -180,7 +180,7 @@ class A2CAgent(Agent):
         self.critic_optim.load_state_dict(params["critic_optim_state_dict"])
         print("[INFO] Loaded the model and optimizer from", path)
 
-    def save_params(self, n_episode: int):  # type: ignore
+    def save_params(self, n_episode: int):
         """Save model and optimizer parameters."""
         params = {
             "actor_state_dict": self.actor.state_dict(),
@@ -189,7 +189,7 @@ class A2CAgent(Agent):
             "critic_optim_state_dict": self.critic_optim.state_dict(),
         }
 
-        Agent.save_params(self, params, n_episode)
+        Agent._save_params(self, params, n_episode)
 
     def write_log(self, log_value: tuple):
         i, score, policy_loss, value_loss = log_value
