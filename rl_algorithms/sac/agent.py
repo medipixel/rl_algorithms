@@ -325,7 +325,7 @@ class SACAgent(Agent):
 
         print("[INFO] loaded the model and optimizer from", path)
 
-    def save_params(self, n_episode: int):  # type: ignore
+    def save_params(self, n_episode: int):
         """Save model and optimizer parameters."""
         params = {
             "actor": self.actor.state_dict(),
@@ -342,7 +342,7 @@ class SACAgent(Agent):
         if self.hyper_params.auto_entropy_tuning:
             params["alpha_optim"] = self.alpha_optim.state_dict()
 
-        Agent.save_params(self, params, n_episode)
+        Agent._save_params(self, params, n_episode)
 
     def write_log(self, log_value: tuple):
         """Write log about loss and score"""

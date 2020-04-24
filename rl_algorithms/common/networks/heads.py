@@ -8,7 +8,7 @@
 from typing import Callable, Tuple
 
 import torch
-from torch.distributions import Categorical, Normal
+from torch.distributions import Normal
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -183,66 +183,3 @@ class TanhGaussianDistParams(GaussianDist):
         log_prob = log_prob.sum(-1, keepdim=True)
 
         return action, log_prob, z, mu, std
-
-
-class CategoricalDist(MLP):
-    """Multilayer perceptron with categorial distribution output.
-
-    Attributes:
-        last_layer (nn.Linear): output layer for softmax
-    """
-
-    def __init__(
-        self,
-        input_size: int,
-        output_size: int,
-        hidden_sizes: list,
-        hidden_activation: Callable = F.relu,
-        init_fn: Callable = init_layer_uniform,
-    ):
-        """Initialize."""
-        super(CategoricalDist, self).__init__(
-            input_size=input_size,
-            output_size=output_size,
-            hidden_sizes=hidden_sizes,
-            hidden_activation=hidden_activation,
-            use_output_layer=False,
-        )
-
-        in_size = hidden_sizes[-1]
-
-        # set log_std layer
-        self.last_layer = nn.Linear(in_size, output_size)
-        self.last_layer = init_fn(self.last_layer)
-
-    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, ...]:
-        """Forward method implementation."""
-        hidden = super(CategoricalDist, self).forward(x)
-        action_probs = F.softmax(self.last_layer(hidden), dim=-1)
-
-        dist = Categorical(action_probs)
-        selected_action = dist.sample()
-
-        return selected_action, dist
-
-
-class CategoricalDistParams(CategoricalDist):
-    """Multilayer perceptron with Categorical distribution output."""
-
-    def __init__(self, compatible_with_tanh_normal=False, **kwargs):
-        """Initialize."""
-        super(CategoricalDistParams, self).__init__(**kwargs)
-
-        self.compatible_with_tanh_normal = compatible_with_tanh_normal
-
-    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, ...]:
-        """Forward method implementation."""
-        action, dist = super(CategoricalDistParams, self).forward(x)
-        log_prob = dist.log_prob(action).sum(dim=-1, keepdim=True)
-
-        if self.compatible_with_tanh_normal:
-            # in order to prevent from using the unavailable return values
-            nan = float("nan")
-            return action, log_prob, nan, nan, nan
-        else:
-            return action, log_prob

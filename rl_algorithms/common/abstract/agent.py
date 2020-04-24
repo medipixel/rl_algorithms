@@ -89,7 +89,10 @@ class Agent(ABC):
             )
 
     @abstractmethod
-    def save_params(self, params: dict, n_episode: int):
+    def save_params(self, n_episode: int):
+        pass
+
+    def _save_params(self, params: dict, n_episode: int):
         os.makedirs(self.ckpt_path, exist_ok=True)
 
         path = os.path.join(self.ckpt_path + self.sha + "_ep_" + str(n_episode) + ".pt")

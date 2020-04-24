@@ -11,7 +11,7 @@ agent = dict(
         gamma=0.99,
         tau=5e-3,
         buffer_size=int(1e4),  # openai baselines: int(1e4)
-        batch_size=32,  # openai baselines: 32
+        batch_size=16,  # openai baselines: 32
         update_starts_from=int(1e4),  # openai baselines: int(1e4)
         multiple_update=1,  # multiple learning updates
         train_freq=4,  # in openai baselines, train_freq = 4
@@ -24,7 +24,6 @@ agent = dict(
         per_eps=1e-6,
         # Distributional Q function
         use_dist_q="IQN",
-        # NoisyNet
         # Epsilon Greedy
         max_epsilon=0.0,
         min_epsilon=0.0,  # openai baselines: 0.01
@@ -33,7 +32,7 @@ agent = dict(
     backbone=dict(
         type="ResNet",
         configs=dict(
-            use_bottleneck=True,
+            use_bottleneck=False,
             num_blocks=[1, 1, 1, 1],
             block_output_sizes=[32, 32, 64, 64],
             block_strides=[1, 2, 2, 2],

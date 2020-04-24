@@ -51,7 +51,7 @@ class CAMBaseWrapper:
         one_hot = self._encode_one_hot(ids)
         self.logits.backward(gradient=one_hot, retain_graph=True)
 
-    def generate(self):
+    def generate(self, target_layer: str):
         raise NotImplementedError
 
     def remove_hook(self):
