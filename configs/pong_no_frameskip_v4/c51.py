@@ -24,7 +24,6 @@ agent = dict(
         per_eps=1e-6,
         # Distributional Q function
         use_dist_q="C51",
-        # NoisyNet
         # Epsilon Greedy
         max_epsilon=0.0,
         min_epsilon=0.0,  # openai baselines: 0.01
@@ -43,14 +42,14 @@ agent = dict(
     head=dict(
         type="C51DuelingMLP",
         configs=dict(
-            # NoisyNet
-            use_noisy_net=True,
-            std_init=0.5,
             hidden_sizes=[512],
             v_min=-10,
             v_max=10,
             atom_size=51,
             output_activation=identity,
+            # NoisyNet
+            use_noisy_net=True,
+            std_init=0.5,
         ),
     ),
     optim_cfg=dict(

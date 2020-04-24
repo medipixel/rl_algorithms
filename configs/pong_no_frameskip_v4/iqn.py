@@ -24,7 +24,6 @@ agent = dict(
         per_eps=1e-6,
         # Distributional Q function
         use_dist_q="IQN",
-        # NoisyNet
         # Epsilon Greedy
         max_epsilon=0.0,
         min_epsilon=0.0,  # openai baselines: 0.01
