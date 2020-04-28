@@ -28,6 +28,14 @@ agent = dict(
         max_epsilon=0.0,
         min_epsilon=0.0,  # openai baselines: 0.01
         epsilon_decay=1e-6,  # openai baselines: 1e-7 / 1e-1
+        # grad_cam
+        grad_cam_layer_list=[
+            "backbone.layer1.0.conv2",
+            "backbone.layer2.0.shortcut.0",
+            "backbone.layer3.0.shortcut.0",
+            "backbone.layer4.0.shortcut.0",
+            "backbone.conv_out",
+        ],
     ),
     backbone=dict(
         type="ResNet",
