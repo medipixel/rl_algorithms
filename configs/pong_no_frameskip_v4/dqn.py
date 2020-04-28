@@ -29,7 +29,11 @@ agent = dict(
         min_epsilon=0.01,  # openai baselines: 0.01
         epsilon_decay=1e-6,  # openai baselines: 1e-7 / 1e-1
         # grad_cam
-        grad_cam_layer_list=["cnn.cnn_0.cnn", "cnn.cnn_1.cnn", "cnn.cnn_2.cnn"],
+        grad_cam_layer_list=[
+            "backbone.cnn.cnn_0.cnn",
+            "backbone.cnn.cnn_1.cnn",
+            "backbone.cnn.cnn_2.cnn",
+        ],
     ),
     backbone=dict(
         type="CNN",
