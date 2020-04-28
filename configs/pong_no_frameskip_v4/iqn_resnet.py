@@ -30,9 +30,11 @@ agent = dict(
         epsilon_decay=1e-6,  # openai baselines: 1e-7 / 1e-1
         # grad_cam
         grad_cam_layer_list=[
-            "backbone.conv1",
-            "backbone.layer2.0.conv1",
-            "backbone.layer4.0.conv2",
+            "backbone.layer1.0.conv2",
+            "backbone.layer2.0.shortcut.0",
+            "backbone.layer3.0.shortcut.0",
+            "backbone.layer4.0.shortcut.0",
+            "backbone.conv_out",
         ],
     ),
     backbone=dict(
