@@ -29,8 +29,7 @@ agent = dict(
         # lambda3 = weight_decay (l2 regularization weight)
         margin=0.8,
         pretrain_step=int(1e2),
-        # Distributional Q function
-        use_dist_q="C51",
+        loss_type=dict(type="C51Loss"),
         # Epsilon Greedy
         max_epsilon=1.0,
         min_epsilon=0.01,  # openai baselines: 0.01
