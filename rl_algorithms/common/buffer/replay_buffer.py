@@ -141,12 +141,7 @@ class ReplayBuffer:
         next_states = torch.FloatTensor(self.next_obs_buf[indices]).to(device)
         dones = torch.FloatTensor(self.done_buf[indices].reshape(-1, 1)).to(device)
 
-        if torch.cuda.is_available():
-            states = states.cuda(non_blocking=True)
-            actions = actions.cuda(non_blocking=True)
-            rewards = rewards.cuda(non_blocking=True)
-            next_states = next_states.cuda(non_blocking=True)
-            dones = dones.cuda(non_blocking=True)
+        
 
         return states, actions, rewards, next_states, dones
 

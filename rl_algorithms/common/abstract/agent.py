@@ -195,7 +195,7 @@ class Agent(ABC):
                 next_state, reward, done, _ = self.step(action)
 
                 _ = gcam.forward(state)
-                ids = torch.LongTensor([[int(action)]]).cuda()
+                ids = torch.LongTensor([[int(action)]])
                 gcam.backward(ids=ids)
 
                 state = state[-1].detach().cpu().numpy().astype(np.uint8)

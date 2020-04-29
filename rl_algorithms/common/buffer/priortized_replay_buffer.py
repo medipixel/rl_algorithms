@@ -128,9 +128,6 @@ class PrioritizedReplayBuffer(ReplayBuffer):
 
         weights = torch.FloatTensor(weights.reshape(-1, 1)).to(device)
 
-        if torch.cuda.is_available():
-            weights = weights.cuda(non_blocking=True)
-
         states, actions, rewards, next_states, dones = super().sample(indices)
 
         return states, actions, rewards, next_states, dones, weights, indices, eps_d
