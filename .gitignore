@@ -11,3 +11,6 @@ MUJOCO_LOG.TXT
 build
 dist
 *.egg-info
+
+# data
+data/distillation_buffer.pkl
