@@ -16,7 +16,7 @@ import torch
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
 from rl_algorithms.common.buffer.segment_tree import MinSegmentTree, SumSegmentTree
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = "cpu"
 
 
 class PrioritizedReplayBuffer(ReplayBuffer):

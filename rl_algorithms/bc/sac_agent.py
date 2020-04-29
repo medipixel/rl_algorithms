@@ -21,7 +21,7 @@ import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.registry import AGENTS, build_her
 from rl_algorithms.sac.agent import SACAgent
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = "cpu"
 
 
 @AGENTS.register_module

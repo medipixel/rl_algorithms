@@ -19,7 +19,7 @@ from rl_algorithms.dqn.linear import NoisyLinearConstructor, NoisyMLPHandler
 from rl_algorithms.registry import HEADS
 from rl_algorithms.utils.config import ConfigDict
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = "cpu"
 
 
 @HEADS.register_module

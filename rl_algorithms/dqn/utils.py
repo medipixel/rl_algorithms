@@ -14,7 +14,7 @@ import torch.nn.functional as F
 
 from rl_algorithms.common.networks.base_network import BaseNetwork
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = "cpu"
 
 
 def calculate_iqn_loss(

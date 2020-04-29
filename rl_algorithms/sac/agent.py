@@ -25,7 +25,7 @@ from rl_algorithms.common.networks.base_network import BaseNetwork
 from rl_algorithms.registry import AGENTS
 from rl_algorithms.utils.config import ConfigDict
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = "cpu"
 
 
 @AGENTS.register_module

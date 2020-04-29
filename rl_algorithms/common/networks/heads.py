@@ -16,7 +16,7 @@ from rl_algorithms.common.helper_functions import identity
 from rl_algorithms.registry import HEADS
 from rl_algorithms.utils.config import ConfigDict
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = "cpu"
 
 
 def init_layer_uniform(layer: nn.Linear, init_w: float = 3e-3) -> nn.Linear:

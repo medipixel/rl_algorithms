@@ -9,7 +9,7 @@ import torch
 
 from rl_algorithms.common.helper_functions import get_n_step_info
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = "cpu"
 
 
 class ReplayBuffer:
