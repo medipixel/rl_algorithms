@@ -14,17 +14,17 @@ def build_agent(cfg: ConfigDict, build_args: dict = None):
 
 
 def build_backbone(cfg: ConfigDict, build_args: dict = None):
-    """Build agent using config and additional arguments."""
+    """Build backbone using config and additional arguments."""
     return build_from_cfg(cfg, BACKBONES, build_args)
 
 
 def build_head(cfg: ConfigDict, build_args: dict = None):
-    """Build agent using config and additional arguments."""
+    """Build head using config and additional arguments."""
     return build_from_cfg(cfg, HEADS, build_args)
 
 
 def build_loss(cfg: ConfigDict, build_args: dict = None):
-    """Build agent using config and additional arguments."""
+    """Build loss using config and additional arguments."""
     return build_from_cfg(cfg, LOSSES, build_args)
 
 
