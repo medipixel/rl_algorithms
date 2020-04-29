@@ -22,8 +22,7 @@ agent = dict(
         per_alpha=0.6,  # openai baselines: 0.6
         per_beta=0.4,
         per_eps=1e-6,
-        # Distributional Q function
-        use_dist_q="C51",
+        loss_type=dict(type="C51Loss"),
         # Epsilon Greedy
         max_epsilon=0.0,
         min_epsilon=0.0,  # openai baselines: 0.01

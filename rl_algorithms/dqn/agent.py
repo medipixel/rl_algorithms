@@ -29,8 +29,7 @@ from rl_algorithms.common.buffer.priortized_replay_buffer import PrioritizedRepl
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
 import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.common.networks.base_network import BaseNetwork
-import rl_algorithms.dqn.utils as dqn_utils
-from rl_algorithms.registry import AGENTS
+from rl_algorithms.registry import AGENTS, build_loss
 from rl_algorithms.utils.config import ConfigDict
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -135,6 +134,7 @@ class DQNAgent(Agent):
 
         self.dqn = BaseNetwork(self.backbone_cfg, self.head_cfg).to(device)
         self.dqn_target = BaseNetwork(self.backbone_cfg, self.head_cfg).to(device)
+        self._get_dqn_loss = build_loss(self.hyper_params.loss_type)
 
         self.dqn_target.load_state_dict(self.dqn.state_dict())
 
@@ -196,48 +196,15 @@ class DQNAgent(Agent):
         if transition:
             self.memory.add(transition)
 
-    def _get_dqn_loss(
-        self, experiences: Tuple[torch.Tensor, ...], gamma: float
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Return element-wise dqn loss and Q-values."""
-
-        if self.hyper_params.use_dist_q == "IQN":
-            return dqn_utils.calculate_iqn_loss(
-                model=self.dqn,
-                target_model=self.dqn_target,
-                experiences=experiences,
-                gamma=gamma,
-                batch_size=self.hyper_params.batch_size,
-                n_tau_samples=self.head_cfg.configs.n_tau_samples,
-                n_tau_prime_samples=self.head_cfg.configs.n_tau_prime_samples,
-                kappa=self.head_cfg.configs.kappa,
-            )
-        elif self.hyper_params.use_dist_q == "C51":
-            return dqn_utils.calculate_c51_loss(
-                model=self.dqn,
-                target_model=self.dqn_target,
-                experiences=experiences,
-                gamma=gamma,
-                batch_size=self.hyper_params.batch_size,
-                v_min=self.head_cfg.configs.v_min,
-                v_max=self.head_cfg.configs.v_max,
-                atom_size=self.head_cfg.configs.atom_size,
-            )
-        else:
-            return dqn_utils.calculate_dqn_loss(
-                model=self.dqn,
-                target_model=self.dqn_target,
-                experiences=experiences,
-                gamma=gamma,
-            )
-
     def update_model(self) -> Tuple[torch.Tensor, ...]:
         """Train the model after each episode."""
         # 1 step loss
         experiences_1 = self.memory.sample(self.per_beta)
         weights, indices = experiences_1[-3:-1]
         gamma = self.hyper_params.gamma
-        dq_loss_element_wise, q_values = self._get_dqn_loss(experiences_1, gamma)
+        dq_loss_element_wise, q_values = self._get_dqn_loss(
+            self.dqn, self.dqn_target, experiences_1, gamma, self.head_cfg
+        )
         dq_loss = torch.mean(dq_loss_element_wise * weights)
 
         # n step loss
@@ -245,7 +212,7 @@ class DQNAgent(Agent):
             experiences_n = self.memory_n.sample(indices)
             gamma = self.hyper_params.gamma ** self.hyper_params.n_step
             dq_loss_n_element_wise, q_values_n = self._get_dqn_loss(
-                experiences_n, gamma
+                self.dqn, self.dqn_target, experiences_n, gamma, self.head_cfg
             )
 
             # to update loss and priorities
