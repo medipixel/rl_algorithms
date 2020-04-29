@@ -134,7 +134,7 @@ class DQNAgent(Agent):
 
         self.dqn = BaseNetwork(self.backbone_cfg, self.head_cfg).to(device)
         self.dqn_target = BaseNetwork(self.backbone_cfg, self.head_cfg).to(device)
-        self._get_dqn_loss = build_loss(self.hyper_params.loss_type)
+        self.loss_fn = build_loss(self.hyper_params.loss_type)
 
         self.dqn_target.load_state_dict(self.dqn.state_dict())
 
@@ -202,7 +202,7 @@ class DQNAgent(Agent):
         experiences_1 = self.memory.sample(self.per_beta)
         weights, indices = experiences_1[-3:-1]
         gamma = self.hyper_params.gamma
-        dq_loss_element_wise, q_values = self._get_dqn_loss(
+        dq_loss_element_wise, q_values = self.loss_fn(
             self.dqn, self.dqn_target, experiences_1, gamma, self.head_cfg
         )
         dq_loss = torch.mean(dq_loss_element_wise * weights)
@@ -211,7 +211,7 @@ class DQNAgent(Agent):
         if self.use_n_step:
             experiences_n = self.memory_n.sample(indices)
             gamma = self.hyper_params.gamma ** self.hyper_params.n_step
-            dq_loss_n_element_wise, q_values_n = self._get_dqn_loss(
+            dq_loss_n_element_wise, q_values_n = self.loss_fn(
                 self.dqn, self.dqn_target, experiences_n, gamma, self.head_cfg
             )
 

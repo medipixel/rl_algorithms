@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""Utility functions for DQN.
+"""Loss functions for DQN.
 
-This module has DQN util functions.
+This module has DQN loss functions.
 
 - Author: Curt Park
 - Contact: curt.park@medipixel.io
@@ -156,13 +156,14 @@ class C51Loss:
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Return element-wise C51 loss and Q-values."""
         states, actions, rewards, next_states, dones = experiences[:5]
+        batch_size = states.shape[0]
+
         support = torch.linspace(
             head_cfg.configs.v_min, head_cfg.configs.v_max, head_cfg.configs.atom_size
         ).to(device)
         delta_z = float(head_cfg.configs.v_max - head_cfg.configs.v_min) / (
             head_cfg.configs.atom_size - 1
         )
-        batch_size = states.shape[0]
 
         with torch.no_grad():
             # According to noisynet paper,
