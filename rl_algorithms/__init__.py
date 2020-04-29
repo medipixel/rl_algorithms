@@ -4,6 +4,7 @@ from .bc.her import LunarLanderContinuousHER, ReacherHER
 from .bc.sac_agent import BCSACAgent
 from .common.networks.backbones import CNN, ResNet
 from .ddpg.agent import DDPGAgent
+from .distillation.dqn_agent import DistillationDQN
 from .dqn.agent import DQNAgent
 from .dqn.losses import C51Loss, DQNLoss, IQNLoss
 from .fd.ddpg_agent import DDPGfDAgent
@@ -37,4 +38,5 @@ __all__ = [
     "IQNLoss",
     "C51Loss",
     "DQNLoss",
+    "DistillationDQN",
 ]

@@ -147,3 +147,40 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             self.min_tree[idx] = priority ** self.alpha
 
             self._max_priority = max(self._max_priority, priority)
+
+
+class DistillationPER(PrioritizedReplayBuffer):
+    """PER with policy distillation."""
+
+    # pylint: disable=attribute-defined-outside-init
+    def add(
+        self,
+        transition: Tuple[np.ndarray, np.ndarray, float, np.ndarray, bool],
+        q_values: np.ndarray,
+    ) -> Tuple[Any, ...]:
+        """Add experience and priority."""
+        if len(self.n_step_buffer) < self.n_step:
+            self.q_value_buf = np.zeros(
+                [self.buffer_size] + list(q_values.shape), dtype=float
+            )
+
+        n_step_transition = super().add(transition)
+
+        self.q_value_buf[self.idx] = q_values
+
+        return n_step_transition
+
+    def sample_for_diltillation(self):
+        """Sample a batch of state and Q-value for policy distillation."""
+        assert len(self) >= self.batch_size
+
+        indices = np.random.choice(len(self), size=self.batch_size, replace=False)
+
+        states = torch.FloatTensor(self.obs_buf[indices]).to(device)
+        q_values = torch.FloatTensor(self.q_value_buf[indices]).to(device)
+
+        if torch.cuda.is_available():
+            states = states.cuda(non_blocking=True)
+            q_values = q_values.cuda(non_blocking=True)
+
+        return states, q_values
