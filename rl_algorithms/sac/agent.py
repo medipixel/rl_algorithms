@@ -21,7 +21,7 @@ import wandb
 from rl_algorithms.common.abstract.agent import Agent
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
 import rl_algorithms.common.helper_functions as common_utils
-from rl_algorithms.common.networks.base_network import BaseNetwork
+from rl_algorithms.common.networks.brain import Brain
 from rl_algorithms.registry import AGENTS
 from rl_algorithms.utils.config import ConfigDict
 
@@ -127,26 +127,22 @@ class SACAgent(Agent):
         self.head_cfg.actor.configs.output_size = self.action_dim
 
         # create actor
-        self.actor = BaseNetwork(self.backbone_cfg.actor, self.head_cfg.actor).to(
-            device
-        )
+        self.actor = Brain(self.backbone_cfg.actor, self.head_cfg.actor).to(device)
 
         # create v_critic
-        self.vf = BaseNetwork(self.backbone_cfg.critic_vf, self.head_cfg.critic_vf).to(
+        self.vf = Brain(self.backbone_cfg.critic_vf, self.head_cfg.critic_vf).to(device)
+        self.vf_target = Brain(self.backbone_cfg.critic_vf, self.head_cfg.critic_vf).to(
             device
         )
-        self.vf_target = BaseNetwork(
-            self.backbone_cfg.critic_vf, self.head_cfg.critic_vf
-        ).to(device)
         self.vf_target.load_state_dict(self.vf.state_dict())
 
         # create q_critic
-        self.qf_1 = BaseNetwork(
-            self.backbone_cfg.critic_qf, self.head_cfg.critic_qf
-        ).to(device)
-        self.qf_2 = BaseNetwork(
-            self.backbone_cfg.critic_qf, self.head_cfg.critic_qf
-        ).to(device)
+        self.qf_1 = Brain(self.backbone_cfg.critic_qf, self.head_cfg.critic_qf).to(
+            device
+        )
+        self.qf_2 = Brain(self.backbone_cfg.critic_qf, self.head_cfg.critic_qf).to(
+            device
+        )
 
         # create optimizers
         self.actor_optim = optim.Adam(

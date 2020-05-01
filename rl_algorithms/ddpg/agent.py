@@ -21,7 +21,7 @@ import wandb
 from rl_algorithms.common.abstract.agent import Agent
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
 import rl_algorithms.common.helper_functions as common_utils
-from rl_algorithms.common.networks.base_network import BaseNetwork
+from rl_algorithms.common.networks.brain import Brain
 from rl_algorithms.common.noise import OUNoise
 from rl_algorithms.registry import AGENTS
 from rl_algorithms.utils.config import ConfigDict
@@ -114,21 +114,17 @@ class DDPGAgent(Agent):
         self.head_cfg.actor.configs.output_size = self.action_dim
 
         # create actor
-        self.actor = BaseNetwork(self.backbone_cfg.actor, self.head_cfg.actor).to(
+        self.actor = Brain(self.backbone_cfg.actor, self.head_cfg.actor).to(device)
+        self.actor_target = Brain(self.backbone_cfg.actor, self.head_cfg.actor).to(
             device
         )
-        self.actor_target = BaseNetwork(
-            self.backbone_cfg.actor, self.head_cfg.actor
-        ).to(device)
         self.actor_target.load_state_dict(self.actor.state_dict())
 
         # create critic
-        self.critic = BaseNetwork(self.backbone_cfg.critic, self.head_cfg.critic).to(
+        self.critic = Brain(self.backbone_cfg.critic, self.head_cfg.critic).to(device)
+        self.critic_target = Brain(self.backbone_cfg.critic, self.head_cfg.critic).to(
             device
         )
-        self.critic_target = BaseNetwork(
-            self.backbone_cfg.critic, self.head_cfg.critic
-        ).to(device)
         self.critic_target.load_state_dict(self.critic.state_dict())
 
         # create optimizer

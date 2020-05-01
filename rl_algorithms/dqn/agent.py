@@ -28,7 +28,7 @@ from rl_algorithms.common.abstract.agent import Agent
 from rl_algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
 import rl_algorithms.common.helper_functions as common_utils
-from rl_algorithms.common.networks.base_network import BaseNetwork
+from rl_algorithms.common.networks.brain import Brain
 from rl_algorithms.registry import AGENTS, build_loss
 from rl_algorithms.utils.config import ConfigDict
 
@@ -132,8 +132,8 @@ class DQNAgent(Agent):
         self.head_cfg.configs.state_size = self.state_dim
         self.head_cfg.configs.output_size = self.action_dim
 
-        self.dqn = BaseNetwork(self.backbone_cfg, self.head_cfg).to(device)
-        self.dqn_target = BaseNetwork(self.backbone_cfg, self.head_cfg).to(device)
+        self.dqn = Brain(self.backbone_cfg, self.head_cfg).to(device)
+        self.dqn_target = Brain(self.backbone_cfg, self.head_cfg).to(device)
         self.loss_fn = build_loss(self.hyper_params.loss_type)
 
         self.dqn_target.load_state_dict(self.dqn.state_dict())
