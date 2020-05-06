@@ -11,6 +11,7 @@ from .fd.dqn_agent import DQfDAgent
 from .fd.sac_agent import SACfDAgent
 from .per.ddpg_agent import PERDDPGAgent
 from .ppo.agent import PPOAgent
+from .recurrent.dqn_agent import R2D1Agent
 from .registry import build_agent, build_her
 from .sac.agent import SACAgent
 from .td3.agent import TD3Agent
@@ -23,6 +24,7 @@ __all__ = [
     "DQNAgent",
     "DDPGfDAgent",
     "DQfDAgent",
+    "R2D1Agent",
     "SACfDAgent",
     "PERDDPGAgent",
     "PPOAgent",
