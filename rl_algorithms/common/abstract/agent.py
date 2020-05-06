@@ -45,6 +45,7 @@ class Agent(ABC):
         self.args = args
         self.env = env
         self.log_cfg = log_cfg
+        self.total_step = 0
 
         self.env_name = env.spec.id if env.spec is not None else env.name
 
@@ -169,6 +170,7 @@ class Agent(ABC):
         else:
             test_num = self.args.episode_num
 
+        score_list = []
         for i_episode in range(test_num):
             state = self.env.reset()
             done = False
@@ -189,9 +191,15 @@ class Agent(ABC):
             print(
                 "[INFO] test %d\tstep: %d\ttotal score: %d" % (i_episode, step, score)
             )
+            score_list.append(score)
 
-            if self.args.log:
-                wandb.log({"test score": score})
+        if self.args.log:
+            wandb.log(
+                {
+                    "test score": round(sum(score_list) / len(score_list), 2),
+                    "test total step": self.total_step,
+                }
+            )
 
     def test_with_gradcam(self):
         """Test agent with Grad-CAM."""

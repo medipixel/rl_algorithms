@@ -78,7 +78,6 @@ class DQNAgent(Agent):
 
         self.curr_state = np.zeros(1)
         self.episode_step = 0
-        self.total_step = 0
         self.i_episode = 0
 
         self.hyper_params = hyper_params
@@ -299,6 +298,7 @@ class DQNAgent(Agent):
                     "dqn loss": loss[0],
                     "avg q values": loss[1],
                     "time per each step": avg_time_cost,
+                    "total_step": self.total_step,
                 }
             )
 
@@ -360,9 +360,9 @@ class DQNAgent(Agent):
                 log_value = (self.i_episode, avg_loss, score, avg_time_cost)
                 self.write_log(log_value)
 
-            if self.i_episode % self.args.save_period == 0:
-                self.save_params(self.i_episode)
-                self.interim_test()
+                if self.i_episode % self.args.save_period == 0:
+                    self.save_params(self.i_episode)
+                    self.interim_test()
 
         # termination
         self.env.close()
