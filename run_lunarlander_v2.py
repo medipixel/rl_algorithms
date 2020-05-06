@@ -32,6 +32,12 @@ def parse_args() -> argparse.Namespace:
         "--test", dest="test", action="store_true", help="test mode (no training)"
     )
     parser.add_argument(
+        "--distillation",
+        dest="distillation",
+        action="store_true",
+        help="distillation mode",
+    )
+    parser.add_argument(
         "--load-from",
         type=str,
         default=None,
@@ -94,10 +100,12 @@ def main():
     build_args = dict(args=args, env=env)
     agent = build_agent(cfg.agent, build_args)
 
-    if not args.test:
-        agent.train()
-    else:
+    if args.test:
         agent.test()
+    elif args.distillation:
+        agent.train_distillation()
+    else:
+        agent.train()
 
 
 if __name__ == "__main__":

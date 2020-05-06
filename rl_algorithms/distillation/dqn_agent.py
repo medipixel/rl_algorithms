@@ -19,6 +19,8 @@ from typing import Tuple
 
 import numpy as np
 import torch
+import torch.nn.functional as F
+import wandb
 
 from rl_algorithms.common.buffer.priortized_replay_buffer import DistillationPER
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
@@ -52,10 +54,15 @@ class DistillationDQN(DQNAgent):
                     gamma=self.hyper_params.gamma,
                 )
 
+        if self.args.distillation:
+            with open("data/distillation_buffer.pkl", "rb") as f:
+                self.memory = pickle.load(f)
+
+        self.softmax_tau = 0.01
+
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""
         self.curr_state = state
-
         # epsilon greedy policy
         # pylint: disable=comparison-with-callable
         state = self._preprocess_state(state)
@@ -158,5 +165,74 @@ class DistillationDQN(DQNAgent):
         self.env.close()
         self.save_params(self.i_episode)
 
+        # Save buffer for distillation
+        print("[Info] Save replay buffer.")
         with open("data/distillation_buffer.pkl", "wb") as f:
             pickle.dump(self.memory, f)
+
+    def _test(self, interim_test: bool = False):
+        """Common test routine."""
+
+        if interim_test:
+            test_num = self.args.interim_test_num
+        else:
+            test_num = self.args.episode_num
+
+        for i_episode in range(test_num):
+            state = self.env.reset()
+            done = False
+            score = 0
+            step = 0
+
+            while not done:
+                if self.args.render:
+                    self.env.render()
+
+                action, q_value = self.select_action(state)
+                next_state, reward, done, _ = self.step(action, q_value)
+
+                state = next_state
+                score += reward
+                step += 1
+
+            print(
+                "[INFO] test %d\tstep: %d\ttotal score: %d" % (i_episode, step, score)
+            )
+
+            if self.args.log:
+                wandb.log({"test score": score})
+
+    def update_distillation(self) -> Tuple[torch.Tensor, ...]:
+        """Update the student network."""
+        states, q_values = self.memory.sample_for_diltillation()
+
+        pred_q = self.dqn(states)
+        target = F.softmax(q_values / self.softmax_tau, dim=1)
+        softmax_pred_q = F.softmax(pred_q, dim=1)
+        loss = F.kl_div(softmax_pred_q, target)
+
+        self.dqn_optim.zero_grad()
+        loss.backward()
+        self.dqn_optim.step()
+
+        return loss.item(), pred_q.mean().item()
+
+    def train_distillation(self):
+        """Train the model."""
+        if self.args.log:
+            self.set_wandb()
+
+        n_steps = int(1e5)
+        for steps in range(n_steps):
+            loss = self.update_distillation()
+
+            if self.args.log:
+                wandb.log({"dqn loss": loss[0], "avg q values": loss[1]})
+
+            if steps % 5000 == 0:
+                print(
+                    f"Training {steps} steps.. loss: {loss[0]}, avg_q_value: {loss[1]}"
+                )
+                self.save_params(steps)
+
+        self.save_params(steps)
