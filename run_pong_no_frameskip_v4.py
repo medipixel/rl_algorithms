@@ -36,6 +36,12 @@ def parse_args() -> argparse.Namespace:
         help="test mode with viewing Grad-CAM",
     )
     parser.add_argument(
+        "--distillation",
+        dest="distillation",
+        action="store_true",
+        help="distillation mode",
+    )
+    parser.add_argument(
         "--load-from",
         type=str,
         default=None,
@@ -134,12 +140,14 @@ def main():
 
     agent = build_agent(cfg.agent, build_args)
 
-    if not args.test:
-        agent.train()
+    if args.test:
+        agent.test()
     elif args.test and args.grad_cam:
         agent.test_with_gradcam()
+    elif args.distillation:
+        agent.train_distillation()
     else:
-        agent.test()
+        agent.train()
 
 
 if __name__ == "__main__":
