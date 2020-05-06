@@ -19,6 +19,7 @@ from .fd.sac_agent import SACfDAgent
 from .fd.sac_learner import SACfDLearner
 from .ppo.agent import PPOAgent
 from .ppo.learner import PPOLearner
+from .recurrent.dqn_agent import R2D1Agent
 from .registry import build_agent, build_her
 from .sac.agent import SACAgent
 from .sac.learner import SACLearner
@@ -33,6 +34,7 @@ __all__ = [
     "DQNAgent",
     "DDPGfDAgent",
     "DQfDAgent",
+    "R2D1Agent",
     "SACfDAgent",
     "PPOAgent",
     "SACAgent",
