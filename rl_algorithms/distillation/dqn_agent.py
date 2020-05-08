@@ -37,22 +37,21 @@ class DistillationDQN(DQNAgent):
     # pylint: disable=attribute-defined-outside-init
     def _initialize(self):
         """Initialize non-common things."""
-        if not self.args.test:
-            # replay memory for a single step
-            self.memory = DistillationPER(
+        # replay memory for a single step
+        self.memory = DistillationPER(
+            self.hyper_params.buffer_size,
+            self.hyper_params.batch_size,
+            alpha=self.hyper_params.per_alpha,
+        )
+
+        # replay memory for multi-steps
+        if self.use_n_step:
+            self.memory_n = ReplayBuffer(
                 self.hyper_params.buffer_size,
                 self.hyper_params.batch_size,
-                alpha=self.hyper_params.per_alpha,
+                n_step=self.hyper_params.n_step,
+                gamma=self.hyper_params.gamma,
             )
-
-            # replay memory for multi-steps
-            if self.use_n_step:
-                self.memory_n = ReplayBuffer(
-                    self.hyper_params.buffer_size,
-                    self.hyper_params.batch_size,
-                    n_step=self.hyper_params.n_step,
-                    gamma=self.hyper_params.gamma,
-                )
 
         if self.args.distillation:
             with open("data/distillation_buffer.pkl", "rb") as f:
@@ -80,14 +79,11 @@ class DistillationDQN(DQNAgent):
         """Take an action and return the response of the env."""
         next_state, reward, done, info = self.env.step(action)
 
-        if not self.args.test:
-            # if the last state is not a terminal state, store done as false
-            done_bool = (
-                False if self.episode_step == self.args.max_episode_steps else done
-            )
+        # if the last state is not a terminal state, store done as false
+        done_bool = False if self.episode_step == self.args.max_episode_steps else done
 
-            transition = (self.curr_state, action, reward, next_state, done_bool)
-            self._add_transition_to_memory(transition, q_values)
+        transition = (self.curr_state, action, reward, next_state, done_bool)
+        self._add_transition_to_memory(transition, q_values)
 
         return next_state, reward, done, info
 
@@ -202,6 +198,13 @@ class DistillationDQN(DQNAgent):
             if self.args.log:
                 wandb.log({"test score": score})
 
+            if len(self.memory) == self.hyper_params.buffer_size:
+                # Save buffer for distillation
+                print("[Info] Save replay buffer.")
+                with open("data/distillation_buffer.pkl", "wb") as f:
+                    pickle.dump(self.memory, f)
+                break
+
     def update_distillation(self) -> Tuple[torch.Tensor, ...]:
         """Update the student network."""
         states, q_values = self.memory.sample_for_diltillation()
@@ -209,7 +212,7 @@ class DistillationDQN(DQNAgent):
         pred_q = self.dqn(states)
         target = F.softmax(q_values / self.softmax_tau, dim=1)
         softmax_pred_q = F.softmax(pred_q, dim=1)
-        loss = F.kl_div(softmax_pred_q, target)
+        loss = F.kl_div(softmax_pred_q, target, reduction="sum")
 
         self.dqn_optim.zero_grad()
         loss.backward()
