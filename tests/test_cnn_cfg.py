@@ -3,7 +3,6 @@ import torch.nn as nn
 
 from rl_algorithms.common.helper_functions import identity
 from rl_algorithms.common.networks.backbones import CNN, ResNet
-from rl_algorithms.common.networks.brain import Brain
 from rl_algorithms.utils.config import ConfigDict
 
 cnn_cfg = ConfigDict(
@@ -48,18 +47,6 @@ head_cfg = ConfigDict(
 )
 
 test_state_dim = (3, 256, 256)
-
-
-def test_brain():
-    """Test wheter brain make fc layer based on backbone's output size."""
-
-    head_cfg.configs.state_size = test_state_dim
-    head_cfg.configs.output_size = 8
-
-    try:
-        _ = Brain(resnet_cfg, head_cfg)
-    except Exception as e:
-        raise e
 
 
 def test_cnn_with_config():
@@ -113,5 +100,4 @@ def test_resnet_with_config():
 
 
 if __name__ == "__main__":
-    test_brain()
     test_cnn_with_config()
