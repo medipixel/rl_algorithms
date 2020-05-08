@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""BaseNetwork module for backbone & head holder.
+"""Brain module for backbone & head holder.
 
 - Authors: Euijin Jeong & Kyunghwan Kim
 - Contacts: euijin.jeong@medipixel.io
@@ -15,14 +15,14 @@ from rl_algorithms.registry import build_backbone, build_head
 from rl_algorithms.utils.config import ConfigDict
 
 
-class BaseNetwork(nn.Module):
+class Brain(nn.Module):
     """Class for holding backbone and head networks."""
 
     def __init__(
         self, backbone_cfg: ConfigDict, head_cfg: ConfigDict,
     ):
         """Initialize."""
-        super(BaseNetwork, self).__init__()
+        super(Brain, self).__init__()
         if not backbone_cfg:
             self.backbone = identity
             head_cfg.configs.input_size = head_cfg.configs.state_size[0]

@@ -12,7 +12,7 @@ from typing import Tuple
 import torch
 import torch.nn.functional as F
 
-from rl_algorithms.common.networks.base_network import BaseNetwork
+from rl_algorithms.common.networks.brain import Brain
 from rl_algorithms.registry import LOSSES
 from rl_algorithms.utils.config import ConfigDict
 
@@ -23,8 +23,8 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 class IQNLoss:
     def __call__(
         self,
-        model: BaseNetwork,
-        target_model: BaseNetwork,
+        model: Brain,
+        target_model: Brain,
         experiences: Tuple[torch.Tensor, ...],
         gamma: float,
         head_cfg: ConfigDict,
@@ -148,8 +148,8 @@ class IQNLoss:
 class C51Loss:
     def __call__(
         self,
-        model: BaseNetwork,
-        target_model: BaseNetwork,
+        model: Brain,
+        target_model: Brain,
         experiences: Tuple[torch.Tensor, ...],
         gamma: float,
         head_cfg: ConfigDict,
@@ -210,8 +210,8 @@ class C51Loss:
 class DQNLoss:
     def __call__(
         self,
-        model: BaseNetwork,
-        target_model: BaseNetwork,
+        model: Brain,
+        target_model: Brain,
         experiences: Tuple[torch.Tensor, ...],
         gamma: float,
         head_cfg: ConfigDict = None,

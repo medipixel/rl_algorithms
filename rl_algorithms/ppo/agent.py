@@ -18,7 +18,7 @@ import wandb
 
 from rl_algorithms.common.abstract.agent import Agent
 from rl_algorithms.common.env.utils import env_generator, make_envs
-from rl_algorithms.common.networks.base_network import BaseNetwork
+from rl_algorithms.common.networks.brain import Brain
 import rl_algorithms.ppo.utils as ppo_utils
 from rl_algorithms.registry import AGENTS
 from rl_algorithms.utils.config import ConfigDict
@@ -109,13 +109,9 @@ class PPOAgent(Agent):
         self.head_cfg.actor.configs.output_size = self.action_dim
 
         # create actor
-        self.actor = BaseNetwork(self.backbone_cfg.actor, self.head_cfg.actor).to(
-            device
-        )
+        self.actor = Brain(self.backbone_cfg.actor, self.head_cfg.actor).to(device)
 
-        self.critic = BaseNetwork(self.backbone_cfg.critic, self.head_cfg.critic).to(
-            device
-        )
+        self.critic = Brain(self.backbone_cfg.critic, self.head_cfg.critic).to(device)
 
         # create optimizer
         self.actor_optim = optim.Adam(

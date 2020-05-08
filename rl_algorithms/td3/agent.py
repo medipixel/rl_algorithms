@@ -20,7 +20,7 @@ import wandb
 from rl_algorithms.common.abstract.agent import Agent
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
 import rl_algorithms.common.helper_functions as common_utils
-from rl_algorithms.common.networks.base_network import BaseNetwork
+from rl_algorithms.common.networks.brain import Brain
 from rl_algorithms.common.noise import GaussianNoise
 from rl_algorithms.registry import AGENTS
 from rl_algorithms.utils.config import ConfigDict
@@ -121,28 +121,22 @@ class TD3Agent(Agent):
         self.head_cfg.actor.configs.output_size = self.action_dim
 
         # create actor
-        self.actor = BaseNetwork(self.backbone_cfg.actor, self.head_cfg.actor).to(
+        self.actor = Brain(self.backbone_cfg.actor, self.head_cfg.actor).to(device)
+        self.actor_target = Brain(self.backbone_cfg.actor, self.head_cfg.actor).to(
             device
         )
-        self.actor_target = BaseNetwork(
-            self.backbone_cfg.actor, self.head_cfg.actor
-        ).to(device)
         self.actor_target.load_state_dict(self.actor.state_dict())
 
         # create q_critic
-        self.critic1 = BaseNetwork(self.backbone_cfg.critic, self.head_cfg.critic).to(
-            device
-        )
-        self.critic2 = BaseNetwork(self.backbone_cfg.critic, self.head_cfg.critic).to(
-            device
-        )
+        self.critic1 = Brain(self.backbone_cfg.critic, self.head_cfg.critic).to(device)
+        self.critic2 = Brain(self.backbone_cfg.critic, self.head_cfg.critic).to(device)
 
-        self.critic_target1 = BaseNetwork(
-            self.backbone_cfg.critic, self.head_cfg.critic
-        ).to(device)
-        self.critic_target2 = BaseNetwork(
-            self.backbone_cfg.critic, self.head_cfg.critic
-        ).to(device)
+        self.critic_target1 = Brain(self.backbone_cfg.critic, self.head_cfg.critic).to(
+            device
+        )
+        self.critic_target2 = Brain(self.backbone_cfg.critic, self.head_cfg.critic).to(
+            device
+        )
 
         self.critic_target1.load_state_dict(self.critic1.state_dict())
         self.critic_target2.load_state_dict(self.critic2.state_dict())
