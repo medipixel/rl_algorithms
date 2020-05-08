@@ -50,9 +50,19 @@ head_cfg = ConfigDict(
 test_state_dim = (3, 256, 256)
 
 
+def test_brain():
+    """Test wheter brain make fc layer based on backbone's output size."""
+
+    head_cfg.configs.state_size = test_state_dim
+    head_cfg.configs.output_size = 8
+
+    model = Brain(resnet_cfg, head_cfg)
+    assert model.head.input_size == 16384
+
+
 def test_cnn_with_config():
+    """Test whether CNN module can make proper model according to the configs given."""
     conv_layer_size = [[1, 32, 64, 64], [1, 32, 21, 21], [1, 64, 11, 11]]
-    # test_cnn_model = build_backbone(test_backbone_cfg_params)
     test_cnn_model = CNN(configs=cnn_cfg.configs)
     conv_layers = [
         module for module in test_cnn_model.modules() if isinstance(module, nn.Conv2d)
@@ -64,17 +74,8 @@ def test_cnn_with_config():
         assert list(x.shape) == conv_layer_size[i]
 
 
-def test_brain():
-    """Test wheter brain make fc layer based on backbone's output size."""
-
-    head_cfg.configs.state_size = test_state_dim
-    head_cfg.configs.output_size = 8
-
-    model = Brain(resnet_cfg, head_cfg)
-    assert model.head.input_size == 16384
-
-
 def test_resnet_with_config():
+    """Test whether ResNet module can make proper model according to the configs given."""
     conv_layer_size = [
         [1, 32, 256, 256],
         [1, 32, 256, 256],
