@@ -27,6 +27,9 @@ agent = dict(
         max_epsilon=1.0,
         min_epsilon=0.01,  # openai baselines: 0.01
         epsilon_decay=1e-5,  # openai baselines: 1e-7 / 1e-1
+        # Distillation
+        train_steps=int(1e5),
+        buffer_path="data/distillation_buffer.pkl",
     ),
     backbone=dict(),
     head=dict(
