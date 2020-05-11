@@ -54,7 +54,7 @@ class DistillationDQN(DQNAgent):
             )
 
         if self.args.distillation:
-            with open("data/distillation_buffer.pkl", "rb") as f:
+            with open(self.hyper_params.buffer_path, "rb") as f:
                 self.memory = pickle.load(f)
 
         self.softmax_tau = 0.01
@@ -161,11 +161,6 @@ class DistillationDQN(DQNAgent):
         self.env.close()
         self.save_params(self.i_episode)
 
-        # Save buffer for distillation
-        print("[Info] Save replay buffer.")
-        with open("data/distillation_buffer.pkl", "wb") as f:
-            pickle.dump(self.memory, f)
-
     def _test(self, interim_test: bool = False):
         """Common test routine."""
 
@@ -192,7 +187,8 @@ class DistillationDQN(DQNAgent):
                 step += 1
 
             print(
-                "[INFO] test %d\tstep: %d\ttotal score: %d" % (i_episode, step, score)
+                "[INFO] test %d\tstep: %d\ttotal score: %d\t buffer_size: %d"
+                % (i_episode, step, score, len(self.memory))
             )
 
             if self.args.log:
@@ -201,8 +197,8 @@ class DistillationDQN(DQNAgent):
             if len(self.memory) == self.hyper_params.buffer_size:
                 # Save buffer for distillation
                 print("[Info] Save replay buffer.")
-                with open("data/distillation_buffer.pkl", "wb") as f:
-                    pickle.dump(self.memory, f)
+                with open(self.hyper_params.buffer_path, "wb") as f:
+                    pickle.dump(self.memory, f, protocol=4)
                 break
 
     def update_distillation(self) -> Tuple[torch.Tensor, ...]:
@@ -211,8 +207,8 @@ class DistillationDQN(DQNAgent):
 
         pred_q = self.dqn(states)
         target = F.softmax(q_values / self.softmax_tau, dim=1)
-        softmax_pred_q = F.softmax(pred_q, dim=1)
-        loss = F.kl_div(softmax_pred_q, target, reduction="sum")
+        log_softmax_pred_q = F.log_softmax(pred_q, dim=1)
+        loss = F.kl_div(log_softmax_pred_q, target, reduction="batchmean")
 
         self.dqn_optim.zero_grad()
         loss.backward()
@@ -225,8 +221,7 @@ class DistillationDQN(DQNAgent):
         if self.args.log:
             self.set_wandb()
 
-        n_steps = int(1e5)
-        for steps in range(n_steps):
+        for steps in range(self.hyper_params.train_steps):
             loss = self.update_distillation()
 
             if self.args.log:
