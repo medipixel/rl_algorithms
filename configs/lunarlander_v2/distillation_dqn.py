@@ -10,7 +10,7 @@ agent = dict(
     hyper_params=dict(
         gamma=0.99,
         tau=5e-3,
-        buffer_size=int(1e6),  # openai baselines: int(1e4)
+        buffer_size=int(7e5),  # openai baselines: int(1e4)
         batch_size=64,  # openai baselines: 32
         update_starts_from=int(1e4),  # openai baselines: int(1e4)
         multiple_update=1,  # multiple learning updates
@@ -29,7 +29,7 @@ agent = dict(
         epsilon_decay=1e-5,  # openai baselines: 1e-7 / 1e-1
         # Distillation
         train_steps=int(1e5),
-        buffer_path="data/distillation_buffer.pkl",
+        buffer_path="data/distillation_buffer_7e5_2.pkl",
     ),
     backbone=dict(),
     head=dict(
