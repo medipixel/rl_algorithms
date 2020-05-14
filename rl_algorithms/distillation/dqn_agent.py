@@ -56,6 +56,7 @@ class DistillationDQN(DQNAgent):
         if self.args.distillation:
             with open(self.hyper_params.buffer_path, "rb") as f:
                 self.memory = pickle.load(f)
+            print(f"[INFO] Load distillation buffer: {self.hyper_params.buffer_path}")
 
         self.softmax_tau = 0.01
 
@@ -66,6 +67,7 @@ class DistillationDQN(DQNAgent):
         # pylint: disable=comparison-with-callable
         state = self._preprocess_state(state)
         q_values = self.dqn(state)
+
         if not self.args.test and self.epsilon > np.random.random():
             selected_action = np.array(self.env.action_space.sample())
         else:
@@ -187,7 +189,7 @@ class DistillationDQN(DQNAgent):
                 step += 1
 
             print(
-                "[INFO] test %d\tstep: %d\ttotal score: %d\t buffer_size: %d"
+                "[INFO] test %d\tstep: %d\ttotal score: %d\tbuffer_size: %d"
                 % (i_episode, step, score, len(self.memory))
             )
 
@@ -208,7 +210,7 @@ class DistillationDQN(DQNAgent):
         pred_q = self.dqn(states)
         target = F.softmax(q_values / self.softmax_tau, dim=1)
         log_softmax_pred_q = F.log_softmax(pred_q, dim=1)
-        loss = F.kl_div(log_softmax_pred_q, target, reduction="batchmean")
+        loss = F.kl_div(log_softmax_pred_q, target, reduction="sum")
 
         self.dqn_optim.zero_grad()
         loss.backward()
