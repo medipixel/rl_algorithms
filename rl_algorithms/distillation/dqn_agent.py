@@ -14,7 +14,6 @@
 """
 
 import pickle
-import time
 from typing import Tuple
 
 import numpy as np
@@ -22,8 +21,7 @@ import torch
 import torch.nn.functional as F
 import wandb
 
-from rl_algorithms.common.buffer.priortized_replay_buffer import DistillationPER
-from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
+from rl_algorithms.common.buffer.distillation_buffer import DistillationBuffer
 from rl_algorithms.dqn.agent import DQNAgent
 from rl_algorithms.registry import AGENTS
 
@@ -38,20 +36,9 @@ class DistillationDQN(DQNAgent):
     def _initialize(self):
         """Initialize non-common things."""
         # replay memory for a single step
-        self.memory = DistillationPER(
-            self.hyper_params.buffer_size,
-            self.hyper_params.batch_size,
-            alpha=self.hyper_params.per_alpha,
+        self.memory = DistillationBuffer(
+            self.hyper_params.buffer_size, self.hyper_params.batch_size,
         )
-
-        # replay memory for multi-steps
-        if self.use_n_step:
-            self.memory_n = ReplayBuffer(
-                self.hyper_params.buffer_size,
-                self.hyper_params.batch_size,
-                n_step=self.hyper_params.n_step,
-                gamma=self.hyper_params.gamma,
-            )
 
         if self.args.distillation:
             with open(self.hyper_params.buffer_path, "rb") as f:
@@ -81,87 +68,10 @@ class DistillationDQN(DQNAgent):
         """Take an action and return the response of the env."""
         next_state, reward, done, info = self.env.step(action)
 
-        # if the last state is not a terminal state, store done as false
-        done_bool = False if self.episode_step == self.args.max_episode_steps else done
-
-        transition = (self.curr_state, action, reward, next_state, done_bool)
-        self._add_transition_to_memory(transition, q_values)
+        transition = (self.curr_state, q_values)
+        self.memory.add(transition)
 
         return next_state, reward, done, info
-
-    def _add_transition_to_memory(
-        self, transition: Tuple[np.ndarray, ...], q_values: np.ndarray
-    ):
-        """Add 1 step and n step transitions to memory."""
-        # add n-step transition
-        if self.use_n_step:
-            transition = self.memory_n.add(transition)
-
-        # add a single step transition
-        # if transition is not an empty tuple
-        if transition:
-            self.memory.add(transition, q_values)
-
-    def train(self):
-        """Train the agent."""
-        # logger
-        if self.args.log:
-            self.set_wandb()
-            # wandb.watch([self.dqn], log="parameters")
-
-        # pre-training if needed
-        self.pretrain()
-
-        for self.i_episode in range(1, self.args.episode_num + 1):
-            state = self.env.reset()
-            self.episode_step = 0
-            losses = list()
-            done = False
-            score = 0
-
-            t_begin = time.time()
-
-            while not done:
-                if self.args.render and self.i_episode >= self.args.render_after:
-                    self.env.render()
-
-                action, q_values = self.select_action(state)
-                next_state, reward, done, _ = self.step(action, q_values)
-                self.total_step += 1
-                self.episode_step += 1
-
-                if len(self.memory) >= self.hyper_params.update_starts_from:
-                    if self.total_step % self.hyper_params.train_freq == 0:
-                        for _ in range(self.hyper_params.multiple_update):
-                            loss = self.update_model()
-                            losses.append(loss)  # for logging
-
-                    # decrease epsilon
-                    self.epsilon = max(
-                        self.epsilon
-                        - (self.max_epsilon - self.min_epsilon)
-                        * self.hyper_params.epsilon_decay,
-                        self.min_epsilon,
-                    )
-
-                state = next_state
-                score += reward
-
-            t_end = time.time()
-            avg_time_cost = (t_end - t_begin) / self.episode_step
-
-            if losses:
-                avg_loss = np.vstack(losses).mean(axis=0)
-                log_value = (self.i_episode, avg_loss, score, avg_time_cost)
-                self.write_log(log_value)
-
-            if self.i_episode % self.args.save_period == 0:
-                self.save_params(self.i_episode)
-                self.interim_test()
-
-        # termination
-        self.env.close()
-        self.save_params(self.i_episode)
 
     def _test(self, interim_test: bool = False):
         """Common test routine."""
@@ -223,16 +133,24 @@ class DistillationDQN(DQNAgent):
         if self.args.log:
             self.set_wandb()
 
-        for steps in range(self.hyper_params.train_steps):
+        iter_1 = len(self.memory) // self.hyper_params.batch_size
+        train_steps = iter_1 * self.hyper_params.epochs
+        print(
+            f"[INFO] Total epochs: {self.hyper_params.epochs}\t Train steps: {train_steps}"
+        )
+        n_epoch = 0
+        for steps in range(train_steps):
             loss = self.update_distillation()
 
             if self.args.log:
                 wandb.log({"dqn loss": loss[0], "avg q values": loss[1]})
 
-            if steps % 5000 == 0:
+            if steps % iter_1 == 0:
                 print(
-                    f"Training {steps} steps.. loss: {loss[0]}, avg_q_value: {loss[1]}"
+                    f"Training {n_epoch} epochs, {steps} steps.. "
+                    + f"loss: {loss[0]}, avg_q_value: {loss[1]}"
                 )
                 self.save_params(steps)
+                n_epoch += 1
 
         self.save_params(steps)
