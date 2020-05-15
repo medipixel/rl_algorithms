@@ -10,7 +10,7 @@ agent = dict(
     hyper_params=dict(
         gamma=0.99,
         tau=5e-3,
-        buffer_size=int(3e5),  # openai baselines: int(1e4)
+        buffer_size=int(5e5),  # openai baselines: int(1e4)
         batch_size=64,  # openai baselines: 32
         update_starts_from=int(1e4),  # openai baselines: int(1e4)
         multiple_update=1,  # multiple learning updates
@@ -34,8 +34,8 @@ agent = dict(
             "backbone.cnn.cnn_2.cnn",
         ],
         # Distillation
-        train_steps=int(1e5),
-        buffer_path="data/distillation_buffer_pong_3e5.pkl",
+        epochs=int(20),
+        buffer_path="data/distillation_buffer_pong_5e5.pkl",
     ),
     backbone=dict(
         type="CNN",
