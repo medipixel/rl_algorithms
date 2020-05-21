@@ -78,16 +78,14 @@ class DQfDAgent(DQNAgent):
 
         # 1 step loss
         gamma = self.hyper_params.gamma
-        dq_loss_element_wise, q_values = self._get_dqn_loss(experiences_1, gamma)
+        dq_loss_element_wise, q_values = self.loss_fn(experiences_1, gamma)
         dq_loss = torch.mean(dq_loss_element_wise * weights)
 
         # n step loss
         if self.use_n_step:
             experiences_n = self.memory_n.sample(indices)
             gamma = self.hyper_params.gamma ** self.hyper_params.n_step
-            dq_loss_n_element_wise, q_values_n = self._get_dqn_loss(
-                experiences_n, gamma
-            )
+            dq_loss_n_element_wise, q_values_n = self.loss_fn(experiences_n, gamma)
 
             # to update loss and priorities
             q_values = 0.5 * (q_values + q_values_n)
