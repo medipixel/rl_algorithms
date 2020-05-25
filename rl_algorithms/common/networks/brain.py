@@ -188,7 +188,7 @@ class GRUBrain(Brain):
             return quantile_values, quantiles, hidden
         else:
             head_out = self.head.forward_(lstm_out.contiguous().view(T * B, -1))
-            if len(head_out) != 2:  # c51의 head_out은 길이가 2인 튜플이기 때문에 c51을 제외하는 조건문.
+            if len(head_out) != 2:  # C51 output is not going to be restore.
                 head_out = restore_leading_dims(head_out, lead_dim, T, B)
             return head_out, hidden
 

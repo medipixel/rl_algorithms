@@ -303,7 +303,7 @@ def slice_r2d2_arguments(experiences, head_cfg):
 
 
 @LOSSES.register_module
-class R2D1Loss:
+class R2D1DQNLoss:
     def __call__(
         self,
         model: Brain,

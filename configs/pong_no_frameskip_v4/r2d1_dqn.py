@@ -1,4 +1,4 @@
-"""Config for R2D1 on PongNoFrameskip-v4.
+"""Config for R2D1DQN on PongNoFrameskip-v4.
 - Author: Kyunghwan Kim, Euijin Jeong
 - Contact: kh.kim@medipixel.io, euijin.jeong@medipixel.io
 """
@@ -24,7 +24,7 @@ agent = dict(
         # R2D1
         sequence_size=20,
         overlap_size=10,
-        loss_type=dict(type="R2D1Loss"),
+        loss_type=dict(type="R2D1DQNLoss"),
         # Epsilon Greedy
         max_epsilon=1.0,
         min_epsilon=0.01,  # openai baselines: 0.01
