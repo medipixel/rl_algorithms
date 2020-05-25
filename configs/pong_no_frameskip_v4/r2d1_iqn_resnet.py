@@ -1,4 +1,4 @@
-"""Config for R2D1IQN on PongNoFrameSkip-v4.
+"""Config for R2D1IQN_ResNet on PongNoFrameSkip-v4.
 - Author: Kyunghwan Kim, Euijin Jeong
 - Contact: kh.kim@medipixel.io, euijin.jeong@medipixel.io
 """
@@ -28,7 +28,7 @@ agent = dict(
         # Epsilon Greedy
         max_epsilon=1.0,
         min_epsilon=0.01,  # openai baselines: 0.01
-        epsilon_decay=2e-6,  # openai baselines: 1e-7 / 1e-1
+        epsilon_decay=1e-6,  # openai baselines: 1e-7 / 1e-1
         # grad_cam
         grad_cam_layer_list=[
             "backbone.cnn.cnn_0.cnn",
@@ -37,13 +37,16 @@ agent = dict(
         ],
     ),
     backbone=dict(
-        type="CNN",
+        type="ResNet",
         configs=dict(
-            input_sizes=[1, 32, 64],
-            output_sizes=[32, 64, 64],
-            kernel_sizes=[8, 4, 3],
-            strides=[4, 2, 1],
-            paddings=[1, 0, 0],
+            use_bottleneck=True,
+            num_blocks=[1, 1, 1, 1],
+            block_output_sizes=[8, 8, 8, 8],
+            block_strides=[1, 2, 2, 2],
+            first_input_size=1,
+            first_output_size=8,
+            expansion=1,
+            channel_compression=4,  # output channel // channel_compression in last conv layer
         ),
     ),
     head=dict(

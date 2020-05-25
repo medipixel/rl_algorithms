@@ -2,7 +2,6 @@
 """Recurrent Replay buffer for baselines."""
 
 from collections import deque
-import random
 from typing import Any, Deque, List, Tuple
 
 import numpy as np
@@ -144,20 +143,12 @@ class RecurrentReplayBuffer:
         # return a single step transition to insert to replay buffer
         return self.n_step_buffer[0]
 
-    def extend(
-        self, transitions: List[Tuple[np.ndarray, np.ndarray, float, np.ndarray, bool]]
-    ):
-        """Add experiences to memory."""
-        for transition in transitions:
-            self.add(transition)
-
     def sample(self, indices: List[int] = None) -> Tuple[torch.Tensor, ...]:
         """Randomly sample a batch of experiences from memory."""
         assert len(self) >= self.batch_size
 
         if indices is None:
-            indices = random.sample(range(self.buffer_size), self.batch_size)
-            # indices = np.random.choice(len(self), size=self.batch_size, replace=False)
+            indices = np.random.choice(len(self), size=self.batch_size, replace=False)
 
         states = torch.FloatTensor(self.obs_buf[indices]).to(device)
         actions = torch.FloatTensor(self.acts_buf[indices]).to(device)
@@ -176,7 +167,7 @@ class RecurrentReplayBuffer:
         return states, actions, rewards, hidden_state, dones, lengths
 
     def _initialize_local_buffers(self):
-        """Initialze global buffers for state, action, resward, hidden_state, done."""
+        """Initialze local buffers for state, action, resward, hidden_state, done."""
         self.local_obs_buf = np.zeros(
             [self.sequence_size] + list(self.init_state.shape),
             dtype=self.init_state.dtype,

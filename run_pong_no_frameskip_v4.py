@@ -63,7 +63,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--interim-test-num", type=int, default=10, help="interim test number"
     )
-
+    parser.add_argument(
+        "--off-framestack",
+        dest="framestack",
+        action="store_false",
+        help="turn off framestack",
+    )
     return parser.parse_args()
 
 
@@ -73,7 +78,9 @@ def main():
 
     # env initialization
     env_name = "PongNoFrameskip-v4"
-    env = atari_env_generator(env_name, args.max_episode_steps)
+    env = atari_env_generator(
+        env_name, args.max_episode_steps, frame_stack=args.framestack
+    )
 
     # set a random seed
     common_utils.set_random_seed(args.seed, env)

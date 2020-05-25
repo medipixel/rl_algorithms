@@ -72,31 +72,22 @@ class GRUBrain(Brain):
         if not backbone_cfg:
             self.backbone = identity
             head_cfg.configs.input_size = head_cfg.configs.state_size[0]
-            self.fc = nn.Linear(
-                head_cfg.configs.input_size, head_cfg.configs.rnn_hidden_size,
-            )
-            self.gru = nn.GRU(
-                head_cfg.configs.rnn_hidden_size
-                + self.action_size
-                + 1,  # 1 is for prev_reward
-                head_cfg.configs.rnn_hidden_size,
-                batch_first=True,
-            )
+
         else:
             self.backbone = build_backbone(backbone_cfg)
             head_cfg.configs.input_size = self.calculate_fc_input_size(
                 head_cfg.configs.state_size
             )
-            self.fc = nn.Linear(
-                head_cfg.configs.input_size, head_cfg.configs.rnn_hidden_size,
-            )
-            self.gru = nn.GRU(
-                head_cfg.configs.rnn_hidden_size
-                + self.action_size
-                + 1,  # 1 is for prev_reward
-                head_cfg.configs.rnn_hidden_size,
-                batch_first=True,
-            )
+        self.fc = nn.Linear(
+            head_cfg.configs.input_size, head_cfg.configs.rnn_hidden_size,
+        )
+        self.gru = nn.GRU(
+            head_cfg.configs.rnn_hidden_size
+            + self.action_size
+            + 1,  # 1 is for prev_reward
+            head_cfg.configs.rnn_hidden_size,
+            batch_first=True,
+        )
 
         head_cfg.configs.input_size = head_cfg.configs.rnn_hidden_size
         self.head = build_head(head_cfg)
@@ -188,7 +179,7 @@ class GRUBrain(Brain):
             return quantile_values, quantiles, hidden
         else:
             head_out = self.head.forward_(lstm_out.contiguous().view(T * B, -1))
-            if len(head_out) != 2:  # c51의 head_out은 길이가 2인 튜플이기 때문에 c51을 제외하는 조건문.
+            if len(head_out) != 2:  # C51 output is not going to be restore.
                 head_out = restore_leading_dims(head_out, lead_dim, T, B)
             return head_out, hidden
 
