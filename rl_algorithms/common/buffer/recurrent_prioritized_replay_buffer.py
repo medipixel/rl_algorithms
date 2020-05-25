@@ -19,7 +19,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 class RecurrentPrioritizedReplayBuffer(RecurrentReplayBuffer):
-    """Create Prioritized Replay buffer.
+    """Create Recurrent Prioritized Replay buffer.
     Refer to OpenAI baselines github repository:
     https://github.com/openai/baselines/blob/master/baselines/deepq/replay_buffer.py
     Attributes:

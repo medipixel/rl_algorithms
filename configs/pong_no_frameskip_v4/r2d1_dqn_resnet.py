@@ -1,4 +1,4 @@
-"""Config for R2D1 on PongNoFrameskip-v4.
+"""Config for R2D1DQN_ResNet on PongNoFrameskip-v4.
 - Author: Kyunghwan Kim, Euijin Jeong
 - Contact: kh.kim@medipixel.io, euijin.jeong@medipixel.io
 """
@@ -24,11 +24,11 @@ agent = dict(
         # R2D1
         sequence_size=20,
         overlap_size=10,
-        loss_type=dict(type="R2D1Loss"),
+        loss_type=dict(type="R2D1DQNLoss"),
         # Epsilon Greedy
         max_epsilon=1.0,
         min_epsilon=0.01,  # openai baselines: 0.01
-        epsilon_decay=2e-7,  # openai baselines: 1e-7 / 1e-1
+        epsilon_decay=1e-6,  # openai baselines: 1e-7 / 1e-1
         # grad_cam
         grad_cam_layer_list=[
             "backbone.cnn.cnn_0.cnn",
@@ -37,13 +37,16 @@ agent = dict(
         ],
     ),
     backbone=dict(
-        type="CNN",
+        type="ResNet",
         configs=dict(
-            input_sizes=[1, 32, 64],
-            output_sizes=[32, 64, 64],
-            kernel_sizes=[8, 4, 3],
-            strides=[4, 2, 1],
-            paddings=[1, 0, 0],
+            use_bottleneck=True,
+            num_blocks=[1, 1, 1, 1],
+            block_output_sizes=[8, 8, 8, 8],
+            block_strides=[1, 2, 2, 2],
+            first_input_size=1,
+            first_output_size=8,
+            expansion=1,
+            channel_compression=4,  # output channel // channel_compression in last conv layer
         ),
     ),
     head=dict(
@@ -56,5 +59,9 @@ agent = dict(
             output_activation=identity,
         ),
     ),
-    optim_cfg=dict(lr_dqn=1e-4, weight_decay=1e-7, adam_eps=1e-8),
+    optim_cfg=dict(
+        lr_dqn=1e-4,  # dueling: 6.25e-5, openai baselines: 1e-4
+        weight_decay=0.0,  # this makes saturation in cnn weights
+        adam_eps=1e-8,  # rainbow: 1.5e-4, openai baselines: 1e-8
+    ),
 )

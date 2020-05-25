@@ -1,4 +1,5 @@
-"""Config for R2D1IQN on PongNoFrameSkip-v4.
+"""Config for R2D1C51_ResNet on Pong-No_FrameSkip-v4.
+
 - Author: Kyunghwan Kim, Euijin Jeong
 - Contact: kh.kim@medipixel.io, euijin.jeong@medipixel.io
 """
@@ -17,48 +18,52 @@ agent = dict(
         gradient_clip=10.0,  # dueling: 10.0
         n_step=3,
         w_n_step=1.0,
-        w_q_reg=1e-7,
+        w_q_reg=0.0,
         per_alpha=0.6,  # openai baselines: 0.6
         per_beta=0.4,
         per_eps=1e-6,
         # R2D1
         sequence_size=20,
         overlap_size=10,
-        loss_type=dict(type="R2D1IQNLoss"),
+        loss_type=dict(type="R2D1C51Loss"),
         # Epsilon Greedy
         max_epsilon=1.0,
         min_epsilon=0.01,  # openai baselines: 0.01
-        epsilon_decay=2e-6,  # openai baselines: 1e-7 / 1e-1
+        epsilon_decay=1e-6,  # openai baselines: 1e-7 / 1e-1
         # grad_cam
         grad_cam_layer_list=[
-            "backbone.cnn.cnn_0.cnn",
-            "backbone.cnn.cnn_1.cnn",
-            "backbone.cnn.cnn_2.cnn",
+            "backbone.layer1.0.conv2",
+            "backbone.layer2.0.shortcut.0",
+            "backbone.layer3.0.shortcut.0",
+            "backbone.layer4.0.shortcut.0",
+            "backbone.conv_out",
         ],
     ),
     backbone=dict(
-        type="CNN",
+        type="ResNet",
         configs=dict(
-            input_sizes=[1, 32, 64],
-            output_sizes=[32, 64, 64],
-            kernel_sizes=[8, 4, 3],
-            strides=[4, 2, 1],
-            paddings=[1, 0, 0],
+            use_bottleneck=True,
+            num_blocks=[1, 1, 1, 1],
+            block_output_sizes=[8, 8, 8, 8],
+            block_strides=[1, 2, 2, 2],
+            first_input_size=1,
+            first_output_size=8,
+            expansion=1,
+            channel_compression=4,  # output channel // channel_compression in last conv layer
         ),
     ),
     head=dict(
-        type="IQNMLP",
+        type="C51DuelingMLP",
         configs=dict(
             rnn_hidden_size=512,
             burn_in_step=10,
             hidden_sizes=[512],
-            n_tau_samples=64,
-            n_tau_prime_samples=64,
-            n_quantile_samples=32,
-            quantile_embedding_dim=64,
-            kappa=1.0,
-            use_noisy_net=False,
+            v_min=-10,
+            v_max=10,
+            atom_size=51,
             output_activation=identity,
+            # NoisyNet
+            use_noisy_net=False,
         ),
     ),
     optim_cfg=dict(

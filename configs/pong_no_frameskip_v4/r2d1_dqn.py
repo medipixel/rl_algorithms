@@ -1,4 +1,4 @@
-"""Config for R2D1IQN on PongNoFrameSkip-v4.
+"""Config for R2D1DQN on PongNoFrameskip-v4.
 - Author: Kyunghwan Kim, Euijin Jeong
 - Contact: kh.kim@medipixel.io, euijin.jeong@medipixel.io
 """
@@ -15,7 +15,7 @@ agent = dict(
         multiple_update=1,  # multiple learning updates
         train_freq=4,  # in openai baselines, train_freq = 4
         gradient_clip=10.0,  # dueling: 10.0
-        n_step=3,
+        n_step=5,
         w_n_step=1.0,
         w_q_reg=1e-7,
         per_alpha=0.6,  # openai baselines: 0.6
@@ -24,11 +24,11 @@ agent = dict(
         # R2D1
         sequence_size=20,
         overlap_size=10,
-        loss_type=dict(type="R2D1IQNLoss"),
+        loss_type=dict(type="R2D1DQNLoss"),
         # Epsilon Greedy
         max_epsilon=1.0,
         min_epsilon=0.01,  # openai baselines: 0.01
-        epsilon_decay=2e-6,  # openai baselines: 1e-7 / 1e-1
+        epsilon_decay=3e-6,  # openai baselines: 1e-7 / 1e-1
         # grad_cam
         grad_cam_layer_list=[
             "backbone.cnn.cnn_0.cnn",
@@ -47,16 +47,11 @@ agent = dict(
         ),
     ),
     head=dict(
-        type="IQNMLP",
+        type="DuelingMLP",
         configs=dict(
             rnn_hidden_size=512,
             burn_in_step=10,
             hidden_sizes=[512],
-            n_tau_samples=64,
-            n_tau_prime_samples=64,
-            n_quantile_samples=32,
-            quantile_embedding_dim=64,
-            kappa=1.0,
             use_noisy_net=False,
             output_activation=identity,
         ),

@@ -231,6 +231,7 @@ class R2D1Agent(DQNAgent):
                     self.sequence_step += 1
 
                 if len(self.memory) >= self.hyper_params.update_starts_from:
+
                     if self.sequence_step % self.hyper_params.train_freq == 0:
                         for _ in range(self.hyper_params.multiple_update):
                             loss = self.update_model()
@@ -240,8 +241,7 @@ class R2D1Agent(DQNAgent):
                     self.epsilon = max(
                         self.epsilon
                         - (self.max_epsilon - self.min_epsilon)
-                        * self.hyper_params.epsilon_decay
-                        * self.hyper_params.sequence_size,
+                        * self.hyper_params.epsilon_decay,
                         self.min_epsilon,
                     )
                 hidden_in = hidden_out
@@ -260,12 +260,9 @@ class R2D1Agent(DQNAgent):
                 log_value = (self.i_episode, avg_loss, score, avg_time_cost)
                 self.write_log(log_value)
 
-            if (
-                self.i_episode % self.args.save_period == 0
-                and len(self.memory) >= self.hyper_params.update_starts_from
-            ):
-                self.save_params(self.i_episode)
-                self.interim_test()
+                if self.i_episode % self.args.save_period == 0:
+                    self.save_params(self.i_episode)
+                    self.interim_test()
 
         # termination
         self.env.close()
@@ -279,7 +276,7 @@ class R2D1Agent(DQNAgent):
             test_num = self.args.interim_test_num
         else:
             test_num = self.args.episode_num
-
+        score_list = []
         for i_episode in range(test_num):
             hidden_in = torch.zeros(
                 [1, 1, self.head_cfg.configs.rnn_hidden_size], dtype=torch.float
@@ -312,6 +309,12 @@ class R2D1Agent(DQNAgent):
             print(
                 "[INFO] test %d\tstep: %d\ttotal score: %d" % (i_episode, step, score)
             )
+            score_list.append(score)
 
-            if self.args.log:
-                wandb.log({"test score": score})
+        if self.args.log:
+            wandb.log(
+                {
+                    "test score": round(sum(score_list) / len(score_list), 2),
+                    "test total step": self.total_step,
+                }
+            )
