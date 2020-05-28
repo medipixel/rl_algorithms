@@ -279,7 +279,7 @@ class R2D1Agent(DQNAgent):
             test_num = self.args.interim_test_num
         else:
             test_num = self.args.episode_num
-
+        score_list = []
         for i_episode in range(test_num):
             hidden_in = torch.zeros(
                 [1, 1, self.head_cfg.configs.rnn_hidden_size], dtype=torch.float
@@ -312,6 +312,12 @@ class R2D1Agent(DQNAgent):
             print(
                 "[INFO] test %d\tstep: %d\ttotal score: %d" % (i_episode, step, score)
             )
+            score_list.append(score)
 
             if self.args.log:
-                wandb.log({"test score": score})
+                wandb.log(
+                    {
+                        "test score": round(sum(score_list) / len(score_list), 2),
+                        "test total step": self.total_step,
+                    }
+                )
