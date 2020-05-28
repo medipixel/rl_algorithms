@@ -43,6 +43,7 @@ class Agent(ABC):
         self.args = args
         self.env = env
         self.log_cfg = log_cfg
+        self.total_step = 0
 
         self.env_name = env.spec.id if env.spec is not None else env.name
 
@@ -174,7 +175,7 @@ class Agent(ABC):
             )
 
             if self.args.log:
-                wandb.log({"test score": score})
+                wandb.log({"test score": score, "test total step": self.total_step})
 
     def test_with_gradcam(self):
         """Test agent with Grad-CAM."""
