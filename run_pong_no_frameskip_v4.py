@@ -64,9 +64,11 @@ def parse_args() -> argparse.Namespace:
         "--interim-test-num", type=int, default=10, help="interim test number"
     )
     parser.add_argument(
-        "--framestack", dest="framestack", default=True, help="use framestack"
+        "--off-framestack",
+        dest="framestack",
+        action="store_false",
+        help="turn off framestack",
     )
-
     return parser.parse_args()
 
 
