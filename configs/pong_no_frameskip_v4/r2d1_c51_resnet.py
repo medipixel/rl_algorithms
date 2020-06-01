@@ -1,4 +1,4 @@
-"""Config for R2D1C51 on Pong-No_FrameSkip-v4.
+"""Config for R2D1C51_ResNet on Pong-No_FrameSkip-v4.
 
 - Author: Kyunghwan Kim, Euijin Jeong
 - Contact: kh.kim@medipixel.io, euijin.jeong@medipixel.io

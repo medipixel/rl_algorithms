@@ -343,13 +343,13 @@ class TD3Agent(Agent):
 
                 action = self.select_action(state)
                 next_state, reward, done, _ = self.step(action)
-                self.total_step += 1
                 self.episode_step += 1
 
                 state = next_state
                 score += reward
 
                 if len(self.memory) >= self.hyper_params.batch_size:
+                    self.total_step += 1
                     loss = self.update_model()
                     loss_episode.append(loss)  # for logging
 

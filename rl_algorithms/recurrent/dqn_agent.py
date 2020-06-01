@@ -224,13 +224,13 @@ class R2D1Agent(DQNAgent):
                     state, hidden_in, prev_action, prev_reward
                 )
                 next_state, reward, done, _ = self.step(action, hidden_in)
-                self.total_step += 1
                 self.episode_step += 1
 
                 if self.episode_step % self.hyper_params.sequence_size == 0:
                     self.sequence_step += 1
 
                 if len(self.memory) >= self.hyper_params.update_starts_from:
+                    self.total_step += 1
                     if self.sequence_step % self.hyper_params.train_freq == 0:
                         for _ in range(self.hyper_params.multiple_update):
                             loss = self.update_model()

@@ -408,7 +408,6 @@ class SACAgent(Agent):
 
                 action = self.select_action(state)
                 next_state, reward, done, _ = self.step(action)
-                self.total_step += 1
                 self.episode_step += 1
 
                 state = next_state
@@ -416,6 +415,7 @@ class SACAgent(Agent):
 
                 # training
                 if len(self.memory) >= self.hyper_params.batch_size:
+                    self.total_step += 1
                     for _ in range(self.hyper_params.multiple_update):
                         loss = self.update_model()
                         loss_episode.append(loss)  # for logging
