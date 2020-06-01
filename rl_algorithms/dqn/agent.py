@@ -356,9 +356,9 @@ class DQNAgent(Agent):
                 log_value = (self.i_episode, avg_loss, score, avg_time_cost)
                 self.write_log(log_value)
 
-            if self.i_episode % self.args.save_period == 0:
-                self.save_params(self.i_episode)
-                self.interim_test()
+                if self.i_episode % self.args.save_period == 0:
+                    self.save_params(self.i_episode)
+                    self.interim_test()
 
         # termination
         self.env.close()

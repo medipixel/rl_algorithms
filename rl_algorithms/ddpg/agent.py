@@ -333,9 +333,9 @@ class DDPGAgent(Agent):
                 self.write_log(log_value)
                 losses.clear()
 
-            if self.i_episode % self.args.save_period == 0:
-                self.save_params(self.i_episode)
-                self.interim_test()
+                if self.i_episode % self.args.save_period == 0:
+                    self.save_params(self.i_episode)
+                    self.interim_test()
 
         # termination
         self.env.close()
