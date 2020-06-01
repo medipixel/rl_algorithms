@@ -1,4 +1,4 @@
-"""Config for R2D1IQN on PongNoFrameSkip-v2.
+"""Config for R2D1IQN on PongNoFrameSkip-v4.
 - Author: Kyunghwan Kim, Euijin Jeong
 - Contact: kh.kim@medipixel.io, euijin.jeong@medipixel.io
 """
@@ -61,5 +61,9 @@ agent = dict(
             output_activation=identity,
         ),
     ),
-    optim_cfg=dict(lr_dqn=1e-4, weight_decay=1e-7, adam_eps=1e-8),
+    optim_cfg=dict(
+        lr_dqn=1e-4,  # dueling: 6.25e-5, openai baselines: 1e-4
+        weight_decay=0.0,  # this makes saturation in cnn weights
+        adam_eps=1e-8,  # rainbow: 1.5e-4, openai baselines: 1e-8
+    ),
 )
