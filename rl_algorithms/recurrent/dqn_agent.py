@@ -240,8 +240,7 @@ class R2D1Agent(DQNAgent):
                     self.epsilon = max(
                         self.epsilon
                         - (self.max_epsilon - self.min_epsilon)
-                        * self.hyper_params.epsilon_decay
-                        * self.hyper_params.sequence_size,
+                        * self.hyper_params.epsilon_decay,
                         self.min_epsilon,
                     )
                 hidden_in = hidden_out
