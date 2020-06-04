@@ -23,6 +23,7 @@ import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.common.networks.brain import Brain
 from rl_algorithms.common.noise import GaussianNoise
 from rl_algorithms.registry import AGENTS
+from rl_algorithms.td3.learner import TD3Learner
 from rl_algorithms.utils.config import ConfigDict
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -162,6 +163,14 @@ class TD3Agent(Agent):
         # load the optimizer and model parameters
         if self.args.load_from is not None:
             self.load_params(self.args.load_from)
+
+        self.learner = TD3Learner(
+            self.args,
+            self.hyper_params,
+            device,
+            self.noise_cfg,
+            self.target_policy_noise,
+        )
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""
@@ -350,7 +359,19 @@ class TD3Agent(Agent):
                 score += reward
 
                 if len(self.memory) >= self.hyper_params.batch_size:
-                    loss = self.update_model()
+                    experience = self.memory.sample()
+                    loss = self.learner.update_model(
+                        (
+                            self.actor,
+                            self.actor_target,
+                            self.critic1,
+                            self.critic_target1,
+                            self.critic2,
+                            self.critic_target2,
+                        ),
+                        (self.actor_optim, self.critic_optim),
+                        experience,
+                    )
                     loss_episode.append(loss)  # for logging
 
             t_end = time.time()
