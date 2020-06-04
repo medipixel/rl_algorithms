@@ -218,6 +218,7 @@ class SACAgent(Agent):
         self.update_step += 1
 
         experiences = self.memory.sample()
+        experiences = self.numpy2floattensor(experiences)
         states, actions, rewards, next_states, dones = experiences
         new_actions, log_prob, pre_tanh_value, mu, std = self.actor(states)
 

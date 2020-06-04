@@ -9,8 +9,6 @@ import torch
 
 from rl_algorithms.common.helper_functions import get_n_step_info
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
 
 class ReplayBuffer:
     """Fixed-size buffer to store experience tuples.
@@ -135,18 +133,11 @@ class ReplayBuffer:
         if indices is None:
             indices = np.random.choice(len(self), size=self.batch_size, replace=False)
 
-        states = torch.FloatTensor(self.obs_buf[indices]).to(device)
-        actions = torch.FloatTensor(self.acts_buf[indices]).to(device)
-        rewards = torch.FloatTensor(self.rews_buf[indices].reshape(-1, 1)).to(device)
-        next_states = torch.FloatTensor(self.next_obs_buf[indices]).to(device)
-        dones = torch.FloatTensor(self.done_buf[indices].reshape(-1, 1)).to(device)
-
-        if torch.cuda.is_available():
-            states = states.cuda(non_blocking=True)
-            actions = actions.cuda(non_blocking=True)
-            rewards = rewards.cuda(non_blocking=True)
-            next_states = next_states.cuda(non_blocking=True)
-            dones = dones.cuda(non_blocking=True)
+        states = self.obs_buf[indices]
+        actions = self.acts_buf[indices]
+        rewards = self.rews_buf[indices].reshape(-1, 1)
+        next_states = self.next_obs_buf[indices]
+        dones = self.done_buf[indices].reshape(-1, 1)
 
         return states, actions, rewards, next_states, dones
 

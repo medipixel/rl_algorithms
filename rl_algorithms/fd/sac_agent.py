@@ -86,17 +86,11 @@ class SACfDAgent(SACAgent):
         """Train the model after each episode."""
         self.update_step += 1
 
-        experiences = self.memory.sample(self.per_beta)
-        (
-            states,
-            actions,
-            rewards,
-            next_states,
-            dones,
-            weights,
-            indices,
-            eps_d,
-        ) = experiences
+        experiences_1 = self.memory.sample(self.per_beta)
+        experiences_1 = self.numpy2floattensor(experiences_1[:6]) + experiences_1[6:]
+
+        states, actions, rewards, next_states, dones = experiences_1[:-3]
+        weights, indices, eps_d = experiences_1[-3:]
         new_actions, log_prob, pre_tanh_value, mu, std = self.actor(states)
 
         # train alpha
@@ -127,7 +121,9 @@ class SACfDAgent(SACAgent):
 
         if self.use_n_step:
             experiences_n = self.memory_n.sample(indices)
+            experiences_n = self.numpy2floattensor(experiences_n)
             _, _, rewards, next_states, dones = experiences_n
+
             gamma = gamma ** self.hyper_params.n_step
             masks = 1 - dones
 

@@ -22,6 +22,8 @@ import wandb
 from rl_algorithms.common.grad_cam import GradCAM
 from rl_algorithms.utils.config import ConfigDict
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 
 class Agent(ABC):
     """Abstract Agent used for all agents.
@@ -108,7 +110,25 @@ class Agent(ABC):
     def train(self):
         pass
 
+    @staticmethod
+    def numpy2floattensor(
+        arrays: Union[np.ndarray, Tuple[np.ndarray]]
+    ) -> Tuple[np.ndarray]:
+        """Convert numpy array to torch float tensor."""
+        if not isinstance(arrays, tuple):
+            arrays = arrays
+
+        tensors = []
+        for array in arrays:
+            tensor = torch.FloatTensor(array).to(device)
+            if torch.cuda.is_available():
+                tensor = tensor.cuda(non_blocking=True)
+            tensors.append(tensor)
+
+        return tuple(tensors)
+
     def set_wandb(self):
+        """Set configuration for wandb logging."""
         wandb.init(
             project=self.env_name,
             name=f"{self.log_cfg.agent}/{self.log_cfg.curr_time}",
@@ -117,6 +137,7 @@ class Agent(ABC):
         shutil.copy(self.args.cfg_path, os.path.join(wandb.run.dir, "config.py"))
 
     def interim_test(self):
+        """Test in the middle of training."""
         self.args.test = True
 
         print()

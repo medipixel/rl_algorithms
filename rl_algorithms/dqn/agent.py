@@ -200,8 +200,10 @@ class DQNAgent(Agent):
         """Train the model after each episode."""
         # 1 step loss
         experiences_1 = self.memory.sample(self.per_beta)
+        experiences_1 = self.numpy2floattensor(experiences_1[:6]) + experiences_1[6:]
         weights, indices = experiences_1[-3:-1]
         gamma = self.hyper_params.gamma
+
         dq_loss_element_wise, q_values = self.loss_fn(
             self.dqn, self.dqn_target, experiences_1, gamma, self.head_cfg
         )
@@ -210,7 +212,9 @@ class DQNAgent(Agent):
         # n step loss
         if self.use_n_step:
             experiences_n = self.memory_n.sample(indices)
+            experiences_n = self.numpy2floattensor(experiences_n)
             gamma = self.hyper_params.gamma ** self.hyper_params.n_step
+
             dq_loss_n_element_wise, q_values_n = self.loss_fn(
                 self.dqn, self.dqn_target, experiences_n, gamma, self.head_cfg
             )

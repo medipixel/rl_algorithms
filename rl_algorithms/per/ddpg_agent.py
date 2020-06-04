@@ -46,6 +46,7 @@ class PERDDPGAgent(DDPGAgent):
     def update_model(self) -> Tuple[torch.Tensor, ...]:
         """Train the model after each episode."""
         experiences = self.memory.sample(self.per_beta)
+        experiences = self.numpy2floattensor(experiences[:6]) + experiences[6:]
         states, actions, rewards, next_states, dones, weights, indices, _ = experiences
 
         # G_t   = r + gamma * v(s_{t+1})  if state != Terminal

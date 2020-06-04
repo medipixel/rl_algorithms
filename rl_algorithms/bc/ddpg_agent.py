@@ -101,8 +101,10 @@ class BCDDPGAgent(DDPGAgent):
 
     def update_model(self) -> Tuple[torch.Tensor, ...]:
         """Train the model after each episode."""
-        experiences = self.memory.sample()
-        demos = self.demo_memory.sample()
+        experiences, demos = self.memory.sample(), self.demo_memory.sample()
+        experiences = self.numpy2floattensor(experiences)
+        demos = self.numpy2floattensor(demos)
+
         exp_states, exp_actions, exp_rewards, exp_next_states, exp_dones = experiences
         demo_states, demo_actions, demo_rewards, demo_next_states, demo_dones = demos
 

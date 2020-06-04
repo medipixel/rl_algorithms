@@ -103,6 +103,10 @@ class BCSACAgent(SACAgent):
         self.update_step += 1
 
         experiences, demos = self.memory.sample(), self.demo_memory.sample()
+        experiences, demos = (
+            self.numpy2floattensor(experiences),
+            self.numpy2floattensor(demos),
+        )
 
         states, actions, rewards, next_states, dones = experiences
         demo_states, demo_actions, _, _, _ = demos
@@ -180,8 +184,10 @@ class BCSACAgent(SACAgent):
             actor_loss = self.hyper_params.lambda1 * actor_loss + self.lambda2 * bc_loss
 
             # regularization
-            mean_reg = self.hyper_params.w_mean_reg * mu.pow(2).mean()
-            std_reg = self.hyper_params.w_std_reg * std.pow(2).mean()
+            mean_reg, std_reg = (
+                self.hyper_params.w_mean_reg * mu.pow(2).mean(),
+                self.hyper_params.w_std_reg * std.pow(2).mean(),
+            )
             pre_activation_reg = self.hyper_params.w_pre_activation_reg * (
                 pre_tanh_value.pow(2).sum(dim=-1).mean()
             )
