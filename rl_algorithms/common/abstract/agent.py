@@ -78,10 +78,6 @@ class Agent(ABC):
         pass
 
     @abstractmethod
-    def update_model(self) -> Tuple[torch.Tensor, ...]:
-        pass
-
-    @abstractmethod
     def load_params(self, path: str):
         if not os.path.exists(path):
             raise Exception(
