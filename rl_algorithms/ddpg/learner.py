@@ -13,7 +13,7 @@ from rl_algorithms.utils.config import ConfigDict
 
 
 class DDPGLearner(Learner):
-    """Learner for DQN Agent
+    """Learner for DDPG Agent
 
     Attributes:
         args (argparse.Namespace): arguments including hyperparameters and training settings
