@@ -14,15 +14,14 @@ from typing import Tuple
 import gym
 import numpy as np
 import torch
-import torch.nn.functional as F
 import torch.optim as optim
 import wandb
 
 from rl_algorithms.common.abstract.agent import Agent
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
-import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.common.networks.brain import Brain
 from rl_algorithms.registry import AGENTS
+from rl_algorithms.sac.learner import SACLearner
 from rl_algorithms.utils.config import ConfigDict
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -42,7 +41,6 @@ class SACAgent(Agent):
         action_dim (int): action size of env
         memory (ReplayBuffer): replay memory
         actor (nn.Module): actor model to select actions
-        actor_target (nn.Module): target actor model to select actions
         actor_optim (Optimizer): optimizer for training actor
         critic_1 (nn.Module): critic model to predict state values
         critic_2 (nn.Module): critic model to predict state values
@@ -55,9 +53,6 @@ class SACAgent(Agent):
         episode_step (int): step number of the current episode
         update_step (int): step number of updates
         i_episode (int): current episode number
-        target_entropy (int): desired entropy used for the inequality constraint
-        log_alpha (torch.Tensor): weight for entropy
-        alpha_optim (Optimizer): optimizer for alpha
 
     """
 
@@ -93,6 +88,8 @@ class SACAgent(Agent):
 
         self.state_dim = self.env.observation_space.shape
         self.action_dim = self.env.action_space.shape[0]
+        self.hyper_params["state_dim"] = self.state_dim
+        self.hyper_params["action_dim"] = self.action_dim
 
         # target entropy
         target_entropy = -np.prod((self.action_dim,)).item()  # heuristic
@@ -170,6 +167,8 @@ class SACAgent(Agent):
         if self.args.load_from is not None:
             self.load_params(self.args.load_from)
 
+        self.learner = SACLearner(self.args, self.hyper_params, device)
+
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""
         self.curr_state = state
@@ -212,94 +211,6 @@ class SACAgent(Agent):
     def _add_transition_to_memory(self, transition: Tuple[np.ndarray, ...]):
         """Add 1 step and n step transitions to memory."""
         self.memory.add(transition)
-
-    def update_model(self) -> Tuple[torch.Tensor, ...]:
-        """Train the model after each episode."""
-        self.update_step += 1
-
-        experiences = self.memory.sample()
-        states, actions, rewards, next_states, dones = experiences
-        new_actions, log_prob, pre_tanh_value, mu, std = self.actor(states)
-
-        # train alpha
-        if self.hyper_params.auto_entropy_tuning:
-            alpha_loss = (
-                -self.log_alpha * (log_prob + self.target_entropy).detach()
-            ).mean()
-
-            self.alpha_optim.zero_grad()
-            alpha_loss.backward()
-            self.alpha_optim.step()
-
-            alpha = self.log_alpha.exp()
-        else:
-            alpha_loss = torch.zeros(1)
-            alpha = self.hyper_params.w_entropy
-
-        # Q function loss
-        masks = 1 - dones
-        states_actions = torch.cat((states, actions), dim=-1)
-        q_1_pred = self.qf_1(states_actions)
-        q_2_pred = self.qf_2(states_actions)
-        v_target = self.vf_target(next_states)
-        q_target = rewards + self.hyper_params.gamma * v_target * masks
-        qf_1_loss = F.mse_loss(q_1_pred, q_target.detach())
-        qf_2_loss = F.mse_loss(q_2_pred, q_target.detach())
-
-        # V function loss
-        states_actions = torch.cat((states, new_actions), dim=-1)
-        v_pred = self.vf(states)
-        q_pred = torch.min(self.qf_1(states_actions), self.qf_2(states_actions))
-        v_target = q_pred - alpha * log_prob
-        vf_loss = F.mse_loss(v_pred, v_target.detach())
-
-        # train Q functions
-        self.qf_1_optim.zero_grad()
-        qf_1_loss.backward()
-        self.qf_1_optim.step()
-
-        self.qf_2_optim.zero_grad()
-        qf_2_loss.backward()
-        self.qf_2_optim.step()
-
-        # train V function
-        self.vf_optim.zero_grad()
-        vf_loss.backward()
-        self.vf_optim.step()
-
-        if self.update_step % self.hyper_params.policy_update_freq == 0:
-            # actor loss
-            advantage = q_pred - v_pred.detach()
-            actor_loss = (alpha * log_prob - advantage).mean()
-
-            # regularization
-            mean_reg = self.hyper_params.w_mean_reg * mu.pow(2).mean()
-            std_reg = self.hyper_params.w_std_reg * std.pow(2).mean()
-            pre_activation_reg = self.hyper_params.w_pre_activation_reg * (
-                pre_tanh_value.pow(2).sum(dim=-1).mean()
-            )
-            actor_reg = mean_reg + std_reg + pre_activation_reg
-
-            # actor loss + regularization
-            actor_loss += actor_reg
-
-            # train actor
-            self.actor_optim.zero_grad()
-            actor_loss.backward()
-            self.actor_optim.step()
-
-            # update target networks
-            common_utils.soft_update(self.vf, self.vf_target, self.hyper_params.tau)
-        else:
-            actor_loss = torch.zeros(1)
-
-        return (
-            actor_loss.item(),
-            qf_1_loss.item(),
-            qf_2_loss.item(),
-            vf_loss.item(),
-            alpha_loss.item(),
-        )
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
@@ -417,7 +328,17 @@ class SACAgent(Agent):
                 # training
                 if len(self.memory) >= self.hyper_params.batch_size:
                     for _ in range(self.hyper_params.multiple_update):
-                        loss = self.update_model()
+                        experience = self.memory.sample()
+                        loss = self.learner.update_model(
+                            (self.actor, self.vf, self.vf_target, self.qf_1, self.qf_2),
+                            (
+                                self.actor_optim,
+                                self.vf_optim,
+                                self.qf_1_optim,
+                                self.qf_2_optim,
+                            ),
+                            experience,
+                        )
                         loss_episode.append(loss)  # for logging
 
             t_end = time.time()
