@@ -20,15 +20,14 @@ from typing import Tuple
 import gym
 import numpy as np
 import torch
-from torch.nn.utils import clip_grad_norm_
 import torch.optim as optim
 import wandb
 
 from rl_algorithms.common.abstract.agent import Agent
 from rl_algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
-import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.common.networks.brain import Brain
+from rl_algorithms.dqn.learner import DQNLearner
 from rl_algorithms.registry import AGENTS, build_loss
 from rl_algorithms.utils.config import ConfigDict
 
@@ -149,6 +148,10 @@ class DQNAgent(Agent):
         # load the optimizer and model parameters
         if self.args.load_from is not None:
             self.load_params(self.args.load_from)
+
+        self.learner = DQNLearner(
+            self.args, self.hyper_params, self.head_cfg, self.loss_fn, device
+        )
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""
@@ -307,6 +310,15 @@ class DQNAgent(Agent):
         """Pretraining steps."""
         pass
 
+    def sample_experience(self):
+        experience_1 = self.memory.sample(self.per_beta)
+        if self.use_n_step:
+            indices = experience_1[-2]
+            experience_n = self.memory_n.sample(indices)
+            return experience_1, experience_n
+
+        return experience_1
+
     def train(self):
         """Train the agent."""
         # logger
@@ -338,8 +350,14 @@ class DQNAgent(Agent):
                 if len(self.memory) >= self.hyper_params.update_starts_from:
                     if self.total_step % self.hyper_params.train_freq == 0:
                         for _ in range(self.hyper_params.multiple_update):
-                            loss = self.update_model()
+                            experience = self.sample_experience()
+                            info = self.learner.update_model(
+                                (self.dqn, self.dqn_target), self.dqn_optim, experience
+                            )
+                            loss = info[0:2]
+                            indices, new_priorities = info[2:4]
                             losses.append(loss)  # for logging
+                            self.memory.update_priorities(indices, new_priorities)
 
                     # decrease epsilon
                     self.epsilon = max(
@@ -348,6 +366,10 @@ class DQNAgent(Agent):
                         * self.hyper_params.epsilon_decay,
                         self.min_epsilon,
                     )
+
+                    # increase priority beta
+                    fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)
+                    self.per_beta = self.per_beta + fraction * (1.0 - self.per_beta)
 
                 state = next_state
                 score += reward

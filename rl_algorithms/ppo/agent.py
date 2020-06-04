@@ -12,14 +12,13 @@ from typing import Tuple
 import gym
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.optim as optim
 import wandb
 
 from rl_algorithms.common.abstract.agent import Agent
 from rl_algorithms.common.env.utils import env_generator, make_envs
 from rl_algorithms.common.networks.brain import Brain
-import rl_algorithms.ppo.utils as ppo_utils
+from rl_algorithms.ppo.learner import PPOLearner
 from rl_algorithms.registry import AGENTS
 from rl_algorithms.utils.config import ConfigDict
 
@@ -130,6 +129,10 @@ class PPOAgent(Agent):
         if self.args.load_from is not None:
             self.load_params(self.args.load_from)
 
+        self.learner = PPOLearner(
+            self.args, self.hyper_params, device, self.is_discrete
+        )
+
     def select_action(self, state: np.ndarray) -> torch.Tensor:
         """Select an action from the input space."""
         state = torch.FloatTensor(state).to(device)
@@ -161,108 +164,6 @@ class PPOAgent(Agent):
             self.masks.append(torch.FloatTensor(1 - done_bool).unsqueeze(1).to(device))
 
         return next_state, reward, done, info
-
-    def update_model(self) -> Tuple[torch.Tensor, ...]:
-        """Train the model after every N episodes."""
-
-        next_state = torch.FloatTensor(self.next_state).to(device)
-        next_value = self.critic(next_state)
-
-        returns = ppo_utils.compute_gae(
-            next_value,
-            self.rewards,
-            self.masks,
-            self.values,
-            self.hyper_params.gamma,
-            self.hyper_params.tau,
-        )
-
-        states = torch.cat(self.states)
-        actions = torch.cat(self.actions)
-        returns = torch.cat(returns).detach()
-        values = torch.cat(self.values).detach()
-        log_probs = torch.cat(self.log_probs).detach()
-        advantages = returns - values
-
-        if self.is_discrete:
-            actions = actions.unsqueeze(1)
-            log_probs = log_probs.unsqueeze(1)
-
-        if self.hyper_params.standardize_advantage:
-            advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-7)
-
-        actor_losses, critic_losses, total_losses = [], [], []
-
-        for state, action, old_value, old_log_prob, return_, adv in ppo_utils.ppo_iter(
-            self.hyper_params.epoch,
-            self.hyper_params.batch_size,
-            states,
-            actions,
-            values,
-            log_probs,
-            returns,
-            advantages,
-        ):
-            # calculate ratios
-            _, dist = self.actor(state)
-            log_prob = dist.log_prob(action)
-            ratio = (log_prob - old_log_prob).exp()
-
-            # actor_loss
-            surr_loss = ratio * adv
-            clipped_surr_loss = (
-                torch.clamp(ratio, 1.0 - self.epsilon, 1.0 + self.epsilon) * adv
-            )
-            actor_loss = -torch.min(surr_loss, clipped_surr_loss).mean()
-
-            # critic_loss
-            value = self.critic(state)
-            if self.hyper_params.use_clipped_value_loss:
-                value_pred_clipped = old_value + torch.clamp(
-                    (value - old_value), -self.epsilon, self.epsilon
-                )
-                value_loss_clipped = (return_ - value_pred_clipped).pow(2)
-                value_loss = (return_ - value).pow(2)
-                critic_loss = 0.5 * torch.max(value_loss, value_loss_clipped).mean()
-            else:
-                critic_loss = 0.5 * (return_ - value).pow(2).mean()
-
-            # entropy
-            entropy = dist.entropy().mean()
-
-            # total_loss
-            w_value = self.hyper_params.w_value
-            w_entropy = self.hyper_params.w_entropy
-
-            total_loss = actor_loss + w_value * critic_loss - w_entropy * entropy
-
-            # train critic
-            gradient_clip_ac = self.hyper_params.gradient_clip_ac
-            gradient_clip_cr = self.hyper_params.gradient_clip_cr
-
-            self.critic_optim.zero_grad()
-            total_loss.backward(retain_graph=True)
-            nn.utils.clip_grad_norm_(self.critic.parameters(), gradient_clip_ac)
-            self.critic_optim.step()
-
-            # train actor
-            self.actor_optim.zero_grad()
-            total_loss.backward()
-            nn.utils.clip_grad_norm_(self.critic.parameters(), gradient_clip_cr)
-            self.actor_optim.step()
-
-            actor_losses.append(actor_loss.item())
-            critic_losses.append(critic_loss.item())
-            total_losses.append(total_loss.item())
-
-        self.states, self.actions, self.rewards = [], [], []
-        self.values, self.masks, self.log_probs = [], [], []
-
-        actor_loss = sum(actor_losses) / len(actor_losses)
-        critic_loss = sum(critic_losses) / len(critic_losses)
-        total_loss = sum(total_losses) / len(total_losses)
-
-        return actor_loss, critic_loss, total_loss
 
     def decay_epsilon(self, t: int = 0):
         """Decay epsilon until reaching the minimum value."""
@@ -361,7 +262,22 @@ class PPOAgent(Agent):
 
                 self.episode_steps[np.where(done)] = 0
             self.next_state = next_state
-            loss = self.update_model()
+            loss = self.learner.update_model(
+                (self.actor, self.critic),
+                (self.actor_optim, self.critic_optim),
+                (
+                    self.states,
+                    self.actions,
+                    self.rewards,
+                    self.values,
+                    self.log_probs,
+                    self.next_state,
+                    self.masks,
+                ),
+                self.epsilon,
+            )
+            self.states, self.actions, self.rewards = [], [], []
+            self.values, self.masks, self.log_probs = [], [], []
             self.decay_epsilon(self.i_episode)
 
         # termination

@@ -11,11 +11,10 @@ from typing import Tuple
 import gym
 import numpy as np
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
 import wandb
 
+from rl_algorithms.a2c.learner import A2CLearner
 from rl_algorithms.common.abstract.agent import Agent
 from rl_algorithms.common.networks.brain import Brain
 from rl_algorithms.registry import AGENTS
@@ -100,6 +99,8 @@ class A2CAgent(Agent):
         if self.args.load_from is not None:
             self.load_params(self.args.load_from)
 
+        self.learner = A2CLearner(self.args, self.hyper_params, device)
+
     def select_action(self, state: np.ndarray) -> torch.Tensor:
         """Select an action from the input space."""
         state = torch.FloatTensor(state).to(device)
@@ -129,41 +130,6 @@ class A2CAgent(Agent):
             self.transition.extend([next_state, reward, done_bool])
 
         return next_state, reward, done, info
-
-    def update_model(self) -> Tuple[torch.Tensor, ...]:
-        log_prob, pred_value, next_state, reward, done = self.transition
-        next_state = torch.FloatTensor(next_state).to(device)
-
-        # Q_t   = r + gamma * V(s_{t+1})  if state != Terminal
-        #       = r                       otherwise
-        mask = 1 - done
-        next_value = self.critic(next_state).detach()
-        q_value = reward + self.hyper_params.gamma * next_value * mask
-        q_value = q_value.to(device)
-
-        # advantage = Q_t - V(s_t)
-        advantage = q_value - pred_value
-
-        # calculate loss at the current step
-        policy_loss = -advantage.detach() * log_prob  # adv. is not backpropagated
-        policy_loss += self.hyper_params.w_entropy * -log_prob  # entropy
-        value_loss = F.smooth_l1_loss(pred_value, q_value.detach())
-
-        # train
-        gradient_clip_ac = self.hyper_params.gradient_clip_ac
-        gradient_clip_cr = self.hyper_params.gradient_clip_cr
-
-        self.actor_optim.zero_grad()
-        policy_loss.backward()
-        nn.utils.clip_grad_norm_(self.actor.parameters(), gradient_clip_ac)
-        self.actor_optim.step()
-
-        self.critic_optim.zero_grad()
-        value_loss.backward()
-        nn.utils.clip_grad_norm_(self.critic.parameters(), gradient_clip_cr)
-        self.critic_optim.step()
-
-        return policy_loss.item(), value_loss.item()
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
@@ -230,7 +196,11 @@ class A2CAgent(Agent):
                 next_state, reward, done, _ = self.step(action)
                 self.episode_step += 1
 
-                policy_loss, value_loss = self.update_model()
+                policy_loss, value_loss = self.learner.update_model(
+                    (self.actor, self.critic),
+                    (self.actor_optim, self.critic_optim),
+                    self.transition,
+                )
 
                 policy_loss_episode.append(policy_loss)
                 value_loss_episode.append(value_loss)

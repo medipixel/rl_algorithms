@@ -14,15 +14,14 @@ from typing import Tuple
 import gym
 import numpy as np
 import torch
-import torch.nn.functional as F
 import torch.optim as optim
 import wandb
 
 from rl_algorithms.common.abstract.agent import Agent
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
-import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.common.networks.brain import Brain
 from rl_algorithms.registry import AGENTS
+from rl_algorithms.sac.learner import SACLearner
 from rl_algorithms.utils.config import ConfigDict
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -42,7 +41,6 @@ class SACAgent(Agent):
         action_dim (int): action size of env
         memory (ReplayBuffer): replay memory
         actor (nn.Module): actor model to select actions
-        actor_target (nn.Module): target actor model to select actions
         actor_optim (Optimizer): optimizer for training actor
         critic_1 (nn.Module): critic model to predict state values
         critic_2 (nn.Module): critic model to predict state values
@@ -55,9 +53,6 @@ class SACAgent(Agent):
         episode_step (int): step number of the current episode
         update_step (int): step number of updates
         i_episode (int): current episode number
-        target_entropy (int): desired entropy used for the inequality constraint
-        log_alpha (torch.Tensor): weight for entropy
-        alpha_optim (Optimizer): optimizer for alpha
 
     """
 
@@ -93,6 +88,8 @@ class SACAgent(Agent):
 
         self.state_dim = self.env.observation_space.shape
         self.action_dim = self.env.action_space.shape[0]
+        self.hyper_params["state_dim"] = self.state_dim
+        self.hyper_params["action_dim"] = self.action_dim
 
         # target entropy
         target_entropy = -np.prod((self.action_dim,)).item()  # heuristic
@@ -169,6 +166,8 @@ class SACAgent(Agent):
         # load the optimizer and model parameters
         if self.args.load_from is not None:
             self.load_params(self.args.load_from)
+
+        self.learner = SACLearner(self.args, self.hyper_params, device)
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""
@@ -418,7 +417,17 @@ class SACAgent(Agent):
                 # training
                 if len(self.memory) >= self.hyper_params.batch_size:
                     for _ in range(self.hyper_params.multiple_update):
-                        loss = self.update_model()
+                        experience = self.memory.sample()
+                        loss = self.learner.update_model(
+                            (self.actor, self.vf, self.vf_target, self.qf_1, self.qf_2),
+                            (
+                                self.actor_optim,
+                                self.vf_optim,
+                                self.qf_1_optim,
+                                self.qf_2_optim,
+                            ),
+                            experience,
+                        )
                         loss_episode.append(loss)  # for logging
 
             t_end = time.time()

@@ -13,16 +13,14 @@ from typing import Tuple
 import gym
 import numpy as np
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
 import wandb
 
 from rl_algorithms.common.abstract.agent import Agent
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
-import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.common.networks.brain import Brain
 from rl_algorithms.common.noise import OUNoise
+from rl_algorithms.ddpg.learner import DDPGLearner
 from rl_algorithms.registry import AGENTS
 from rl_algorithms.utils.config import ConfigDict
 
@@ -143,6 +141,8 @@ class DDPGAgent(Agent):
         # load the optimizer and model parameters
         if self.args.load_from is not None:
             self.load_params(self.args.load_from)
+
+        self.learner = DDPGLearner(self.args, self.hyper_params, device)
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""
@@ -318,7 +318,17 @@ class DDPGAgent(Agent):
 
                 if len(self.memory) >= self.hyper_params.batch_size:
                     for _ in range(self.hyper_params.multiple_update):
-                        loss = self.update_model()
+                        experience = self.memory.sample()
+                        loss = self.learner.update_model(
+                            (
+                                self.actor,
+                                self.actor_target,
+                                self.critic,
+                                self.critic_target,
+                            ),
+                            (self.actor_optim, self.critic_optim),
+                            experience,
+                        )
                         losses.append(loss)  # for logging
 
                 state = next_state
