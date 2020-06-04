@@ -78,15 +78,17 @@ class DQfDAgent(DQNAgent):
 
         # 1 step loss
         gamma = self.hyper_params.gamma
-        dq_loss_element_wise, q_values = self._get_dqn_loss(experiences_1, gamma)
+        dq_loss_element_wise, q_values = self.loss_fn(
+            self.dqn, self.dqn_target, experiences_1, gamma, self.head_cfg
+        )
         dq_loss = torch.mean(dq_loss_element_wise * weights)
 
         # n step loss
         if self.use_n_step:
             experiences_n = self.memory_n.sample(indices)
             gamma = self.hyper_params.gamma ** self.hyper_params.n_step
-            dq_loss_n_element_wise, q_values_n = self._get_dqn_loss(
-                experiences_n, gamma
+            dq_loss_n_element_wise, q_values_n = self.loss_fn(
+                self.dqn, self.dqn_target, experiences_n, gamma, self.head_cfg
             )
 
             # to update loss and priorities
@@ -138,8 +140,8 @@ class DQfDAgent(DQNAgent):
         self.per_beta: float = self.per_beta + fraction * (1.0 - self.per_beta)
 
         if self.head_cfg.configs.use_noisy_net:
-            self.dqn.reset_noise()
-            self.dqn_target.reset_noise()
+            self.dqn.head.reset_noise()
+            self.dqn_target.head.reset_noise()
 
         return (
             loss.item(),
