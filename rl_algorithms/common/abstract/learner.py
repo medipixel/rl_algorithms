@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import argparse
-from typing import List, Tuple, Union
+from typing import Tuple, Union
 
 import torch
 import torch.optim as optim
@@ -20,15 +20,18 @@ class Learner(ABC):
 
     """
 
-    def __init__(self, args: argparse.Namespace, hyper_params: ConfigDict):
+    def __init__(
+        self, args: argparse.Namespace, hyper_params: ConfigDict, device: torch.device
+    ):
         self.args = args
         self.hyper_params = hyper_params
+        self.device = device
 
     @abstractmethod
     def update_model(
         self,
         networks: Tuple[Brain, ...],
         optimizer: Union[optim.Optimizer, Tuple[optim.Optimizer, ...]],
-        experience: Union[TensorTuple, List[TensorTuple]],
+        experience: Union[TensorTuple, Tuple[TensorTuple]],
     ) -> tuple:
         pass

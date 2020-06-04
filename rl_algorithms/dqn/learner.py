@@ -1,5 +1,5 @@
 import argparse
-from typing import Callable, List, Tuple, Union
+from typing import Callable, Tuple, Union
 
 import numpy as np
 import torch
@@ -27,8 +27,9 @@ class DQNLearner(Learner):
         hyper_params: ConfigDict,
         head_cfg: ConfigDict,
         loss_fn: Callable,
+        device: torch.device,
     ):
-        Learner.__init__(self, args, hyper_params)
+        Learner.__init__(self, args, hyper_params, device)
         self.head_cfg = head_cfg
         self.loss_fn = loss_fn
         self.use_n_step = hyper_params.n_step > 1
@@ -37,7 +38,7 @@ class DQNLearner(Learner):
         self,
         networks: Tuple[Brain, ...],
         optimizer: Union[optim.Optimizer, Tuple[optim.Optimizer, ...]],
-        experience: Union[TensorTuple, List[TensorTuple]],
+        experience: Union[TensorTuple, Tuple[TensorTuple]],
     ) -> Tuple[torch.Tensor, torch.Tensor, list, np.ndarray]:  # type: ignore
         """Update dqn and dqn target"""
         dqn, dqn_target = networks

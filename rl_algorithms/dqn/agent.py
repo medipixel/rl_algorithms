@@ -150,7 +150,7 @@ class DQNAgent(Agent):
             self.load_params(self.args.load_from)
 
         self.learner = DQNLearner(
-            self.args, self.hyper_params, self.head_cfg, self.loss_fn
+            self.args, self.hyper_params, self.head_cfg, self.loss_fn, device
         )
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
