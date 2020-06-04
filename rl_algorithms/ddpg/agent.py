@@ -13,16 +13,14 @@ from typing import Tuple
 import gym
 import numpy as np
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
 import wandb
 
 from rl_algorithms.common.abstract.agent import Agent
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
-import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.common.networks.brain import Brain
 from rl_algorithms.common.noise import OUNoise
+from rl_algorithms.ddpg.learner import DDPGLearner
 from rl_algorithms.registry import AGENTS
 from rl_algorithms.utils.config import ConfigDict
 
@@ -144,6 +142,8 @@ class DDPGAgent(Agent):
         if self.args.load_from is not None:
             self.load_params(self.args.load_from)
 
+        self.learner = DDPGLearner(self.args, self.hyper_params, device)
+
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""
         self.curr_state = state
@@ -187,44 +187,6 @@ class DDPGAgent(Agent):
     def _add_transition_to_memory(self, transition: Tuple[np.ndarray, ...]):
         """Add 1 step and n step transitions to memory."""
         self.memory.add(transition)
-
-    def update_model(self) -> Tuple[torch.Tensor, ...]:
-        """Train the model after each episode."""
-        experiences = self.memory.sample()
-        states, actions, rewards, next_states, dones = experiences
-
-        # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
-        #       = r                       otherwise
-        masks = 1 - dones
-        next_actions = self.actor_target(next_states)
-        next_values = self.critic_target(torch.cat((next_states, next_actions), dim=-1))
-        curr_returns = rewards + self.hyper_params.gamma * next_values * masks
-        curr_returns = curr_returns.to(device)
-
-        # train critic
-        gradient_clip_ac = self.hyper_params.gradient_clip_ac
-        gradient_clip_cr = self.hyper_params.gradient_clip_cr
-
-        values = self.critic(torch.cat((states, actions), dim=-1))
-        critic_loss = F.mse_loss(values, curr_returns)
-        self.critic_optim.zero_grad()
-        critic_loss.backward()
-        nn.utils.clip_grad_norm_(self.critic.parameters(), gradient_clip_cr)
-        self.critic_optim.step()
-
-        # train actor
-        actions = self.actor(states)
-        actor_loss = -self.critic(torch.cat((states, actions), dim=-1)).mean()
-        self.actor_optim.zero_grad()
-        actor_loss.backward()
-        nn.utils.clip_grad_norm_(self.actor.parameters(), gradient_clip_ac)
-        self.actor_optim.step()
-
-        # update target networks
-        common_utils.soft_update(self.actor, self.actor_target, self.hyper_params.tau)
-        common_utils.soft_update(self.critic, self.critic_target, self.hyper_params.tau)
-
-        return actor_loss.item(), critic_loss.item()
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
@@ -317,7 +279,17 @@ class DDPGAgent(Agent):
 
                 if len(self.memory) >= self.hyper_params.batch_size:
                     for _ in range(self.hyper_params.multiple_update):
-                        loss = self.update_model()
+                        experience = self.memory.sample()
+                        loss = self.learner.update_model(
+                            (
+                                self.actor,
+                                self.actor_target,
+                                self.critic,
+                                self.critic_target,
+                            ),
+                            (self.actor_optim, self.critic_optim),
+                            experience,
+                        )
                         losses.append(loss)  # for logging
 
                 state = next_state
