@@ -5,7 +5,6 @@ from collections import deque
 from typing import Any, Deque, List, Tuple
 
 import numpy as np
-import torch
 
 from rl_algorithms.common.helper_functions import get_n_step_info
 
@@ -126,7 +125,7 @@ class ReplayBuffer:
         for transition in transitions:
             self.add(transition)
 
-    def sample(self, indices: List[int] = None) -> Tuple[torch.Tensor, ...]:
+    def sample(self, indices: List[int] = None) -> Tuple[np.ndarray, ...]:
         """Randomly sample a batch of experiences from memory."""
         assert len(self) >= self.batch_size
 

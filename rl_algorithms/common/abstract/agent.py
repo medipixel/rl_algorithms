@@ -95,6 +95,7 @@ class Agent(ABC):
         pass
 
     def _save_params(self, params: dict, n_episode: int):
+        """Save parameters of networks."""
         os.makedirs(self.ckpt_path, exist_ok=True)
 
         path = os.path.join(self.ckpt_path + self.sha + "_ep_" + str(n_episode) + ".pt")
@@ -111,13 +112,8 @@ class Agent(ABC):
         pass
 
     @staticmethod
-    def numpy2floattensor(
-        arrays: Union[np.ndarray, Tuple[np.ndarray]]
-    ) -> Tuple[np.ndarray]:
-        """Convert numpy array to torch float tensor."""
-        if not isinstance(arrays, tuple):
-            arrays = arrays
-
+    def numpy2floattensor(arrays: Tuple[np.ndarray]) -> Tuple[np.ndarray]:
+        """Convert numpy arrays to torch float tensor."""
         tensors = []
         for array in arrays:
             tensor = torch.FloatTensor(array).to(device)
