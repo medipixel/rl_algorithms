@@ -201,6 +201,7 @@ class TD3Agent(Agent):
         self.update_step += 1
 
         experiences = self.memory.sample()
+        experiences = self.numpy2floattensor(experiences)
         states, actions, rewards, next_states, dones = experiences
         masks = 1 - dones
 

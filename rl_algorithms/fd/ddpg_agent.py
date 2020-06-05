@@ -106,6 +106,8 @@ class DDPGfDAgent(DDPGAgent):
     def update_model(self) -> Tuple[torch.Tensor, ...]:
         """Train the model after each episode."""
         experiences_1 = self.memory.sample(self.per_beta)
+        experiences_1 = self.numpy2floattensor(experiences_1[:6]) + experiences_1[6:]
+
         states, actions = experiences_1[:2]
         weights, indices, eps_d = experiences_1[-3:]
         gamma = self.hyper_params.gamma
@@ -119,7 +121,9 @@ class DDPGfDAgent(DDPGAgent):
 
         if self.use_n_step:
             experiences_n = self.memory_n.sample(indices)
+            experiences_n = self.numpy2floattensor(experiences_n)
             gamma = gamma ** self.hyper_params.n_step
+
             critic_loss_n_element_wise = self._get_critic_loss(experiences_n, gamma)
             # to update loss and priorities
             critic_loss_element_wise += (

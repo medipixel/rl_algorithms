@@ -104,7 +104,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             indices.append(idx)
         return indices
 
-    def sample(self, beta: float = 0.4) -> Tuple[torch.Tensor, ...]:  # type: ignore
+    def sample(self, beta: float = 0.4) -> Tuple[torch.Tensor, ...]:
         """Sample a batch of experiences."""
         assert len(self) >= self.batch_size
         assert beta > 0
@@ -126,10 +126,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         weights = np.array(weights_)
         eps_d = np.array(eps_d)
 
-        weights = torch.FloatTensor(weights.reshape(-1, 1)).to(device)
-
-        if torch.cuda.is_available():
-            weights = weights.cuda(non_blocking=True)
+        weights = weights.reshape(-1, 1)
 
         states, actions, rewards, next_states, dones = super().sample(indices)
 

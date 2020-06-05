@@ -191,6 +191,7 @@ class DDPGAgent(Agent):
     def update_model(self) -> Tuple[torch.Tensor, ...]:
         """Train the model after each episode."""
         experiences = self.memory.sample()
+        experiences = self.numpy2floattensor(experiences)
         states, actions, rewards, next_states, dones = experiences
 
         # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
