@@ -13,12 +13,11 @@ from typing import Tuple
 import gym
 import numpy as np
 import torch
-import torch.optim as optim
 import wandb
 
 from rl_algorithms.common.abstract.agent import Agent
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
-from rl_algorithms.common.networks.brain import Brain
+from rl_algorithms.common.helper_functions import numpy2floattensor
 from rl_algorithms.common.noise import OUNoise
 from rl_algorithms.ddpg.learner import DDPGLearner
 from rl_algorithms.registry import AGENTS
@@ -35,18 +34,13 @@ class DDPGAgent(Agent):
         env (gym.Env): openAI Gym environment
         args (argparse.Namespace): arguments including hyperparameters and training settings
         hyper_params (ConfigDict): hyper-parameters
+        log_cfg (ConfigDict): configuration for saving log and checkpoint
         network_cfg (ConfigDict): config of network for training agent
         optim_cfg (ConfigDict): config of optimizer
         state_dim (int): state size of env
         action_dim (int): action size of env
         memory (ReplayBuffer): replay memory
         noise (OUNoise): random noise for exploration
-        actor (nn.Module): actor model to select actions
-        actor_target (nn.Module): target actor model to select actions
-        critic (nn.Module): critic model to predict state values
-        critic_target (nn.Module): target critic model to predict state values
-        actor_optim (Optimizer): optimizer for training actor
-        critic_optim (Optimizer): optimizer for training critic
         curr_state (np.ndarray): temporary storage of the current state
         total_step (int): total step numbers
         episode_step (int): step number of the current episode
@@ -81,6 +75,13 @@ class DDPGAgent(Agent):
         self.state_dim = self.env.observation_space.shape
         self.action_dim = self.env.action_space.shape[0]
 
+        self.head_cfg.actor.configs.state_size = self.state_dim
+
+        # ddpg critic gets state & action as input,
+        # and make the type to tuple to conform the gym action_space type.
+        self.head_cfg.critic.configs.state_size = (self.state_dim[0] + self.action_dim,)
+        self.head_cfg.actor.configs.output_size = self.action_dim
+
         # set noise
         self.noise = OUNoise(
             self.action_dim,
@@ -89,7 +90,6 @@ class DDPGAgent(Agent):
         )
 
         self._initialize()
-        self._init_network()
 
     # pylint: disable=attribute-defined-outside-init
     def _initialize(self):
@@ -100,49 +100,15 @@ class DDPGAgent(Agent):
                 self.hyper_params.buffer_size, self.hyper_params.batch_size
             )
 
-    # pylint: disable=attribute-defined-outside-init
-    def _init_network(self):
-        """Initialize networks and optimizers."""
-
-        self.head_cfg.actor.configs.state_size = self.state_dim
-
-        # ddpg critic gets state & action as input,
-        # and make the type to tuple to conform the gym action_space type.
-        self.head_cfg.critic.configs.state_size = (self.state_dim[0] + self.action_dim,)
-        self.head_cfg.actor.configs.output_size = self.action_dim
-
-        # create actor
-        self.actor = Brain(self.backbone_cfg.actor, self.head_cfg.actor).to(device)
-        self.actor_target = Brain(self.backbone_cfg.actor, self.head_cfg.actor).to(
-            device
+        self.learner = DDPGLearner(
+            self.args,
+            self.hyper_params,
+            self.log_cfg,
+            self.head_cfg,
+            self.backbone_cfg,
+            self.optim_cfg,
+            device,
         )
-        self.actor_target.load_state_dict(self.actor.state_dict())
-
-        # create critic
-        self.critic = Brain(self.backbone_cfg.critic, self.head_cfg.critic).to(device)
-        self.critic_target = Brain(self.backbone_cfg.critic, self.head_cfg.critic).to(
-            device
-        )
-        self.critic_target.load_state_dict(self.critic.state_dict())
-
-        # create optimizer
-        self.actor_optim = optim.Adam(
-            self.actor.parameters(),
-            lr=self.optim_cfg.lr_actor,
-            weight_decay=self.optim_cfg.weight_decay,
-        )
-
-        self.critic_optim = optim.Adam(
-            self.critic.parameters(),
-            lr=self.optim_cfg.lr_critic,
-            weight_decay=self.optim_cfg.weight_decay,
-        )
-
-        # load the optimizer and model parameters
-        if self.args.load_from is not None:
-            self.load_params(self.args.load_from)
-
-        self.learner = DDPGLearner(self.args, self.hyper_params, device)
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""
@@ -156,7 +122,7 @@ class DDPGAgent(Agent):
         ):
             return np.array(self.env.action_space.sample())
 
-        selected_action = self.actor(state).detach().cpu().numpy()
+        selected_action = self.learner.actor(state).detach().cpu().numpy()
 
         if not self.args.test:
             noise = self.noise.sample()
@@ -187,70 +153,6 @@ class DDPGAgent(Agent):
     def _add_transition_to_memory(self, transition: Tuple[np.ndarray, ...]):
         """Add 1 step and n step transitions to memory."""
         self.memory.add(transition)
-
-    def update_model(self) -> Tuple[torch.Tensor, ...]:
-        """Train the model after each episode."""
-        experiences = self.memory.sample()
-        experiences = self.numpy2floattensor(experiences)
-        states, actions, rewards, next_states, dones = experiences
-
-        # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
-        #       = r                       otherwise
-        masks = 1 - dones
-        next_actions = self.actor_target(next_states)
-        next_values = self.critic_target(torch.cat((next_states, next_actions), dim=-1))
-        curr_returns = rewards + self.hyper_params.gamma * next_values * masks
-        curr_returns = curr_returns.to(device)
-
-        # train critic
-        gradient_clip_ac = self.hyper_params.gradient_clip_ac
-        gradient_clip_cr = self.hyper_params.gradient_clip_cr
-
-        values = self.critic(torch.cat((states, actions), dim=-1))
-        critic_loss = F.mse_loss(values, curr_returns)
-        self.critic_optim.zero_grad()
-        critic_loss.backward()
-        nn.utils.clip_grad_norm_(self.critic.parameters(), gradient_clip_cr)
-        self.critic_optim.step()
-
-        # train actor
-        actions = self.actor(states)
-        actor_loss = -self.critic(torch.cat((states, actions), dim=-1)).mean()
-        self.actor_optim.zero_grad()
-        actor_loss.backward()
-        nn.utils.clip_grad_norm_(self.actor.parameters(), gradient_clip_ac)
-        self.actor_optim.step()
-
-        # update target networks
-        common_utils.soft_update(self.actor, self.actor_target, self.hyper_params.tau)
-        common_utils.soft_update(self.critic, self.critic_target, self.hyper_params.tau)
-
-        return actor_loss.item(), critic_loss.item()
-
-    def load_params(self, path: str):
-        """Load model and optimizer parameters."""
-        Agent.load_params(self, path)
-
-        params = torch.load(path)
-        self.actor.load_state_dict(params["actor_state_dict"])
-        self.actor_target.load_state_dict(params["actor_target_state_dict"])
-        self.critic.load_state_dict(params["critic_state_dict"])
-        self.critic_target.load_state_dict(params["critic_target_state_dict"])
-        self.actor_optim.load_state_dict(params["actor_optim_state_dict"])
-        self.critic_optim.load_state_dict(params["critic_optim_state_dict"])
-        print("[INFO] loaded the model and optimizer from", path)
-
-    def save_params(self, n_episode: int):
-        """Save model and optimizer parameters."""
-        params = {
-            "actor_state_dict": self.actor.state_dict(),
-            "actor_target_state_dict": self.actor_target.state_dict(),
-            "critic_state_dict": self.critic.state_dict(),
-            "critic_target_state_dict": self.critic_target.state_dict(),
-            "actor_optim_state_dict": self.actor_optim.state_dict(),
-            "critic_optim_state_dict": self.critic_optim.state_dict(),
-        }
-        Agent._save_params(self, params, n_episode)
 
     def write_log(self, log_value: tuple):
         """Write log about loss and score"""
@@ -319,16 +221,8 @@ class DDPGAgent(Agent):
                 if len(self.memory) >= self.hyper_params.batch_size:
                     for _ in range(self.hyper_params.multiple_update):
                         experience = self.memory.sample()
-                        loss = self.learner.update_model(
-                            (
-                                self.actor,
-                                self.actor_target,
-                                self.critic,
-                                self.critic_target,
-                            ),
-                            (self.actor_optim, self.critic_optim),
-                            experience,
-                        )
+                        experience = numpy2floattensor(experience)
+                        loss = self.learner.update_model(experience)
                         losses.append(loss)  # for logging
 
                 state = next_state
@@ -345,10 +239,10 @@ class DDPGAgent(Agent):
                 losses.clear()
 
             if self.i_episode % self.args.save_period == 0:
-                self.save_params(self.i_episode)
+                self.learner.save_params(self.i_episode)
                 self.interim_test()
 
         # termination
         self.env.close()
-        self.save_params(self.i_episode)
+        self.learner.save_params(self.i_episode)
         self.interim_test()

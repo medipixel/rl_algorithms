@@ -1,5 +1,4 @@
 import argparse
-from typing import Tuple, Union
 
 import torch
 import torch.nn.functional as F
@@ -17,23 +16,57 @@ class A2CLearner(Learner):
     Attributes:
         args (argparse.Namespace): arguments including hyperparameters and training settings
         hyper_params (ConfigDict): hyper-parameters
+        log_cfg (ConfigDict): configuration for saving log and checkpoint
+        actor (nn.Module): actor model to select actions
+        critic (nn.Module): critic model to predict state values
+        actor_optim (Optimizer): optimizer for training actor
+        critic_optim (Optimizer): optimizer for training critic
 
     """
 
     def __init__(
-        self, args: argparse.Namespace, hyper_params: ConfigDict, device: torch.device
-    ):
-        Learner.__init__(self, args, hyper_params, device)
-
-    def update_model(
         self,
-        networks: Tuple[Brain, ...],
-        optimizer: Union[optim.Optimizer, Tuple[optim.Optimizer, ...]],
-        experience: TensorTuple,
-    ) -> TensorTuple:
+        args: argparse.Namespace,
+        hyper_params: ConfigDict,
+        log_cfg: ConfigDict,
+        head_cfg: ConfigDict,
+        backbone_cfg: ConfigDict,
+        optim_cfg: ConfigDict,
+        device: torch.device,
+    ):
+        Learner.__init__(self, args, hyper_params, log_cfg, device)
+
+        self.head_cfg = head_cfg
+        self.backbone_cfg = backbone_cfg
+        self.optim_cfg = optim_cfg
+
+        self._init_network()
+
+    def _init_network(self):
+        """Initialize networks and optimizers."""
+        self.actor = Brain(self.backbone_cfg.actor, self.head_cfg.actor).to(self.device)
+        self.critic = Brain(self.backbone_cfg.critic, self.head_cfg.critic).to(
+            self.device
+        )
+
+        # create optimizer
+        self.actor_optim = optim.Adam(
+            self.actor.parameters(),
+            lr=self.optim_cfg.lr_actor,
+            weight_decay=self.optim_cfg.weight_decay,
+        )
+
+        self.critic_optim = optim.Adam(
+            self.critic.parameters(),
+            lr=self.optim_cfg.lr_critic,
+            weight_decay=self.optim_cfg.weight_decay,
+        )
+
+        if self.args.load_from is not None:
+            self.load_params(self.args.load_from)
+
+    def update_model(self, experience: TensorTuple) -> TensorTuple:
         """Update A2C actor and critic networks"""
-        actor, critic = networks
-        actor_optim, critic_optim = optimizer
 
         log_prob, pred_value, next_state, reward, done = experience
         next_state = torch.FloatTensor(next_state).to(self.device)
@@ -41,7 +74,7 @@ class A2CLearner(Learner):
         # Q_t   = r + gamma * V(s_{t+1})  if state != Terminal
         #       = r                       otherwise
         mask = 1 - done
-        next_value = critic(next_state).detach()
+        next_value = self.critic(next_state).detach()
         q_value = reward + self.hyper_params.gamma * next_value * mask
         q_value = q_value.to(self.device)
 
@@ -57,14 +90,36 @@ class A2CLearner(Learner):
         gradient_clip_ac = self.hyper_params.gradient_clip_ac
         gradient_clip_cr = self.hyper_params.gradient_clip_cr
 
-        actor_optim.zero_grad()
+        self.actor_optim.zero_grad()
         policy_loss.backward()
-        clip_grad_norm_(actor.parameters(), gradient_clip_ac)
-        actor_optim.step()
+        clip_grad_norm_(self.actor.parameters(), gradient_clip_ac)
+        self.actor_optim.step()
 
-        critic_optim.zero_grad()
+        self.critic_optim.zero_grad()
         value_loss.backward()
-        clip_grad_norm_(critic.parameters(), gradient_clip_cr)
-        critic_optim.step()
+        clip_grad_norm_(self.critic.parameters(), gradient_clip_cr)
+        self.critic_optim.step()
 
         return policy_loss.item(), value_loss.item()
+
+    def save_params(self, n_episode: int):
+        """Save model and optimizer parameters."""
+        params = {
+            "actor_state_dict": self.actor.state_dict(),
+            "critic_state_dict": self.critic.state_dict(),
+            "actor_optim_state_dict": self.actor_optim.state_dict(),
+            "critic_optim_state_dict": self.critic_optim.state_dict(),
+        }
+
+        Learner._save_params(self, params, n_episode)
+
+    def load_params(self, path: str):
+        """Load model and optimizer parameters."""
+        Learner.load_params(self, path)
+
+        params = torch.load(path)
+        self.actor.load_state_dict(params["actor_state_dict"])
+        self.critic.load_state_dict(params["critic_state_dict"])
+        self.actor_optim.load_state_dict(params["actor_optim_state_dict"])
+        self.critic_optim.load_state_dict(params["critic_optim_state_dict"])
+        print("[INFO] Loaded the model and optimizer from", path)

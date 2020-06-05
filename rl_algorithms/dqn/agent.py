@@ -20,15 +20,14 @@ from typing import Tuple
 import gym
 import numpy as np
 import torch
-import torch.optim as optim
 import wandb
 
 from rl_algorithms.common.abstract.agent import Agent
 from rl_algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
-from rl_algorithms.common.networks.brain import Brain
+from rl_algorithms.common.helper_functions import numpy2floattensor
 from rl_algorithms.dqn.learner import DQNLearner
-from rl_algorithms.registry import AGENTS, build_loss
+from rl_algorithms.registry import AGENTS
 from rl_algorithms.utils.config import ConfigDict
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -42,14 +41,12 @@ class DQNAgent(Agent):
         env (gym.Env): openAI Gym environment
         args (argparse.Namespace): arguments including hyperparameters and training settings
         hyper_params (ConfigDict): hyper-parameters
+        log_cfg (ConfigDict): configuration for saving log and checkpoint
         network_cfg (ConfigDict): config of network for training agent
         optim_cfg (ConfigDict): config of optimizer
         state_dim (int): state size of env
         action_dim (int): action size of env
         memory (PrioritizedReplayBuffer): replay memory
-        dqn (nn.Module): actor model to select actions
-        dqn_target (nn.Module): target actor model to select actions
-        dqn_optim (Optimizer): optimizer for training actor
         curr_state (np.ndarray): temporary storage of the current state
         total_step (int): total step number
         episode_step (int): step number of the current episode
@@ -85,11 +82,11 @@ class DQNAgent(Agent):
         self.backbone_cfg = backbone
         self.head_cfg = head
 
-        self.state_dim = self.env.observation_space.shape
-        self.action_dim = self.env.action_space.n
+        self.head_cfg.configs.state_size = self.env.observation_space.shape
+        self.head_cfg.configs.output_size = self.env.action_space.n
 
         self.per_beta = hyper_params.per_beta
-        self.use_conv = len(self.state_dim) > 1
+        self.use_conv = len(self.head_cfg.configs.state_size) > 1
         self.use_n_step = hyper_params.n_step > 1
 
         if head.configs.use_noisy_net:
@@ -102,7 +99,6 @@ class DQNAgent(Agent):
             self.epsilon = hyper_params.max_epsilon
 
         self._initialize()
-        self._init_network()
 
     # pylint: disable=attribute-defined-outside-init
     def _initialize(self):
@@ -124,33 +120,14 @@ class DQNAgent(Agent):
                     gamma=self.hyper_params.gamma,
                 )
 
-    # pylint: disable=attribute-defined-outside-init
-    def _init_network(self):
-        """Initialize networks and optimizers."""
-
-        self.head_cfg.configs.state_size = self.state_dim
-        self.head_cfg.configs.output_size = self.action_dim
-
-        self.dqn = Brain(self.backbone_cfg, self.head_cfg).to(device)
-        self.dqn_target = Brain(self.backbone_cfg, self.head_cfg).to(device)
-        self.loss_fn = build_loss(self.hyper_params.loss_type)
-
-        self.dqn_target.load_state_dict(self.dqn.state_dict())
-
-        # create optimizer
-        self.dqn_optim = optim.Adam(
-            self.dqn.parameters(),
-            lr=self.optim_cfg.lr_dqn,
-            weight_decay=self.optim_cfg.weight_decay,
-            eps=self.optim_cfg.adam_eps,
-        )
-
-        # load the optimizer and model parameters
-        if self.args.load_from is not None:
-            self.load_params(self.args.load_from)
-
         self.learner = DQNLearner(
-            self.args, self.hyper_params, self.head_cfg, self.loss_fn, device
+            self.args,
+            self.hyper_params,
+            self.log_cfg,
+            self.head_cfg,
+            self.backbone_cfg,
+            self.optim_cfg,
+            device,
         )
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
@@ -163,7 +140,7 @@ class DQNAgent(Agent):
             selected_action = np.array(self.env.action_space.sample())
         else:
             state = self._preprocess_state(state)
-            selected_action = self.dqn(state).argmax()
+            selected_action = self.learner.dqn(state).argmax()
             selected_action = selected_action.detach().cpu().numpy()
         return selected_action
 
@@ -199,83 +176,6 @@ class DQNAgent(Agent):
         if transition:
             self.memory.add(transition)
 
-    def update_model(self) -> Tuple[torch.Tensor, ...]:
-        """Train the model after each episode."""
-        # 1 step loss
-        experiences_1 = self.memory.sample(self.per_beta)
-        experiences_1 = self.numpy2floattensor(experiences_1[:6]) + experiences_1[6:]
-        weights, indices = experiences_1[-3:-1]
-        gamma = self.hyper_params.gamma
-
-        dq_loss_element_wise, q_values = self.loss_fn(
-            self.dqn, self.dqn_target, experiences_1, gamma, self.head_cfg
-        )
-        dq_loss = torch.mean(dq_loss_element_wise * weights)
-
-        # n step loss
-        if self.use_n_step:
-            experiences_n = self.memory_n.sample(indices)
-            experiences_n = self.numpy2floattensor(experiences_n)
-            gamma = self.hyper_params.gamma ** self.hyper_params.n_step
-
-            dq_loss_n_element_wise, q_values_n = self.loss_fn(
-                self.dqn, self.dqn_target, experiences_n, gamma, self.head_cfg
-            )
-
-            # to update loss and priorities
-            q_values = 0.5 * (q_values + q_values_n)
-            dq_loss_element_wise += dq_loss_n_element_wise * self.hyper_params.w_n_step
-            dq_loss = torch.mean(dq_loss_element_wise * weights)
-
-        # q_value regularization
-        q_regular = torch.norm(q_values, 2).mean() * self.hyper_params.w_q_reg
-
-        # total loss
-        loss = dq_loss + q_regular
-
-        self.dqn_optim.zero_grad()
-        loss.backward()
-        clip_grad_norm_(self.dqn.parameters(), self.hyper_params.gradient_clip)
-        self.dqn_optim.step()
-
-        # update target networks
-        common_utils.soft_update(self.dqn, self.dqn_target, self.hyper_params.tau)
-
-        # update priorities in PER
-        loss_for_prior = dq_loss_element_wise.detach().cpu().numpy()
-        new_priorities = loss_for_prior + self.hyper_params.per_eps
-        self.memory.update_priorities(indices, new_priorities)
-
-        # increase beta
-        fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)
-        self.per_beta = self.per_beta + fraction * (1.0 - self.per_beta)
-
-        if self.head_cfg.configs.use_noisy_net:
-            self.dqn.head.reset_noise()
-            self.dqn_target.head.reset_noise()
-
-        return loss.item(), q_values.mean().item()
-
-    def load_params(self, path: str):
-        """Load model and optimizer parameters."""
-        Agent.load_params(self, path)
-
-        params = torch.load(path)
-        self.dqn.load_state_dict(params["dqn_state_dict"])
-        self.dqn_target.load_state_dict(params["dqn_target_state_dict"])
-        self.dqn_optim.load_state_dict(params["dqn_optim_state_dict"])
-        print("[INFO] loaded the model and optimizer from", path)
-
-    def save_params(self, n_episode: int):
-        """Save model and optimizer parameters."""
-        params = {
-            "dqn_state_dict": self.dqn.state_dict(),
-            "dqn_target_state_dict": self.dqn_target.state_dict(),
-            "dqn_optim_state_dict": self.dqn_optim.state_dict(),
-        }
-
-        Agent._save_params(self, params, n_episode)
-
     def write_log(self, log_value: tuple):
         """Write log about loss and score"""
         i, loss, score, avg_time_cost = log_value
@@ -310,14 +210,14 @@ class DQNAgent(Agent):
         """Pretraining steps."""
         pass
 
-    def sample_experience(self):
+    def sample_experience(self) -> Tuple[torch.Tensor, ...]:
         experience_1 = self.memory.sample(self.per_beta)
         if self.use_n_step:
             indices = experience_1[-2]
             experience_n = self.memory_n.sample(indices)
-            return experience_1, experience_n
+            return numpy2floattensor(experience_1), numpy2floattensor(experience_n)
 
-        return experience_1
+        return numpy2floattensor(experience_1)
 
     def train(self):
         """Train the agent."""
@@ -351,9 +251,7 @@ class DQNAgent(Agent):
                     if self.total_step % self.hyper_params.train_freq == 0:
                         for _ in range(self.hyper_params.multiple_update):
                             experience = self.sample_experience()
-                            info = self.learner.update_model(
-                                (self.dqn, self.dqn_target), self.dqn_optim, experience
-                            )
+                            info = self.learner.update_model(experience)
                             loss = info[0:2]
                             indices, new_priorities = info[2:4]
                             losses.append(loss)  # for logging
@@ -383,10 +281,10 @@ class DQNAgent(Agent):
                 self.write_log(log_value)
 
             if self.i_episode % self.args.save_period == 0:
-                self.save_params(self.i_episode)
+                self.learner.save_params(self.i_episode)
                 self.interim_test()
 
         # termination
         self.env.close()
-        self.save_params(self.i_episode)
+        self.learner.save_params(self.i_episode)
         self.interim_test()

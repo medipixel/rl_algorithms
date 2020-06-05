@@ -12,12 +12,10 @@ from typing import Tuple
 import gym
 import numpy as np
 import torch
-import torch.optim as optim
 import wandb
 
 from rl_algorithms.common.abstract.agent import Agent
 from rl_algorithms.common.env.utils import env_generator, make_envs
-from rl_algorithms.common.networks.brain import Brain
 from rl_algorithms.ppo.learner import PPOLearner
 from rl_algorithms.registry import AGENTS
 from rl_algorithms.utils.config import ConfigDict
@@ -93,56 +91,34 @@ class PPOAgent(Agent):
         if not self.args.test:
             self.env = env_multi
 
-        self.state_dim = self.env.observation_space.shape
-        self.action_dim = self.env.action_space.shape[0]
+        self.head_cfg.actor.configs.state_size = (
+            self.head_cfg.critic.configs.state_size
+        ) = self.env.observation_space.shape
+        self.head_cfg.actor.configs.output_size = self.env.action_space.shape[0]
 
         self.epsilon = hyper_params.max_epsilon
 
-        self._init_network()
-
-    def _init_network(self):
-        """Initialize networks and optimizers."""
-        self.head_cfg.actor.configs.state_size = (
-            self.head_cfg.critic.configs.state_size
-        ) = self.state_dim
-        self.head_cfg.actor.configs.output_size = self.action_dim
-
-        # create actor
-        self.actor = Brain(self.backbone_cfg.actor, self.head_cfg.actor).to(device)
-
-        self.critic = Brain(self.backbone_cfg.critic, self.head_cfg.critic).to(device)
-
-        # create optimizer
-        self.actor_optim = optim.Adam(
-            self.actor.parameters(),
-            lr=self.optim_cfg.lr_actor,
-            weight_decay=self.optim_cfg.weight_decay,
-        )
-
-        self.critic_optim = optim.Adam(
-            self.critic.parameters(),
-            lr=self.optim_cfg.lr_critic,
-            weight_decay=self.optim_cfg.weight_decay,
-        )
-
-        # load model parameters
-        if self.args.load_from is not None:
-            self.load_params(self.args.load_from)
-
         self.learner = PPOLearner(
-            self.args, self.hyper_params, device, self.is_discrete
+            self.args,
+            self.hyper_params,
+            self.log_cfg,
+            self.head_cfg,
+            self.backbone_cfg,
+            self.optim_cfg,
+            device,
+            self.is_discrete,
         )
 
     def select_action(self, state: np.ndarray) -> torch.Tensor:
         """Select an action from the input space."""
         state = torch.FloatTensor(state).to(device)
-        selected_action, dist = self.actor(state)
+        selected_action, dist = self.learner.actor(state)
 
         if self.args.test and not self.is_discrete:
             selected_action = dist.mean
 
         if not self.args.test:
-            value = self.critic(state)
+            value = self.learner.critic(state)
             self.states.append(state)
             self.actions.append(selected_action)
             self.values.append(value)
@@ -174,27 +150,6 @@ class PPOAgent(Agent):
         self.epsilon = self.epsilon - (max_epsilon - min_epsilon) * min(
             1.0, t / (epsilon_decay_period + 1e-7)
         )
-
-    def load_params(self, path: str):
-        """Load model and optimizer parameters."""
-        Agent.load_params(self, path)
-
-        params = torch.load(path)
-        self.actor.load_state_dict(params["actor_state_dict"])
-        self.critic.load_state_dict(params["critic_state_dict"])
-        self.actor_optim.load_state_dict(params["actor_optim_state_dict"])
-        self.critic_optim.load_state_dict(params["critic_optim_state_dict"])
-        print("[INFO] loaded the model and optimizer from", path)
-
-    def save_params(self, n_episode: int):
-        """Save model and optimizer parameters."""
-        params = {
-            "actor_state_dict": self.actor.state_dict(),
-            "critic_state_dict": self.critic.state_dict(),
-            "actor_optim_state_dict": self.actor_optim.state_dict(),
-            "critic_optim_state_dict": self.critic_optim.state_dict(),
-        }
-        Agent._save_params(self, params, n_episode)
 
     def write_log(
         self, log_value: tuple,
@@ -245,7 +200,7 @@ class PPOAgent(Agent):
                 if (self.i_episode // self.args.save_period) != (
                     i_episode_prev // self.args.save_period
                 ):
-                    self.save_params(self.i_episode)
+                    self.learner.save_params(self.i_episode)
 
                 if done[0]:
                     n_step = self.episode_steps[0]
@@ -263,8 +218,6 @@ class PPOAgent(Agent):
                 self.episode_steps[np.where(done)] = 0
             self.next_state = next_state
             loss = self.learner.update_model(
-                (self.actor, self.critic),
-                (self.actor_optim, self.critic_optim),
                 (
                     self.states,
                     self.actions,
@@ -282,4 +235,4 @@ class PPOAgent(Agent):
 
         # termination
         self.env.close()
-        self.save_params(self.i_episode)
+        self.learner.save_params(self.i_episode)

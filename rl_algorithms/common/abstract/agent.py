@@ -53,6 +53,7 @@ class Agent(ABC):
                 f"./checkpoint/{self.env_name}/{log_cfg.agent}/{log_cfg.curr_time}/"
             )
             os.makedirs(self.ckpt_path, exist_ok=True)
+            self.log_cfg["ckpt_path"] = self.ckpt_path
 
             # save configuration
             shutil.copy(self.args.cfg_path, os.path.join(self.ckpt_path, "config.py"))
@@ -68,6 +69,7 @@ class Agent(ABC):
             .decode("ascii")
             .strip()
         )
+        self.log_cfg["sha"] = self.sha
 
     @abstractmethod
     def select_action(self, state: np.ndarray) -> Union[torch.Tensor, np.ndarray]:
@@ -80,44 +82,12 @@ class Agent(ABC):
         pass
 
     @abstractmethod
-    def load_params(self, path: str):
-        if not os.path.exists(path):
-            raise Exception(
-                f"[ERROR] the input path does not exist. Wrong path: {path}"
-            )
-
-    @abstractmethod
-    def save_params(self, n_episode: int):
-        pass
-
-    def _save_params(self, params: dict, n_episode: int):
-        """Save parameters of networks."""
-        os.makedirs(self.ckpt_path, exist_ok=True)
-
-        path = os.path.join(self.ckpt_path + self.sha + "_ep_" + str(n_episode) + ".pt")
-        torch.save(params, path)
-
-        print("[INFO] Saved the model and optimizer to", path)
-
-    @abstractmethod
     def write_log(self, log_value: tuple):  # type: ignore
         pass
 
     @abstractmethod
     def train(self):
         pass
-
-    @staticmethod
-    def numpy2floattensor(arrays: Tuple[np.ndarray]) -> Tuple[np.ndarray]:
-        """Convert numpy arrays to torch float tensor."""
-        tensors = []
-        for array in arrays:
-            tensor = torch.FloatTensor(array).to(device)
-            if torch.cuda.is_available():
-                tensor = tensor.cuda(non_blocking=True)
-            tensors.append(tensor)
-
-        return tuple(tensors)
 
     def set_wandb(self):
         """Set configuration for wandb logging."""
