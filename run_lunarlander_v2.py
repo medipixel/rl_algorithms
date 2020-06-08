@@ -25,7 +25,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--cfg-path",
         type=str,
-        default="./configs/lunarlander_v2/dqfd.py",
+        default="./configs/lunarlander_v2/dqn.py",
         help="config path",
     )
     parser.add_argument(
