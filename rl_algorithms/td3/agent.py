@@ -13,16 +13,14 @@ from typing import Tuple
 import gym
 import numpy as np
 import torch
-import torch.nn.functional as F
-import torch.optim as optim
 import wandb
 
 from rl_algorithms.common.abstract.agent import Agent
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
-import rl_algorithms.common.helper_functions as common_utils
-from rl_algorithms.common.networks.brain import Brain
+from rl_algorithms.common.helper_functions import numpy2floattensor
 from rl_algorithms.common.noise import GaussianNoise
 from rl_algorithms.registry import AGENTS
+from rl_algorithms.td3.learner import TD3Learner
 from rl_algorithms.utils.config import ConfigDict
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -43,14 +41,6 @@ class TD3Agent(Agent):
         memory (ReplayBuffer): replay memory
         exploration_noise (GaussianNoise): random noise for exploration
         target_policy_noise (GaussianNoise): random noise for target values
-        actor (nn.Module): actor model to select actions
-        critic1 (nn.Module): critic model to predict state values
-        critic2 (nn.Module): critic model to predict state values
-        critic_target1 (nn.Module): target critic model to predict state values
-        critic_target2 (nn.Module): target critic model to predict state values
-        actor_target (nn.Module): target actor model to select actions
-        critic_optim (Optimizer): optimizer for training critic
-        actor_optim (Optimizer): optimizer for training actor
         curr_state (np.ndarray): temporary storage of the current state
         total_steps (int): total step numbers
         episode_steps (int): step number of the current episode
@@ -93,6 +83,9 @@ class TD3Agent(Agent):
 
         self.state_dim = self.env.observation_space.shape
         self.action_dim = self.env.action_space.shape[0]
+        self.head_cfg.actor.configs.state_size = self.state_dim
+        self.head_cfg.critic.configs.state_size = (self.state_dim[0] + self.action_dim,)
+        self.head_cfg.actor.configs.output_size = self.action_dim
 
         # noise instance to make randomness of action
         self.exploration_noise = GaussianNoise(
@@ -111,57 +104,17 @@ class TD3Agent(Agent):
                 self.hyper_params.buffer_size, self.hyper_params.batch_size
             )
 
-        self._init_network()
-
-    def _init_network(self):
-        """Initialize networks and optimizers."""
-
-        self.head_cfg.actor.configs.state_size = self.state_dim
-        self.head_cfg.critic.configs.state_size = (self.state_dim[0] + self.action_dim,)
-        self.head_cfg.actor.configs.output_size = self.action_dim
-
-        # create actor
-        self.actor = Brain(self.backbone_cfg.actor, self.head_cfg.actor).to(device)
-        self.actor_target = Brain(self.backbone_cfg.actor, self.head_cfg.actor).to(
-            device
+        self.learner = TD3Learner(
+            self.args,
+            self.hyper_params,
+            self.log_cfg,
+            self.head_cfg,
+            self.backbone_cfg,
+            self.optim_cfg,
+            device,
+            self.noise_cfg,
+            self.target_policy_noise,
         )
-        self.actor_target.load_state_dict(self.actor.state_dict())
-
-        # create q_critic
-        self.critic1 = Brain(self.backbone_cfg.critic, self.head_cfg.critic).to(device)
-        self.critic2 = Brain(self.backbone_cfg.critic, self.head_cfg.critic).to(device)
-
-        self.critic_target1 = Brain(self.backbone_cfg.critic, self.head_cfg.critic).to(
-            device
-        )
-        self.critic_target2 = Brain(self.backbone_cfg.critic, self.head_cfg.critic).to(
-            device
-        )
-
-        self.critic_target1.load_state_dict(self.critic1.state_dict())
-        self.critic_target2.load_state_dict(self.critic2.state_dict())
-
-        # concat critic parameters to use one optim
-        critic_parameters = list(self.critic1.parameters()) + list(
-            self.critic2.parameters()
-        )
-
-        # create optimizers
-        self.actor_optim = optim.Adam(
-            self.actor.parameters(),
-            lr=self.optim_cfg.lr_actor,
-            weight_decay=self.optim_cfg.weight_decay,
-        )
-
-        self.critic_optim = optim.Adam(
-            critic_parameters,
-            lr=self.optim_cfg.lr_critic,
-            weight_decay=self.optim_cfg.weight_decay,
-        )
-
-        # load the optimizer and model parameters
-        if self.args.load_from is not None:
-            self.load_params(self.args.load_from)
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""
@@ -175,7 +128,7 @@ class TD3Agent(Agent):
             return np.array(self.env.action_space.sample())
 
         state = torch.FloatTensor(state).to(device)
-        selected_action = self.actor(state).detach().cpu().numpy()
+        selected_action = self.learner.actor(state).detach().cpu().numpy()
 
         if not self.args.test:
             noise = self.exploration_noise.sample()
@@ -195,99 +148,6 @@ class TD3Agent(Agent):
             self.memory.add((self.curr_state, action, reward, next_state, done_bool))
 
         return next_state, reward, done, info
-
-    def update_model(self) -> Tuple[torch.Tensor, ...]:
-        """Train the model after each episode."""
-        self.update_step += 1
-
-        experiences = self.memory.sample()
-        experiences = self.numpy2floattensor(experiences)
-        states, actions, rewards, next_states, dones = experiences
-        masks = 1 - dones
-
-        # get actions with noise
-        noise = torch.FloatTensor(self.target_policy_noise.sample()).to(device)
-        clipped_noise = torch.clamp(
-            noise,
-            -self.noise_cfg.target_policy_noise_clip,
-            self.noise_cfg.target_policy_noise_clip,
-        )
-        next_actions = (self.actor_target(next_states) + clipped_noise).clamp(-1.0, 1.0)
-
-        # min (Q_1', Q_2')
-        next_states_actions = torch.cat((next_states, next_actions), dim=-1)
-        next_values1 = self.critic_target1(next_states_actions)
-        next_values2 = self.critic_target2(next_states_actions)
-        next_values = torch.min(next_values1, next_values2)
-
-        # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
-        #       = r                       otherwise
-        curr_returns = rewards + self.hyper_params.gamma * next_values * masks
-        curr_returns = curr_returns.detach()
-
-        # critic loss
-        state_actions = torch.cat((states, actions), dim=-1)
-        values1 = self.critic1(state_actions)
-        values2 = self.critic2(state_actions)
-        critic1_loss = F.mse_loss(values1, curr_returns)
-        critic2_loss = F.mse_loss(values2, curr_returns)
-
-        # train critic
-        critic_loss = critic1_loss + critic2_loss
-        self.critic_optim.zero_grad()
-        critic_loss.backward()
-        self.critic_optim.step()
-
-        if self.update_step % self.hyper_params.policy_update_freq == 0:
-            # policy loss
-            actions = self.actor(states)
-            state_actions = torch.cat((states, actions), dim=-1)
-            actor_loss = -self.critic1(state_actions).mean()
-
-            # train actor
-            self.actor_optim.zero_grad()
-            actor_loss.backward()
-            self.actor_optim.step()
-
-            # update target networks
-            tau = self.hyper_params.tau
-            common_utils.soft_update(self.critic1, self.critic_target1, tau)
-            common_utils.soft_update(self.critic2, self.critic_target2, tau)
-            common_utils.soft_update(self.actor, self.actor_target, tau)
-        else:
-            actor_loss = torch.zeros(1)
-
-        return actor_loss.item(), critic1_loss.item(), critic2_loss.item()
-
-    def load_params(self, path: str):
-        """Load model and optimizer parameters."""
-        Agent.load_params(self, path)
-
-        params = torch.load(path)
-        self.critic1.load_state_dict(params["critic1"])
-        self.critic2.load_state_dict(params["critic2"])
-        self.critic_target1.load_state_dict(params["critic_target1"])
-        self.critic_target2.load_state_dict(params["critic_target2"])
-        self.critic_optim.load_state_dict(params["critic_optim"])
-        self.actor.load_state_dict(params["actor"])
-        self.actor_target.load_state_dict(params["actor_target"])
-        self.actor_optim.load_state_dict(params["actor_optim"])
-        print("[INFO] loaded the model and optimizer from", path)
-
-    def save_params(self, n_episode: int):
-        """Save model and optimizer parameters."""
-        params = {
-            "actor": self.actor.state_dict(),
-            "actor_target": self.actor_target.state_dict(),
-            "actor_optim": self.actor_optim.state_dict(),
-            "critic1": self.critic1.state_dict(),
-            "critic2": self.critic2.state_dict(),
-            "critic_target1": self.critic_target1.state_dict(),
-            "critic_target2": self.critic_target2.state_dict(),
-            "critic_optim": self.critic_optim.state_dict(),
-        }
-
-        Agent._save_params(self, params, n_episode)
 
     def write_log(self, log_value: tuple):
         """Write log about loss and score"""
@@ -351,7 +211,9 @@ class TD3Agent(Agent):
                 score += reward
 
                 if len(self.memory) >= self.hyper_params.batch_size:
-                    loss = self.update_model()
+                    experience = self.memory.sample()
+                    experience = numpy2floattensor(experience)
+                    loss = self.learner.update_model(experience)
                     loss_episode.append(loss)  # for logging
 
             t_end = time.time()
@@ -369,10 +231,10 @@ class TD3Agent(Agent):
                 )
                 self.write_log(log_value)
             if self.i_episode % self.args.save_period == 0:
-                self.save_params(self.i_episode)
+                self.learner.save_params(self.i_episode)
                 self.interim_test()
 
         # termination
         self.env.close()
-        self.save_params(self.i_episode)
+        self.learner.save_params(self.i_episode)
         self.interim_test()

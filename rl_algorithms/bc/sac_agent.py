@@ -9,15 +9,16 @@
 """
 
 import pickle
+import time
 from typing import Tuple
 
 import numpy as np
 import torch
-import torch.nn.functional as F
 import wandb
 
+from rl_algorithms.bc.sac_learner import BCSACLearner
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
-import rl_algorithms.common.helper_functions as common_utils
+from rl_algorithms.common.helper_functions import numpy2floattensor
 from rl_algorithms.registry import AGENTS, build_her
 from rl_algorithms.sac.agent import SACAgent
 
@@ -71,7 +72,17 @@ class BCSACAgent(SACAgent):
             self.memory = ReplayBuffer(self.hyper_params.buffer_size, demo_batch_size)
 
             # set hyper parameters
-            self.lambda2 = 1.0 / demo_batch_size
+            self.hyper_params["lambda2"] = 1.0 / demo_batch_size
+
+        self.learner = BCSACLearner(
+            self.args,
+            self.hyper_params,
+            self.log_cfg,
+            self.head_cfg,
+            self.backbone_cfg,
+            self.optim_cfg,
+            device,
+        )
 
     def _preprocess_state(self, state: np.ndarray) -> torch.Tensor:
         """Preprocess state so that actor selects an action."""
@@ -97,121 +108,6 @@ class BCSACAgent(SACAgent):
                 self.transitions_epi.clear()
         else:
             self.memory.add(transition)
-
-    def update_model(self) -> Tuple[torch.Tensor, ...]:
-        """Train the model after each episode."""
-        self.update_step += 1
-
-        experiences, demos = self.memory.sample(), self.demo_memory.sample()
-        experiences, demos = (
-            self.numpy2floattensor(experiences),
-            self.numpy2floattensor(demos),
-        )
-
-        states, actions, rewards, next_states, dones = experiences
-        demo_states, demo_actions, _, _, _ = demos
-        new_actions, log_prob, pre_tanh_value, mu, std = self.actor(states)
-        pred_actions, _, _, _, _ = self.actor(demo_states)
-
-        # train alpha
-        if self.hyper_params.auto_entropy_tuning:
-            alpha_loss = (
-                -self.log_alpha * (log_prob + self.target_entropy).detach()
-            ).mean()
-
-            self.alpha_optim.zero_grad()
-            alpha_loss.backward()
-            self.alpha_optim.step()
-
-            alpha = self.log_alpha.exp()
-        else:
-            alpha_loss = torch.zeros(1)
-            alpha = self.hyper_params.w_entropy
-
-        # Q function loss
-        masks = 1 - dones
-        states_actions = torch.cat((states, actions), dim=-1)
-        q_1_pred = self.qf_1(states_actions)
-        q_2_pred = self.qf_2(states_actions)
-        v_target = self.vf_target(next_states)
-        q_target = rewards + self.hyper_params.gamma * v_target * masks
-        qf_1_loss = F.mse_loss(q_1_pred, q_target.detach())
-        qf_2_loss = F.mse_loss(q_2_pred, q_target.detach())
-
-        # V function loss
-        states_actions = torch.cat((states, new_actions), dim=-1)
-        v_pred = self.vf(states)
-        q_pred = torch.min(self.qf_1(states_actions), self.qf_2(states_actions))
-        v_target = q_pred - alpha * log_prob
-        vf_loss = F.mse_loss(v_pred, v_target.detach())
-
-        # train Q functions
-        self.qf_1_optim.zero_grad()
-        qf_1_loss.backward()
-        self.qf_1_optim.step()
-
-        self.qf_2_optim.zero_grad()
-        qf_2_loss.backward()
-        self.qf_2_optim.step()
-
-        # train V function
-        self.vf_optim.zero_grad()
-        vf_loss.backward()
-        self.vf_optim.step()
-
-        # update actor
-        actor_loss = torch.zeros(1)
-        n_qf_mask = 0
-        if self.update_step % self.hyper_params.policy_update_freq == 0:
-            # bc loss
-            qf_mask = torch.gt(
-                self.qf_1(torch.cat((demo_states, demo_actions), dim=-1)),
-                self.qf_1(torch.cat((demo_states, pred_actions), dim=-1)),
-            ).to(device)
-            qf_mask = qf_mask.float()
-            n_qf_mask = int(qf_mask.sum().item())
-
-            if n_qf_mask == 0:
-                bc_loss = torch.zeros(1, device=device)
-            else:
-                bc_loss = (
-                    torch.mul(pred_actions, qf_mask) - torch.mul(demo_actions, qf_mask)
-                ).pow(2).sum() / n_qf_mask
-
-            # actor loss
-            advantage = q_pred - v_pred.detach()
-            actor_loss = (alpha * log_prob - advantage).mean()
-            actor_loss = self.hyper_params.lambda1 * actor_loss + self.lambda2 * bc_loss
-
-            # regularization
-            mean_reg, std_reg = (
-                self.hyper_params.w_mean_reg * mu.pow(2).mean(),
-                self.hyper_params.w_std_reg * std.pow(2).mean(),
-            )
-            pre_activation_reg = self.hyper_params.w_pre_activation_reg * (
-                pre_tanh_value.pow(2).sum(dim=-1).mean()
-            )
-            actor_reg = mean_reg + std_reg + pre_activation_reg
-
-            # actor loss + regularization
-            actor_loss += actor_reg
-
-            # train actor
-            self.actor_optim.zero_grad()
-            actor_loss.backward()
-            self.actor_optim.step()
-
-            # update target networks
-            common_utils.soft_update(self.vf, self.vf_target, self.hyper_params.tau)
-
-        return (
-            actor_loss.item(),
-            qf_1_loss.item(),
-            qf_2_loss.item(),
-            vf_loss.item(),
-            alpha_loss.item(),
-            n_qf_mask,
-        )
 
     def write_log(self, log_value: tuple):
         """Write log about loss and score"""
@@ -251,3 +147,70 @@ class BCSACAgent(SACAgent):
                     "time per each step": avg_time_cost,
                 }
             )
+
+    def train(self):
+        """Train the agent."""
+        # logger
+        if self.args.log:
+            self.set_wandb()
+            # wandb.watch([self.actor, self.vf, self.qf_1, self.qf_2], log="parameters")
+
+        # pre-training if needed
+        self.pretrain()
+
+        for self.i_episode in range(1, self.args.episode_num + 1):
+            state = self.env.reset()
+            done = False
+            score = 0
+            self.episode_step = 0
+            loss_episode = list()
+
+            t_begin = time.time()
+
+            while not done:
+                if self.args.render and self.i_episode >= self.args.render_after:
+                    self.env.render()
+
+                action = self.select_action(state)
+                next_state, reward, done, _ = self.step(action)
+                self.total_step += 1
+                self.episode_step += 1
+
+                state = next_state
+                score += reward
+
+                # training
+                if len(self.memory) >= self.hyper_params.batch_size:
+                    for _ in range(self.hyper_params.multiple_update):
+                        experience = self.memory.sample()
+                        demos = self.demo_memory.sample()
+                        experience, demo = (
+                            numpy2floattensor(experience),
+                            numpy2floattensor(demos),
+                        )
+                        loss = self.learner.update_model(experience, demo)
+                        loss_episode.append(loss)  # for logging
+
+            t_end = time.time()
+            avg_time_cost = (t_end - t_begin) / self.episode_step
+
+            # logging
+            if loss_episode:
+                avg_loss = np.vstack(loss_episode).mean(axis=0)
+                log_value = (
+                    self.i_episode,
+                    avg_loss,
+                    score,
+                    self.hyper_params.policy_update_freq,
+                    avg_time_cost,
+                )
+                self.write_log(log_value)
+
+            if self.i_episode % self.args.save_period == 0:
+                self.learner.save_params(self.i_episode)
+                self.interim_test()
+
+        # termination
+        self.env.close()
+        self.learner.save_params(self.i_episode)
+        self.interim_test()

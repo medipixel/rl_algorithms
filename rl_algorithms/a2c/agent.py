@@ -11,13 +11,10 @@ from typing import Tuple
 import gym
 import numpy as np
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
 import wandb
 
+from rl_algorithms.a2c.learner import A2CLearner
 from rl_algorithms.common.abstract.agent import Agent
-from rl_algorithms.common.networks.brain import Brain
 from rl_algorithms.registry import AGENTS
 from rl_algorithms.utils.config import ConfigDict
 
@@ -68,48 +65,31 @@ class A2CAgent(Agent):
         self.head_cfg = head
         self.optim_cfg = optim_cfg
 
-        self.state_dim = self.env.observation_space.shape
-        self.action_dim = self.env.action_space.shape[0]
-
-        self._init_network()
-
-    def _init_network(self):
-        # create models
-
         self.head_cfg.actor.configs.state_size = (
             self.head_cfg.critic.configs.state_size
-        ) = self.state_dim
-        self.head_cfg.actor.configs.output_size = self.action_dim
+        ) = self.env.observation_space.shape
+        self.head_cfg.actor.configs.output_size = self.env.action_space.shape[0]
 
-        self.actor = Brain(self.backbone_cfg.actor, self.head_cfg.actor).to(device)
-        self.critic = Brain(self.backbone_cfg.critic, self.head_cfg.critic).to(device)
-
-        # create optimizer
-        self.actor_optim = optim.Adam(
-            self.actor.parameters(),
-            lr=self.optim_cfg.lr_actor,
-            weight_decay=self.optim_cfg.weight_decay,
+        self.learner = A2CLearner(
+            self.args,
+            self.hyper_params,
+            self.log_cfg,
+            self.head_cfg,
+            self.backbone_cfg,
+            self.optim_cfg,
+            device,
         )
-
-        self.critic_optim = optim.Adam(
-            self.critic.parameters(),
-            lr=self.optim_cfg.lr_critic,
-            weight_decay=self.optim_cfg.weight_decay,
-        )
-
-        if self.args.load_from is not None:
-            self.load_params(self.args.load_from)
 
     def select_action(self, state: np.ndarray) -> torch.Tensor:
         """Select an action from the input space."""
         state = torch.FloatTensor(state).to(device)
 
-        selected_action, dist = self.actor(state)
+        selected_action, dist = self.learner.actor(state)
 
         if self.args.test:
             selected_action = dist.mean
         else:
-            predicted_value = self.critic(state)
+            predicted_value = self.learner.critic(state)
             log_prob = dist.log_prob(selected_action).sum(dim=-1)
             self.transition = []
             self.transition.extend([log_prob, predicted_value])
@@ -129,63 +109,6 @@ class A2CAgent(Agent):
             self.transition.extend([next_state, reward, done_bool])
 
         return next_state, reward, done, info
-
-    def update_model(self) -> Tuple[torch.Tensor, ...]:
-        log_prob, pred_value, next_state, reward, done = self.transition
-        next_state = torch.FloatTensor(next_state).to(device)
-
-        # Q_t   = r + gamma * V(s_{t+1})  if state != Terminal
-        #       = r                       otherwise
-        mask = 1 - done
-        next_value = self.critic(next_state).detach()
-        q_value = reward + self.hyper_params.gamma * next_value * mask
-        q_value = q_value.to(device)
-
-        # advantage = Q_t - V(s_t)
-        advantage = q_value - pred_value
-
-        # calculate loss at the current step
-        policy_loss = -advantage.detach() * log_prob  # adv. is not backpropagated
-        policy_loss += self.hyper_params.w_entropy * -log_prob  # entropy
-        value_loss = F.smooth_l1_loss(pred_value, q_value.detach())
-
-        # train
-        gradient_clip_ac = self.hyper_params.gradient_clip_ac
-        gradient_clip_cr = self.hyper_params.gradient_clip_cr
-
-        self.actor_optim.zero_grad()
-        policy_loss.backward()
-        nn.utils.clip_grad_norm_(self.actor.parameters(), gradient_clip_ac)
-        self.actor_optim.step()
-
-        self.critic_optim.zero_grad()
-        value_loss.backward()
-        nn.utils.clip_grad_norm_(self.critic.parameters(), gradient_clip_cr)
-        self.critic_optim.step()
-
-        return policy_loss.item(), value_loss.item()
-
-    def load_params(self, path: str):
-        """Load model and optimizer parameters."""
-        Agent.load_params(self, path)
-
-        params = torch.load(path)
-        self.actor.load_state_dict(params["actor_state_dict"])
-        self.critic.load_state_dict(params["critic_state_dict"])
-        self.actor_optim.load_state_dict(params["actor_optim_state_dict"])
-        self.critic_optim.load_state_dict(params["critic_optim_state_dict"])
-        print("[INFO] Loaded the model and optimizer from", path)
-
-    def save_params(self, n_episode: int):
-        """Save model and optimizer parameters."""
-        params = {
-            "actor_state_dict": self.actor.state_dict(),
-            "critic_state_dict": self.critic.state_dict(),
-            "actor_optim_state_dict": self.actor_optim.state_dict(),
-            "critic_optim_state_dict": self.critic_optim.state_dict(),
-        }
-
-        Agent._save_params(self, params, n_episode)
 
     def write_log(self, log_value: tuple):
         i, score, policy_loss, value_loss = log_value
@@ -230,7 +153,7 @@ class A2CAgent(Agent):
                 next_state, reward, done, _ = self.step(action)
                 self.episode_step += 1
 
-                policy_loss, value_loss = self.update_model()
+                policy_loss, value_loss = self.learner.update_model(self.transition)
 
                 policy_loss_episode.append(policy_loss)
                 value_loss_episode.append(value_loss)
@@ -245,10 +168,10 @@ class A2CAgent(Agent):
             self.write_log(log_value)
 
             if self.i_episode % self.args.save_period == 0:
-                self.save_params(self.i_episode)
+                self.learner.save_params(self.i_episode)
                 self.interim_test()
 
         # termination
         self.env.close()
-        self.save_params(self.i_episode)
+        self.learner.save_params(self.i_episode)
         self.interim_test()

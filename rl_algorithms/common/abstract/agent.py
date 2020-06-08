@@ -9,7 +9,6 @@ from abc import ABC, abstractmethod
 import argparse
 import os
 import shutil
-import subprocess
 from typing import Tuple, Union
 
 import cv2
@@ -31,9 +30,7 @@ class Agent(ABC):
     Attributes:
         env (gym.Env): openAI Gym environment
         args (argparse.Namespace): arguments including hyperparameters and training settings
-        log_cfg (ConfigDict): configuration for saving log and checkpoint
-        env_name (str) : gym env name for logging
-        sha (str): sha code of current git commit
+        log_cfg (ConfigDict): configuration for saving log
         state_dim (int): dimension of states
         action_dim (int): dimension of actions
         is_discrete (bool): shows whether the action is discrete
@@ -45,29 +42,12 @@ class Agent(ABC):
         self.args = args
         self.env = env
         self.log_cfg = log_cfg
-
-        self.env_name = env.spec.id if env.spec is not None else env.name
-
-        if not self.args.test:
-            self.ckpt_path = (
-                f"./checkpoint/{self.env_name}/{log_cfg.agent}/{log_cfg.curr_time}/"
-            )
-            os.makedirs(self.ckpt_path, exist_ok=True)
-
-            # save configuration
-            shutil.copy(self.args.cfg_path, os.path.join(self.ckpt_path, "config.py"))
+        self.log_cfg.env_name = env.spec.id if env.spec is not None else env.name
 
         if isinstance(env.action_space, Discrete):
             self.is_discrete = True
         else:
             self.is_discrete = False
-
-        # for logging
-        self.sha = (
-            subprocess.check_output(["git", "rev-parse", "--short", "HEAD"])[:-1]
-            .decode("ascii")
-            .strip()
-        )
 
     @abstractmethod
     def select_action(self, state: np.ndarray) -> Union[torch.Tensor, np.ndarray]:
@@ -80,30 +60,6 @@ class Agent(ABC):
         pass
 
     @abstractmethod
-    def update_model(self) -> Tuple[torch.Tensor, ...]:
-        pass
-
-    @abstractmethod
-    def load_params(self, path: str):
-        if not os.path.exists(path):
-            raise Exception(
-                f"[ERROR] the input path does not exist. Wrong path: {path}"
-            )
-
-    @abstractmethod
-    def save_params(self, n_episode: int):
-        pass
-
-    def _save_params(self, params: dict, n_episode: int):
-        """Save parameters of networks."""
-        os.makedirs(self.ckpt_path, exist_ok=True)
-
-        path = os.path.join(self.ckpt_path + self.sha + "_ep_" + str(n_episode) + ".pt")
-        torch.save(params, path)
-
-        print("[INFO] Saved the model and optimizer to", path)
-
-    @abstractmethod
     def write_log(self, log_value: tuple):  # type: ignore
         pass
 
@@ -111,22 +67,10 @@ class Agent(ABC):
     def train(self):
         pass
 
-    @staticmethod
-    def numpy2floattensor(arrays: Tuple[np.ndarray]) -> Tuple[np.ndarray]:
-        """Convert numpy arrays to torch float tensor."""
-        tensors = []
-        for array in arrays:
-            tensor = torch.FloatTensor(array).to(device)
-            if torch.cuda.is_available():
-                tensor = tensor.cuda(non_blocking=True)
-            tensors.append(tensor)
-
-        return tuple(tensors)
-
     def set_wandb(self):
         """Set configuration for wandb logging."""
         wandb.init(
-            project=self.env_name,
+            project=self.log_cfg.env_name,
             name=f"{self.log_cfg.agent}/{self.log_cfg.curr_time}",
         )
         wandb.config.update(vars(self.args))

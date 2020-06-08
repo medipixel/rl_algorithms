@@ -8,17 +8,16 @@
 
 import pickle
 import time
-from typing import Tuple
 
 import numpy as np
 import torch
-from torch.nn.utils import clip_grad_norm_
 import wandb
 
 from rl_algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
 import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.dqn.agent import DQNAgent
+from rl_algorithms.fd.dqn_learner import DQfDLearner
 from rl_algorithms.registry import AGENTS
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -62,6 +61,16 @@ class DQfDAgent(DQNAgent):
                 epsilon_d=self.hyper_params.per_eps_demo,
             )
 
+        self.learner = DQfDLearner(
+            self.args,
+            self.hyper_params,
+            self.log_cfg,
+            self.head_cfg,
+            self.backbone_cfg,
+            self.optim_cfg,
+            device,
+        )
+
     def _load_demos(self) -> list:
         """Load expert's demonstrations."""
         # load demo replay memory
@@ -69,91 +78,6 @@ class DQfDAgent(DQNAgent):
             demos = pickle.load(f)
 
         return demos
-
-    def update_model(self) -> Tuple[torch.Tensor, ...]:
-        """Train the model after each episode."""
-        experiences_1 = self.memory.sample()
-        experiences_1 = self.numpy2floattensor(experiences_1[:6]) + experiences_1[6:]
-
-        weights, indices, eps_d = experiences_1[-3:]
-        actions = experiences_1[1]
-
-        # 1 step loss
-        gamma = self.hyper_params.gamma
-        dq_loss_element_wise, q_values = self.loss_fn(
-            self.dqn, self.dqn_target, experiences_1, gamma, self.head_cfg
-        )
-        dq_loss = torch.mean(dq_loss_element_wise * weights)
-
-        # n step loss
-        if self.use_n_step:
-            experiences_n = self.memory_n.sample(indices)
-            experiences_n = self.numpy2floattensor(experiences_n)
-
-            gamma = self.hyper_params.gamma ** self.hyper_params.n_step
-            dq_loss_n_element_wise, q_values_n = self.loss_fn(
-                self.dqn, self.dqn_target, experiences_n, gamma, self.head_cfg
-            )
-
-            # to update loss and priorities
-            q_values = 0.5 * (q_values + q_values_n)
-            dq_loss_element_wise += dq_loss_n_element_wise * self.hyper_params.lambda1
-            dq_loss = torch.mean(dq_loss_element_wise * weights)
-
-        # supervised loss using demo for only demo transitions
-        demo_idxs = np.where(eps_d != 0.0)
-        n_demo = demo_idxs[0].size
-        if n_demo != 0:  # if 1 or more demos are sampled
-            # get margin for each demo transition
-            action_idxs = actions[demo_idxs].long()
-            margin = torch.ones(q_values.size()) * self.hyper_params.margin
-            margin[demo_idxs, action_idxs] = 0.0  # demo actions have 0 margins
-            margin = margin.to(device)
-
-            # calculate supervised loss
-            demo_q_values = q_values[demo_idxs, action_idxs].squeeze()
-            supervised_loss = torch.max(q_values + margin, dim=-1)[0]
-            supervised_loss = supervised_loss[demo_idxs] - demo_q_values
-            supervised_loss = torch.mean(supervised_loss) * self.hyper_params.lambda2
-        else:  # no demo sampled
-            supervised_loss = torch.zeros(1, device=device)
-
-        # q_value regularization
-        q_regular = torch.norm(q_values, 2).mean() * self.hyper_params.w_q_reg
-
-        # total loss
-        loss = dq_loss + supervised_loss + q_regular
-
-        # train dqn
-        self.dqn_optim.zero_grad()
-        loss.backward()
-        clip_grad_norm_(self.dqn.parameters(), self.hyper_params.gradient_clip)
-        self.dqn_optim.step()
-
-        # update target networks
-        common_utils.soft_update(self.dqn, self.dqn_target, self.hyper_params.tau)
-
-        # update priorities in PER
-        loss_for_prior = dq_loss_element_wise.detach().cpu().numpy().squeeze()
-        new_priorities = loss_for_prior + self.hyper_params.per_eps
-        new_priorities += eps_d
-        self.memory.update_priorities(indices, new_priorities)
-
-        # increase beta
-        fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)
-        self.per_beta: float = self.per_beta + fraction * (1.0 - self.per_beta)
-
-        if self.head_cfg.configs.use_noisy_net:
-            self.dqn.head.reset_noise()
-            self.dqn_target.head.reset_noise()
-
-        return (
-            loss.item(),
-            dq_loss.item(),
-            supervised_loss.item(),
-            q_values.mean().item(),
-            n_demo,
-        )
 
     def write_log(self, log_value: tuple):
         """Write log about loss and score"""
@@ -198,7 +122,9 @@ class DQfDAgent(DQNAgent):
         print("[INFO] Pre-Train %d step." % pretrain_step)
         for i_step in range(1, pretrain_step + 1):
             t_begin = time.time()
-            loss = self.update_model()
+            experience = self.sample_experience()
+            info = self.learner.update_model(experience)
+            loss = info[0:5]
             t_end = time.time()
             pretrain_loss.append(loss)  # for logging
 
@@ -209,3 +135,73 @@ class DQfDAgent(DQNAgent):
                 log_value = (0, avg_loss, 0.0, t_end - t_begin)
                 self.write_log(log_value)
         print("[INFO] Pre-Train Complete!\n")
+
+    def train(self):
+        """Train the agent."""
+        # logger
+        if self.args.log:
+            self.set_wandb()
+            # wandb.watch([self.dqn], log="parameters")
+
+        # pre-training if needed
+        self.pretrain()
+
+        for self.i_episode in range(1, self.args.episode_num + 1):
+            state = self.env.reset()
+            self.episode_step = 0
+            losses = list()
+            done = False
+            score = 0
+
+            t_begin = time.time()
+
+            while not done:
+                if self.args.render and self.i_episode >= self.args.render_after:
+                    self.env.render()
+
+                action = self.select_action(state)
+                next_state, reward, done, _ = self.step(action)
+                self.total_step += 1
+                self.episode_step += 1
+
+                if len(self.memory) >= self.hyper_params.update_starts_from:
+                    if self.total_step % self.hyper_params.train_freq == 0:
+                        for _ in range(self.hyper_params.multiple_update):
+                            experience = self.sample_experience()
+                            info = self.learner.update_model(experience)
+                            loss = info[0:5]
+                            indices, new_priorities = info[5:7]
+                            losses.append(loss)  # for logging
+                            self.memory.update_priorities(indices, new_priorities)
+
+                    # decrease epsilon
+                    self.epsilon = max(
+                        self.epsilon
+                        - (self.max_epsilon - self.min_epsilon)
+                        * self.hyper_params.epsilon_decay,
+                        self.min_epsilon,
+                    )
+
+                    # increase priority beta
+                    fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)
+                    self.per_beta = self.per_beta + fraction * (1.0 - self.per_beta)
+
+                state = next_state
+                score += reward
+
+            t_end = time.time()
+            avg_time_cost = (t_end - t_begin) / self.episode_step
+
+            if losses:
+                avg_loss = np.vstack(losses).mean(axis=0)
+                log_value = (self.i_episode, avg_loss, score, avg_time_cost)
+                self.write_log(log_value)
+
+            if self.i_episode % self.args.save_period == 0:
+                self.learner.save_params(self.i_episode)
+                self.interim_test()
+
+        # termination
+        self.env.close()
+        self.learner.save_params(self.i_episode)
+        self.interim_test()

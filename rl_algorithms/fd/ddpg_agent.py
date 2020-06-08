@@ -14,12 +14,13 @@ from typing import Tuple
 
 import numpy as np
 import torch
-import torch.nn as nn
 
 from rl_algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
 import rl_algorithms.common.helper_functions as common_utils
+from rl_algorithms.common.helper_functions import numpy2floattensor
 from rl_algorithms.ddpg.agent import DDPGAgent
+from rl_algorithms.fd.ddpg_learner import DDPGfDLearner
 from rl_algorithms.registry import AGENTS
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -71,6 +72,16 @@ class DDPGfDAgent(DDPGAgent):
                 epsilon_d=self.hyper_params.per_eps_demo,
             )
 
+        self.learner = DDPGfDLearner(
+            self.args,
+            self.hyper_params,
+            self.log_cfg,
+            self.head_cfg,
+            self.backbone_cfg,
+            self.optim_cfg,
+            device,
+        )
+
     def _add_transition_to_memory(self, transition: Tuple[np.ndarray, ...]):
         """Add 1 step and n step transitions to memory."""
         # add n-step transition
@@ -82,86 +93,14 @@ class DDPGfDAgent(DDPGAgent):
         if transition:
             self.memory.add(transition)
 
-    def _get_critic_loss(
-        self, experiences: Tuple[torch.Tensor, ...], gamma: float
-    ) -> torch.Tensor:
-        """Return element-wise critic loss."""
-        states, actions, rewards, next_states, dones = experiences[:5]
-
-        # G_t   = r + gamma * v(s_{t+1})  if state != Terminal
-        #       = r                       otherwise
-        masks = 1 - dones
-        next_actions = self.actor_target(next_states)
-        next_states_actions = torch.cat((next_states, next_actions), dim=-1)
-        next_values = self.critic_target(next_states_actions)
-        curr_returns = rewards + gamma * next_values * masks
-        curr_returns = curr_returns.to(device).detach()
-
-        # train critic
-        values = self.critic(torch.cat((states, actions), dim=-1))
-        critic_loss_element_wise = (values - curr_returns).pow(2)
-
-        return critic_loss_element_wise
-
-    def update_model(self) -> Tuple[torch.Tensor, ...]:
-        """Train the model after each episode."""
-        experiences_1 = self.memory.sample(self.per_beta)
-        experiences_1 = self.numpy2floattensor(experiences_1[:6]) + experiences_1[6:]
-
-        states, actions = experiences_1[:2]
-        weights, indices, eps_d = experiences_1[-3:]
-        gamma = self.hyper_params.gamma
-
-        # train critic
-        gradient_clip_ac = self.hyper_params.gradient_clip_ac
-        gradient_clip_cr = self.hyper_params.gradient_clip_cr
-
-        critic_loss_element_wise = self._get_critic_loss(experiences_1, gamma)
-        critic_loss = torch.mean(critic_loss_element_wise * weights)
-
+    def sample_experience(self) -> Tuple[torch.Tensor, ...]:
+        experience_1 = self.memory.sample(self.per_beta)
         if self.use_n_step:
-            experiences_n = self.memory_n.sample(indices)
-            experiences_n = self.numpy2floattensor(experiences_n)
-            gamma = gamma ** self.hyper_params.n_step
+            indices = experience_1[-2]
+            experience_n = self.memory_n.sample(indices)
+            return numpy2floattensor(experience_1), numpy2floattensor(experience_n)
 
-            critic_loss_n_element_wise = self._get_critic_loss(experiences_n, gamma)
-            # to update loss and priorities
-            critic_loss_element_wise += (
-                critic_loss_n_element_wise * self.hyper_params.lambda1
-            )
-            critic_loss = torch.mean(critic_loss_element_wise * weights)
-
-        self.critic_optim.zero_grad()
-        critic_loss.backward()
-        nn.utils.clip_grad_norm_(self.critic.parameters(), gradient_clip_cr)
-        self.critic_optim.step()
-
-        # train actor
-        actions = self.actor(states)
-        actor_loss_element_wise = -self.critic(torch.cat((states, actions), dim=-1))
-        actor_loss = torch.mean(actor_loss_element_wise * weights)
-        self.actor_optim.zero_grad()
-        actor_loss.backward()
-        nn.utils.clip_grad_norm_(self.actor.parameters(), gradient_clip_ac)
-        self.actor_optim.step()
-
-        # update target networks
-        common_utils.soft_update(self.actor, self.actor_target, self.hyper_params.tau)
-        common_utils.soft_update(self.critic, self.critic_target, self.hyper_params.tau)
-
-        # update priorities
-        new_priorities = critic_loss_element_wise
-        new_priorities += self.hyper_params.lambda3 * actor_loss_element_wise.pow(2)
-        new_priorities += self.hyper_params.per_eps
-        new_priorities = new_priorities.data.cpu().numpy().squeeze()
-        new_priorities += eps_d
-        self.memory.update_priorities(indices, new_priorities)
-
-        # increase beta
-        fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)
-        self.per_beta = self.per_beta + fraction * (1.0 - self.per_beta)
-
-        return actor_loss.item(), critic_loss.item()
+        return numpy2floattensor(experience_1)
 
     def pretrain(self):
         """Pretraining steps."""
@@ -170,7 +109,9 @@ class DDPGfDAgent(DDPGAgent):
         print("[INFO] Pre-Train %d step." % pretrain_step)
         for i_step in range(1, pretrain_step + 1):
             t_begin = time.time()
-            loss = self.update_model()
+            experience = self.sample_experience()
+            info = self.learner.update_model(experience)
+            loss = info[0:2]
             t_end = time.time()
             pretrain_loss.append(loss)  # for logging
 
@@ -181,3 +122,66 @@ class DDPGfDAgent(DDPGAgent):
                 log_value = (0, avg_loss, 0, t_end - t_begin)
                 self.write_log(log_value)
         print("[INFO] Pre-Train Complete!\n")
+
+    def train(self):
+        """Train the agent."""
+        # logger
+        if self.args.log:
+            self.set_wandb()
+            # wandb.watch([self.actor, self.critic], log="parameters")
+
+        # pre-training if needed
+        self.pretrain()
+
+        for self.i_episode in range(1, self.args.episode_num + 1):
+            state = self.env.reset()
+            done = False
+            score = 0
+            self.episode_step = 0
+            losses = list()
+
+            t_begin = time.time()
+
+            while not done:
+                if self.args.render and self.i_episode >= self.args.render_after:
+                    self.env.render()
+
+                action = self.select_action(state)
+                next_state, reward, done, _ = self.step(action)
+                self.total_step += 1
+                self.episode_step += 1
+
+                if len(self.memory) >= self.hyper_params.batch_size:
+                    for _ in range(self.hyper_params.multiple_update):
+                        experience = self.sample_experience()
+                        info = self.learner.update_model(experience)
+                        loss = info[0:2]
+                        indices, new_priorities = info[2:4]
+                        losses.append(loss)  # for logging
+                        self.memory.update_priorities(indices, new_priorities)
+
+                # increase priority beta
+                fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)
+                self.per_beta = self.per_beta + fraction * (1.0 - self.per_beta)
+
+                state = next_state
+                score += reward
+
+            t_end = time.time()
+            avg_time_cost = (t_end - t_begin) / self.episode_step
+
+            # logging
+            if losses:
+                avg_loss = np.vstack(losses).mean(axis=0)
+                log_value = (self.i_episode, avg_loss, score, avg_time_cost)
+                self.write_log(log_value)
+                losses.clear()
+
+            if self.i_episode % self.args.save_period == 0:
+                self.learner.save_params(self.i_episode)
+                self.interim_test()
+
+        # termination
+        self.env.close()
+        self.learner.save_params(self.i_episode)
+        self.interim_test()
