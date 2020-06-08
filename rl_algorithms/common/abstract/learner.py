@@ -32,13 +32,12 @@ class Learner(ABC):
     ):
         self.args = args
         self.hyper_params = hyper_params
-        self.log_cfg = log_cfg
         self.device = device
 
         if not self.args.test:
             self.ckpt_path = (
                 "./checkpoint/"
-                f"{self.log_cfg.env_name}/{log_cfg.agent}/{log_cfg.curr_time}/"
+                f"{log_cfg.env_name}/{log_cfg.agent}/{log_cfg.curr_time}/"
             )
             os.makedirs(self.ckpt_path, exist_ok=True)
 
