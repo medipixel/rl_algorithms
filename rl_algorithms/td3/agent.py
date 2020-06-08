@@ -189,8 +189,14 @@ class TD3Agent(Agent):
 
         if not self.args.test:
             # if last state is not terminal state in episode, done is false
-            done_bool = (
-                False if self.episode_step == self.args.max_episode_steps else done
+            done_bool = np.asarray(
+                [
+                    int(
+                        False
+                        if self.episode_step == self.args.max_episode_steps
+                        else done
+                    )
+                ]
             )
             self.memory.add((self.curr_state, action, reward, next_state, done_bool))
 

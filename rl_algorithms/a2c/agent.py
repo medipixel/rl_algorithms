@@ -123,9 +123,15 @@ class A2CAgent(Agent):
         next_state, reward, done, info = self.env.step(action)
 
         if not self.args.test:
-            done_bool = done
-            if self.episode_step == self.args.max_episode_steps:
-                done_bool = False
+            done_bool = np.asarray(
+                [
+                    int(
+                        False
+                        if self.episode_step == self.args.max_episode_steps
+                        else done
+                    )
+                ]
+            )
             self.transition.extend([next_state, reward, done_bool])
 
         return next_state, reward, done, info

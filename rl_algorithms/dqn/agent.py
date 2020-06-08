@@ -175,8 +175,14 @@ class DQNAgent(Agent):
 
         if not self.args.test:
             # if the last state is not a terminal state, store done as false
-            done_bool = (
-                False if self.episode_step == self.args.max_episode_steps else done
+            done_bool = np.asarray(
+                [
+                    int(
+                        False
+                        if self.episode_step == self.args.max_episode_steps
+                        else done
+                    )
+                ]
             )
 
             transition = (self.curr_state, action, reward, next_state, done_bool)
