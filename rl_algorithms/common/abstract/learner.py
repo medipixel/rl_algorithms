@@ -30,6 +30,7 @@ class Learner(ABC):
         log_cfg: ConfigDict,
         device: torch.device,
     ):
+        """Initialize."""
         self.args = args
         self.hyper_params = hyper_params
         self.device = device
