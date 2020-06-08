@@ -6,7 +6,7 @@ from rl_algorithms.common.networks.brain import Brain
 from rl_algorithms.utils.config import ConfigDict
 
 
-class DistributedLearner(Learner):
+class DistributedLearnerWrapper(Learner):
     """Base wrapper class for distributed learners
 
     Attributes:
@@ -24,6 +24,7 @@ class DistributedLearner(Learner):
 
     def _init_network(self):
         """Initialize learner networks and optimizers"""
+        # no need to call this fn since the class takes initialized learner as input
         self.learner._init_network()
 
     @abstractmethod
@@ -42,9 +43,9 @@ class DistributedLearner(Learner):
         """Load params at start"""
         self.learner.load_params(path)
 
-    def get_policy(self) -> Brain:
-        """Get the learner network that will be used as worker's policy"""
-        return self.learner.get_policy()
+    def get_state_dicts(self) -> Union[Brain, Tuple[Brain]]:
+        """Get the learner state_dicts that worker loads"""
+        return self.learner.get_state_dicts()
 
     @abstractmethod
     def run(self):
