@@ -248,7 +248,7 @@ class DQNLoss:
 
 
 def slice_r2d2_arguments(experiences, head_cfg):
-    states, actions, rewards, hiddens, dones, _ = experiences[:6]
+    states, actions, rewards, hiddens, dones = experiences[:5]
 
     burnin_states = states[:, 1 : head_cfg.configs.burn_in_step]
     target_burnin_states = states[:, 1 : head_cfg.configs.burn_in_step + 1]
@@ -278,8 +278,9 @@ def slice_r2d2_arguments(experiences, head_cfg):
     agent_rewards = rewards[:, head_cfg.configs.burn_in_step : -1].unsqueeze(-1)
     prev_rewards = rewards[:, head_cfg.configs.burn_in_step - 1 : -2].unsqueeze(-1)
     target_prev_rewards = agent_rewards
-
-    dones = dones[:, head_cfg.configs.burn_in_step : -1].unsqueeze(-1)
+    burnin_dones = dones[:, 1 : head_cfg.configs.burn_in_step].unsqueeze(-1)
+    burnin_target_dones = dones[:, 1 : head_cfg.configs.burn_in_step + 1].unsqueeze(-1)
+    agent_dones = dones[:, head_cfg.configs.burn_in_step : -1].unsqueeze(-1)
     init_rnn_state = hiddens[:, 0].squeeze(1).contiguous()
 
     return (
@@ -297,7 +298,9 @@ def slice_r2d2_arguments(experiences, head_cfg):
         agent_rewards,
         prev_rewards,
         target_prev_rewards,
-        dones,
+        burnin_dones,
+        burnin_target_dones,
+        agent_dones,
         init_rnn_state,
     )
 
@@ -329,7 +332,9 @@ class R2D1DQNLoss:
             agent_rewards,
             prev_rewards,
             target_prev_rewards,
-            dones,
+            burnin_dones,
+            burnin_target_dones,
+            agent_dones,
             init_rnn_state,
         ) = slice_r2d2_arguments(experiences, head_cfg)
 
@@ -347,9 +352,12 @@ class R2D1DQNLoss:
             init_rnn_state = torch.transpose(init_rnn_state, 0, 1)
             target_rnn_state = torch.transpose(target_rnn_state, 0, 1)
 
-        burnin_invalid_mask = valid_from_done(dones[:, : head_cfg.configs.burn_in_step])
+        burnin_invalid_mask = valid_from_done(burnin_dones.transpose(0, 1))
+        burnin_target_invalid_mask = valid_from_done(
+            burnin_target_dones.transpose(0, 1)
+        )
         init_rnn_state[burnin_invalid_mask] = 0
-        target_rnn_state[burnin_invalid_mask] = 0
+        target_rnn_state[burnin_target_invalid_mask] = 0
 
         qs, _ = model(agent_states, init_rnn_state, prev_actions, prev_rewards)
         q = qs.gather(-1, agent_actions)
@@ -366,7 +374,7 @@ class R2D1DQNLoss:
             next_a = torch.argmax(next_qs, dim=-1)
             target_q = target_qs.gather(-1, next_a.unsqueeze(-1))
 
-        target = agent_rewards + gamma * target_q
+        target = agent_rewards + gamma * target_q * (1 - agent_dones)
         dq_loss_element_wise = F.smooth_l1_loss(q, target.detach(), reduction="none")
         delta = abs(torch.mean(dq_loss_element_wise, dim=1))
         return delta, q
@@ -398,7 +406,9 @@ class R2D1IQNLoss:
             agent_rewards,
             prev_rewards,
             target_prev_rewards,
-            dones,
+            burnin_dones,
+            burnin_target_dones,
+            agent_dones,
             init_rnn_state,
         ) = slice_r2d2_arguments(experiences, head_cfg)
 
@@ -419,15 +429,18 @@ class R2D1IQNLoss:
             init_rnn_state = torch.transpose(init_rnn_state, 0, 1)
             target_rnn_state = torch.transpose(target_rnn_state, 0, 1)
 
-        burnin_invalid_mask = valid_from_done(dones[:, : head_cfg.configs.burn_in_step])
+        burnin_invalid_mask = valid_from_done(burnin_dones.transpose(0, 1))
+        burnin_target_invalid_mask = valid_from_done(
+            burnin_target_dones.transpose(0, 1)
+        )
         init_rnn_state[burnin_invalid_mask] = 0
-        target_rnn_state[burnin_invalid_mask] = 0
+        target_rnn_state[burnin_target_invalid_mask] = 0
 
         # size of rewards: (n_tau_prime_samples x batch_size) x 1.
         agent_rewards = agent_rewards.repeat(head_cfg.configs.n_tau_prime_samples, 1, 1)
 
         # size of gamma_with_terminal: (n_tau_prime_samples x batch_size) x 1.
-        masks = 1 - dones
+        masks = 1 - agent_dones
         gamma_with_terminal = masks * gamma
         gamma_with_terminal = gamma_with_terminal.repeat(
             head_cfg.configs.n_tau_prime_samples, 1, 1
@@ -575,7 +588,9 @@ class R2D1C51Loss:
             agent_rewards,
             prev_rewards,
             target_prev_rewards,
-            dones,
+            burnin_dones,
+            burnin_target_dones,
+            agent_dones,
             init_rnn_state,
         ) = slice_r2d2_arguments(experiences, head_cfg)
 
@@ -596,9 +611,12 @@ class R2D1C51Loss:
             init_rnn_state = torch.transpose(init_rnn_state, 0, 1)
             target_rnn_state = torch.transpose(target_rnn_state, 0, 1)
 
-        burnin_invalid_mask = valid_from_done(dones[:, : head_cfg.configs.burn_in_step])
+        burnin_invalid_mask = valid_from_done(burnin_dones.transpose(0, 1))
+        burnin_target_invalid_mask = valid_from_done(
+            burnin_target_dones.transpose(0, 1)
+        )
         init_rnn_state[burnin_invalid_mask] = 0
-        target_rnn_state[burnin_invalid_mask] = 0
+        target_rnn_state[burnin_target_invalid_mask] = 0
 
         support = torch.linspace(
             head_cfg.configs.v_min, head_cfg.configs.v_max, head_cfg.configs.atom_size
@@ -626,7 +644,7 @@ class R2D1C51Loss:
             )
             next_dist = next_dist[0][range(batch_size * sequence_size), next_actions]
 
-            t_z = agent_rewards + (1 - dones) * gamma * support
+            t_z = agent_rewards + (1 - agent_dones) * gamma * support
             t_z = t_z.clamp(min=head_cfg.configs.v_min, max=head_cfg.configs.v_max)
             b = (t_z - head_cfg.configs.v_min) / delta_z
             b = b.view(batch_size * sequence_size, -1)

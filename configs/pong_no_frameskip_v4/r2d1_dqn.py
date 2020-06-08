@@ -20,7 +20,7 @@ agent = dict(
         w_q_reg=1e-7,
         per_alpha=0.6,  # openai baselines: 0.6
         per_beta=0.4,
-        per_eps=1e-7,
+        per_eps=1e-6,
         # R2D1
         sequence_size=20,
         overlap_size=10,
@@ -28,7 +28,7 @@ agent = dict(
         # Epsilon Greedy
         max_epsilon=1.0,
         min_epsilon=0.01,  # openai baselines: 0.01
-        epsilon_decay=1e-6,  # openai baselines: 1e-7 / 1e-1
+        epsilon_decay=3e-6,  # openai baselines: 1e-7 / 1e-1
         # grad_cam
         grad_cam_layer_list=[
             "backbone.cnn.cnn_0.cnn",

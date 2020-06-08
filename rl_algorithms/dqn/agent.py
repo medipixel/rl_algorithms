@@ -328,10 +328,10 @@ class DQNAgent(Agent):
 
                 action = self.select_action(state)
                 next_state, reward, done, _ = self.step(action)
+                self.total_step += 1
                 self.episode_step += 1
 
                 if len(self.memory) >= self.hyper_params.update_starts_from:
-                    self.total_step += 1
                     if self.total_step % self.hyper_params.train_freq == 0:
                         for _ in range(self.hyper_params.multiple_update):
                             loss = self.update_model()

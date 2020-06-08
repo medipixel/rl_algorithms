@@ -14,10 +14,9 @@ from torch.nn.utils import clip_grad_norm_
 import torch.optim as optim
 import wandb
 
-from rl_algorithms.common.buffer.recurrent_prioritized_replay_buffer import (
-    RecurrentPrioritizedReplayBuffer,
-)
-from rl_algorithms.common.buffer.recurrent_replay_buffer import RecurrentReplayBuffer
+from rl_algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
+from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
+from rl_algorithms.common.buffer.rnn_buffer_wrapper import RnnBufferWrapper
 import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.common.networks.brain import GRUBrain
 from rl_algorithms.dqn.agent import DQNAgent
@@ -39,24 +38,31 @@ class R2D1Agent(DQNAgent):
     def _initialize(self):
         """Initialize non-common things."""
         if not self.args.test:
-
-            self.memory = RecurrentPrioritizedReplayBuffer(
+            self.memory = PrioritizedReplayBuffer(
                 self.hyper_params.buffer_size,
                 self.hyper_params.batch_size,
+                alpha=self.hyper_params.per_alpha,
+            )
+            self.memory = RnnBufferWrapper(
+                self.memory,
+                self.hyper_params.n_step,
                 self.hyper_params.sequence_size,
                 self.hyper_params.overlap_size,
-                alpha=self.hyper_params.per_alpha,
             )
 
             # replay memory for multi-steps
             if self.use_n_step:
-                self.memory_n = RecurrentReplayBuffer(
+                self.memory_n = ReplayBuffer(
                     self.hyper_params.buffer_size,
                     self.hyper_params.batch_size,
+                    n_step=1,  # Should always be 1 since rnn_buffer_wrapper will handle it.
+                    gamma=self.hyper_params.gamma,
+                )
+                self.memory_n = RnnBufferWrapper(
+                    self.memory_n,
+                    self.hyper_params.n_step,
                     self.hyper_params.sequence_size,
                     self.hyper_params.overlap_size,
-                    n_step=self.hyper_params.n_step,
-                    gamma=self.hyper_params.gamma,
                 )
 
     def _init_network(self):
@@ -224,13 +230,13 @@ class R2D1Agent(DQNAgent):
                     state, hidden_in, prev_action, prev_reward
                 )
                 next_state, reward, done, _ = self.step(action, hidden_in)
+                self.total_step += 1
                 self.episode_step += 1
 
                 if self.episode_step % self.hyper_params.sequence_size == 0:
                     self.sequence_step += 1
 
                 if len(self.memory) >= self.hyper_params.update_starts_from:
-                    self.total_step += 1
                     if self.sequence_step % self.hyper_params.train_freq == 0:
                         for _ in range(self.hyper_params.multiple_update):
                             loss = self.update_model()

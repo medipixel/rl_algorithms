@@ -152,6 +152,7 @@ class Agent(ABC):
             test_num = self.args.interim_test_num
         else:
             test_num = self.args.episode_num
+
         score_list = []
         for i_episode in range(test_num):
             state = self.env.reset()

@@ -52,6 +52,11 @@ class ReplayBuffer:
         assert 0.0 <= gamma <= 1.0
         assert 1 <= n_step <= buffer_size
 
+        self.init_state = None
+        self.init_action = None
+        self.init_reward = None
+        self.init_done = None
+
         self.obs_buf: np.ndarray = None
         self.acts_buf: np.ndarray = None
         self.rews_buf: np.ndarray = None
@@ -101,8 +106,8 @@ class ReplayBuffer:
             return ()
 
         if self.length == 0:
-            state, action = transition[:2]
-            self._initialize_buffers(state, action)
+            state, action, reward, _, done = transition
+            self._initialize_buffers(state, action, reward, done)
 
         # add a multi step transition
         reward, next_state, done = get_n_step_info(self.n_step_buffer, self.gamma)
@@ -137,9 +142,9 @@ class ReplayBuffer:
 
         states = torch.FloatTensor(self.obs_buf[indices]).to(device)
         actions = torch.FloatTensor(self.acts_buf[indices]).to(device)
-        rewards = torch.FloatTensor(self.rews_buf[indices].reshape(-1, 1)).to(device)
+        rewards = torch.FloatTensor(self.rews_buf[indices]).to(device)
         next_states = torch.FloatTensor(self.next_obs_buf[indices]).to(device)
-        dones = torch.FloatTensor(self.done_buf[indices].reshape(-1, 1)).to(device)
+        dones = torch.FloatTensor(self.done_buf[indices]).to(device)
 
         if torch.cuda.is_available():
             states = states.cuda(non_blocking=True)
@@ -150,20 +155,32 @@ class ReplayBuffer:
 
         return states, actions, rewards, next_states, dones
 
-    def _initialize_buffers(self, state: np.ndarray, action: np.ndarray) -> None:
+    def _initialize_buffers(
+        self,
+        state: np.ndarray,
+        action: np.ndarray,
+        reward: np.ndarray = np.array([0]),
+        done: np.ndarray = np.array([0]),
+    ) -> None:
         """Initialze buffers for state, action, resward, next_state, done."""
-        # In case action of demo is not np.ndarray
+        # In case action of demo is not np.ndarray\
+        self.init_state = state
+        self.init_action = action
+        self.init_reward = reward
+        self.init_done = done
         self.obs_buf = np.zeros(
             [self.buffer_size] + list(state.shape), dtype=state.dtype
         )
         self.acts_buf = np.zeros(
             [self.buffer_size] + list(action.shape), dtype=action.dtype
         )
-        self.rews_buf = np.zeros([self.buffer_size], dtype=float)
+        self.rews_buf = np.zeros(
+            [self.buffer_size] + list(reward.shape), dtype=reward.dtype
+        )
         self.next_obs_buf = np.zeros(
             [self.buffer_size] + list(state.shape), dtype=state.dtype
         )
-        self.done_buf = np.zeros([self.buffer_size], dtype=float)
+        self.done_buf = np.zeros([self.buffer_size] + list(done.shape), dtype=float)
 
     def __len__(self) -> int:
         """Return the current size of internal memory."""

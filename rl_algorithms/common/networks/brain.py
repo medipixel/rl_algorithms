@@ -72,31 +72,22 @@ class GRUBrain(Brain):
         if not backbone_cfg:
             self.backbone = identity
             head_cfg.configs.input_size = head_cfg.configs.state_size[0]
-            self.fc = nn.Linear(
-                head_cfg.configs.input_size, head_cfg.configs.rnn_hidden_size,
-            )
-            self.gru = nn.GRU(
-                head_cfg.configs.rnn_hidden_size
-                + self.action_size
-                + 1,  # 1 is for prev_reward
-                head_cfg.configs.rnn_hidden_size,
-                batch_first=True,
-            )
+
         else:
             self.backbone = build_backbone(backbone_cfg)
             head_cfg.configs.input_size = self.calculate_fc_input_size(
                 head_cfg.configs.state_size
             )
-            self.fc = nn.Linear(
-                head_cfg.configs.input_size, head_cfg.configs.rnn_hidden_size,
-            )
-            self.gru = nn.GRU(
-                head_cfg.configs.rnn_hidden_size
-                + self.action_size
-                + 1,  # 1 is for prev_reward
-                head_cfg.configs.rnn_hidden_size,
-                batch_first=True,
-            )
+        self.fc = nn.Linear(
+            head_cfg.configs.input_size, head_cfg.configs.rnn_hidden_size,
+        )
+        self.gru = nn.GRU(
+            head_cfg.configs.rnn_hidden_size
+            + self.action_size
+            + 1,  # 1 is for prev_reward
+            head_cfg.configs.rnn_hidden_size,
+            batch_first=True,
+        )
 
         head_cfg.configs.input_size = head_cfg.configs.rnn_hidden_size
         self.head = build_head(head_cfg)
