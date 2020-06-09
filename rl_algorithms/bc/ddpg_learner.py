@@ -7,9 +7,11 @@ from torch.nn.utils import clip_grad_norm_
 from rl_algorithms.common.abstract.learner import TensorTuple
 import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.ddpg.learner import DDPGLearner
+from rl_algorithms.registry import LEARNERS
 from rl_algorithms.utils.config import ConfigDict
 
 
+@LEARNERS.register_module
 class BCDDPGLearner(DDPGLearner):
     """Learner for BCDDPG Agent
 

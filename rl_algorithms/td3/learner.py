@@ -1,4 +1,5 @@
 import argparse
+from collections import OrderedDict
 from typing import Tuple
 
 import torch
@@ -9,9 +10,11 @@ from rl_algorithms.common.abstract.learner import Learner
 import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.common.networks.brain import Brain
 from rl_algorithms.common.noise import GaussianNoise
+from rl_algorithms.registry import LEARNERS
 from rl_algorithms.utils.config import ConfigDict
 
 
+@LEARNERS.register_module
 class TD3Learner(Learner):
     """Learner for DDPG Agent
 
@@ -195,3 +198,11 @@ class TD3Learner(Learner):
         self.actor_target.load_state_dict(params["actor_target"])
         self.actor_optim.load_state_dict(params["actor_optim"])
         print("[INFO] loaded the model and optimizer from", path)
+
+    def get_state_dict(self) -> Tuple[OrderedDict]:
+        """Return state dicts, mainly for distributed worker"""
+        return (
+            self.critic_target1.state_dict(),
+            self.critic_target2.state_dict(),
+            self.actor.state_dict(),
+        )

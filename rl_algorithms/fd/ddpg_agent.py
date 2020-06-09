@@ -20,8 +20,8 @@ from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
 import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.common.helper_functions import numpy2floattensor
 from rl_algorithms.ddpg.agent import DDPGAgent
-from rl_algorithms.fd.ddpg_learner import DDPGfDLearner
-from rl_algorithms.registry import AGENTS
+from rl_algorithms.registry import AGENTS, build_learner
+from rl_algorithms.utils.config import ConfigDict
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -72,15 +72,18 @@ class DDPGfDAgent(DDPGAgent):
                 epsilon_d=self.hyper_params.per_eps_demo,
             )
 
-        self.learner = DDPGfDLearner(
-            self.args,
-            self.hyper_params,
-            self.log_cfg,
-            self.head_cfg,
-            self.backbone_cfg,
-            self.optim_cfg,
-            device,
+        learner_cfg = dict(
+            type="DDPGfDLearner",
+            args=self.args,
+            hyper_params=self.hyper_params,
+            log_cfg=self.log_cfg,
+            head_cfg=self.head_cfg,
+            backbone_cfg=self.backbone_cfg,
+            optim_cfg=self.optim_cfg,
+            device=device,
         )
+
+        self.learner = build_learner(ConfigDict(learner_cfg))
 
     def _add_transition_to_memory(self, transition: Tuple[np.ndarray, ...]):
         """Add 1 step and n step transitions to memory."""
