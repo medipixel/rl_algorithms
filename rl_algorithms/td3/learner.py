@@ -46,7 +46,6 @@ class TD3Learner(Learner):
         optim_cfg: ConfigDict,
         device: torch.device,
         noise_cfg: ConfigDict,
-        target_policy_noise: GaussianNoise,
     ):
         Learner.__init__(self, args, hyper_params, log_cfg, device)
 
@@ -55,7 +54,11 @@ class TD3Learner(Learner):
         self.optim_cfg = optim_cfg
         self.update_step = 0
         self.noise_cfg = noise_cfg
-        self.target_policy_noise = target_policy_noise
+        self.target_policy_noise = GaussianNoise(
+            self.head_cfg.actor.configs.output_size,
+            self.noise_cfg.target_policy_noise,
+            self.noise_cfg.target_policy_noise,
+        )
 
         self._init_network()
 

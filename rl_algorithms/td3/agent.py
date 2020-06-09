@@ -39,7 +39,6 @@ class TD3Agent(Agent):
         action_dim (int): action size of env
         memory (ReplayBuffer): replay memory
         exploration_noise (GaussianNoise): random noise for exploration
-        target_policy_noise (GaussianNoise): random noise for target values
         curr_state (np.ndarray): temporary storage of the current state
         total_steps (int): total step numbers
         episode_steps (int): step number of the current episode
@@ -91,12 +90,6 @@ class TD3Agent(Agent):
             self.action_dim, noise_cfg.exploration_noise, noise_cfg.exploration_noise
         )
 
-        self.target_policy_noise = GaussianNoise(
-            self.action_dim,
-            noise_cfg.target_policy_noise,
-            noise_cfg.target_policy_noise,
-        )
-
         if not self.args.test:
             # replay memory
             self.memory = ReplayBuffer(
@@ -112,6 +105,7 @@ class TD3Agent(Agent):
             backbone_cfg=self.backbone_cfg,
             optim_cfg=self.optim_cfg,
             device=device,
+            noise_cfg=self.noise_cfg,
         )
 
         self.learner = build_learner(ConfigDict(learner_cfg))
