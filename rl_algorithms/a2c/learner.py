@@ -1,4 +1,6 @@
 import argparse
+from collections import OrderedDict
+from typing import Tuple
 
 import torch
 import torch.nn.functional as F
@@ -7,9 +9,11 @@ import torch.optim as optim
 
 from rl_algorithms.common.abstract.learner import Learner, TensorTuple
 from rl_algorithms.common.networks.brain import Brain
+from rl_algorithms.registry import LEARNERS
 from rl_algorithms.utils.config import ConfigDict
 
 
+@LEARNERS.register_module
 class A2CLearner(Learner):
     """Learner for A2C Agent
 
@@ -123,3 +127,7 @@ class A2CLearner(Learner):
         self.actor_optim.load_state_dict(params["actor_optim_state_dict"])
         self.critic_optim.load_state_dict(params["critic_optim_state_dict"])
         print("[INFO] Loaded the model and optimizer from", path)
+
+    def get_state_dict(self) -> Tuple[OrderedDict]:
+        """Return state dicts, mainly for distributed worker"""
+        return (self.critic.state_dict(), self.actor.state_dict())

@@ -1,4 +1,5 @@
 import argparse
+from collections import OrderedDict
 from typing import Tuple, Union
 
 import numpy as np
@@ -9,9 +10,11 @@ import torch.optim as optim
 from rl_algorithms.common.abstract.learner import Learner, TensorTuple
 import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.common.networks.brain import Brain
+from rl_algorithms.registry import LEARNERS
 from rl_algorithms.utils.config import ConfigDict
 
 
+@LEARNERS.register_module
 class SACLearner(Learner):
     """Learner for SAC Agent
 
@@ -232,3 +235,7 @@ class SACLearner(Learner):
             self.alpha_optim.load_state_dict(params["alpha_optim"])
 
         print("[INFO] loaded the model and optimizer from", path)
+
+    def get_state_dict(self) -> Tuple[OrderedDict]:
+        """Return state dicts, mainly for distributed worker"""
+        return (self.qf_1.state_dict(), self.qf_2.state_dict(), self.actor.state_dict())

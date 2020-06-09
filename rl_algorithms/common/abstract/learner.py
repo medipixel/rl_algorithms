@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import argparse
+from collections import OrderedDict
 import os
 import shutil
 import subprocess
@@ -79,3 +80,7 @@ class Learner(ABC):
             raise Exception(
                 f"[ERROR] the input path does not exist. Wrong path: {path}"
             )
+
+    @abstractmethod
+    def get_state_dict(self) -> Union[OrderedDict, Tuple[OrderedDict]]:
+        pass
