@@ -5,10 +5,12 @@ import torch.nn.functional as F
 
 from rl_algorithms.common.abstract.learner import TensorTuple
 import rl_algorithms.common.helper_functions as common_utils
+from rl_algorithms.registry import LEARNERS
 from rl_algorithms.sac.learner import SACLearner
 from rl_algorithms.utils.config import ConfigDict
 
 
+@LEARNERS.register_module
 class BCSACLearner(SACLearner):
     """Learner for BCSAC Agent
 

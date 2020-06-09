@@ -106,6 +106,7 @@ class PPOAgent(Agent):
             backbone_cfg=self.backbone_cfg,
             optim_cfg=self.optim_cfg,
             device=device,
+            is_discrete=self.is_discrete,
         )
 
         self.learner = build_learner(ConfigDict(learner_cfg))
