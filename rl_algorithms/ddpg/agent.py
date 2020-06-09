@@ -19,8 +19,7 @@ from rl_algorithms.common.abstract.agent import Agent
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
 from rl_algorithms.common.helper_functions import numpy2floattensor
 from rl_algorithms.common.noise import OUNoise
-from rl_algorithms.ddpg.learner import DDPGLearner
-from rl_algorithms.registry import AGENTS
+from rl_algorithms.registry import AGENTS, build_learner
 from rl_algorithms.utils.config import ConfigDict
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -100,15 +99,18 @@ class DDPGAgent(Agent):
                 self.hyper_params.buffer_size, self.hyper_params.batch_size
             )
 
-        self.learner = DDPGLearner(
-            self.args,
-            self.hyper_params,
-            self.log_cfg,
-            self.head_cfg,
-            self.backbone_cfg,
-            self.optim_cfg,
-            device,
+        learner_cfg = dict(
+            type="DDPGLearner",
+            args=self.args,
+            hyper_params=self.hyper_params,
+            log_cfg=self.log_cfg,
+            head_cfg=self.head_cfg,
+            backbone_cfg=self.backbone_cfg,
+            optim_cfg=self.optim_cfg,
+            device=device,
         )
+
+        self.learner = build_learner(ConfigDict(learner_cfg))
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""

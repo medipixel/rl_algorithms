@@ -1,4 +1,5 @@
 import argparse
+from collections import OrderedDict
 from typing import Tuple, Union
 
 import numpy as np
@@ -9,10 +10,11 @@ import torch.optim as optim
 from rl_algorithms.common.abstract.learner import Learner, TensorTuple
 import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.common.networks.brain import Brain
-from rl_algorithms.registry import build_loss
+from rl_algorithms.registry import LEARNERS, build_loss
 from rl_algorithms.utils.config import ConfigDict
 
 
+@LEARNERS.register_module
 class DQNLearner(Learner):
     """Learner for DQN Agent
 
@@ -147,3 +149,7 @@ class DQNLearner(Learner):
         self.dqn_target.load_state_dict(params["dqn_target_state_dict"])
         self.dqn_optim.load_state_dict(params["dqn_optim_state_dict"])
         print("[INFO] loaded the model and optimizer from", path)
+
+    def get_state_dict(self) -> OrderedDict:
+        """Return state dicts, mainly for distributed worker"""
+        return self.dqn.state_dict()

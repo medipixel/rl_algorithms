@@ -19,8 +19,7 @@ from rl_algorithms.common.abstract.agent import Agent
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
 from rl_algorithms.common.helper_functions import numpy2floattensor
 from rl_algorithms.common.noise import GaussianNoise
-from rl_algorithms.registry import AGENTS
-from rl_algorithms.td3.learner import TD3Learner
+from rl_algorithms.registry import AGENTS, build_learner
 from rl_algorithms.utils.config import ConfigDict
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -104,17 +103,18 @@ class TD3Agent(Agent):
                 self.hyper_params.buffer_size, self.hyper_params.batch_size
             )
 
-        self.learner = TD3Learner(
-            self.args,
-            self.hyper_params,
-            self.log_cfg,
-            self.head_cfg,
-            self.backbone_cfg,
-            self.optim_cfg,
-            device,
-            self.noise_cfg,
-            self.target_policy_noise,
+        learner_cfg = dict(
+            type="TD3Learner",
+            args=self.args,
+            hyper_params=self.hyper_params,
+            log_cfg=self.log_cfg,
+            head_cfg=self.head_cfg,
+            backbone_cfg=self.backbone_cfg,
+            optim_cfg=self.optim_cfg,
+            device=device,
         )
+
+        self.learner = build_learner(ConfigDict(learner_cfg))
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""

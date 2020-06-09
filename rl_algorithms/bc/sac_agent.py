@@ -16,11 +16,11 @@ import numpy as np
 import torch
 import wandb
 
-from rl_algorithms.bc.sac_learner import BCSACLearner
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
 from rl_algorithms.common.helper_functions import numpy2floattensor
-from rl_algorithms.registry import AGENTS, build_her
+from rl_algorithms.registry import AGENTS, build_her, build_learner
 from rl_algorithms.sac.agent import SACAgent
+from rl_algorithms.utils.config import ConfigDict
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -74,15 +74,18 @@ class BCSACAgent(SACAgent):
             # set hyper parameters
             self.hyper_params["lambda2"] = 1.0 / demo_batch_size
 
-        self.learner = BCSACLearner(
-            self.args,
-            self.hyper_params,
-            self.log_cfg,
-            self.head_cfg,
-            self.backbone_cfg,
-            self.optim_cfg,
-            device,
+        learner_cfg = dict(
+            type="BCSACLearner",
+            args=self.args,
+            hyper_params=self.hyper_params,
+            log_cfg=self.log_cfg,
+            head_cfg=self.head_cfg,
+            backbone_cfg=self.backbone_cfg,
+            optim_cfg=self.optim_cfg,
+            device=device,
         )
+
+        self.learner = build_learner(ConfigDict(learner_cfg))
 
     def _preprocess_state(self, state: np.ndarray) -> torch.Tensor:
         """Preprocess state so that actor selects an action."""

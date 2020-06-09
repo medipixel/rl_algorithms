@@ -13,9 +13,8 @@ import numpy as np
 import torch
 import wandb
 
-from rl_algorithms.a2c.learner import A2CLearner
 from rl_algorithms.common.abstract.agent import Agent
-from rl_algorithms.registry import AGENTS
+from rl_algorithms.registry import AGENTS, build_learner
 from rl_algorithms.utils.config import ConfigDict
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -70,15 +69,18 @@ class A2CAgent(Agent):
         ) = self.env.observation_space.shape
         self.head_cfg.actor.configs.output_size = self.env.action_space.shape[0]
 
-        self.learner = A2CLearner(
-            self.args,
-            self.hyper_params,
-            self.log_cfg,
-            self.head_cfg,
-            self.backbone_cfg,
-            self.optim_cfg,
-            device,
+        learner_cfg = dict(
+            type="A2CLearner",
+            args=self.args,
+            hyper_params=self.hyper_params,
+            log_cfg=self.log_cfg,
+            head_cfg=self.head_cfg,
+            backbone_cfg=self.backbone_cfg,
+            optim_cfg=self.optim_cfg,
+            device=device,
         )
+
+        self.learner = build_learner(ConfigDict(learner_cfg))
 
     def select_action(self, state: np.ndarray) -> torch.Tensor:
         """Select an action from the input space."""
