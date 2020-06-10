@@ -33,15 +33,24 @@ class DQfDLearner(DQNLearner):
     def __init__(
         self,
         args: argparse.Namespace,
+        env_info: ConfigDict,
         hyper_params: ConfigDict,
         log_cfg: ConfigDict,
-        head_cfg: ConfigDict,
-        backbone_cfg: ConfigDict,
+        backbone: ConfigDict,
+        head: ConfigDict,
         optim_cfg: ConfigDict,
         device: torch.device,
     ):
         DQNLearner.__init__(
-            self, args, hyper_params, log_cfg, head_cfg, backbone_cfg, optim_cfg, device
+            self,
+            args,
+            env_info,
+            hyper_params,
+            log_cfg,
+            backbone,
+            head,
+            optim_cfg,
+            device,
         )
 
     def update_model(

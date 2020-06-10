@@ -28,19 +28,22 @@ agent = dict(
         success_score=-5.0,
         desired_states_from_demo=False,
     ),
-    backbone=dict(actor=dict(), critic=dict(),),
-    head=dict(
-        actor=dict(
-            type="MLP",
-            configs=dict(hidden_sizes=[256, 256], output_activation=F.tanh,),
-        ),
-        critic=dict(
-            type="MLP",
-            configs=dict(
-                hidden_sizes=[256, 256], output_size=1, output_activation=identity,
+    learner_cfg=dict(
+        type="BCDDPGLearner",
+        backbone=dict(actor=dict(), critic=dict(),),
+        head=dict(
+            actor=dict(
+                type="MLP",
+                configs=dict(hidden_sizes=[256, 256], output_activation=F.tanh,),
+            ),
+            critic=dict(
+                type="MLP",
+                configs=dict(
+                    hidden_sizes=[256, 256], output_size=1, output_activation=identity,
+                ),
             ),
         ),
+        optim_cfg=dict(lr_actor=1e-4, lr_critic=1e-3, weight_decay=1e-6),
     ),
-    optim_cfg=dict(lr_actor=1e-4, lr_critic=1e-3, weight_decay=1e-6),
     noise_cfg=dict(ou_noise_theta=0.0, ou_noise_sigma=0.0),
 )

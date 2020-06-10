@@ -32,15 +32,26 @@ class DDPGfDLearner(DDPGLearner):
     def __init__(
         self,
         args: argparse.Namespace,
+        env_info: ConfigDict,
         hyper_params: ConfigDict,
         log_cfg: ConfigDict,
-        head_cfg: ConfigDict,
-        backbone_cfg: ConfigDict,
+        backbone: ConfigDict,
+        head: ConfigDict,
         optim_cfg: ConfigDict,
+        noise_cfg: ConfigDict,
         device: torch.device,
     ):
         DDPGLearner.__init__(
-            self, args, hyper_params, log_cfg, head_cfg, backbone_cfg, optim_cfg, device
+            self,
+            args,
+            env_info,
+            hyper_params,
+            log_cfg,
+            backbone,
+            head,
+            optim_cfg,
+            noise_cfg,
+            device,
         )
 
         self.use_n_step = self.hyper_params.n_step > 1

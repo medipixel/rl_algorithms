@@ -40,22 +40,33 @@ class SACLearner(Learner):
     def __init__(
         self,
         args: argparse.Namespace,
+        env_info: ConfigDict,
         hyper_params: ConfigDict,
         log_cfg: ConfigDict,
-        head_cfg: ConfigDict,
-        backbone_cfg: ConfigDict,
+        backbone: ConfigDict,
+        head: ConfigDict,
         optim_cfg: ConfigDict,
         device: torch.device,
     ):
-        Learner.__init__(self, args, hyper_params, log_cfg, device)
+        Learner.__init__(self, args, env_info, hyper_params, log_cfg, device)
 
-        self.head_cfg = head_cfg
-        self.backbone_cfg = backbone_cfg
+        self.backbone_cfg = backbone
+        self.head_cfg = head
+        self.head_cfg.actor.configs.state_size = (
+            self.head_cfg.critic_vf.configs.state_size
+        ) = self.env_info.observation_space.shape
+        self.head_cfg.critic_qf.configs.state_size = (
+            self.env_info.observation_space.shape[0]
+            + self.env_info.action_space.shape[0],
+        )
+        self.head_cfg.actor.configs.output_size = self.env_info.action_space.shape[0]
         self.optim_cfg = optim_cfg
 
         self.update_step = 0
         if self.hyper_params.auto_entropy_tuning:
-            self.target_entropy = -np.prod((self.head_cfg["action_dim"],)).item()
+            self.target_entropy = -np.prod(
+                (self.env_info.action_space.shape[0],)
+            ).item()
             self.log_alpha = torch.zeros(1, requires_grad=True, device=self.device)
             self.alpha_optim = optim.Adam([self.log_alpha], lr=optim_cfg.lr_entropy)
 
