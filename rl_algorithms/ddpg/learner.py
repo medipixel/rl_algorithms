@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torch.nn.utils import clip_grad_norm_
 import torch.optim as optim
 
-from rl_algorithms.common.abstract.learner import Learner
+from rl_algorithms.common.abstract.learner import BaseLearner
 import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.common.networks.brain import Brain
 from rl_algorithms.registry import LEARNERS
@@ -15,8 +15,8 @@ from rl_algorithms.utils.config import ConfigDict
 
 
 @LEARNERS.register_module
-class DDPGLearner(Learner):
-    """Learner for DDPG Agent
+class DDPGLearner(BaseLearner):
+    """Learner for DDPG Agent.
 
     Attributes:
         args (argparse.Namespace): arguments including hyperparameters and training settings
@@ -44,7 +44,7 @@ class DDPGLearner(Learner):
         noise_cfg: ConfigDict,
         device: torch.device,
     ):
-        Learner.__init__(self, args, env_info, hyper_params, log_cfg, device)
+        BaseLearner.__init__(self, args, env_info, hyper_params, log_cfg, device)
 
         self.backbone_cfg = backbone
         self.head_cfg = head
@@ -143,11 +143,11 @@ class DDPGLearner(Learner):
             "actor_optim_state_dict": self.actor_optim.state_dict(),
             "critic_optim_state_dict": self.critic_optim.state_dict(),
         }
-        Learner._save_params(self, params, n_episode)
+        BaseLearner._save_params(self, params, n_episode)
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
-        Learner.load_params(self, path)
+        BaseLearner.load_params(self, path)
 
         params = torch.load(path)
         self.actor.load_state_dict(params["actor_state_dict"])

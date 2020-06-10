@@ -13,7 +13,7 @@ from rl_algorithms.utils.config import ConfigDict
 
 @LEARNERS.register_module
 class BCDDPGLearner(DDPGLearner):
-    """Learner for BCDDPG Agent
+    """Learner for BCDDPG Agent.
 
     Attributes:
         args (argparse.Namespace): arguments including hyperparameters and training settings

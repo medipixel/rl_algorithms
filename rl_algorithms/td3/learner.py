@@ -6,7 +6,7 @@ import torch
 import torch.nn.functional as F
 import torch.optim as optim
 
-from rl_algorithms.common.abstract.learner import Learner
+from rl_algorithms.common.abstract.learner import BaseLearner
 import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.common.networks.brain import Brain
 from rl_algorithms.common.noise import GaussianNoise
@@ -15,8 +15,8 @@ from rl_algorithms.utils.config import ConfigDict
 
 
 @LEARNERS.register_module
-class TD3Learner(Learner):
-    """Learner for DDPG Agent
+class TD3Learner(BaseLearner):
+    """Learner for DDPG Agent.
 
     Attributes:
         args (argparse.Namespace): arguments including hyperparameters and training settings
@@ -48,7 +48,7 @@ class TD3Learner(Learner):
         noise_cfg: ConfigDict,
         device: torch.device,
     ):
-        Learner.__init__(self, args, env_info, hyper_params, log_cfg, device)
+        BaseLearner.__init__(self, args, env_info, hyper_params, log_cfg, device)
 
         self.backbone_cfg = backbone
         self.head_cfg = head
@@ -194,11 +194,11 @@ class TD3Learner(Learner):
             "critic_optim": self.critic_optim.state_dict(),
         }
 
-        Learner._save_params(self, params, n_episode)
+        BaseLearner._save_params(self, params, n_episode)
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
-        Learner.load_params(self, path)
+        BaseLearner.load_params(self, path)
 
         params = torch.load(path)
         self.critic1.load_state_dict(params["critic1"])

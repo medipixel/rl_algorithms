@@ -12,7 +12,7 @@ from rl_algorithms.utils.config import ConfigDict
 
 @LEARNERS.register_module
 class SACfDLearner(SACLearner):
-    """Learner for BCSAC Agent
+    """Learner for BCSAC Agent.
 
     Attributes:
         args (argparse.Namespace): arguments including hyperparameters and training settings
