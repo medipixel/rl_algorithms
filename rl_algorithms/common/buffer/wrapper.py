@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-"""Prioritized Replay buffer for algorithms.
+"""Prioritized Replay buffer wrapper for algorithms.
 
-- Author: Kyunghwan Kim
-- Contact: kh.kim@medipixel.io
+- Author: Kyunghwan Kim & Euijin Jeong
+- Contact: kh.kim@medipixel.io & euijin.jeong@medipixel.io
 - Paper: https://arxiv.org/pdf/1511.05952.pdf
          https://arxiv.org/pdf/1707.08817.pdf
 """
@@ -20,30 +20,29 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 class PERWrapper(BufferWrapper):
-    """Fixed-size buffer to store experience tuples.
+    """Prioritized Experience Replay wrapper for ReplayBuffer
+
+
+    Refer to OpenAI baselines github repository:
+    https://github.com/openai/baselines/blob/master/baselines/deepq/replay_buffer.py
 
     Attributes:
-        obs_buf (np.ndarray): observations
-        acts_buf (np.ndarray): actions
-        rews_buf (np.ndarray): rewards
-        next_obs_buf (np.ndarray): next observations
-        done_buf (np.ndarray): dones
-        n_step_buffer (deque): recent n transitions
-        n_step (int): step size for n-step transition
-        gamma (float): discount factor
-        buffer_size (int): size of buffers
-        batch_size (int): batch size for training
-        demo_size (int): size of demo transitions
-        length (int): amount of memory filled
-        idx (int): memory index to add the next incoming transition
+        buffer (Buffer): Hold replay buffer as am attribute.
+        alpha (float): alpha parameter for prioritized replay buffer
+        epsilon_d (float): small positive constants to add to the priorities
+        tree_idx (int): next index of tree
+        sum_tree (SumSegmentTree): sum tree for prior
+        min_tree (MinSegmentTree): min tree for min prior to get max weight
+        _max_priority (float): max priority
     """
 
     def __init__(self, replay_buffer, alpha: float = 0.6, epsilon_d: float = 1.0):
         """Initialize.
 
         Args:
-            batch_size (int): size of a batched sampled from replay buffer for training
+            replay_buffer (Buffer): ReplayBuffer which should be hold
             alpha (float): alpha parameter for prioritized replay buffer
+            epsilon_d (float): small positive constants to add to the priorities
 
         """
         super().__init__(replay_buffer)
