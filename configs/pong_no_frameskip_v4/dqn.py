@@ -34,25 +34,28 @@ agent = dict(
             "backbone.cnn.cnn_2.cnn",
         ],
     ),
-    backbone=dict(
-        type="CNN",
-        configs=dict(
-            input_sizes=[4, 32, 64],
-            output_sizes=[32, 64, 64],
-            kernel_sizes=[8, 4, 3],
-            strides=[4, 2, 1],
-            paddings=[1, 0, 0],
+    learner_cfg=dict(
+        type="DQNLearner",
+        backbone=dict(
+            type="CNN",
+            configs=dict(
+                input_sizes=[4, 32, 64],
+                output_sizes=[32, 64, 64],
+                kernel_sizes=[8, 4, 3],
+                strides=[4, 2, 1],
+                paddings=[1, 0, 0],
+            ),
         ),
-    ),
-    head=dict(
-        type="DuelingMLP",
-        configs=dict(
-            use_noisy_net=False, hidden_sizes=[512], output_activation=identity
+        head=dict(
+            type="DuelingMLP",
+            configs=dict(
+                use_noisy_net=False, hidden_sizes=[512], output_activation=identity
+            ),
         ),
-    ),
-    optim_cfg=dict(
-        lr_dqn=1e-4,  # dueling: 6.25e-5, openai baselines: 1e-4
-        weight_decay=0.0,  # this makes saturation in cnn weights
-        adam_eps=1e-8,  # rainbow: 1.5e-4, openai baselines: 1e-8
+        optim_cfg=dict(
+            lr_dqn=1e-4,  # dueling: 6.25e-5, openai baselines: 1e-4
+            weight_decay=0.0,  # this makes saturation in cnn weights
+            adam_eps=1e-8,  # rainbow: 1.5e-4, openai baselines: 1e-8
+        ),
     ),
 )

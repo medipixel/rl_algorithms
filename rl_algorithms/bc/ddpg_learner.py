@@ -7,11 +7,13 @@ from torch.nn.utils import clip_grad_norm_
 from rl_algorithms.common.abstract.learner import TensorTuple
 import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.ddpg.learner import DDPGLearner
+from rl_algorithms.registry import LEARNERS
 from rl_algorithms.utils.config import ConfigDict
 
 
+@LEARNERS.register_module
 class BCDDPGLearner(DDPGLearner):
-    """Learner for BCDDPG Agent
+    """Learner for BCDDPG Agent.
 
     Attributes:
         args (argparse.Namespace): arguments including hyperparameters and training settings
@@ -30,15 +32,26 @@ class BCDDPGLearner(DDPGLearner):
     def __init__(
         self,
         args: argparse.Namespace,
+        env_info: ConfigDict,
         hyper_params: ConfigDict,
         log_cfg: ConfigDict,
-        head_cfg: ConfigDict,
-        backbone_cfg: ConfigDict,
+        backbone: ConfigDict,
+        head: ConfigDict,
         optim_cfg: ConfigDict,
+        noise_cfg: ConfigDict,
         device: torch.device,
     ):
         DDPGLearner.__init__(
-            self, args, hyper_params, log_cfg, head_cfg, backbone_cfg, optim_cfg, device
+            self,
+            args,
+            env_info,
+            hyper_params,
+            log_cfg,
+            backbone,
+            head,
+            optim_cfg,
+            noise_cfg,
+            device,
         )
 
     def update_model(

@@ -20,8 +20,7 @@ from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
 from rl_algorithms.common.buffer.wrapper import PrioritizedBufferWrapper
 import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.common.helper_functions import numpy2floattensor
-from rl_algorithms.fd.sac_learner import SACfDLearner
-from rl_algorithms.registry import AGENTS
+from rl_algorithms.registry import AGENTS, build_learner
 from rl_algorithms.sac.agent import SACAgent
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -71,15 +70,8 @@ class SACfDAgent(SACAgent):
                 self.memory, alpha=self.hyper_params.per_alpha
             )
 
-        self.learner = SACfDLearner(
-            self.args,
-            self.hyper_params,
-            self.log_cfg,
-            self.head_cfg,
-            self.backbone_cfg,
-            self.optim_cfg,
-            device,
-        )
+        self.learner_cfg.type = "SACfDLearner"
+        self.learner = build_learner(self.learner_cfg)
 
     def _add_transition_to_memory(self, transition: Tuple[np.ndarray, ...]):
         """Add 1 step and n step transitions to memory."""

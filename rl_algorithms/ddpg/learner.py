@@ -1,4 +1,5 @@
 import argparse
+from collections import OrderedDict
 from typing import Tuple
 
 import torch
@@ -6,14 +7,16 @@ import torch.nn.functional as F
 from torch.nn.utils import clip_grad_norm_
 import torch.optim as optim
 
-from rl_algorithms.common.abstract.learner import Learner
+from rl_algorithms.common.abstract.learner import BaseLearner
 import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.common.networks.brain import Brain
+from rl_algorithms.registry import LEARNERS
 from rl_algorithms.utils.config import ConfigDict
 
 
-class DDPGLearner(Learner):
-    """Learner for DDPG Agent
+@LEARNERS.register_module
+class DDPGLearner(BaseLearner):
+    """Learner for DDPG Agent.
 
     Attributes:
         args (argparse.Namespace): arguments including hyperparameters and training settings
@@ -32,18 +35,27 @@ class DDPGLearner(Learner):
     def __init__(
         self,
         args: argparse.Namespace,
+        env_info: ConfigDict,
         hyper_params: ConfigDict,
         log_cfg: ConfigDict,
-        head_cfg: ConfigDict,
-        backbone_cfg: ConfigDict,
+        backbone: ConfigDict,
+        head: ConfigDict,
         optim_cfg: ConfigDict,
+        noise_cfg: ConfigDict,
         device: torch.device,
     ):
-        Learner.__init__(self, args, hyper_params, log_cfg, device)
+        BaseLearner.__init__(self, args, env_info, hyper_params, log_cfg, device)
 
-        self.head_cfg = head_cfg
-        self.backbone_cfg = backbone_cfg
+        self.backbone_cfg = backbone
+        self.head_cfg = head
+        self.head_cfg.critic.configs.state_size = (
+            self.env_info.observation_space.shape[0]
+            + self.env_info.action_space.shape[0],
+        )
+        self.head_cfg.actor.configs.state_size = self.env_info.observation_space.shape
+        self.head_cfg.actor.configs.output_size = self.env_info.action_space.shape[0]
         self.optim_cfg = optim_cfg
+        self.noise_cfg = noise_cfg
 
         self._init_network()
 
@@ -131,11 +143,11 @@ class DDPGLearner(Learner):
             "actor_optim_state_dict": self.actor_optim.state_dict(),
             "critic_optim_state_dict": self.critic_optim.state_dict(),
         }
-        Learner._save_params(self, params, n_episode)
+        BaseLearner._save_params(self, params, n_episode)
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
-        Learner.load_params(self, path)
+        BaseLearner.load_params(self, path)
 
         params = torch.load(path)
         self.actor.load_state_dict(params["actor_state_dict"])
@@ -145,3 +157,7 @@ class DDPGLearner(Learner):
         self.actor_optim.load_state_dict(params["actor_optim_state_dict"])
         self.critic_optim.load_state_dict(params["critic_optim_state_dict"])
         print("[INFO] loaded the model and optimizer from", path)
+
+    def get_state_dict(self) -> Tuple[OrderedDict]:
+        """Return state dicts, mainly for distributed worker"""
+        return (self.critic_target.state_dict(), self.actor.state_dict())

@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import argparse
+from collections import OrderedDict
 import os
 import shutil
 import subprocess
@@ -13,7 +14,30 @@ TensorTuple = Tuple[torch.Tensor, ...]
 
 
 class Learner(ABC):
-    """Abstract learner for all learners
+    """Abstract class for all learner objects."""
+
+    @abstractmethod
+    def update_model(self, experience: Union[TensorTuple, Tuple[TensorTuple]]) -> tuple:
+        pass
+
+    @abstractmethod
+    def save_params(self, n_episode: int):
+        pass
+
+    @abstractmethod
+    def load_params(self, path: str):
+        if not os.path.exists(path):
+            raise Exception(
+                f"[ERROR] the input path does not exist. Wrong path: {path}"
+            )
+
+    @abstractmethod
+    def get_state_dict(self) -> Union[OrderedDict, Tuple[OrderedDict]]:
+        pass
+
+
+class BaseLearner(Learner):
+    """Base class for all base learners.
 
     Attributes:
         args (argparse.Namespace): arguments including hyperparameters and training settings
@@ -26,19 +50,21 @@ class Learner(ABC):
     def __init__(
         self,
         args: argparse.Namespace,
+        env_info: ConfigDict,
         hyper_params: ConfigDict,
         log_cfg: ConfigDict,
         device: torch.device,
     ):
         """Initialize."""
         self.args = args
+        self.env_info = env_info
         self.hyper_params = hyper_params
         self.device = device
 
         if not self.args.test:
             self.ckpt_path = (
                 "./checkpoint/"
-                f"{log_cfg.env_name}/{log_cfg.agent}/{log_cfg.curr_time}/"
+                f"{env_info.env_name}/{log_cfg.agent}/{log_cfg.curr_time}/"
             )
             os.makedirs(self.ckpt_path, exist_ok=True)
 
@@ -79,3 +105,27 @@ class Learner(ABC):
             raise Exception(
                 f"[ERROR] the input path does not exist. Wrong path: {path}"
             )
+
+    @abstractmethod
+    def get_state_dict(self) -> Union[OrderedDict, Tuple[OrderedDict]]:
+        pass
+
+
+class LearnerWrapper(Learner):
+    """Base class for all learner wrappers"""
+
+    def __init__(self, learner: BaseLearner):
+        """Initialize."""
+        self.learner = learner
+
+    def update_model(self, experience: Union[TensorTuple, Tuple[TensorTuple]]) -> tuple:
+        return self.learner.update_model(experience)
+
+    def save_params(self, n_episode: int):
+        self.learner.save_params(n_episode)
+
+    def load_params(self, path: str):
+        self.learner.load_params(path)
+
+    def get_state_dict(self) -> Union[OrderedDict, Tuple[OrderedDict]]:
+        return self.learner.get_state_dict()

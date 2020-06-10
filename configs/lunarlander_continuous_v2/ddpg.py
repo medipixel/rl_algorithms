@@ -9,6 +9,7 @@ from rl_algorithms.common.helper_functions import identity
 
 agent = dict(
     type="DDPGAgent",
+    env_info=dict(),
     hyper_params=dict(
         gamma=0.99,
         tau=5e-3,
@@ -19,19 +20,22 @@ agent = dict(
         gradient_clip_ac=0.5,
         gradient_clip_cr=1.0,
     ),
-    backbone=dict(actor=dict(), critic=dict(),),
-    head=dict(
-        actor=dict(
-            type="MLP",
-            configs=dict(hidden_sizes=[256, 256], output_activation=F.tanh,),
-        ),
-        critic=dict(
-            type="MLP",
-            configs=dict(
-                hidden_sizes=[256, 256], output_size=1, output_activation=identity,
+    learner_cfg=dict(
+        type="DDPGLearner",
+        backbone=dict(actor=dict(), critic=dict(),),
+        head=dict(
+            actor=dict(
+                type="MLP",
+                configs=dict(hidden_sizes=[256, 256], output_activation=F.tanh,),
+            ),
+            critic=dict(
+                type="MLP",
+                configs=dict(
+                    hidden_sizes=[256, 256], output_size=1, output_activation=identity,
+                ),
             ),
         ),
+        optim_cfg=dict(lr_actor=3e-4, lr_critic=3e-4, weight_decay=1e-6),
     ),
-    optim_cfg=dict(lr_actor=3e-4, lr_critic=3e-4, weight_decay=1e-6),
     noise_cfg=dict(ou_noise_theta=0.0, ou_noise_sigma=0.0),
 )

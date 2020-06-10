@@ -21,31 +21,34 @@ agent = dict(
         w_pre_activation_reg=0.0,
         auto_entropy_tuning=True,
     ),
-    backbone=dict(actor=dict(), critic_vf=dict(), critic_qf=dict()),
-    head=dict(
-        actor=dict(
-            type="TanhGaussianDistParams",
-            configs=dict(hidden_sizes=[256, 256], output_activation=identity,),
-        ),
-        critic_vf=dict(
-            type="MLP",
-            configs=dict(
-                hidden_sizes=[256, 256], output_activation=identity, output_size=1,
+    learner_cfg=dict(
+        type="SACLearner",
+        backbone=dict(actor=dict(), critic_vf=dict(), critic_qf=dict()),
+        head=dict(
+            actor=dict(
+                type="TanhGaussianDistParams",
+                configs=dict(hidden_sizes=[256, 256], output_activation=identity,),
+            ),
+            critic_vf=dict(
+                type="MLP",
+                configs=dict(
+                    hidden_sizes=[256, 256], output_activation=identity, output_size=1,
+                ),
+            ),
+            critic_qf=dict(
+                type="MLP",
+                configs=dict(
+                    hidden_sizes=[256, 256], output_activation=identity, output_size=1,
+                ),
             ),
         ),
-        critic_qf=dict(
-            type="MLP",
-            configs=dict(
-                hidden_sizes=[256, 256], output_activation=identity, output_size=1,
-            ),
+        optim_cfg=dict(
+            lr_actor=3e-4,
+            lr_vf=3e-4,
+            lr_qf1=3e-4,
+            lr_qf2=3e-4,
+            lr_entropy=3e-4,
+            weight_decay=0.0,
         ),
-    ),
-    optim_cfg=dict(
-        lr_actor=3e-4,
-        lr_vf=3e-4,
-        lr_qf1=3e-4,
-        lr_qf2=3e-4,
-        lr_entropy=3e-4,
-        weight_decay=0.0,
     ),
 )

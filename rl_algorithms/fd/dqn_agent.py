@@ -17,8 +17,7 @@ from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
 from rl_algorithms.common.buffer.wrapper import PrioritizedBufferWrapper
 import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.dqn.agent import DQNAgent
-from rl_algorithms.fd.dqn_learner import DQfDLearner
-from rl_algorithms.registry import AGENTS
+from rl_algorithms.registry import AGENTS, build_learner
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -60,15 +59,8 @@ class DQfDAgent(DQNAgent):
                 self.memory, alpha=self.hyper_params.per_alpha
             )
 
-        self.learner = DQfDLearner(
-            self.args,
-            self.hyper_params,
-            self.log_cfg,
-            self.head_cfg,
-            self.backbone_cfg,
-            self.optim_cfg,
-            device,
-        )
+        self.learner_cfg.type = "DQfDLearner"
+        self.learner = build_learner(self.learner_cfg)
 
     def _load_demos(self) -> list:
         """Load expert's demonstrations."""

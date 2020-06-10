@@ -37,10 +37,17 @@ class Agent(ABC):
 
     """
 
-    def __init__(self, env: gym.Env, args: argparse.Namespace, log_cfg: ConfigDict):
+    def __init__(
+        self,
+        env: gym.Env,
+        env_info: ConfigDict,
+        args: argparse.Namespace,
+        log_cfg: ConfigDict,
+    ):
         """Initialize."""
         self.args = args
         self.env = env
+        self.env_info = env_info
         self.log_cfg = log_cfg
         self.log_cfg.env_name = env.spec.id if env.spec is not None else env.name
 
