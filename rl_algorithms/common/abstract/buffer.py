@@ -1,35 +1,46 @@
 # -*- coding: utf-8 -*-
 """Abstract Buffer & BufferWrapper class.
+
 - Author: Euijin Jeong
 - Contact: euijin.jeong@medipixel.io
 """
 
+from abc import ABC, abstractmethod
 from typing import Any, Tuple
 
 import numpy as np
 
 
-class Buffer:
+class BaseBuffer(ABC):
     """Abstract Buffer used for replay buffer."""
 
+    @abstractmethod
     def add(self, transition: Tuple[Any, ...]) -> Tuple[Any, ...]:
         """Add a new experience to memory."""
 
+    @abstractmethod
     def sample(self) -> Tuple[np.ndarray, ...]:
         """Sample a batch of experiences from memory."""
 
+    @abstractmethod
     def __len__(self) -> int:
         """Return the current size of internal memory."""
 
 
-class BufferWrapper(Buffer):
+class BufferWrapper(BaseBuffer):
     """Abstract BufferWrapper used for buffer wrapper.
+
     Attributes:
-        buffer (Buffer): Hold replay buffer as am attribute.
+        buffer (Buffer): Hold replay buffer as am attribute
     """
 
-    def __init__(self, replay_buffer: Buffer):
-        self.buffer = replay_buffer
+    def __init__(self, base_buffer: BaseBuffer):
+        """Initialize a ReplayBuffer object.
+
+        Args:
+            base_buffer (int): ReplayBuffer which should be hold
+        """
+        self.buffer = base_buffer
 
     def add(self, transition: Tuple[Any, ...]) -> Tuple[Any, ...]:
         return self.buffer.add(transition)

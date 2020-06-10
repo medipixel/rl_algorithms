@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Prioritized Replay buffer wrapper for algorithms.
+"""Wrappers for buffer.
 
 - Author: Kyunghwan Kim & Euijin Jeong
 - Contact: kh.kim@medipixel.io & euijin.jeong@medipixel.io
@@ -13,21 +13,21 @@ from typing import Any, Tuple
 import numpy as np
 import torch
 
-from rl_algorithms.common.abstract.buffer import BufferWrapper
+from rl_algorithms.common.abstract.buffer import BaseBuffer, BufferWrapper
 from rl_algorithms.common.buffer.segment_tree import MinSegmentTree, SumSegmentTree
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 class PERWrapper(BufferWrapper):
-    """Prioritized Experience Replay wrapper for ReplayBuffer
+    """Prioritized Experience Replay wrapper for ReplayBuffer.
 
 
     Refer to OpenAI baselines github repository:
     https://github.com/openai/baselines/blob/master/baselines/deepq/replay_buffer.py
 
     Attributes:
-        buffer (Buffer): Hold replay buffer as am attribute.
+        buffer (Buffer): Hold replay buffer as an attribute
         alpha (float): alpha parameter for prioritized replay buffer
         epsilon_d (float): small positive constants to add to the priorities
         tree_idx (int): next index of tree
@@ -36,16 +36,18 @@ class PERWrapper(BufferWrapper):
         _max_priority (float): max priority
     """
 
-    def __init__(self, replay_buffer, alpha: float = 0.6, epsilon_d: float = 1.0):
+    def __init__(
+        self, base_buffer: BaseBuffer, alpha: float = 0.6, epsilon_d: float = 1.0
+    ):
         """Initialize.
 
         Args:
-            replay_buffer (Buffer): ReplayBuffer which should be hold
+            base_buffer (Buffer): ReplayBuffer which should be hold
             alpha (float): alpha parameter for prioritized replay buffer
             epsilon_d (float): small positive constants to add to the priorities
 
         """
-        super().__init__(replay_buffer)
+        BufferWrapper.__init__(self, base_buffer)
         assert alpha >= 0
         self.alpha = alpha
         self.epsilon_d = epsilon_d
@@ -53,7 +55,7 @@ class PERWrapper(BufferWrapper):
 
         # capacity must be positive and a power of 2.
         tree_capacity = 1
-        while tree_capacity < self.buffer.buffer_size:
+        while tree_capacity < self.buffer.max_len:
             tree_capacity *= 2
 
         self.sum_tree = SumSegmentTree(tree_capacity)
@@ -76,7 +78,7 @@ class PERWrapper(BufferWrapper):
             self.min_tree[self.tree_idx] = self._max_priority ** self.alpha
 
             self.tree_idx += 1
-            if self.tree_idx % self.buffer.buffer_size == 0:
+            if self.tree_idx % self.buffer.max_len == 0:
                 self.tree_idx = self.buffer.demo_size
 
         return n_step_transition

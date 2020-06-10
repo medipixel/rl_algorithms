@@ -56,7 +56,7 @@ class SACfDAgent(SACAgent):
 
                 # replay memory for multi-steps
                 self.memory_n = ReplayBuffer(
-                    buffer_size=self.hyper_params.buffer_size,
+                    max_len=self.hyper_params.buffer_size,
                     batch_size=self.hyper_params.batch_size,
                     n_step=self.hyper_params.n_step,
                     gamma=self.hyper_params.gamma,
