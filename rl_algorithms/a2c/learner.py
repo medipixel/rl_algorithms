@@ -7,15 +7,15 @@ import torch.nn.functional as F
 from torch.nn.utils import clip_grad_norm_
 import torch.optim as optim
 
-from rl_algorithms.common.abstract.learner import Learner, TensorTuple
+from rl_algorithms.common.abstract.learner import BaseLearner, TensorTuple
 from rl_algorithms.common.networks.brain import Brain
 from rl_algorithms.registry import LEARNERS
 from rl_algorithms.utils.config import ConfigDict
 
 
 @LEARNERS.register_module
-class A2CLearner(Learner):
-    """Learner for A2C Agent
+class A2CLearner(BaseLearner):
+    """Learner for A2C Agent.
 
     Attributes:
         args (argparse.Namespace): arguments including hyperparameters and training settings
@@ -39,7 +39,7 @@ class A2CLearner(Learner):
         optim_cfg: ConfigDict,
         device: torch.device,
     ):
-        Learner.__init__(self, args, env_info, hyper_params, log_cfg, device)
+        BaseLearner.__init__(self, args, env_info, hyper_params, log_cfg, device)
 
         self.backbone_cfg = backbone
         self.head_cfg = head
@@ -120,11 +120,11 @@ class A2CLearner(Learner):
             "critic_optim_state_dict": self.critic_optim.state_dict(),
         }
 
-        Learner._save_params(self, params, n_episode)
+        BaseLearner._save_params(self, params, n_episode)
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
-        Learner.load_params(self, path)
+        BaseLearner.load_params(self, path)
 
         params = torch.load(path)
         self.actor.load_state_dict(params["actor_state_dict"])

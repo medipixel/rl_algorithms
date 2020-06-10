@@ -13,7 +13,7 @@ from rl_algorithms.utils.config import ConfigDict
 
 @LEARNERS.register_module
 class DDPGfDLearner(DDPGLearner):
-    """Learner for DDPGfD Agent
+    """Learner for DDPGfD Agent.
 
     Attributes:
         args (argparse.Namespace): arguments including hyperparameters and training settings

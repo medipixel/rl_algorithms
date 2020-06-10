@@ -14,7 +14,30 @@ TensorTuple = Tuple[torch.Tensor, ...]
 
 
 class Learner(ABC):
-    """Abstract learner for all learners
+    """Abstract class for all learner objects."""
+
+    @abstractmethod
+    def update_model(self, experience: Union[TensorTuple, Tuple[TensorTuple]]) -> tuple:
+        pass
+
+    @abstractmethod
+    def save_params(self, n_episode: int):
+        pass
+
+    @abstractmethod
+    def load_params(self, path: str):
+        if not os.path.exists(path):
+            raise Exception(
+                f"[ERROR] the input path does not exist. Wrong path: {path}"
+            )
+
+    @abstractmethod
+    def get_state_dict(self) -> Union[OrderedDict, Tuple[OrderedDict]]:
+        pass
+
+
+class BaseLearner(Learner):
+    """Base class for all base learners.
 
     Attributes:
         args (argparse.Namespace): arguments including hyperparameters and training settings
@@ -86,3 +109,23 @@ class Learner(ABC):
     @abstractmethod
     def get_state_dict(self) -> Union[OrderedDict, Tuple[OrderedDict]]:
         pass
+
+
+class LearnerWrapper(Learner):
+    """Base class for all learner wrappers"""
+
+    def __init__(self, learner: BaseLearner):
+        """Initialize."""
+        self.learner = learner
+
+    def update_model(self, experience: Union[TensorTuple, Tuple[TensorTuple]]) -> tuple:
+        return self.learner.update_model(experience)
+
+    def save_params(self, n_episode: int):
+        self.learner.save_params(n_episode)
+
+    def load_params(self, path: str):
+        self.learner.load_params(path)
+
+    def get_state_dict(self) -> Union[OrderedDict, Tuple[OrderedDict]]:
+        return self.learner.get_state_dict()
