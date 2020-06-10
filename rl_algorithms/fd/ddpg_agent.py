@@ -16,7 +16,7 @@ import numpy as np
 import torch
 
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
-from rl_algorithms.common.buffer.wrapper import PERWrapper
+from rl_algorithms.common.buffer.wrapper import PrioritizedBufferWrapper
 import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.common.helper_functions import numpy2floattensor
 from rl_algorithms.ddpg.agent import DDPGAgent
@@ -67,7 +67,9 @@ class DDPGfDAgent(DDPGAgent):
             self.memory = ReplayBuffer(
                 self.hyper_params.buffer_size, self.hyper_params.batch_size,
             )
-            self.memory = PERWrapper(self.memory, alpha=self.hyper_params.per_alpha)
+            self.memory = PrioritizedBufferWrapper(
+                self.memory, alpha=self.hyper_params.per_alpha
+            )
 
         self.learner = DDPGfDLearner(
             self.args,

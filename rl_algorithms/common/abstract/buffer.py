@@ -16,15 +16,15 @@ class BaseBuffer(ABC):
 
     @abstractmethod
     def add(self, transition: Tuple[Any, ...]) -> Tuple[Any, ...]:
-        """Add a new experience to memory."""
+        pass
 
     @abstractmethod
     def sample(self) -> Tuple[np.ndarray, ...]:
-        """Sample a batch of experiences from memory."""
+        pass
 
     @abstractmethod
     def __len__(self) -> int:
-        """Return the current size of internal memory."""
+        pass
 
 
 class BufferWrapper(BaseBuffer):

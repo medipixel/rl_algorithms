@@ -19,8 +19,8 @@ from rl_algorithms.common.buffer.segment_tree import MinSegmentTree, SumSegmentT
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-class PERWrapper(BufferWrapper):
-    """Prioritized Experience Replay wrapper for ReplayBuffer.
+class PrioritizedBufferWrapper(BufferWrapper):
+    """Prioritized Experience Replay wrapper for Buffer.
 
 
     Refer to OpenAI baselines github repository:

@@ -14,7 +14,7 @@ import torch
 import wandb
 
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
-from rl_algorithms.common.buffer.wrapper import PERWrapper
+from rl_algorithms.common.buffer.wrapper import PrioritizedBufferWrapper
 import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.dqn.agent import DQNAgent
 from rl_algorithms.fd.dqn_learner import DQfDLearner
@@ -56,7 +56,9 @@ class DQfDAgent(DQNAgent):
             self.memory = ReplayBuffer(
                 self.hyper_params.buffer_size, self.hyper_params.batch_size,
             )
-            self.memory = PERWrapper(self.memory, alpha=self.hyper_params.per_alpha)
+            self.memory = PrioritizedBufferWrapper(
+                self.memory, alpha=self.hyper_params.per_alpha
+            )
 
         self.learner = DQfDLearner(
             self.args,
