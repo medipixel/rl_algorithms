@@ -7,6 +7,7 @@ from rl_algorithms.common.helper_functions import identity
 
 agent = dict(
     type="DQNAgent",
+    env_info=dict(),
     hyper_params=dict(
         gamma=0.99,
         tau=5e-3,
@@ -48,7 +49,7 @@ agent = dict(
                 first_input_size=4,
                 first_output_size=32,
                 expansion=1,
-                channel_compression=4,  # output channel // channel_compression in last conv layer
+                channel_compression=4,  # compression ratio
             ),
         ),
         head=dict(
