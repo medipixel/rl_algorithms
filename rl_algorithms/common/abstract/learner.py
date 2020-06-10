@@ -27,19 +27,21 @@ class Learner(ABC):
     def __init__(
         self,
         args: argparse.Namespace,
+        env_info: ConfigDict,
         hyper_params: ConfigDict,
         log_cfg: ConfigDict,
         device: torch.device,
     ):
         """Initialize."""
         self.args = args
+        self.env_info = env_info
         self.hyper_params = hyper_params
         self.device = device
 
         if not self.args.test:
             self.ckpt_path = (
                 "./checkpoint/"
-                f"{log_cfg.env_name}/{log_cfg.agent}/{log_cfg.curr_time}/"
+                f"{env_info.env_name}/{log_cfg.agent}/{log_cfg.curr_time}/"
             )
             os.makedirs(self.ckpt_path, exist_ok=True)
 

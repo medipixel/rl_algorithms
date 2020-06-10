@@ -59,11 +59,10 @@ This project follows the [all-contributors](https://github.com/all-contributors/
 3. [Twin Delayed Deep Deterministic Policy Gradient Algorithm (TD3)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/td3)
 4. [Soft Actor Critic Algorithm (SAC)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/sac)
 5. [Behaviour Cloning (BC with DDPG, SAC)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/bc)
-6. [Prioritized Experience Replay (PER with DDPG)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/per)
-7. [From Demonstrations (DDPGfD, SACfD, DQfD)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/fd)
-8. [Rainbow DQN](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/dqn)
-9. [Rainbow IQN (without DuelingNet)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/dqn) - DuelingNet [degrades performance](https://github.com/medipixel/rl_algorithms/pull/137)
-10. Rainbow IQN (with [ResNet](https://github.com/medipixel/rl_algorithms/blob/master/rl_algorithms/common/networks/backbones/resnet.py))
+6. [From Demonstrations (DDPGfD, SACfD, DQfD)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/fd)
+7. [Rainbow DQN](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/dqn)
+8. [Rainbow IQN (without DuelingNet)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/dqn) - DuelingNet [degrades performance](https://github.com/medipixel/rl_algorithms/pull/137)
+9. Rainbow IQN (with [ResNet](https://github.com/medipixel/rl_algorithms/blob/master/rl_algorithms/common/networks/backbones/resnet.py))
 
 
 ## Performance
@@ -112,7 +111,7 @@ See <a href="https://app.wandb.ai/medipixel_rl/lunarlander_continuous_v2/reports
 </p>
 </details>
 
-<details><summary><b>LunarLanderContinuous-v2: DDPG, PER-DDPG, DDPGfD, BC-DDPG</b></summary>
+<details><summary><b>LunarLanderContinuous-v2: DDPG, DDPGfD, BC-DDPG</b></summary>
 <p><br>
 See <a href="https://app.wandb.ai/medipixel_rl/lunarlander_continuous_v2/reports?view=curt-park%2FDDPG%20%23158">W&B log</a> for more details.
 

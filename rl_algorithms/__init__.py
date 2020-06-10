@@ -17,7 +17,6 @@ from .fd.dqn_agent import DQfDAgent
 from .fd.dqn_learner import DQfDLearner
 from .fd.sac_agent import SACfDAgent
 from .fd.sac_learner import SACfDLearner
-from .per.ddpg_agent import PERDDPGAgent
 from .ppo.agent import PPOAgent
 from .ppo.learner import PPOLearner
 from .registry import build_agent, build_her
@@ -35,7 +34,6 @@ __all__ = [
     "DDPGfDAgent",
     "DQfDAgent",
     "SACfDAgent",
-    "PERDDPGAgent",
     "PPOAgent",
     "SACAgent",
     "TD3Agent",

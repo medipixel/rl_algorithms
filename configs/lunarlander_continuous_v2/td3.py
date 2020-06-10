@@ -17,20 +17,23 @@ agent = dict(
         initial_random_action=int(1e4),
         policy_update_freq=2,
     ),
-    backbone=dict(actor=dict(), critic=dict()),
-    head=dict(
-        actor=dict(
-            type="MLP",
-            configs=dict(hidden_sizes=[400, 300], output_activation=F.tanh,),
-        ),
-        critic=dict(
-            type="MLP",
-            configs=dict(
-                hidden_sizes=[400, 300], output_size=1, output_activation=identity,
+    learner_cfg=dict(
+        type="TD3Learner",
+        backbone=dict(actor=dict(), critic=dict()),
+        head=dict(
+            actor=dict(
+                type="MLP",
+                configs=dict(hidden_sizes=[400, 300], output_activation=F.tanh,),
+            ),
+            critic=dict(
+                type="MLP",
+                configs=dict(
+                    hidden_sizes=[400, 300], output_size=1, output_activation=identity,
+                ),
             ),
         ),
+        optim_cfg=dict(lr_actor=1e-3, lr_critic=1e-3, weight_decay=0.0),
     ),
-    optim_cfg=dict(lr_actor=1e-3, lr_critic=1e-3, weight_decay=0.0),
     noise_cfg=dict(
         exploration_noise=0.1, target_policy_noise=0.2, target_policy_noise_clip=0.5
     ),

@@ -90,7 +90,13 @@ def main():
     curr_time = NOWTIMES.strftime("%y%m%d_%H%M%S")
 
     cfg = Config.fromfile(args.cfg_path)
-    cfg.agent["log_cfg"] = dict(agent=cfg.agent.type, curr_time=curr_time)
+    cfg.agent.env_info = dict(
+        env_name="LunarLander-v2",
+        observation_space=env.observation_space,
+        action_space=env.action_space,
+        is_discrete=True,
+    )
+    cfg.agent.log_cfg = dict(agent=cfg.agent.type, curr_time=curr_time)
     build_args = dict(args=args, env=env)
     agent = build_agent(cfg.agent, build_args)
 

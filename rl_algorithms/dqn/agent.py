@@ -53,7 +53,6 @@ class DQNAgent(Agent):
         epsilon (float): parameter for epsilon greedy policy
         n_step_buffer (deque): n-size buffer to calculate n-step returns
         per_beta (float): beta parameter for prioritized replay buffer
-        use_conv (bool): whether or not to use convolution layer
         use_n_step (bool): whether or not to use n-step returns
 
     """
@@ -61,15 +60,14 @@ class DQNAgent(Agent):
     def __init__(
         self,
         env: gym.Env,
+        env_info: ConfigDict,
         args: argparse.Namespace,
-        log_cfg: ConfigDict,
         hyper_params: ConfigDict,
-        backbone: ConfigDict,
-        head: ConfigDict,
-        optim_cfg: ConfigDict,
+        learner_cfg: ConfigDict,
+        log_cfg: ConfigDict,
     ):
         """Initialize."""
-        Agent.__init__(self, env, args, log_cfg)
+        Agent.__init__(self, env, env_info, args, log_cfg)
 
         self.curr_state = np.zeros(1)
         self.episode_step = 0
@@ -77,18 +75,17 @@ class DQNAgent(Agent):
         self.i_episode = 0
 
         self.hyper_params = hyper_params
-        self.optim_cfg = optim_cfg
-        self.backbone_cfg = backbone
-        self.head_cfg = head
-
-        self.head_cfg.configs.state_size = self.env.observation_space.shape
-        self.head_cfg.configs.output_size = self.env.action_space.n
+        self.learner_cfg = learner_cfg
+        self.learner_cfg.args = self.args
+        self.learner_cfg.env_info = self.env_info
+        self.learner_cfg.hyper_params = self.hyper_params
+        self.learner_cfg.log_cfg = self.log_cfg
+        self.learner_cfg.device = device
 
         self.per_beta = hyper_params.per_beta
-        self.use_conv = len(self.head_cfg.configs.state_size) > 1
         self.use_n_step = hyper_params.n_step > 1
 
-        if head.configs.use_noisy_net:
+        if self.learner_cfg.head.configs.use_noisy_net:
             self.max_epsilon = 0.0
             self.min_epsilon = 0.0
             self.epsilon = 0.0
@@ -119,18 +116,7 @@ class DQNAgent(Agent):
                     gamma=self.hyper_params.gamma,
                 )
 
-        learner_cfg = dict(
-            type="DQNLearner",
-            args=self.args,
-            hyper_params=self.hyper_params,
-            log_cfg=self.log_cfg,
-            head_cfg=self.head_cfg,
-            backbone_cfg=self.backbone_cfg,
-            optim_cfg=self.optim_cfg,
-            device=device,
-        )
-
-        self.learner = build_learner(ConfigDict(learner_cfg))
+        self.learner = build_learner(self.learner_cfg)
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""

@@ -52,13 +52,12 @@ class PPOAgent(Agent):
 
     def __init__(
         self,
-        env: gym.Env,  # for testing
+        env: gym.Env,
+        env_info: ConfigDict,
         args: argparse.Namespace,
-        log_cfg: ConfigDict,
         hyper_params: ConfigDict,
-        backbone: ConfigDict,
-        head: ConfigDict,
-        optim_cfg: ConfigDict,
+        learner_cfg: ConfigDict,
+        log_cfg: ConfigDict,
     ):
         """Initialize.
 
@@ -70,7 +69,7 @@ class PPOAgent(Agent):
         env_gen = env_generator(env.spec.id, args)
         env_multi = make_envs(env_gen, n_envs=hyper_params.n_workers)
 
-        Agent.__init__(self, env, args, log_cfg)
+        Agent.__init__(self, env, env_info, args, log_cfg)
 
         self.episode_steps = np.zeros(hyper_params.n_workers, dtype=np.int)
         self.states: list = []
@@ -83,33 +82,19 @@ class PPOAgent(Agent):
         self.next_state = np.zeros((1,))
 
         self.hyper_params = hyper_params
-        self.backbone_cfg = backbone
-        self.head_cfg = head
-        self.optim_cfg = optim_cfg
+        self.learner_cfg = learner_cfg
+        self.learner_cfg.args = self.args
+        self.learner_cfg.env_info = self.env_info
+        self.learner_cfg.hyper_params = self.hyper_params
+        self.learner_cfg.log_cfg = self.log_cfg
+        self.learner_cfg.device = device
 
         if not self.args.test:
             self.env = env_multi
 
-        self.head_cfg.actor.configs.state_size = (
-            self.head_cfg.critic.configs.state_size
-        ) = self.env.observation_space.shape
-        self.head_cfg.actor.configs.output_size = self.env.action_space.shape[0]
-
         self.epsilon = hyper_params.max_epsilon
 
-        learner_cfg = dict(
-            type="PPOLearner",
-            args=self.args,
-            hyper_params=self.hyper_params,
-            log_cfg=self.log_cfg,
-            head_cfg=self.head_cfg,
-            backbone_cfg=self.backbone_cfg,
-            optim_cfg=self.optim_cfg,
-            device=device,
-            is_discrete=self.is_discrete,
-        )
-
-        self.learner = build_learner(ConfigDict(learner_cfg))
+        self.learner = build_learner(self.learner_cfg)
 
     def select_action(self, state: np.ndarray) -> torch.Tensor:
         """Select an action from the input space."""
