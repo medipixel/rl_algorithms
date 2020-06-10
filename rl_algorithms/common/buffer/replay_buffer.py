@@ -6,10 +6,11 @@ from typing import Any, Deque, List, Tuple
 
 import numpy as np
 
+from rl_algorithms.common.abstract.buffer import BaseBuffer
 from rl_algorithms.common.helper_functions import get_n_step_info
 
 
-class ReplayBuffer:
+class ReplayBuffer(BaseBuffer):
     """Fixed-size buffer to store experience tuples.
 
     Attributes:
@@ -21,7 +22,7 @@ class ReplayBuffer:
         n_step_buffer (deque): recent n transitions
         n_step (int): step size for n-step transition
         gamma (float): discount factor
-        buffer_size (int): size of buffers
+        max_len (int): size of buffers
         batch_size (int): batch size for training
         demo_size (int): size of demo transitions
         length (int): amount of memory filled
@@ -30,7 +31,7 @@ class ReplayBuffer:
 
     def __init__(
         self,
-        buffer_size: int,
+        max_len: int,
         batch_size: int,
         gamma: float = 0.99,
         n_step: int = 1,
@@ -39,15 +40,15 @@ class ReplayBuffer:
         """Initialize a ReplayBuffer object.
 
         Args:
-            buffer_size (int): size of replay buffer for experience
+            max_len (int): size of replay buffer for experience
             batch_size (int): size of a batched sampled from replay buffer for training
             gamma (float): discount factor
             n_step (int): step size for n-step transition
             demo (list): transitions of human play
         """
-        assert 0 < batch_size <= buffer_size
+        assert 0 < batch_size <= max_len
         assert 0.0 <= gamma <= 1.0
-        assert 1 <= n_step <= buffer_size
+        assert 1 <= n_step <= max_len
 
         self.obs_buf: np.ndarray = None
         self.acts_buf: np.ndarray = None
@@ -59,7 +60,7 @@ class ReplayBuffer:
         self.n_step = n_step
         self.gamma = gamma
 
-        self.buffer_size = buffer_size
+        self.max_len = max_len
         self.batch_size = batch_size
         self.demo_size = len(demo) if demo else 0
         self.demo = demo
@@ -68,7 +69,7 @@ class ReplayBuffer:
 
         # demo may have empty tuple list [()]
         if self.demo and self.demo[0]:
-            self.buffer_size += self.demo_size
+            self.max_len += self.demo_size
             self.length += self.demo_size
             for idx, d in enumerate(self.demo):
                 state, action, reward, next_state, done = d
@@ -112,8 +113,8 @@ class ReplayBuffer:
         self.done_buf[self.idx] = done
 
         self.idx += 1
-        self.idx = self.demo_size if self.idx % self.buffer_size == 0 else self.idx
-        self.length = min(self.length + 1, self.buffer_size)
+        self.idx = self.demo_size if self.idx % self.max_len == 0 else self.idx
+        self.length = min(self.length + 1, self.max_len)
 
         # return a single step transition to insert to replay buffer
         return self.n_step_buffer[0]
@@ -143,17 +144,15 @@ class ReplayBuffer:
     def _initialize_buffers(self, state: np.ndarray, action: np.ndarray) -> None:
         """Initialze buffers for state, action, resward, next_state, done."""
         # In case action of demo is not np.ndarray
-        self.obs_buf = np.zeros(
-            [self.buffer_size] + list(state.shape), dtype=state.dtype
-        )
+        self.obs_buf = np.zeros([self.max_len] + list(state.shape), dtype=state.dtype)
         self.acts_buf = np.zeros(
-            [self.buffer_size] + list(action.shape), dtype=action.dtype
+            [self.max_len] + list(action.shape), dtype=action.dtype
         )
-        self.rews_buf = np.zeros([self.buffer_size], dtype=float)
+        self.rews_buf = np.zeros([self.max_len], dtype=float)
         self.next_obs_buf = np.zeros(
-            [self.buffer_size] + list(state.shape), dtype=state.dtype
+            [self.max_len] + list(state.shape), dtype=state.dtype
         )
-        self.done_buf = np.zeros([self.buffer_size], dtype=float)
+        self.done_buf = np.zeros([self.max_len], dtype=float)
 
     def __len__(self) -> int:
         """Return the current size of internal memory."""

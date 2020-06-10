@@ -23,8 +23,8 @@ import torch
 import wandb
 
 from rl_algorithms.common.abstract.agent import Agent
-from rl_algorithms.common.buffer.priortized_replay_buffer import PrioritizedReplayBuffer
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
+from rl_algorithms.common.buffer.wrapper import PrioritizedBufferWrapper
 from rl_algorithms.common.helper_functions import numpy2floattensor
 from rl_algorithms.dqn.learner import DQNLearner
 from rl_algorithms.registry import AGENTS
@@ -105,10 +105,11 @@ class DQNAgent(Agent):
         """Initialize non-common things."""
         if not self.args.test:
             # replay memory for a single step
-            self.memory = PrioritizedReplayBuffer(
-                self.hyper_params.buffer_size,
-                self.hyper_params.batch_size,
-                alpha=self.hyper_params.per_alpha,
+            self.memory = ReplayBuffer(
+                self.hyper_params.buffer_size, self.hyper_params.batch_size,
+            )
+            self.memory = PrioritizedBufferWrapper(
+                self.memory, alpha=self.hyper_params.per_alpha
             )
 
             # replay memory for multi-steps
