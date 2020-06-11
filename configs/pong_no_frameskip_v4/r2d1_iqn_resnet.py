@@ -1,4 +1,4 @@
-"""Config for R2D1IQN_ResNet on PongNoFrameSkip-v4.
+"""Config for R2D1IQN on PongNoFrameSkip-v4.
 - Author: Kyunghwan Kim, Euijin Jeong
 - Contact: kh.kim@medipixel.io, euijin.jeong@medipixel.io
 """
@@ -28,7 +28,7 @@ agent = dict(
         # Epsilon Greedy
         max_epsilon=1.0,
         min_epsilon=0.01,  # openai baselines: 0.01
-        epsilon_decay=1e-6,  # openai baselines: 1e-7 / 1e-1
+        epsilon_decay=2e-6,  # openai baselines: 1e-7 / 1e-1
         # grad_cam
         grad_cam_layer_list=[
             "backbone.cnn.cnn_0.cnn",
@@ -36,37 +36,40 @@ agent = dict(
             "backbone.cnn.cnn_2.cnn",
         ],
     ),
-    backbone=dict(
-        type="ResNet",
-        configs=dict(
-            use_bottleneck=True,
-            num_blocks=[1, 1, 1, 1],
-            block_output_sizes=[8, 8, 8, 8],
-            block_strides=[1, 2, 2, 2],
-            first_input_size=1,
-            first_output_size=8,
-            expansion=1,
-            channel_compression=4,  # output channel // channel_compression in last conv layer
+    learner_cfg=dict(
+        type="R2D1Learner",
+        backbone=dict(
+            type="ResNet",
+            configs=dict(
+                use_bottleneck=False,
+                num_blocks=[1, 1, 1, 1],
+                block_output_sizes=[4, 8, 8, 16],
+                block_strides=[1, 2, 2, 2],
+                first_input_size=1,
+                first_output_size=8,
+                expansion=1,
+                channel_compression=4,  # compression ratio
+            ),
         ),
-    ),
-    head=dict(
-        type="IQNMLP",
-        configs=dict(
-            rnn_hidden_size=512,
-            burn_in_step=10,
-            hidden_sizes=[512],
-            n_tau_samples=64,
-            n_tau_prime_samples=64,
-            n_quantile_samples=32,
-            quantile_embedding_dim=64,
-            kappa=1.0,
-            use_noisy_net=False,
-            output_activation=identity,
+        head=dict(
+            type="IQNMLP",
+            configs=dict(
+                rnn_hidden_size=512,
+                burn_in_step=10,
+                hidden_sizes=[512],
+                n_tau_samples=64,
+                n_tau_prime_samples=64,
+                n_quantile_samples=32,
+                quantile_embedding_dim=64,
+                kappa=1.0,
+                use_noisy_net=False,
+                output_activation=identity,
+            ),
         ),
-    ),
-    optim_cfg=dict(
-        lr_dqn=1e-4,  # dueling: 6.25e-5, openai baselines: 1e-4
-        weight_decay=0.0,  # this makes saturation in cnn weights
-        adam_eps=1e-8,  # rainbow: 1.5e-4, openai baselines: 1e-8
+        optim_cfg=dict(
+            lr_dqn=1e-4,  # dueling: 6.25e-5, openai baselines: 1e-4
+            weight_decay=0.0,  # this makes saturation in cnn weights
+            adam_eps=1e-8,  # rainbow: 1.5e-4, openai baselines: 1e-8
+        ),
     ),
 )

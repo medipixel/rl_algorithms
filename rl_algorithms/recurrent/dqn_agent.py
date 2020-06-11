@@ -16,8 +16,7 @@ from rl_algorithms.common.buffer.wrapper import PrioritizedBufferWrapper
 import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.common.helper_functions import numpy2floattensor
 from rl_algorithms.dqn.agent import DQNAgent
-from rl_algorithms.dqn.learner import R2D1Learner
-from rl_algorithms.registry import AGENTS
+from rl_algorithms.registry import AGENTS, build_learner
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -59,15 +58,7 @@ class R2D1Agent(DQNAgent):
                     gamma=self.hyper_params.gamma,
                 )
 
-            self.learner = R2D1Learner(
-                self.args,
-                self.hyper_params,
-                self.log_cfg,
-                self.head_cfg,
-                self.backbone_cfg,
-                self.optim_cfg,
-                device,
-            )
+        self.learner = build_learner(self.learner_cfg)
 
     def select_action(
         self,
@@ -146,11 +137,11 @@ class R2D1Agent(DQNAgent):
         for self.i_episode in range(1, self.args.episode_num + 1):
             state = self.env.reset()
             hidden_in = torch.zeros(
-                [1, 1, self.head_cfg.configs.rnn_hidden_size], dtype=torch.float
+                [1, 1, self.learner.head_cfg.configs.rnn_hidden_size], dtype=torch.float
             ).to(device)
-            prev_action = torch.zeros(1, 1, self.head_cfg.configs.output_size).to(
-                device
-            )
+            prev_action = torch.zeros(
+                1, 1, self.learner.head_cfg.configs.output_size
+            ).to(device)
             prev_reward = torch.zeros(1, 1, 1).to(device)
             self.episode_step = 0
             self.sequence_step = 0
@@ -199,7 +190,7 @@ class R2D1Agent(DQNAgent):
                 hidden_in = hidden_out
                 state = next_state
                 prev_action = common_utils.make_one_hot(
-                    torch.as_tensor(action), self.head_cfg.configs.output_size
+                    torch.as_tensor(action), self.learner.head_cfg.configs.output_size
                 )
                 prev_reward = torch.as_tensor(reward).to(device)
                 score += reward
@@ -231,11 +222,11 @@ class R2D1Agent(DQNAgent):
         score_list = []
         for i_episode in range(test_num):
             hidden_in = torch.zeros(
-                [1, 1, self.head_cfg.configs.rnn_hidden_size], dtype=torch.float
+                [1, 1, self.learner.head_cfg.configs.rnn_hidden_size], dtype=torch.float
             ).to(device)
-            prev_action = torch.zeros(1, 1, self.head_cfg.configs.output_size).to(
-                device
-            )
+            prev_action = torch.zeros(
+                1, 1, self.learner.head_cfg.configs.output_size
+            ).to(device)
             prev_reward = torch.zeros(1, 1, 1).to(device)
             state = self.env.reset()
             done = False
@@ -254,7 +245,7 @@ class R2D1Agent(DQNAgent):
                 hidden_in = hidden_out
                 state = next_state
                 prev_action = common_utils.make_one_hot(
-                    torch.as_tensor(action), self.head_cfg.configs.output_size
+                    torch.as_tensor(action), self.learner.head_cfg.configs.output_size
                 )
                 prev_reward = torch.as_tensor(reward).to(device)
                 score += reward
