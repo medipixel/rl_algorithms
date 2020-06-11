@@ -37,12 +37,21 @@ class Agent(ABC):
 
     """
 
-    def __init__(self, env: gym.Env, args: argparse.Namespace, log_cfg: ConfigDict):
+    def __init__(
+        self,
+        env: gym.Env,
+        env_info: ConfigDict,
+        args: argparse.Namespace,
+        log_cfg: ConfigDict,
+    ):
         """Initialize."""
         self.args = args
         self.env = env
+        self.env_info = env_info
         self.log_cfg = log_cfg
         self.log_cfg.env_name = env.spec.id if env.spec is not None else env.name
+
+        self.learner = None
 
         if isinstance(env.action_space, Discrete):
             self.is_discrete = True
@@ -139,7 +148,8 @@ class Agent(ABC):
 
     def test_with_gradcam(self):
         """Test agent with Grad-CAM."""
-        gcam = GradCAM(model=self.dqn.eval())
+        policy = self.learner.get_policy()
+        gcam = GradCAM(model=policy.eval())
 
         for i_episode in range(self.args.episode_num):
             state = self.env.reset()
@@ -150,11 +160,10 @@ class Agent(ABC):
             key = 0
             print("\nPress Any Key to move to next step... (quit: ESC key)")
             while not done:
-                state = self._preprocess_state(state)
-                action = self.dqn(state).argmax()
-                action = action.detach().cpu().numpy()
+                action = self.select_action(state)
                 next_state, reward, done, _ = self.step(action)
 
+                state = self._preprocess_state(state)
                 _ = gcam.forward(state)
                 ids = torch.LongTensor([[int(action)]]).cuda()
                 gcam.backward(ids=ids)

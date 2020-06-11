@@ -19,8 +19,7 @@ from rl_algorithms.common.abstract.agent import Agent
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
 from rl_algorithms.common.helper_functions import numpy2floattensor
 from rl_algorithms.common.noise import OUNoise
-from rl_algorithms.ddpg.learner import DDPGLearner
-from rl_algorithms.registry import AGENTS
+from rl_algorithms.registry import AGENTS, build_learner
 from rl_algorithms.utils.config import ConfigDict
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -51,16 +50,15 @@ class DDPGAgent(Agent):
     def __init__(
         self,
         env: gym.Env,
+        env_info: ConfigDict,
         args: argparse.Namespace,
-        log_cfg: ConfigDict,
         hyper_params: ConfigDict,
-        backbone: ConfigDict,
-        head: ConfigDict,
-        optim_cfg: ConfigDict,
+        learner_cfg: ConfigDict,
         noise_cfg: ConfigDict,
+        log_cfg: ConfigDict,
     ):
         """Initialize."""
-        Agent.__init__(self, env, args, log_cfg)
+        Agent.__init__(self, env, env_info, args, log_cfg)
 
         self.curr_state = np.zeros((1,))
         self.total_step = 0
@@ -68,23 +66,17 @@ class DDPGAgent(Agent):
         self.i_episode = 0
 
         self.hyper_params = hyper_params
-        self.backbone_cfg = backbone
-        self.head_cfg = head
-        self.optim_cfg = optim_cfg
-
-        self.state_dim = self.env.observation_space.shape
-        self.action_dim = self.env.action_space.shape[0]
-
-        self.head_cfg.actor.configs.state_size = self.state_dim
-
-        # ddpg critic gets state & action as input,
-        # and make the type to tuple to conform the gym action_space type.
-        self.head_cfg.critic.configs.state_size = (self.state_dim[0] + self.action_dim,)
-        self.head_cfg.actor.configs.output_size = self.action_dim
+        self.learner_cfg = learner_cfg
+        self.learner_cfg.args = self.args
+        self.learner_cfg.env_info = self.env_info
+        self.learner_cfg.hyper_params = self.hyper_params
+        self.learner_cfg.log_cfg = self.log_cfg
+        self.learner_cfg.noise_cfg = noise_cfg
+        self.learner_cfg.device = device
 
         # set noise
         self.noise = OUNoise(
-            self.action_dim,
+            env_info.action_space.shape[0],
             theta=noise_cfg.ou_noise_theta,
             sigma=noise_cfg.ou_noise_sigma,
         )
@@ -100,15 +92,7 @@ class DDPGAgent(Agent):
                 self.hyper_params.buffer_size, self.hyper_params.batch_size
             )
 
-        self.learner = DDPGLearner(
-            self.args,
-            self.hyper_params,
-            self.log_cfg,
-            self.head_cfg,
-            self.backbone_cfg,
-            self.optim_cfg,
-            device,
-        )
+        self.learner = build_learner(self.learner_cfg)
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""
@@ -120,7 +104,7 @@ class DDPGAgent(Agent):
             self.total_step < self.hyper_params.initial_random_action
             and not self.args.test
         ):
-            return np.array(self.env.action_space.sample())
+            return np.array(self.env_info.action_space.sample())
 
         selected_action = self.learner.actor(state).detach().cpu().numpy()
 

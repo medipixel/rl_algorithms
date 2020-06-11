@@ -19,8 +19,7 @@ from rl_algorithms.common.abstract.agent import Agent
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
 from rl_algorithms.common.helper_functions import numpy2floattensor
 from rl_algorithms.common.noise import GaussianNoise
-from rl_algorithms.registry import AGENTS
-from rl_algorithms.td3.learner import TD3Learner
+from rl_algorithms.registry import AGENTS, build_learner
 from rl_algorithms.utils.config import ConfigDict
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -40,7 +39,6 @@ class TD3Agent(Agent):
         action_dim (int): action size of env
         memory (ReplayBuffer): replay memory
         exploration_noise (GaussianNoise): random noise for exploration
-        target_policy_noise (GaussianNoise): random noise for target values
         curr_state (np.ndarray): temporary storage of the current state
         total_steps (int): total step numbers
         episode_steps (int): step number of the current episode
@@ -52,13 +50,12 @@ class TD3Agent(Agent):
     def __init__(
         self,
         env: gym.Env,
+        env_info: ConfigDict,
         args: argparse.Namespace,
-        log_cfg: ConfigDict,
         hyper_params: ConfigDict,
-        backbone: ConfigDict,
-        head: ConfigDict,
-        optim_cfg: ConfigDict,
+        learner_cfg: ConfigDict,
         noise_cfg: ConfigDict,
+        log_cfg: ConfigDict,
     ):
         """Initialize.
 
@@ -67,7 +64,7 @@ class TD3Agent(Agent):
             args (argparse.Namespace): arguments including hyperparameters and training settings
 
         """
-        Agent.__init__(self, env, args, log_cfg)
+        Agent.__init__(self, env, env_info, args, log_cfg)
 
         self.curr_state = np.zeros((1,))
         self.total_step = 0
@@ -76,26 +73,19 @@ class TD3Agent(Agent):
         self.i_episode = 0
 
         self.hyper_params = hyper_params
-        self.noise_cfg = noise_cfg
-        self.backbone_cfg = backbone
-        self.head_cfg = head
-        self.optim_cfg = optim_cfg
-
-        self.state_dim = self.env.observation_space.shape
-        self.action_dim = self.env.action_space.shape[0]
-        self.head_cfg.actor.configs.state_size = self.state_dim
-        self.head_cfg.critic.configs.state_size = (self.state_dim[0] + self.action_dim,)
-        self.head_cfg.actor.configs.output_size = self.action_dim
+        self.learner_cfg = learner_cfg
+        self.learner_cfg.args = self.args
+        self.learner_cfg.env_info = self.env_info
+        self.learner_cfg.hyper_params = self.hyper_params
+        self.learner_cfg.log_cfg = self.log_cfg
+        self.learner_cfg.noise_cfg = noise_cfg
+        self.learner_cfg.device = device
 
         # noise instance to make randomness of action
         self.exploration_noise = GaussianNoise(
-            self.action_dim, noise_cfg.exploration_noise, noise_cfg.exploration_noise
-        )
-
-        self.target_policy_noise = GaussianNoise(
-            self.action_dim,
-            noise_cfg.target_policy_noise,
-            noise_cfg.target_policy_noise,
+            self.env_info.action_space.shape[0],
+            noise_cfg.exploration_noise,
+            noise_cfg.exploration_noise,
         )
 
         if not self.args.test:
@@ -104,17 +94,7 @@ class TD3Agent(Agent):
                 self.hyper_params.buffer_size, self.hyper_params.batch_size
             )
 
-        self.learner = TD3Learner(
-            self.args,
-            self.hyper_params,
-            self.log_cfg,
-            self.head_cfg,
-            self.backbone_cfg,
-            self.optim_cfg,
-            device,
-            self.noise_cfg,
-            self.target_policy_noise,
-        )
+        self.learner = build_learner(self.learner_cfg)
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""
@@ -125,7 +105,7 @@ class TD3Agent(Agent):
             self.total_step < self.hyper_params.initial_random_action
             and not self.args.test
         ):
-            return np.array(self.env.action_space.sample())
+            return np.array(self.env_info.action_space.sample())
 
         state = torch.FloatTensor(state).to(device)
         selected_action = self.learner.actor(state).detach().cpu().numpy()

@@ -1,20 +1,23 @@
 import argparse
+from collections import OrderedDict
 from typing import Tuple, Union
 
 import numpy as np
 import torch
+import torch.nn as nn
 from torch.nn.utils import clip_grad_norm_
 import torch.optim as optim
 
 from rl_algorithms.common.abstract.learner import Learner, TensorTuple
 import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.common.networks.brain import Brain
-from rl_algorithms.registry import build_loss
+from rl_algorithms.registry import LEARNERS, build_loss
 from rl_algorithms.utils.config import ConfigDict
 
 
+@LEARNERS.register_module
 class DQNLearner(Learner):
-    """Learner for DQN Agent
+    """Learner for DQN Agent.
 
     Attributes:
         args (argparse.Namespace): arguments including hyperparameters and training settings
@@ -29,19 +32,22 @@ class DQNLearner(Learner):
     def __init__(
         self,
         args: argparse.Namespace,
+        env_info: ConfigDict,
         hyper_params: ConfigDict,
         log_cfg: ConfigDict,
-        head_cfg: ConfigDict,
-        backbone_cfg: ConfigDict,
+        backbone: ConfigDict,
+        head: ConfigDict,
         optim_cfg: ConfigDict,
         device: torch.device,
     ):
-        Learner.__init__(self, args, hyper_params, log_cfg, device)
+        Learner.__init__(self, args, env_info, hyper_params, log_cfg, device)
 
-        self.head_cfg = head_cfg
-        self.backbone_cfg = backbone_cfg
+        self.backbone_cfg = backbone
+        self.head_cfg = head
+        self.head_cfg.configs.state_size = self.env_info.observation_space.shape
+        self.head_cfg.configs.output_size = self.env_info.action_space.n
         self.optim_cfg = optim_cfg
-        self.use_n_step = hyper_params.n_step > 1
+        self.use_n_step = self.hyper_params.n_step > 1
 
         self._init_network()
 
@@ -147,3 +153,11 @@ class DQNLearner(Learner):
         self.dqn_target.load_state_dict(params["dqn_target_state_dict"])
         self.dqn_optim.load_state_dict(params["dqn_optim_state_dict"])
         print("[INFO] loaded the model and optimizer from", path)
+
+    def get_state_dict(self) -> OrderedDict:
+        """Return state dicts, mainly for distributed worker"""
+        return self.dqn.state_dict()
+
+    def get_policy(self) -> nn.Module:
+        """Return model (policy) used for action selection"""
+        return self.dqn

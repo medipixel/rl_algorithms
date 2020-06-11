@@ -13,9 +13,8 @@ import numpy as np
 import torch
 import wandb
 
-from rl_algorithms.a2c.learner import A2CLearner
 from rl_algorithms.common.abstract.agent import Agent
-from rl_algorithms.registry import AGENTS
+from rl_algorithms.registry import AGENTS, build_learner
 from rl_algorithms.utils.config import ConfigDict
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -46,39 +45,28 @@ class A2CAgent(Agent):
     def __init__(
         self,
         env: gym.Env,
+        env_info: ConfigDict,
         args: argparse.Namespace,
-        log_cfg: ConfigDict,
         hyper_params: ConfigDict,
-        backbone: ConfigDict,
-        head: ConfigDict,
-        optim_cfg: ConfigDict,
+        learner_cfg: ConfigDict,
+        log_cfg: ConfigDict,
     ):
         """Initialize."""
-        Agent.__init__(self, env, args, log_cfg)
+        Agent.__init__(self, env, env_info, args, log_cfg)
 
         self.transition: list = list()
         self.episode_step = 0
         self.i_episode = 0
 
         self.hyper_params = hyper_params
-        self.backbone_cfg = backbone
-        self.head_cfg = head
-        self.optim_cfg = optim_cfg
+        self.learner_cfg = learner_cfg
+        self.learner_cfg.args = self.args
+        self.learner_cfg.env_info = self.env_info
+        self.learner_cfg.hyper_params = self.hyper_params
+        self.learner_cfg.log_cfg = self.log_cfg
+        self.learner_cfg.device = device
 
-        self.head_cfg.actor.configs.state_size = (
-            self.head_cfg.critic.configs.state_size
-        ) = self.env.observation_space.shape
-        self.head_cfg.actor.configs.output_size = self.env.action_space.shape[0]
-
-        self.learner = A2CLearner(
-            self.args,
-            self.hyper_params,
-            self.log_cfg,
-            self.head_cfg,
-            self.backbone_cfg,
-            self.optim_cfg,
-            device,
-        )
+        self.learner = build_learner(self.learner_cfg)
 
     def select_action(self, state: np.ndarray) -> torch.Tensor:
         """Select an action from the input space."""

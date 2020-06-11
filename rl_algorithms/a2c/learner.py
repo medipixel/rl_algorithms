@@ -1,17 +1,22 @@
 import argparse
+from collections import OrderedDict
+from typing import Tuple
 
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.utils import clip_grad_norm_
 import torch.optim as optim
 
-from rl_algorithms.common.abstract.learner import Learner, TensorTuple
+from rl_algorithms.common.abstract.learner import BaseLearner, TensorTuple
 from rl_algorithms.common.networks.brain import Brain
+from rl_algorithms.registry import LEARNERS
 from rl_algorithms.utils.config import ConfigDict
 
 
-class A2CLearner(Learner):
-    """Learner for A2C Agent
+@LEARNERS.register_module
+class A2CLearner(BaseLearner):
+    """Learner for A2C Agent.
 
     Attributes:
         args (argparse.Namespace): arguments including hyperparameters and training settings
@@ -27,17 +32,22 @@ class A2CLearner(Learner):
     def __init__(
         self,
         args: argparse.Namespace,
+        env_info: ConfigDict,
         hyper_params: ConfigDict,
         log_cfg: ConfigDict,
-        head_cfg: ConfigDict,
-        backbone_cfg: ConfigDict,
+        backbone: ConfigDict,
+        head: ConfigDict,
         optim_cfg: ConfigDict,
         device: torch.device,
     ):
-        Learner.__init__(self, args, hyper_params, log_cfg, device)
+        BaseLearner.__init__(self, args, env_info, hyper_params, log_cfg, device)
 
-        self.head_cfg = head_cfg
-        self.backbone_cfg = backbone_cfg
+        self.backbone_cfg = backbone
+        self.head_cfg = head
+        self.head_cfg.actor.configs.state_size = (
+            self.head_cfg.critic.configs.state_size
+        ) = self.env_info.observation_space.shape
+        self.head_cfg.actor.configs.output_size = self.env_info.action_space.shape[0]
         self.optim_cfg = optim_cfg
 
         self._init_network()
@@ -111,11 +121,11 @@ class A2CLearner(Learner):
             "critic_optim_state_dict": self.critic_optim.state_dict(),
         }
 
-        Learner._save_params(self, params, n_episode)
+        BaseLearner._save_params(self, params, n_episode)
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
-        Learner.load_params(self, path)
+        BaseLearner.load_params(self, path)
 
         params = torch.load(path)
         self.actor.load_state_dict(params["actor_state_dict"])
@@ -123,3 +133,11 @@ class A2CLearner(Learner):
         self.actor_optim.load_state_dict(params["actor_optim_state_dict"])
         self.critic_optim.load_state_dict(params["critic_optim_state_dict"])
         print("[INFO] Loaded the model and optimizer from", path)
+
+    def get_state_dict(self) -> Tuple[OrderedDict]:
+        """Return state dicts, mainly for distributed worker"""
+        return (self.critic.state_dict(), self.actor.state_dict())
+
+    def get_policy(self) -> nn.Module:
+        """Return model (policy) used for action selection"""
+        return self.actor
