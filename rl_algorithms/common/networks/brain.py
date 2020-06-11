@@ -23,7 +23,7 @@ class Brain(nn.Module):
         self, backbone_cfg: ConfigDict, head_cfg: ConfigDict,
     ):
         """Initialize."""
-        super(Brain, self).__init__()
+        nn.Module.__init__(self)
         if not backbone_cfg:
             self.backbone = identity
             head_cfg.configs.input_size = head_cfg.configs.state_size[0]
@@ -65,7 +65,7 @@ class GRUBrain(Brain):
     ):
         self.action_size = head_cfg.configs.output_size
         """Initialize. Generate different structure whether it has CNN module or not."""
-        super(GRUBrain, self).__init__(backbone_cfg, head_cfg)
+        Brain.__init__(self, backbone_cfg, head_cfg)
         if not backbone_cfg:
             self.backbone = identity
             head_cfg.configs.input_size = head_cfg.configs.state_size[0]

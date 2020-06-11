@@ -31,20 +31,23 @@ agent = dict(
         min_epsilon=0.01,  # openai baselines: 0.01
         epsilon_decay=5e-7,  # openai baselines: 1e-7 / 1e-1
     ),
-    backbone=dict(),
-    head=dict(
-        type="C51DuelingMLP",
-        configs=dict(
-            rnn_hidden_size=128,
-            burn_in_step=10,
-            hidden_sizes=[128, 64],
-            v_min=-300,
-            v_max=300,
-            atom_size=1530,
-            output_activation=identity,
-            # NoisyNet
-            use_noisy_net=False,
+    learner_cfg=dict(
+        type="R2D1Learner",
+        backbone=dict(),
+        head=dict(
+            type="C51DuelingMLP",
+            configs=dict(
+                rnn_hidden_size=128,
+                burn_in_step=10,
+                hidden_sizes=[128, 64],
+                v_min=-300,
+                v_max=300,
+                atom_size=1530,
+                output_activation=identity,
+                # NoisyNet
+                use_noisy_net=False,
+            ),
         ),
+        optim_cfg=dict(lr_dqn=1e-4, weight_decay=1e-7, adam_eps=1e-8),
     ),
-    optim_cfg=dict(lr_dqn=1e-4, weight_decay=1e-7, adam_eps=1e-8),
 )
