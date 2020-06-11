@@ -5,6 +5,7 @@ from typing import Dict, List, Tuple
 import numpy as np
 import ray
 import torch
+from zmq.sugar.context import Context
 
 from rl_algorithms.common.distributed.apex.worker import ApeXWorker
 from rl_algorithms.registry import build_loss
@@ -26,10 +27,11 @@ class ApeXDQNWorker(ApeXWorker):
         rank: int,
         args: argparse.Namespace,
         comm_cfg: ConfigDict,
+        ctx: Context,
         hyper_params: ConfigDict,
         learner_state_dict: OrderedDict,
     ):
-        ApeXWorker.__init__(self, rank, args, comm_cfg, hyper_params)
+        ApeXWorker.__init__(self, rank, args, comm_cfg, hyper_params, ctx)
         self.loss_fn = build_loss(self.hyper_params.loss_type)
 
         self._init_networks(learner_state_dict)

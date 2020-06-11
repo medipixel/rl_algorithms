@@ -6,6 +6,7 @@ from typing import Deque, Tuple
 import numpy as np
 import pyarrow as pa
 import zmq
+from zmq.sugar.context import Context
 
 from rl_algorithms.common.distributed.abstract.worker import Worker
 from rl_algorithms.utils.config import ConfigDict
@@ -21,24 +22,23 @@ class ApeXWorker(Worker):
         args: argparse.Namespace,
         comm_cfg: ConfigDict,
         hyper_params: ConfigDict,
+        ctx: Context,
     ):
         Worker.__init__(self, rank, args, comm_cfg)
         self.hyper_params = hyper_params
 
-        self._init_communication()
+        self._init_communication(ctx)
 
-    def _init_communication(self):
+    def _init_communication(self, ctx: Context):
         """Initialize sockets connecting worker-learner, worker-buffer"""
         # for receiving params from learner
-        context = zmq.Context()
-        self.sub_socket = context.socket(zmq.SUB)
+        self.sub_socket = ctx.socket(zmq.SUB)
         self.sub_socket.setsockopt_string(zmq.SUBSCRIBE, "")
         self.sub_socket.setsockopt(zmq.CONFLATE, 1)
         self.sub_socket.connect(f"tcp://127.0.0.1:{self.comm_cfg.learner_worker_port}")
 
         # for sending replay data to buffer
-        context = zmq.Context()
-        self.push_socket = context.socket(zmq.PUSH)
+        self.push_socket = ctx.socket(zmq.PUSH)
         self.push_socket.connect(f"tcp://127.0.0.1:{self.comm_cfg.worker_buffer_port}")
 
     def collect_data(self) -> dict:

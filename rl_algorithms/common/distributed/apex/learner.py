@@ -25,21 +25,19 @@ class ApeXLearner(DistributedLearnerWrapper):
 
     """
 
-    def __init__(self, learner: Learner, comm_cfg: ConfigDict):
+    def __init__(self, learner: Learner, comm_cfg: ConfigDict, ctx: zmq.Context):
         DistributedLearnerWrapper.__init__(self, learner, comm_cfg)
         self.update_step = 0
 
         self._init_network()
-        self._init_communication()
+        self._init_communication(ctx)
 
     # pylint: disable=attribute-defined-outside-init
-    def _init_communication(self):
+    def _init_communication(self, ctx: zmq.Context):
         """Initialize sockets for communication"""
-        ctx = zmq.Context()
         self.pub_socket = ctx.socket(zmq.PUB)
         self.pub_socket.bind(f"tcp://127.0.0.1:{self.comm_cfg.learner_worker_port}")
 
-        ctx = zmq.Context()
         self.rep_socket = ctx.socket(zmq.REP)
         self.rep_socket.bind(f"tcp://127.0.0.1:{self.comm_cfg.learner_buffer_port}")
 
