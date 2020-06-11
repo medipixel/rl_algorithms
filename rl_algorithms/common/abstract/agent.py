@@ -48,8 +48,10 @@ class Agent(ABC):
         self.args = args
         self.env = env
         self.env_info = env_info
+        self.total_step = 0
         self.log_cfg = log_cfg
         self.log_cfg.env_name = env.spec.id if env.spec is not None else env.name
+        self.total_step = 0
 
         self.learner = None
 

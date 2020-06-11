@@ -7,12 +7,13 @@ from typing import Any, Deque, List, Tuple
 import numpy as np
 import torch
 
+from rl_algorithms.common.abstract.buffer import BaseBuffer
 from rl_algorithms.common.helper_functions import get_n_step_info
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-class RecurrentReplayBuffer:
+class RecurrentReplayBuffer(BaseBuffer):
     """Fixed-size buffer to store experience tuples.
     Attributes:
         obs_buf (np.ndarray): observations
@@ -23,7 +24,7 @@ class RecurrentReplayBuffer:
         n_step_buffer (deque): recent n transitions
         n_step (int): step size for n-step transition
         gamma (float): discount factor
-        buffer_size (int): size of buffers
+        max_len (int): size of buffers
         batch_size (int): batch size for training
         sequence_size (int): sequence size for unrolling recurrent network
         overlap_size (int): overlapping size between the sequences
@@ -34,7 +35,7 @@ class RecurrentReplayBuffer:
 
     def __init__(
         self,
-        buffer_size: int,
+        max_len: int,
         batch_size: int,
         sequence_size: int,
         overlap_size: int,
@@ -44,7 +45,7 @@ class RecurrentReplayBuffer:
     ):
         """Initialize a ReplayBuffer object.
         Args:
-            buffer_size (int): size of replay buffer for experience
+            max_len (int): size of replay buffer for experience
             batch_size (int): size of a batched sampled from replay buffer for training
             sequence_size (int): sequence size for unrolling recurrent network
             overlap_size (int): overlapping size between the sequences
@@ -52,9 +53,9 @@ class RecurrentReplayBuffer:
             n_step (int): step size for n-step transition
             demo (list): transitions of human play
         """
-        assert 0 < batch_size <= buffer_size
+        assert 0 < batch_size <= max_len
         assert 0.0 <= gamma <= 1.0
-        assert 1 <= n_step <= buffer_size
+        assert 1 <= n_step <= max_len
 
         self.init_state = None
         self.init_action = None
@@ -71,13 +72,12 @@ class RecurrentReplayBuffer:
         self.rews_buf: np.ndarray = None
         self.hiddens_buf: torch.Tensor = None
         self.done_buf: np.ndarray = None
-        self.length_buf: np.ndarray = None
 
         self.n_step_buffer: Deque = deque(maxlen=n_step)
         self.n_step = n_step
         self.gamma = gamma
 
-        self.buffer_size = buffer_size
+        self.max_len = max_len
         self.batch_size = batch_size
         self.overlap_size = overlap_size
         self.sequence_size = sequence_size
@@ -120,7 +120,6 @@ class RecurrentReplayBuffer:
 
         self.idx += 1
         if done and self.idx < self.sequence_size:
-            self.length_buf[self.episode_idx] = self.idx
             self.idx = self.sequence_size
 
         if self.idx % self.sequence_size == 0:
@@ -129,16 +128,14 @@ class RecurrentReplayBuffer:
             self.rews_buf[self.episode_idx] = self.local_rews_buf
             self.hiddens_buf[self.episode_idx] = self.local_hiddens_buf
             self.done_buf[self.episode_idx] = self.local_done_buf
-            if self.length_buf[self.episode_idx] == 0:
-                self.length_buf[self.episode_idx] = self.sequence_size
 
             self.idx = self.overlap_size
             self.episode_idx += 1
             self._overlap_local_buffers()
             self.episode_idx = (
-                0 if self.episode_idx % self.buffer_size == 0 else self.episode_idx
+                0 if self.episode_idx % self.max_len == 0 else self.episode_idx
             )
-            self.length = min(self.length + 1, self.buffer_size)
+            self.length = min(self.length + 1, self.max_len)
 
         # return a single step transition to insert to replay buffer
         return self.n_step_buffer[0]
@@ -155,7 +152,6 @@ class RecurrentReplayBuffer:
         rewards = torch.FloatTensor(self.rews_buf[indices]).to(device)
         hidden_state = self.hiddens_buf[indices]
         dones = torch.FloatTensor(self.done_buf[indices]).to(device)
-        lengths = self.length_buf[indices]
 
         if torch.cuda.is_available():
             states = states.cuda(non_blocking=True)
@@ -164,7 +160,7 @@ class RecurrentReplayBuffer:
             hidden_state = hidden_state.cuda(non_blocking=True)
             dones = dones.cuda(non_blocking=True)
 
-        return states, actions, rewards, hidden_state, dones, lengths
+        return states, actions, rewards, hidden_state, dones
 
     def _initialize_local_buffers(self):
         """Initialze local buffers for state, action, resward, hidden_state, done."""
@@ -209,22 +205,20 @@ class RecurrentReplayBuffer:
         self.init_hidden = hidden
 
         self.obs_buf = np.zeros(
-            [self.buffer_size] + [self.sequence_size] + list(state.shape),
+            [self.max_len] + [self.sequence_size] + list(state.shape),
             dtype=state.dtype,
         )
         self.acts_buf = np.zeros(
-            [self.buffer_size] + [self.sequence_size] + list(action.shape),
+            [self.max_len] + [self.sequence_size] + list(action.shape),
             dtype=action.dtype,
         )
         self.hiddens_buf = torch.zeros(
-            [self.buffer_size] + [self.sequence_size] + list(hidden.shape),
+            [self.max_len] + [self.sequence_size] + list(hidden.shape),
             dtype=hidden.dtype,
         ).to(device)
-        self.rews_buf = np.zeros([self.buffer_size] + [self.sequence_size], dtype=float)
+        self.rews_buf = np.zeros([self.max_len] + [self.sequence_size], dtype=float)
 
-        self.done_buf = np.zeros([self.buffer_size] + [self.sequence_size], dtype=float)
-
-        self.length_buf = np.zeros([self.buffer_size], dtype=int)
+        self.done_buf = np.zeros([self.max_len] + [self.sequence_size], dtype=float)
 
         self._initialize_local_buffers()
 
