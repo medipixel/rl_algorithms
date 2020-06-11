@@ -10,13 +10,13 @@ import torch.optim as optim
 
 from rl_algorithms.common.abstract.learner import Learner, TensorTuple
 import rl_algorithms.common.helper_functions as common_utils
-from rl_algorithms.common.networks.brain import Brain
+from rl_algorithms.common.networks.brain import GRUBrain
 from rl_algorithms.registry import LEARNERS, build_loss
 from rl_algorithms.utils.config import ConfigDict
 
 
 @LEARNERS.register_module
-class DQNLearner(Learner):
+class R2D1Learner(Learner):
     """Learner for DQN Agent.
 
     Attributes:
@@ -54,8 +54,8 @@ class DQNLearner(Learner):
     # pylint: disable=attribute-defined-outside-init
     def _init_network(self):
         """Initialize networks and optimizers."""
-        self.dqn = Brain(self.backbone_cfg, self.head_cfg).to(self.device)
-        self.dqn_target = Brain(self.backbone_cfg, self.head_cfg).to(self.device)
+        self.dqn = GRUBrain(self.backbone_cfg, self.head_cfg).to(self.device)
+        self.dqn_target = GRUBrain(self.backbone_cfg, self.head_cfg).to(self.device)
         self.loss_fn = build_loss(self.hyper_params.loss_type)
 
         self.dqn_target.load_state_dict(self.dqn.state_dict())
@@ -155,9 +155,9 @@ class DQNLearner(Learner):
         print("[INFO] loaded the model and optimizer from", path)
 
     def get_state_dict(self) -> OrderedDict:
-        """Return state dicts, mainly for distributed worker."""
+        """Return state dicts, mainly for distributed worker"""
         return self.dqn.state_dict()
 
     def get_policy(self) -> nn.Module:
-        """Return model (policy) used for action selection."""
+        """Return model (policy) used for action selection"""
         return self.dqn

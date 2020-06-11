@@ -12,8 +12,8 @@ from typing import Tuple
 import torch
 import torch.nn.functional as F
 
-from rl_algorithms.common.helper_functions import make_one_hot, valid_from_done
 from rl_algorithms.common.networks.brain import Brain
+from rl_algorithms.recurrent.utils import slice_r2d1_arguments, valid_from_done
 from rl_algorithms.registry import LOSSES
 from rl_algorithms.utils.config import ConfigDict
 
@@ -247,64 +247,6 @@ class DQNLoss:
         return dq_loss_element_wise, q_values
 
 
-def slice_r2d2_arguments(experiences, head_cfg):
-    states, actions, rewards, hiddens, dones = experiences[:5]
-
-    burnin_states = states[:, 1 : head_cfg.configs.burn_in_step]
-    target_burnin_states = states[:, 1 : head_cfg.configs.burn_in_step + 1]
-    agent_states = states[:, head_cfg.configs.burn_in_step : -1]
-    target_states = states[:, head_cfg.configs.burn_in_step + 1 :]
-
-    burnin_prev_actions = make_one_hot(
-        actions[:, : head_cfg.configs.burn_in_step - 1], head_cfg.configs.output_size,
-    )
-    target_burnin_prev_actions = make_one_hot(
-        actions[:, : head_cfg.configs.burn_in_step], head_cfg.configs.output_size
-    )
-    agent_actions = actions[:, head_cfg.configs.burn_in_step : -1].long().unsqueeze(-1)
-    prev_actions = make_one_hot(
-        actions[:, head_cfg.configs.burn_in_step - 1 : -2],
-        head_cfg.configs.output_size,
-    )
-    target_prev_actions = make_one_hot(
-        actions[:, head_cfg.configs.burn_in_step : -1].long(),
-        head_cfg.configs.output_size,
-    )
-
-    burnin_prev_rewards = rewards[:, : head_cfg.configs.burn_in_step - 1].unsqueeze(-1)
-    target_burnin_prev_rewards = rewards[:, : head_cfg.configs.burn_in_step].unsqueeze(
-        -1
-    )
-    agent_rewards = rewards[:, head_cfg.configs.burn_in_step : -1].unsqueeze(-1)
-    prev_rewards = rewards[:, head_cfg.configs.burn_in_step - 1 : -2].unsqueeze(-1)
-    target_prev_rewards = agent_rewards
-    burnin_dones = dones[:, 1 : head_cfg.configs.burn_in_step].unsqueeze(-1)
-    burnin_target_dones = dones[:, 1 : head_cfg.configs.burn_in_step + 1].unsqueeze(-1)
-    agent_dones = dones[:, head_cfg.configs.burn_in_step : -1].unsqueeze(-1)
-    init_rnn_state = hiddens[:, 0].squeeze(1).contiguous()
-
-    return (
-        burnin_states,
-        target_burnin_states,
-        agent_states,
-        target_states,
-        burnin_prev_actions,
-        target_burnin_prev_actions,
-        agent_actions,
-        prev_actions,
-        target_prev_actions,
-        burnin_prev_rewards,
-        target_burnin_prev_rewards,
-        agent_rewards,
-        prev_rewards,
-        target_prev_rewards,
-        burnin_dones,
-        burnin_target_dones,
-        agent_dones,
-        init_rnn_state,
-    )
-
-
 @LOSSES.register_module
 class R2D1DQNLoss:
     def __call__(
@@ -318,58 +260,62 @@ class R2D1DQNLoss:
         """Return R2D1 loss and Q-values."""
 
         (
-            burnin_states,
-            target_burnin_states,
-            agent_states,
-            target_states,
-            burnin_prev_actions,
-            target_burnin_prev_actions,
+            burnin_states_tuple,
+            states_tuple,
+            burnin_prev_actions_tuple,
             agent_actions,
-            prev_actions,
-            target_prev_actions,
-            burnin_prev_rewards,
-            target_burnin_prev_rewards,
+            prev_actions_tuple,
+            burnin_prev_rewards_tuple,
             agent_rewards,
-            prev_rewards,
-            target_prev_rewards,
-            burnin_dones,
-            burnin_target_dones,
+            prev_rewards_tuple,
+            burnin_dones_tuple,
             agent_dones,
             init_rnn_state,
-        ) = slice_r2d2_arguments(experiences, head_cfg)
+        ) = slice_r2d1_arguments(experiences, head_cfg)
 
         with torch.no_grad():
             _, target_rnn_state = target_model(
-                target_burnin_states,
+                burnin_states_tuple[1],
                 init_rnn_state,
-                target_burnin_prev_actions,
-                target_burnin_prev_rewards,
+                burnin_prev_actions_tuple[1],
+                burnin_prev_rewards_tuple[1],
             )
             _, init_rnn_state = model(
-                burnin_states, init_rnn_state, burnin_prev_actions, burnin_prev_rewards
+                burnin_states_tuple[0],
+                init_rnn_state,
+                burnin_prev_actions_tuple[0],
+                burnin_prev_rewards_tuple[0],
             )
 
             init_rnn_state = torch.transpose(init_rnn_state, 0, 1)
             target_rnn_state = torch.transpose(target_rnn_state, 0, 1)
 
-        burnin_invalid_mask = valid_from_done(burnin_dones.transpose(0, 1))
+        burnin_invalid_mask = valid_from_done(burnin_dones_tuple[0].transpose(0, 1))
         burnin_target_invalid_mask = valid_from_done(
-            burnin_target_dones.transpose(0, 1)
+            burnin_dones_tuple[1].transpose(0, 1)
         )
         init_rnn_state[burnin_invalid_mask] = 0
         target_rnn_state[burnin_target_invalid_mask] = 0
 
-        qs, _ = model(agent_states, init_rnn_state, prev_actions, prev_rewards)
+        qs, _ = model(
+            states_tuple[0],
+            init_rnn_state,
+            prev_actions_tuple[0],
+            prev_rewards_tuple[0],
+        )
         q = qs.gather(-1, agent_actions)
         with torch.no_grad():
             target_qs, _ = target_model(
-                target_states,
+                states_tuple[1],
                 target_rnn_state,
-                target_prev_actions,
-                target_prev_rewards,
+                prev_actions_tuple[1],
+                prev_rewards_tuple[1],
             )
             next_qs, _ = model(
-                target_states, target_rnn_state, prev_actions, prev_rewards
+                states_tuple[1],
+                target_rnn_state,
+                prev_actions_tuple[0],
+                prev_rewards_tuple[0],
             )
             next_a = torch.argmax(next_qs, dim=-1)
             target_q = target_qs.gather(-1, next_a.unsqueeze(-1))
@@ -392,46 +338,42 @@ class R2D1IQNLoss:
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Return R2D1 loss and Q-values."""
         (
-            burnin_states,
-            target_burnin_states,
-            agent_states,
-            target_states,
-            burnin_prev_actions,
-            target_burnin_prev_actions,
+            burnin_states_tuple,
+            states_tuple,
+            burnin_prev_actions_tuple,
             agent_actions,
-            prev_actions,
-            target_prev_actions,
-            burnin_prev_rewards,
-            target_burnin_prev_rewards,
+            prev_actions_tuple,
+            burnin_prev_rewards_tuple,
             agent_rewards,
-            prev_rewards,
-            target_prev_rewards,
-            burnin_dones,
-            burnin_target_dones,
+            prev_rewards_tuple,
+            burnin_dones_tuple,
             agent_dones,
             init_rnn_state,
-        ) = slice_r2d2_arguments(experiences, head_cfg)
+        ) = slice_r2d1_arguments(experiences, head_cfg)
 
-        batch_size = agent_states.shape[0]
-        sequence_size = agent_states.shape[1]
+        batch_size = states_tuple[0].shape[0]
+        sequence_size = states_tuple[0].shape[1]
 
         with torch.no_grad():
             _, target_rnn_state = target_model(
-                target_burnin_states,
+                burnin_states_tuple[1],
                 init_rnn_state,
-                target_burnin_prev_actions,
-                target_burnin_prev_rewards,
+                burnin_prev_actions_tuple[1],
+                burnin_prev_rewards_tuple[1],
             )
             _, init_rnn_state = model(
-                burnin_states, init_rnn_state, burnin_prev_actions, burnin_prev_rewards
+                burnin_states_tuple[0],
+                init_rnn_state,
+                burnin_prev_actions_tuple[0],
+                burnin_prev_rewards_tuple[0],
             )
 
             init_rnn_state = torch.transpose(init_rnn_state, 0, 1)
             target_rnn_state = torch.transpose(target_rnn_state, 0, 1)
 
-        burnin_invalid_mask = valid_from_done(burnin_dones.transpose(0, 1))
+        burnin_invalid_mask = valid_from_done(burnin_dones_tuple[0].transpose(0, 1))
         burnin_target_invalid_mask = valid_from_done(
-            burnin_target_dones.transpose(0, 1)
+            burnin_dones_tuple[1].transpose(0, 1)
         )
         init_rnn_state[burnin_invalid_mask] = 0
         target_rnn_state[burnin_target_invalid_mask] = 0
@@ -449,7 +391,10 @@ class R2D1IQNLoss:
         # Get the indices of the maximium Q-value across the action dimension.
         # Shape of replay_next_qt_argmax: (n_tau_prime_samples x batch_size) x 1.
         qs, _ = model(
-            target_states, target_rnn_state, target_prev_actions, target_prev_rewards
+            states_tuple[1],
+            target_rnn_state,
+            prev_actions_tuple[1],
+            prev_rewards_tuple[1],
         )
         qs = qs.argmax(dim=-1)
         qs = qs[:, :, None]
@@ -457,10 +402,10 @@ class R2D1IQNLoss:
         with torch.no_grad():
             # Shape of next_target_values: (n_tau_prime_samples x batch_size) x 1.
             target_quantile_values, _, _ = target_model.forward_(
-                target_states,
+                states_tuple[1],
                 target_rnn_state,
-                target_prev_actions,
-                target_prev_rewards,
+                prev_actions_tuple[1],
+                prev_rewards_tuple[1],
                 head_cfg.configs.n_tau_prime_samples,
             )
         target_quantile_values = target_quantile_values.gather(-1, qs)
@@ -481,10 +426,10 @@ class R2D1IQNLoss:
 
         # Get quantile values: (n_tau_samples x batch_size) x action_dim.
         quantile_values, quantiles, _ = model.forward_(
-            agent_states,
+            states_tuple[0],
             init_rnn_state,
-            prev_actions,
-            prev_rewards,
+            prev_actions_tuple[0],
+            prev_rewards_tuple[0],
             head_cfg.configs.n_tau_samples,
         )
         reshaped_actions = agent_actions.repeat(head_cfg.configs.n_tau_samples, 1, 1)
@@ -557,7 +502,12 @@ class R2D1IQNLoss:
         iqn_loss_element_wise = abs(torch.mean(iqn_loss_element_wise, dim=1))
 
         # q values for regularization.
-        q_values, _ = model(agent_states, init_rnn_state, prev_actions, prev_rewards)
+        q_values, _ = model(
+            states_tuple[0],
+            init_rnn_state,
+            prev_actions_tuple[0],
+            prev_rewards_tuple[0],
+        )
 
         return iqn_loss_element_wise, q_values
 
@@ -574,46 +524,42 @@ class R2D1C51Loss:
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Return element-wise C51 loss and Q-values."""
         (
-            burnin_states,
-            target_burnin_states,
-            agent_states,
-            target_states,
-            burnin_prev_actions,
-            target_burnin_prev_actions,
+            burnin_states_tuple,
+            states_tuple,
+            burnin_prev_actions_tuple,
             agent_actions,
-            prev_actions,
-            target_prev_actions,
-            burnin_prev_rewards,
-            target_burnin_prev_rewards,
+            prev_actions_tuple,
+            burnin_prev_rewards_tuple,
             agent_rewards,
-            prev_rewards,
-            target_prev_rewards,
-            burnin_dones,
-            burnin_target_dones,
+            prev_rewards_tuple,
+            burnin_dones_tuple,
             agent_dones,
             init_rnn_state,
-        ) = slice_r2d2_arguments(experiences, head_cfg)
+        ) = slice_r2d1_arguments(experiences, head_cfg)
 
-        batch_size = agent_states.shape[0]
-        sequence_size = agent_states.shape[1]
+        batch_size = states_tuple[0].shape[0]
+        sequence_size = states_tuple[0].shape[1]
 
         with torch.no_grad():
             _, target_rnn_state = target_model(
-                target_burnin_states,
+                burnin_states_tuple[1],
                 init_rnn_state,
-                target_burnin_prev_actions,
-                target_burnin_prev_rewards,
+                burnin_prev_actions_tuple[1],
+                burnin_prev_rewards_tuple[1],
             )
             _, init_rnn_state = model(
-                burnin_states, init_rnn_state, burnin_prev_actions, burnin_prev_rewards
+                burnin_states_tuple[0],
+                init_rnn_state,
+                burnin_prev_actions_tuple[0],
+                burnin_prev_rewards_tuple[0],
             )
 
             init_rnn_state = torch.transpose(init_rnn_state, 0, 1)
             target_rnn_state = torch.transpose(target_rnn_state, 0, 1)
 
-        burnin_invalid_mask = valid_from_done(burnin_dones.transpose(0, 1))
+        burnin_invalid_mask = valid_from_done(burnin_dones_tuple[0].transpose(0, 1))
         burnin_target_invalid_mask = valid_from_done(
-            burnin_target_dones.transpose(0, 1)
+            burnin_dones_tuple[1].transpose(0, 1)
         )
         init_rnn_state[burnin_invalid_mask] = 0
         target_rnn_state[burnin_target_invalid_mask] = 0
@@ -630,17 +576,17 @@ class R2D1C51Loss:
             # it resamples noisynet parameters on online network when using double q
             # but we don't because there is no remarkable difference in performance.
             next_actions, _ = model.forward_(
-                target_states,
+                states_tuple[1],
                 target_rnn_state,
-                target_prev_actions,
-                target_prev_rewards,
+                prev_actions_tuple[1],
+                prev_rewards_tuple[1],
             )
             next_actions = next_actions[1].argmax(-1)
             next_dist, _ = target_model.forward_(
-                target_states,
+                states_tuple[1],
                 target_rnn_state,
-                target_prev_actions,
-                target_prev_rewards,
+                prev_actions_tuple[1],
+                prev_rewards_tuple[1],
             )
             next_dist = next_dist[0][range(batch_size * sequence_size), next_actions]
 
@@ -672,7 +618,10 @@ class R2D1C51Loss:
             )
 
         (dist, q_values), _ = model.forward_(
-            agent_states, init_rnn_state, prev_actions, prev_rewards
+            states_tuple[0],
+            init_rnn_state,
+            prev_actions_tuple[0],
+            prev_rewards_tuple[0],
         )
         log_p = dist[
             range(batch_size * sequence_size),
