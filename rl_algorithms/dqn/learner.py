@@ -162,6 +162,7 @@ class DQNLearner(Learner):
         """Return model (policy) used for action selection."""
         return self.dqn
 
+
 @LEARNERS.register_module
 class R2D1Learner(Learner):
     """Learner for DQN Agent.

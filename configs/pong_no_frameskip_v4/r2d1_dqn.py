@@ -17,7 +17,7 @@ agent = dict(
         gradient_clip=10.0,  # dueling: 10.0
         n_step=5,
         w_n_step=1.0,
-        w_q_reg=1e-7,
+        w_q_reg=0.0,
         per_alpha=0.6,  # openai baselines: 0.6
         per_beta=0.4,
         per_eps=1e-6,
@@ -36,29 +36,32 @@ agent = dict(
             "backbone.cnn.cnn_2.cnn",
         ],
     ),
-    backbone=dict(
-        type="CNN",
-        configs=dict(
-            input_sizes=[1, 32, 64],
-            output_sizes=[32, 64, 64],
-            kernel_sizes=[8, 4, 3],
-            strides=[4, 2, 1],
-            paddings=[1, 0, 0],
+    learner_cfg=dict(
+        type="R2D1Learner",
+        backbone=dict(
+            type="CNN",
+            configs=dict(
+                input_sizes=[1, 32, 64],
+                output_sizes=[32, 64, 64],
+                kernel_sizes=[8, 4, 3],
+                strides=[4, 2, 1],
+                paddings=[1, 0, 0],
+            ),
         ),
-    ),
-    head=dict(
-        type="DuelingMLP",
-        configs=dict(
-            rnn_hidden_size=512,
-            burn_in_step=10,
-            hidden_sizes=[512],
-            use_noisy_net=False,
-            output_activation=identity,
+        head=dict(
+            type="DuelingMLP",
+            configs=dict(
+                rnn_hidden_size=512,
+                burn_in_step=10,
+                hidden_sizes=[512],
+                use_noisy_net=False,
+                output_activation=identity,
+            ),
         ),
-    ),
-    optim_cfg=dict(
-        lr_dqn=1e-4,  # dueling: 6.25e-5, openai baselines: 1e-4
-        weight_decay=0.0,  # this makes saturation in cnn weights
-        adam_eps=1e-8,  # rainbow: 1.5e-4, openai baselines: 1e-8
+        optim_cfg=dict(
+            lr_dqn=1e-4,  # dueling: 6.25e-5, openai baselines: 1e-4
+            weight_decay=0.0,  # this makes saturation in cnn weights
+            adam_eps=1e-8,  # rainbow: 1.5e-4, openai baselines: 1e-8
+        ),
     ),
 )
