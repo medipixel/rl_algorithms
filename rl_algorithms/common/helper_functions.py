@@ -94,12 +94,16 @@ def numpy2floattensor(arrays: Tuple[np.ndarray]) -> Tuple[np.ndarray]:
     """Convert numpy arrays to torch float tensor."""
     tensors = []
     for array in arrays:
-        tensor = torch.FloatTensor(array).to(device)
-        if torch.cuda.is_available():
-            tensor = tensor.cuda(non_blocking=True)
-        tensors.append(tensor)
-
+        if isinstance(array, torch.Tensor):
+            tensors.append(array)
+        else:
+            tensor = torch.FloatTensor(array).to(device)
+            if torch.cuda.is_available():
+                tensor = tensor.cuda(non_blocking=True)
+            tensors.append(tensor)
     return tuple(tensors)
+
+
 def infer_leading_dims(tensor: torch.Tensor, dim: int) -> Tuple[int, int, int, Tuple]:
     """Looks for up to two leading dimensions in ``tensor``, before
     the data dimensions, of which there are assumed to be ``dim`` number.
