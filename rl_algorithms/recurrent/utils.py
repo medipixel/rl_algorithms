@@ -13,8 +13,8 @@ def infer_leading_dims(tensor: torch.Tensor, dim: int) -> Tuple[int, int, int, T
     finish with ``restore_leading_dims()`` (see that function for help.)
     Returns:
     lead_dim: int --number of leading dims found.
-    T: int --size of first leading dim, if two leading dims, o/w 1.
-    B: int --size of first leading dim if one, second leading dim if two, o/w 1.
+    first_dim: int --size of first leading dim, if two leading dims, o/w 1.
+    second_dim: int --size of first leading dim if one, second leading dim if two, o/w 1.
     shape: tensor shape after leading dims.
 
     Cloned from rlpyt repo:
@@ -23,16 +23,16 @@ def infer_leading_dims(tensor: torch.Tensor, dim: int) -> Tuple[int, int, int, T
     lead_dim = tensor.dim() - dim
     assert lead_dim in (0, 1, 2)
     if lead_dim == 2:
-        T, B = tensor.shape[:2]
+        first_dim, second_dim = tensor.shape[:2]
     else:
-        T = 1
-        B = 1 if lead_dim == 0 else tensor.shape[0]
+        first_dim = 1
+        second_dim = 1 if lead_dim == 0 else tensor.shape[0]
     shape = tensor.shape[lead_dim:]
-    return lead_dim, T, B, shape
+    return lead_dim, first_dim, second_dim, shape
 
 
 def restore_leading_dims(
-    tensors: torch.Tensor, lead_dim: int, T: int = 1, B: int = 1
+    tensors: torch.Tensor, lead_dim: int, first_dim: int = 1, second_dim: int = 1
 ) -> torch.Tensor:
     """Reshapes ``tensors`` (one or `tuple`, `list`) to to have ``lead_dim``
     leading dimensions, which will become [], [B], or [T,B].  Assumes input
@@ -47,10 +47,10 @@ def restore_leading_dims(
     """
     is_seq = isinstance(tensors, (tuple, list))
     tensors = tensors if is_seq else (tensors,)
-    if lead_dim == 2:  # (Put T dim.)
-        tensors = tuple(t.view((T, B) + t.shape[1:]) for t in tensors)
-    if lead_dim == 0:  # (Remove B=1 dim.)
-        assert B == 1
+    if lead_dim == 2:  # (Put first_dim.)
+        tensors = tuple(t.view((first_dim, second_dim) + t.shape[1:]) for t in tensors)
+    if lead_dim == 0:  # (Remove second_dim=1 dim.)
+        assert second_dim == 1
         tensors = tuple(t.squeeze(0) for t in tensors)
     return tensors if is_seq else tensors[0]
 

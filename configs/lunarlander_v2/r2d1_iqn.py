@@ -31,21 +31,24 @@ agent = dict(
         min_epsilon=0.01,  # openai baselines: 0.01
         epsilon_decay=5e-7,  # openai baselines: 1e-7 / 1e-1
     ),
-    backbone=dict(),
-    head=dict(
-        type="IQNMLP",
-        configs=dict(
-            rnn_hidden_size=128,
-            burn_in_step=10,
-            hidden_sizes=[128, 64],
-            n_tau_samples=64,
-            n_tau_prime_samples=64,
-            n_quantile_samples=32,
-            quantile_embedding_dim=64,
-            kappa=1.0,
-            use_noisy_net=False,
-            output_activation=identity,
+    learner_cfg=dict(
+        type="DQNLearner",
+        backbone=dict(),
+        head=dict(
+            type="IQNMLP",
+            configs=dict(
+                rnn_hidden_size=128,
+                burn_in_step=10,
+                hidden_sizes=[128, 64],
+                n_tau_samples=64,
+                n_tau_prime_samples=64,
+                n_quantile_samples=32,
+                quantile_embedding_dim=64,
+                kappa=1.0,
+                use_noisy_net=False,
+                output_activation=identity,
+            ),
         ),
+        optim_cfg=dict(lr_dqn=1e-4, weight_decay=1e-7, adam_eps=1e-8),
     ),
-    optim_cfg=dict(lr_dqn=1e-4, weight_decay=1e-7, adam_eps=1e-8),
 )
