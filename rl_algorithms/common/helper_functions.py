@@ -6,6 +6,7 @@
 """
 
 from collections import deque
+from copy import deepcopy
 import random
 from typing import Deque, List, Tuple
 
@@ -100,3 +101,12 @@ def numpy2floattensor(arrays: Tuple[np.ndarray]) -> Tuple[np.ndarray]:
         tensors.append(tensor)
 
     return tuple(tensors)
+
+
+def params2numpy(model):
+    params = []
+    new_model = deepcopy(model)
+    state_dict = new_model.cpu().state_dict()
+    for param in list(state_dict):
+        params.append(state_dict[param].numpy())
+    return params
