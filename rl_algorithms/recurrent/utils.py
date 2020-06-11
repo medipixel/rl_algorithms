@@ -72,6 +72,11 @@ def valid_from_done(done: torch.Tensor) -> torch.Tensor:
 
 
 def slice_r2d1_arguments(experiences: Tuple[Any, ...], head_cfg: ConfigDict) -> Tuple:
+    """Get mini-batch sequence-size transitions and slice
+    in accordance with R2D1 agent loss calculating process.
+    return tuples bound by target relationship.
+    ex. state_tuple = (state, target_state)
+    """
     states, actions, rewards, hiddens, dones = experiences[:5]
 
     burnin_states = states[:, 1 : head_cfg.configs.burn_in_step]

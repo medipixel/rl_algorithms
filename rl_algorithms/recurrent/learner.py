@@ -11,13 +11,14 @@ import torch.optim as optim
 from rl_algorithms.common.abstract.learner import Learner, TensorTuple
 import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.common.networks.brain import GRUBrain
+from rl_algorithms.dqn.learner import DQNLearner
 from rl_algorithms.registry import LEARNERS, build_loss
 from rl_algorithms.utils.config import ConfigDict
 
 
 @LEARNERS.register_module
-class R2D1Learner(Learner):
-    """Learner for DQN Agent.
+class R2D1Learner(DQNLearner):
+    """Learner for R2D1 Agent.
 
     Attributes:
         args (argparse.Namespace): arguments including hyperparameters and training settings
@@ -40,7 +41,17 @@ class R2D1Learner(Learner):
         optim_cfg: ConfigDict,
         device: torch.device,
     ):
-        Learner.__init__(self, args, env_info, hyper_params, log_cfg, device)
+        DQNLearner.__init__(
+            self,
+            args,
+            env_info,
+            hyper_params,
+            log_cfg,
+            backbone,
+            head,
+            optim_cfg,
+            device,
+        )
 
         self.backbone_cfg = backbone
         self.head_cfg = head
