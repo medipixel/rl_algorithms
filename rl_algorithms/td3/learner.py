@@ -3,10 +3,11 @@ from collections import OrderedDict
 from typing import Tuple
 
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-from rl_algorithms.common.abstract.learner import BaseLearner
+from rl_algorithms.common.abstract.learner import Learner
 import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.common.networks.brain import Brain
 from rl_algorithms.common.noise import GaussianNoise
@@ -15,7 +16,7 @@ from rl_algorithms.utils.config import ConfigDict
 
 
 @LEARNERS.register_module
-class TD3Learner(BaseLearner):
+class TD3Learner(Learner):
     """Learner for DDPG Agent.
 
     Attributes:
@@ -48,7 +49,7 @@ class TD3Learner(BaseLearner):
         noise_cfg: ConfigDict,
         device: torch.device,
     ):
-        BaseLearner.__init__(self, args, env_info, hyper_params, log_cfg, device)
+        Learner.__init__(self, args, env_info, hyper_params, log_cfg, device)
 
         self.backbone_cfg = backbone
         self.head_cfg = head
@@ -194,11 +195,11 @@ class TD3Learner(BaseLearner):
             "critic_optim": self.critic_optim.state_dict(),
         }
 
-        BaseLearner._save_params(self, params, n_episode)
+        Learner._save_params(self, params, n_episode)
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
-        BaseLearner.load_params(self, path)
+        Learner.load_params(self, path)
 
         params = torch.load(path)
         self.critic1.load_state_dict(params["critic1"])
@@ -218,3 +219,7 @@ class TD3Learner(BaseLearner):
             self.critic_target2.state_dict(),
             self.actor.state_dict(),
         )
+
+    def get_policy(self) -> nn.Module:
+        """Return model (policy) used for action selection"""
+        return self.actor

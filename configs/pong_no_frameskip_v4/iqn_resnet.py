@@ -7,7 +7,6 @@ from rl_algorithms.common.helper_functions import identity
 
 agent = dict(
     type="DQNAgent",
-    env_info=dict(),
     hyper_params=dict(
         gamma=0.99,
         tau=5e-3,

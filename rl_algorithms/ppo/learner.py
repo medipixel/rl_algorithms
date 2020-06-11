@@ -3,6 +3,7 @@ from collections import OrderedDict
 from typing import Tuple
 
 import torch
+import torch.nn as nn
 from torch.nn.utils import clip_grad_norm_
 import torch.optim as optim
 
@@ -198,3 +199,7 @@ class PPOLearner(BaseLearner):
     def get_state_dict(self) -> Tuple[OrderedDict]:
         """Return state dicts, mainly for distributed worker"""
         return (self.actor.state_dict(), self.critic.state_dict())
+
+    def get_policy(self) -> nn.Module:
+        """Return model (policy) used for action selection"""
+        return self.actor

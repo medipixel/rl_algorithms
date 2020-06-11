@@ -9,7 +9,6 @@ from rl_algorithms.common.helper_functions import identity
 
 agent = dict(
     type="DDPGAgent",
-    env_info=dict(),
     hyper_params=dict(
         gamma=0.99,
         tau=5e-3,

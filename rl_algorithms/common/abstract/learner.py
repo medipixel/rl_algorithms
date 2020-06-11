@@ -7,13 +7,14 @@ import subprocess
 from typing import Tuple, Union
 
 import torch
+import torch.nn as nn
 
 from rl_algorithms.utils.config import ConfigDict
 
 TensorTuple = Tuple[torch.Tensor, ...]
 
 
-class Learner(ABC):
+class BaseLearner(ABC):
     """Abstract class for all learner objects."""
 
     @abstractmethod
@@ -36,7 +37,7 @@ class Learner(ABC):
         pass
 
 
-class BaseLearner(Learner):
+class Learner(BaseLearner):
     """Base class for all base learners.
 
     Attributes:
@@ -110,8 +111,12 @@ class BaseLearner(Learner):
     def get_state_dict(self) -> Union[OrderedDict, Tuple[OrderedDict]]:
         pass
 
+    @abstractmethod
+    def get_policy(self) -> nn.Module:
+        pass
 
-class LearnerWrapper(Learner):
+
+class LearnerWrapper(BaseLearner):
     """Base class for all learner wrappers"""
 
     def __init__(self, learner: BaseLearner):

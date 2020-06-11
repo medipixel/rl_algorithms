@@ -4,10 +4,11 @@ from typing import Tuple, Union
 
 import numpy as np
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-from rl_algorithms.common.abstract.learner import BaseLearner, TensorTuple
+from rl_algorithms.common.abstract.learner import Learner, TensorTuple
 import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.common.networks.brain import Brain
 from rl_algorithms.registry import LEARNERS
@@ -15,7 +16,7 @@ from rl_algorithms.utils.config import ConfigDict
 
 
 @LEARNERS.register_module
-class SACLearner(BaseLearner):
+class SACLearner(Learner):
     """Learner for SAC Agent.
 
     Attributes:
@@ -48,7 +49,7 @@ class SACLearner(BaseLearner):
         optim_cfg: ConfigDict,
         device: torch.device,
     ):
-        BaseLearner.__init__(self, args, env_info, hyper_params, log_cfg, device)
+        Learner.__init__(self, args, env_info, hyper_params, log_cfg, device)
 
         self.backbone_cfg = backbone
         self.head_cfg = head
@@ -225,11 +226,11 @@ class SACLearner(BaseLearner):
         if self.hyper_params.auto_entropy_tuning:
             params["alpha_optim"] = self.alpha_optim.state_dict()
 
-        BaseLearner._save_params(self, params, n_episode)
+        Learner._save_params(self, params, n_episode)
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
-        BaseLearner.load_params(self, path)
+        Learner.load_params(self, path)
 
         params = torch.load(path)
         self.actor.load_state_dict(params["actor"])
@@ -250,3 +251,7 @@ class SACLearner(BaseLearner):
     def get_state_dict(self) -> Tuple[OrderedDict]:
         """Return state dicts, mainly for distributed worker"""
         return (self.qf_1.state_dict(), self.qf_2.state_dict(), self.actor.state_dict())
+
+    def get_policy(self) -> nn.Module:
+        """Return model (policy) used for action selection"""
+        return self.actor
