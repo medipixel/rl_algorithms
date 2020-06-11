@@ -32,7 +32,7 @@ agent = dict(
         epsilon_decay=5e-7,  # openai baselines: 1e-7 / 1e-1
     ),
     learner_cfg=dict(
-        type="DQNLearner",
+        type="R2D1Learner",
         backbone=dict(),
         head=dict(
             type="IQNMLP",
