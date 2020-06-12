@@ -7,7 +7,7 @@ import torch.nn as nn
 from torch.nn.utils import clip_grad_norm_
 import torch.optim as optim
 
-from rl_algorithms.common.abstract.learner import BaseLearner, TensorTuple
+from rl_algorithms.common.abstract.learner import Learner, TensorTuple
 from rl_algorithms.common.networks.brain import Brain
 import rl_algorithms.ppo.utils as ppo_utils
 from rl_algorithms.registry import LEARNERS
@@ -15,7 +15,7 @@ from rl_algorithms.utils.config import ConfigDict
 
 
 @LEARNERS.register_module
-class PPOLearner(BaseLearner):
+class PPOLearner(Learner):
     """Learner for PPO Agent.
 
     Attributes:
@@ -40,7 +40,7 @@ class PPOLearner(BaseLearner):
         optim_cfg: ConfigDict,
         device: torch.device,
     ):
-        BaseLearner.__init__(self, args, env_info, hyper_params, log_cfg, device)
+        Learner.__init__(self, args, env_info, hyper_params, log_cfg, device)
 
         self.backbone_cfg = backbone
         self.head_cfg = head
@@ -183,11 +183,11 @@ class PPOLearner(BaseLearner):
             "actor_optim_state_dict": self.actor_optim.state_dict(),
             "critic_optim_state_dict": self.critic_optim.state_dict(),
         }
-        BaseLearner._save_params(self, params, n_episode)
+        Learner._save_params(self, params, n_episode)
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
-        BaseLearner.load_params(self, path)
+        Learner.load_params(self, path)
 
         params = torch.load(path)
         self.actor.load_state_dict(params["actor_state_dict"])

@@ -53,10 +53,12 @@ class DQfDAgent(DQNAgent):
 
             # replay memory
             self.memory = ReplayBuffer(
-                self.hyper_params.buffer_size, self.hyper_params.batch_size,
+                self.hyper_params.buffer_size, self.hyper_params.batch_size, demo=demos,
             )
             self.memory = PrioritizedBufferWrapper(
-                self.memory, alpha=self.hyper_params.per_alpha
+                self.memory,
+                alpha=self.hyper_params.per_alpha,
+                epsilon_d=self.hyper_params.per_eps_demo,
             )
 
         self.learner_cfg.type = "DQfDLearner"

@@ -79,7 +79,8 @@ def main():
     args = parse_args()
 
     # env initialization
-    env = gym.make("LunarLanderContinuous-v2")
+    env_name = "LunarLanderContinuous-v2"
+    env = gym.make(env_name)
     env_utils.set_env(env, args)
 
     # set a random seed
@@ -91,7 +92,7 @@ def main():
 
     cfg = Config.fromfile(args.cfg_path)
     cfg.agent.env_info = dict(
-        env_name="LunarLanderContinuous-v2",
+        env_name=env_name,
         observation_space=env.observation_space,
         action_space=env.action_space,
         is_discrete=False,
