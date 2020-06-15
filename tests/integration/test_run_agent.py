@@ -32,6 +32,7 @@ def check_run_env(config_root: str, run_file: str):
             universal_newlines=True,
             shell=True,
         )
+        print("after subprocess")
         output, _ = p.communicate()
 
         # Find saved checkpoint path

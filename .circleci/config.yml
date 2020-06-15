@@ -7,17 +7,19 @@ jobs:
     steps:
       - checkout
       - run:
-          command: make dev
           name: Install requirements
+          command: make dev
       - run:
           command: |
             python tests/integration/test_run_agent.py
+          no_output_timeout: 30m
       - run:
-          command: make test
           name: Test
+          command: make test
       - run:
-          command: make integration-test
           name: Integration test
+          command: make integration-test
+          no_output_timeout: 30m
 
 workflows:
   main:
