@@ -81,7 +81,7 @@ def main():
     # env initialization
     env_name = "LunarLanderContinuous-v2"
     env = gym.make(env_name)
-    env_utils.set_env(env, args)
+    env = env_utils.set_env(env, args)
 
     # set a random seed
     common_utils.set_random_seed(args.seed, env)

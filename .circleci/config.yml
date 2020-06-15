@@ -9,7 +9,7 @@ jobs:
       - run:
           command: make dev
       - run:
-          command: make test
+          command: make integration-test
           name: Test
 
 workflows:

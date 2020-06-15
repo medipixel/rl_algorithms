@@ -3,7 +3,7 @@
 - Author: Kyunghwan Kim
 - Contact: kh.kim@medipixel.io
 """
-import torch.nn.functional as F
+import torch
 
 from rl_algorithms.common.helper_functions import identity
 
@@ -23,7 +23,7 @@ agent = dict(
         head=dict(
             actor=dict(
                 type="MLP",
-                configs=dict(hidden_sizes=[400, 300], output_activation=F.tanh,),
+                configs=dict(hidden_sizes=[400, 300], output_activation=torch.tanh,),
             ),
             critic=dict(
                 type="MLP",

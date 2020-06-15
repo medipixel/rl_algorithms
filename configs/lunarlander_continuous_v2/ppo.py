@@ -3,7 +3,7 @@
 - Author: Kyunghwan Kim
 - Contact: kh.kim@medipixel.io
 """
-import torch.nn.functional as F
+import torch
 
 agent = dict(
     type="PPOAgent",
@@ -30,12 +30,14 @@ agent = dict(
         head=dict(
             actor=dict(
                 type="GaussianDist",
-                configs=dict(hidden_sizes=[256, 256], output_activation=F.tanh,),
+                configs=dict(hidden_sizes=[256, 256], output_activation=torch.tanh,),
             ),
             critic=dict(
                 type="MLP",
                 configs=dict(
-                    hidden_sizes=[256, 256], output_size=1, output_activation=F.tanh,
+                    hidden_sizes=[256, 256],
+                    output_size=1,
+                    output_activation=torch.tanh,
                 ),
             ),
         ),
