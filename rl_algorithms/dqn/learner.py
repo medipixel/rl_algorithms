@@ -155,9 +155,9 @@ class DQNLearner(Learner):
         print("[INFO] loaded the model and optimizer from", path)
 
     def get_state_dict(self) -> OrderedDict:
-        """Return state dicts, mainly for distributed worker"""
+        """Return state dicts, mainly for distributed worker."""
         return self.dqn.state_dict()
 
     def get_policy(self) -> nn.Module:
-        """Return model (policy) used for action selection"""
+        """Return model (policy) used for action selection."""
         return self.dqn

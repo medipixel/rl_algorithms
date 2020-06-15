@@ -197,9 +197,9 @@ class PPOLearner(Learner):
         print("[INFO] loaded the model and optimizer from", path)
 
     def get_state_dict(self) -> Tuple[OrderedDict]:
-        """Return state dicts, mainly for distributed worker"""
+        """Return state dicts, mainly for distributed worker."""
         return (self.actor.state_dict(), self.critic.state_dict())
 
     def get_policy(self) -> nn.Module:
-        """Return model (policy) used for action selection"""
+        """Return model (policy) used for action selection."""
         return self.actor

@@ -27,7 +27,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 @AGENTS.register_module
 class TD3Agent(Agent):
-    """ActorCritic interacting with environment.
+    """TD3 interacting with environment.
 
     Attributes:
         env (gym.Env): openAI Gym environment

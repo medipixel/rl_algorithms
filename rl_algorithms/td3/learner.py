@@ -81,7 +81,7 @@ class TD3Learner(Learner):
         )
         self.actor_target.load_state_dict(self.actor.state_dict())
 
-        # create q_critic
+        # create critic
         self.critic1 = Brain(self.backbone_cfg.critic, self.head_cfg.critic).to(
             self.device
         )
@@ -124,7 +124,9 @@ class TD3Learner(Learner):
     def update_model(
         self, experience: Tuple[torch.Tensor, ...]
     ) -> Tuple[torch.Tensor, ...]:
-        """Update TD3 actor and critic networks"""
+        """Update TD3 actor and critic networks."""
+        self.update_step += 1
+
         states, actions, rewards, next_states, dones = experience
         masks = 1 - dones
 
@@ -213,7 +215,7 @@ class TD3Learner(Learner):
         print("[INFO] loaded the model and optimizer from", path)
 
     def get_state_dict(self) -> Tuple[OrderedDict]:
-        """Return state dicts, mainly for distributed worker"""
+        """Return state dicts, mainly for distributed worker."""
         return (
             self.critic_target1.state_dict(),
             self.critic_target2.state_dict(),
@@ -221,5 +223,5 @@ class TD3Learner(Learner):
         )
 
     def get_policy(self) -> nn.Module:
-        """Return model (policy) used for action selection"""
+        """Return model (policy) used for action selection."""
         return self.actor
