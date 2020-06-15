@@ -1,15 +1,10 @@
-define format_check = 
+test:
 	black . --check
 	isort -y --check-only --skip checkpoint --skip wandb
-endef
-
-test:
-	$(call format_check)
 	env PYTHONPATH=. pytest --pylint --flake8 --cov=tests --ignore=checkpoint --ignore=wandb --ignore tests/integration
 
 integration-test:
-	$(call format_check)
-	env PYTHONPATH=. pytest --pylint --flake8 --cov=tests --ignore=checkpoint --ignore=wandb
+	env PYTHONPATH=. pytest tests/integration
 
 format:
 	black . --exclude checkpoint wandb

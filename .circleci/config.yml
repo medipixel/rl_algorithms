@@ -8,9 +8,13 @@ jobs:
       - checkout
       - run:
           command: make dev
+          name: Install requirements
+      - run:
+          command: make test
+          name: Test
       - run:
           command: make integration-test
-          name: Test
+          name: Integration test
 
 workflows:
   main:
