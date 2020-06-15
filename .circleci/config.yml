@@ -10,6 +10,9 @@ jobs:
           command: make dev
           name: Install requirements
       - run:
+          command: |
+            python tests/integration/test_run_agent.py
+      - run:
           command: make test
           name: Test
       - run:

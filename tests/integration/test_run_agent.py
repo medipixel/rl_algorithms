@@ -38,6 +38,7 @@ def check_run_env(config_root: str, run_file: str):
         save_path = re.findall(pattern, str(output))[0]
 
         assert p.returncode == 0
+        print(save_path)
 
         check_save_path(save_path)
 
