@@ -24,6 +24,7 @@ def check_run_env(config_root: str, run_file: str):
             f"python {run_file} --cfg-path {config_root}{cfg} "
             + f"--off-render --episode-num 1 --seed 12345"
         )
+        print("before subprocess")
         p = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
