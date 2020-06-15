@@ -23,7 +23,8 @@ def infer_leading_dims(tensor: torch.Tensor, dim: int) -> Tuple[int, int, int, T
         second_dim: int --size of first leading dim if one, second leading dim if two, o/w 1.
         shape: tensor shape after leading dims.
 
-    Reference : https://github.com/astooke/rlpyt/blob/master/rlpyt/models/dqn/atari_r2d1_model.py
+    Reference:
+        https://github.com/astooke/rlpyt/blob/master/rlpyt/models/dqn/atari_r2d1_model.py
     """
     lead_dim = tensor.dim() - dim
     assert lead_dim in (0, 1, 2)
@@ -47,7 +48,8 @@ def restore_leading_dims(
     match input dimensions, and the same model can be used for any such case.
     Use with outputs from ``infer_leading_dims()``.
 
-    Reference : https://github.com/astooke/rlpyt/blob/master/rlpyt/models/dqn/atari_r2d1_model.py
+    Reference:
+        https://github.com/astooke/rlpyt/blob/master/rlpyt/models/dqn/atari_r2d1_model.py
     """
     is_seq = isinstance(tensors, (tuple, list))
     tensors = tensors if is_seq else (tensors,)
