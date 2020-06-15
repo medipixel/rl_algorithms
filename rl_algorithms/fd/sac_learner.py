@@ -46,11 +46,7 @@ class SACfDLearner(SACLearner):
         self.use_n_step = self.hyper_params.n_step > 1
 
     # pylint: disable=too-many-statements
-    def update_model(
-        self, experience: Tuple[TensorTuple, ...]
-    ) -> TensorTuple:  # type: ignore
-        self.update_step += 1
-
+    def update_model(self, experience: Tuple[TensorTuple, ...]) -> TensorTuple:
         if self.use_n_step:
             experience_1, experience_n = experience
         else:

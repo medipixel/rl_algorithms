@@ -47,6 +47,8 @@ class BCSACLearner(SACLearner):
         self, experience: TensorTuple, demos: TensorTuple
     ) -> TensorTuple:  # type: ignore
         """Train the model after each episode."""
+        self.update_step += 1
+
         states, actions, rewards, next_states, dones = experience
         demo_states, demo_actions, _, _, _ = demos
         new_actions, log_prob, pre_tanh_value, mu, std = self.actor(states)

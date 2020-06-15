@@ -69,7 +69,6 @@ class TD3Agent(Agent):
         self.curr_state = np.zeros((1,))
         self.total_step = 0
         self.episode_step = 0
-        self.update_step = 0
         self.i_episode = 0
 
         self.hyper_params = hyper_params
