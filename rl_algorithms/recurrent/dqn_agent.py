@@ -71,7 +71,6 @@ class R2D1Agent(DQNAgent):
         self.curr_state = state
 
         # epsilon greedy policy
-        # pylint: disable=comparison-with-callable
         state = self._preprocess_state(state)
         selected_action, hidden_state = self.learner.dqn(
             state, hidden_state, prev_action, prev_reward
@@ -116,13 +115,24 @@ class R2D1Agent(DQNAgent):
         return next_state, reward, done, info
 
     def sample_experience(self) -> Tuple[torch.Tensor, ...]:
-        experience_1 = self.memory.sample(self.per_beta)
+        experiences_1 = self.memory.sample(self.per_beta)
+        experiences_1 = (
+            numpy2floattensor(experiences_1[:3])
+            + (experiences_1[3],)
+            + numpy2floattensor(experiences_1[4:6])
+            + (experiences_1[6:])
+        )
         if self.use_n_step:
-            indices = experience_1[-2]
-            experience_n = self.memory_n.sample(indices)
-            return numpy2floattensor(experience_1), numpy2floattensor(experience_n)
+            indices = experiences_1[-2]
+            experiences_n = self.memory_n.sample(indices)
+            return (
+                experiences_1,
+                numpy2floattensor(experiences_n[:3])
+                + (experiences_n[3],)
+                + numpy2floattensor(experiences_n[4:]),
+            )
 
-        return numpy2floattensor(experience_1)
+        return experiences_1
 
     def train(self):
         """Train the agent."""

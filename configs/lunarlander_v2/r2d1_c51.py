@@ -10,9 +10,9 @@ agent = dict(
     hyper_params=dict(
         gamma=0.99,
         tau=5e-3,
-        buffer_size=int(2e4),  # openai baselines: int(1e4)
+        buffer_size=int(1e4),  # openai baselines: int(1e4)
         batch_size=64,  # openai baselines: 32
-        update_starts_from=int(2e3),  # openai baselines: int(1e4)
+        update_starts_from=int(1e3),  # openai baselines: int(1e4)
         multiple_update=1,  # multiple learning updates
         train_freq=1,  # in openai baselines, train_freq = 4
         gradient_clip=10.0,  # dueling: 10.0
@@ -23,13 +23,13 @@ agent = dict(
         per_beta=0.4,
         per_eps=1e-6,
         # R2D1
-        sequence_size=20,
-        overlap_size=10,
+        sequence_size=32,
+        overlap_size=16,
         loss_type=dict(type="R2D1C51Loss"),
         # Epsilon Greedy
         max_epsilon=1.0,
         min_epsilon=0.01,  # openai baselines: 0.01
-        epsilon_decay=5e-7,  # openai baselines: 1e-7 / 1e-1
+        epsilon_decay=2e-5,  # openai baselines: 1e-7 / 1e-1
     ),
     learner_cfg=dict(
         type="R2D1Learner",
@@ -37,12 +37,12 @@ agent = dict(
         head=dict(
             type="C51DuelingMLP",
             configs=dict(
-                rnn_hidden_size=128,
-                burn_in_step=10,
+                rnn_hidden_size=64,
+                burn_in_step=16,
                 hidden_sizes=[128, 64],
                 v_min=-300,
                 v_max=300,
-                atom_size=1530,
+                atom_size=51,
                 output_activation=identity,
                 # NoisyNet
                 use_noisy_net=False,

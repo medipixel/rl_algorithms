@@ -14,7 +14,6 @@ import numpy as np
 import torch
 
 from rl_algorithms.common.abstract.buffer import BaseBuffer, BufferWrapper
-from rl_algorithms.common.buffer.recurrent_replay_buffer import RecurrentReplayBuffer
 from rl_algorithms.common.buffer.segment_tree import MinSegmentTree, SumSegmentTree
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -119,24 +118,9 @@ class PrioritizedBufferWrapper(BufferWrapper):
 
         weights = np.array(weights_)
         eps_d = np.array(eps_d)
+        experiences = self.buffer.sample(indices)
 
-        if isinstance(self.buffer, RecurrentReplayBuffer):
-            states, actions, rewards, hidden_states, dones = self.buffer.sample(indices)
-
-            return (
-                states,
-                actions,
-                rewards,
-                hidden_states,
-                dones,
-                weights,
-                indices,
-                eps_d,
-            )
-        else:
-            states, actions, rewards, next_states, dones = self.buffer.sample(indices)
-
-            return states, actions, rewards, next_states, dones, weights, indices, eps_d
+        return experiences + (weights, indices, eps_d)
 
     def update_priorities(self, indices: list, priorities: np.ndarray):
         """Update priorities of sampled transitions."""
