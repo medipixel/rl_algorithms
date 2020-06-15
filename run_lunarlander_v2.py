@@ -79,8 +79,12 @@ def main():
     args = parse_args()
 
     # env initialization
+<<<<<<< HEAD
     env_name = "LunarLander-v2"
     env = gym.make(env_name)
+=======
+    env = gym.make("LunarLander-v2")
+>>>>>>> 0949a63... Fix issues commented
     env = env_utils.set_env(env, args)
 
     # set a random seed

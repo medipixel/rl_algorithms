@@ -11,14 +11,19 @@ def infer_leading_dims(tensor: torch.Tensor, dim: int) -> Tuple[int, int, int, T
     the data dimensions, of which there are assumed to be ``dim`` number.
     For use at beginning of model's ``forward()`` method, which should
     finish with ``restore_leading_dims()`` (see that function for help.)
-    Returns:
-    lead_dim: int --number of leading dims found.
-    first_dim: int --size of first leading dim, if two leading dims, o/w 1.
-    second_dim: int --size of first leading dim if one, second leading dim if two, o/w 1.
-    shape: tensor shape after leading dims.
 
-    Cloned from rlpyt repo:
-    https://github.com/astooke/rlpyt/blob/master/rlpyt/models/dqn/atari_r2d1_model.py
+    Example:
+        Let's assume that the shape of the tensor is [20, 32, 4, 84, 84], which
+        each dimensions is refer to sequence_size, batch_size, frame_stack, width, height.
+        lead_dim = 2, first_dim = 20, second_dim = 32, shape = (4, 84, 84)
+
+    Returns:
+        lead_dim: int --number of leading dims found.
+        first_dim: int --size of first leading dim, if two leading dims, o/w 1.
+        second_dim: int --size of first leading dim if one, second leading dim if two, o/w 1.
+        shape: tensor shape after leading dims.
+
+    Reference : https://github.com/astooke/rlpyt/blob/master/rlpyt/models/dqn/atari_r2d1_model.py
     """
     lead_dim = tensor.dim() - dim
     assert lead_dim in (0, 1, 2)
@@ -35,12 +40,12 @@ def restore_leading_dims(
     tensors: torch.Tensor, lead_dim: int, first_dim: int = 1, second_dim: int = 1
 ) -> torch.Tensor:
     """Reshapes ``tensors`` (one or `tuple`, `list`) to to have ``lead_dim``
-    leading dimensions, which will become [], [B], or [T,B].  Assumes input
-    tensors already have a leading Batch dimension, which might need to be
-    removed. (Typically the last layer of model will compute with leading
-    batch dimension.)  For use in model ``forward()`` method, so that output
-    dimensions match input dimensions, and the same model can be used for any
-    such case.  Use with outputs from ``infer_leading_dims()``.
+    leading dimensions, which will become [], [second_dim], or [first_dim,second_dim].
+    Assumes input tensors already have a leading Batch dimension, which might need
+    to be removed. (Typically the last layer of model will compute with leading batch
+    dimension.)  For use in model ``forward()`` method, so that output dimensions
+    match input dimensions, and the same model can be used for any such case.
+    Use with outputs from ``infer_leading_dims()``.
 
     Cloned from rlpyt repo:
     https://github.com/astooke/rlpyt/blob/master/rlpyt/models/dqn/atari_r2d1_model.py
@@ -61,8 +66,7 @@ def valid_from_done(done: torch.Tensor) -> torch.Tensor:
     of `done`, assumed to correspond to time [T,...], other dimensions are
     preserved.
 
-    Cloned from rlpyt repo:
-        https://github.com/astooke/rlpyt/blob/master/rlpyt/algos/utils.py
+    Reference: https://github.com/astooke/rlpyt/blob/master/rlpyt/algos/utils.py
     """
     done = done.type(torch.float).squeeze()
     valid = torch.ones_like(done)

@@ -87,13 +87,14 @@ class DDPGfDAgent(DDPGAgent):
             self.memory.add(transition)
 
     def sample_experience(self) -> Tuple[torch.Tensor, ...]:
-        experience_1 = self.memory.sample(self.per_beta)
+        experiences_1 = self.memory.sample(self.per_beta)
+        experiences_1 = self.numpy2floattensor(experiences_1[:6]) + experiences_1[6:]
         if self.use_n_step:
-            indices = experience_1[-2]
-            experience_n = self.memory_n.sample(indices)
-            return numpy2floattensor(experience_1), numpy2floattensor(experience_n)
+            indices = experiences_1[-2]
+            experiences_n = self.memory_n.sample(indices)
+            return experiences_1, numpy2floattensor(experiences_n)
 
-        return numpy2floattensor(experience_1)
+        return experiences_1
 
     def pretrain(self):
         """Pretraining steps."""

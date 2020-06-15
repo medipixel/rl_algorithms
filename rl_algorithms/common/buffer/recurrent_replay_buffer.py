@@ -147,18 +147,11 @@ class RecurrentReplayBuffer(BaseBuffer):
         if indices is None:
             indices = np.random.choice(len(self), size=self.batch_size, replace=False)
 
-        states = torch.FloatTensor(self.obs_buf[indices]).to(device)
-        actions = torch.FloatTensor(self.acts_buf[indices]).to(device)
-        rewards = torch.FloatTensor(self.rews_buf[indices]).to(device)
+        states = self.obs_buf[indices]
+        actions = self.acts_buf[indices]
+        rewards = self.rews_buf[indices]
         hidden_state = self.hiddens_buf[indices]
-        dones = torch.FloatTensor(self.done_buf[indices]).to(device)
-
-        if torch.cuda.is_available():
-            states = states.cuda(non_blocking=True)
-            actions = actions.cuda(non_blocking=True)
-            rewards = rewards.cuda(non_blocking=True)
-            hidden_state = hidden_state.cuda(non_blocking=True)
-            dones = dones.cuda(non_blocking=True)
+        dones = self.done_buf[indices]
 
         return states, actions, rewards, hidden_state, dones
 

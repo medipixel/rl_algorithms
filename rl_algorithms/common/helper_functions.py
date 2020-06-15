@@ -94,11 +94,9 @@ def numpy2floattensor(arrays: Tuple[np.ndarray]) -> Tuple[np.ndarray]:
     """Convert numpy arrays to torch float tensor."""
     tensors = []
     for array in arrays:
-        if isinstance(array, torch.Tensor):
-            tensors.append(array)
-        else:
-            tensor = torch.FloatTensor(array).to(device)
-            if torch.cuda.is_available():
-                tensor = tensor.cuda(non_blocking=True)
-            tensors.append(tensor)
+        tensor = torch.FloatTensor(array).to(device)
+        if torch.cuda.is_available():
+            tensor = tensor.cuda(non_blocking=True)
+        tensors.append(tensor)
+
     return tuple(tensors)

@@ -129,7 +129,7 @@ class DQNLearner(Learner):
         return (
             loss.item(),
             q_values.mean().item(),
-            indices.long().cpu().numpy(),
+            indices,
             new_priorities,
         )
 

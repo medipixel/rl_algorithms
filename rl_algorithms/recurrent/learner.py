@@ -94,7 +94,6 @@ class R2D1Learner(DQNLearner):
             experience_1 = experience
 
         weights, indices = experience_1[-3:-1]
-
         gamma = self.hyper_params.gamma
 
         dq_loss_element_wise, q_values = self.loss_fn(
@@ -140,7 +139,7 @@ class R2D1Learner(DQNLearner):
         return (
             loss.item(),
             q_values.mean().item(),
-            indices.long().cpu().numpy(),
+            indices,
             new_priorities,
         )
 
@@ -154,7 +153,6 @@ class R2D1Learner(DQNLearner):
 
         Learner._save_params(self, params, n_episode)
 
-    # pylint: disable=attribute-defined-outside-init
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
         Learner.load_params(self, path)
