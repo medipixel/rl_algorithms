@@ -47,8 +47,7 @@ def restore_leading_dims(
     match input dimensions, and the same model can be used for any such case.
     Use with outputs from ``infer_leading_dims()``.
 
-    Cloned from rlpyt repo:
-    https://github.com/astooke/rlpyt/blob/master/rlpyt/models/dqn/atari_r2d1_model.py
+    Reference : https://github.com/astooke/rlpyt/blob/master/rlpyt/models/dqn/atari_r2d1_model.py
     """
     is_seq = isinstance(tensors, (tuple, list))
     tensors = tensors if is_seq else (tensors,)
@@ -79,7 +78,9 @@ def slice_r2d1_arguments(experiences: Tuple[Any, ...], head_cfg: ConfigDict) -> 
     """Get mini-batch sequence-size transitions and slice
     in accordance with R2D1 agent loss calculating process.
     return tuples bound by target relationship.
-    ex. state_tuple = (state, target_state)
+
+    Example:
+        state_tuple = (state, target_state)
     """
     states, actions, rewards, hiddens, dones = experiences[:5]
 
