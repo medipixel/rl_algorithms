@@ -19,13 +19,12 @@ def check_run_env(config_root: str, run_file: str):
         # except such as __init__, __pycache__
         if "__" in cfg:
             continue
-        print(cfg)
 
         cmd = (
             f"python {run_file} --cfg-path {config_root}{cfg} "
             + f"--off-render --episode-num 1 --max-episode-step 1 --seed 12345"
         )
-        print("before subprocess")
+
         p = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
@@ -33,10 +32,7 @@ def check_run_env(config_root: str, run_file: str):
             universal_newlines=True,
             shell=True,
         )
-        print("after subprocess")
         output, _ = p.communicate()
-        print("after communicate")
-        print(str(output))
 
         # Find saved checkpoint path
         pattern = r"./checkpoint/.+/"
@@ -74,6 +70,6 @@ def test_run_pong_no_frame_skip():
 
 
 if __name__ == "__main__":
-    # test_run_lunarlander_continuous()
-    # test_run_lunarlander()
+    test_run_lunarlander_continuous()
+    test_run_lunarlander()
     test_run_pong_no_frame_skip()
