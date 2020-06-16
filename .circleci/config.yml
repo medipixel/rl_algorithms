@@ -10,10 +10,6 @@ jobs:
           name: Install requirements
           command: make dev
       - run:
-          command: |
-            python tests/integration/test_run_agent2.py
-          no_output_timeout: 60m
-      - run:
           name: Test
           command: make test
 
