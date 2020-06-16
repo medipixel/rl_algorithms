@@ -4,7 +4,7 @@ test:
 	env PYTHONPATH=. pytest --pylint --flake8 --cov=tests --ignore=checkpoint --ignore=wandb --ignore tests/integration
 
 integration-test:
-	env PYTHONPATH=. pytest tests/integration
+	env PYTHONPATH=. pytest tests/integration --cov=tests
 
 format:
 	black . --exclude checkpoint wandb
