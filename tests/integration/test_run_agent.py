@@ -36,6 +36,7 @@ def check_run_env(config_root: str, run_file: str):
         print("after subprocess")
         output, _ = p.communicate()
         print("after communicate")
+        print(str(output))
 
         # Find saved checkpoint path
         pattern = r"./checkpoint/.+/"
@@ -73,6 +74,6 @@ def test_run_pong_no_frame_skip():
 
 
 if __name__ == "__main__":
-    test_run_lunarlander_continuous()
-    test_run_lunarlander()
+    # test_run_lunarlander_continuous()
+    # test_run_lunarlander()
     test_run_pong_no_frame_skip()
