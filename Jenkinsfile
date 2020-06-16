@@ -1,16 +1,16 @@
 pipeline {
-  agent {
-    docker {
-      image 'medipixel/rl_algorithms'
+    agent { 
+        dockerfile{
+            filename "Dockerfile"
+            args "-v /home/mpadmin/.ssh/:/root/.ssh/"
+        }
     }
-
-  }
   stages {
     stage('Test') {
       steps {
         echo 'Testing...'
-        sh '''make dev
-make test'''
+        sh 'make dev'
+        sh 'make test'
       }
     }
   }
