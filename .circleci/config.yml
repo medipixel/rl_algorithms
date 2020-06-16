@@ -12,14 +12,10 @@ jobs:
       - run:
           command: |
             python tests/integration/test_run_agent.py
-          no_output_timeout: 30m
+          no_output_timeout: 60m
       - run:
           name: Test
           command: make test
-      - run:
-          name: Integration test
-          command: make integration-test
-          no_output_timeout: 30m
 
 workflows:
   main:

@@ -19,10 +19,11 @@ def check_run_env(config_root: str, run_file: str):
         # except such as __init__, __pycache__
         if "__" in cfg:
             continue
+        print(cfg)
 
         cmd = (
             f"python {run_file} --cfg-path {config_root}{cfg} "
-            + f"--off-render --episode-num 1 --seed 12345"
+            + f"--off-render --episode-num 1 --max-episode-step 1 --seed 12345"
         )
         print("before subprocess")
         p = subprocess.Popen(
@@ -34,6 +35,7 @@ def check_run_env(config_root: str, run_file: str):
         )
         print("after subprocess")
         output, _ = p.communicate()
+        print("after communicate")
 
         # Find saved checkpoint path
         pattern = r"./checkpoint/.+/"
