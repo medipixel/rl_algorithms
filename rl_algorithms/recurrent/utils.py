@@ -18,10 +18,10 @@ def infer_leading_dims(tensor: torch.Tensor, dim: int) -> Tuple[int, int, int, T
         lead_dim = 2, first_dim = 20, second_dim = 32, shape = (4, 84, 84)
 
     Returns:
-        lead_dim: int --number of leading dims found.
-        first_dim: int --size of first leading dim, if two leading dims, o/w 1.
-        second_dim: int --size of first leading dim if one, second leading dim if two, o/w 1.
-        shape: tensor shape after leading dims.
+        lead_dim (int): --number of leading dims found.
+        first_dim (int): --size of first leading dim, if two leading dims, o/w 1.
+        second_dim (int): --size of first leading dim if one, second leading dim if two, o/w 1.
+        shape (tuple): tensor shape after leading dims.
 
     Reference:
         https://github.com/astooke/rlpyt/blob/master/rlpyt/models/dqn/atari_r2d1_model.py
@@ -41,7 +41,7 @@ def restore_leading_dims(
     tensors: torch.Tensor, lead_dim: int, first_dim: int = 1, second_dim: int = 1
 ) -> torch.Tensor:
     """Reshapes ``tensors`` (one or `tuple`, `list`) to to have ``lead_dim``
-    leading dimensions, which will become [], [second_dim], or [first_dim,second_dim].
+    leading dimensions, which will become [], [second_dim], or [first_dim, second_dim].
     Assumes input tensors already have a leading Batch dimension, which might need
     to be removed. (Typically the last layer of model will compute with leading batch
     dimension.)  For use in model ``forward()`` method, so that output dimensions
