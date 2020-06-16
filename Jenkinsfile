@@ -10,6 +10,7 @@ pipeline {
       steps {
         echo 'Testing...'
         sh 'make dev'
+        sh 'make test'
         sh 'make integration-test'
       }
     }
