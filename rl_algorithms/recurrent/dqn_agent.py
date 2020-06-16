@@ -82,12 +82,12 @@ class R2D1Agent(DQNAgent):
 
     def _add_transition_to_memory(self, transition: Tuple[np.ndarray, ...]):
         """Add 1 step and n step transitions to memory."""
-        # add n-step transition
+        # Add n-step transition
         if self.use_n_step:
             transition = self.memory_n.add(transition)
 
-        # add a single step transition
-        # if transition is not an empty tuple
+        # Add a single step transition
+        # If transition is not an empty tuple
         if transition:
             self.memory.add(transition)
 
@@ -136,12 +136,12 @@ class R2D1Agent(DQNAgent):
 
     def train(self):
         """Train the agent."""
-        # logger
+        # Logger
         if self.args.log:
             self.set_wandb()
             # wandb.watch([self.dqn], log="parameters")
 
-        # pre-training if needed
+        # Pre-training if needed
         self.pretrain()
 
         for self.i_episode in range(1, self.args.episode_num + 1):
@@ -182,10 +182,10 @@ class R2D1Agent(DQNAgent):
                             info = self.learner.update_model(experience)
                             loss = info[0:2]
                             indices, new_priorities = info[2:4]
-                            losses.append(loss)  # for logging
+                            losses.append(loss)  # For logging
                             self.memory.update_priorities(indices, new_priorities)
 
-                    # decrease epsilon
+                    # Decrease epsilon
                     self.epsilon = max(
                         self.epsilon
                         - (self.max_epsilon - self.min_epsilon)
@@ -193,7 +193,7 @@ class R2D1Agent(DQNAgent):
                         self.min_epsilon,
                     )
 
-                    # increase priority beta
+                    # Increase priority beta
                     fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)
                     self.per_beta = self.per_beta + fraction * (1.0 - self.per_beta)
 
@@ -217,7 +217,7 @@ class R2D1Agent(DQNAgent):
                     self.learner.save_params(self.i_episode)
                     self.interim_test()
 
-        # termination
+        # Termination
         self.env.close()
         self.learner.save_params(self.i_episode)
         self.interim_test()

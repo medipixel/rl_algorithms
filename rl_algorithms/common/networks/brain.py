@@ -109,7 +109,7 @@ class GRUBrain(Brain):
             prev_reward (torch.Tensor): previous transition's reward
         """
 
-        # pre-process input for backbone and get backbone's output
+        # Pre-process input for backbone and get backbone's output
         if isinstance(self.backbone, nn.Module):
             lead_dim, batch_len, seq_len, x_shape = infer_leading_dims(x, 3)
 
@@ -122,10 +122,10 @@ class GRUBrain(Brain):
             lead_dim, batch_len, seq_len, x_shape = infer_leading_dims(x, 1)
             backbone_out = x
 
-        # pass fc layer
+        # Pass fc layer
         gru_input = self.fc(backbone_out)
 
-        # make gru_input concat with hidden_state, previous_action and previous_reward.
+        # Make gru_input concat with hidden_state, previous_action and previous_reward.
         gru_input = torch.cat(
             [
                 gru_input.view(batch_len, seq_len, -1),
@@ -137,10 +137,10 @@ class GRUBrain(Brain):
         hidden = torch.transpose(hidden, 0, 1)
         hidden = None if hidden is None else hidden
 
-        # unroll gru
+        # Unroll gru
         gru_out, hidden = self.gru(gru_input, hidden)
 
-        # get q
+        # Get q
         q = self.head(gru_out.contiguous().view(batch_len * seq_len, -1))
 
         # Restore leading dimensions
@@ -158,7 +158,7 @@ class GRUBrain(Brain):
     ):
         """Get output value for calculating loss."""
 
-        # pre-process input for backbone and get backbone's output
+        # Pre-process input for backbone and get backbone's output
         if isinstance(self.backbone, nn.Module):
             lead_dim, batch_len, seq_len, x_shape = infer_leading_dims(x, 3)
 
@@ -171,10 +171,10 @@ class GRUBrain(Brain):
             lead_dim, batch_len, seq_len, x_shape = infer_leading_dims(x, 1)
             backbone_out = x
 
-        # pass gru layer
+        # Pass gru layer
         gru_input = self.fc(backbone_out)
 
-        # make gru_input concat with hidden_state, previous_action and previous_reward.
+        # Make gru_input concat with hidden_state, previous_action and previous_reward.
         gru_input = torch.cat(
             [
                 gru_input.view(batch_len, seq_len, -1),
@@ -186,7 +186,7 @@ class GRUBrain(Brain):
         hidden = torch.transpose(hidden, 0, 1)
         hidden = None if hidden is None else hidden
 
-        # unroll gru
+        # Unroll gru
         gru_out, hidden = self.gru(gru_input, hidden)
 
         if isinstance(self.head, IQNMLP):
