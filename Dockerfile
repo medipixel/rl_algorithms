@@ -10,6 +10,20 @@ RUN apt-get install -y python3-pip python3-dev \
     && pip3 install --upgrade pip
 RUN apt-get update
 
+# set pip config
+RUN mkdir /root/.pip
+COPY pip.conf /root/.pip/pip.conf
+
 # set workspace
 RUN mkdir /workspace/
 WORKDIR /workspace
+
+COPY requirements.txt /workspace/requirements.txt
+RUN pip install -U Cython numpy
+RUN pip install -U -r requirements.txt
+
+# set cuda path
+ENV CUDA_HOME /usr/local/cuda
+ENV PATH "/usr/local/cuda/bin:$PATH"
+ENV LD_LIBRARY_PATH "$LD_LIBRARY_PATH:/usr/local/cuda/lib64"
+ENV LIBRARY_PATH "$LIBRARY_PATH:/usr/local/cuda/lib64"
