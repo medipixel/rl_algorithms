@@ -5,12 +5,15 @@ from .bc.ddpg_learner import BCDDPGLearner
 from .bc.her import LunarLanderContinuousHER, ReacherHER
 from .bc.sac_agent import BCSACAgent
 from .bc.sac_learner import BCSACLearner
+from .common.distributed.apex.architecture import ApeX
 from .common.networks.backbones import CNN, ResNet
 from .ddpg.agent import DDPGAgent
 from .ddpg.learner import DDPGLearner
 from .dqn.agent import DQNAgent
 from .dqn.learner import DQNLearner
+from .dqn.logger import DQNLogger
 from .dqn.losses import C51Loss, DQNLoss, IQNLoss
+from .dqn.worker import ApeXDQNWorker
 from .fd.ddpg_agent import DDPGfDAgent
 from .fd.ddpg_learner import DDPGfDLearner
 from .fd.dqn_agent import DQfDAgent
@@ -57,4 +60,7 @@ __all__ = [
     "IQNLoss",
     "C51Loss",
     "DQNLoss",
+    "ApeX",
+    "ApeXDQNWorker",
+    "DQNLogger",
 ]

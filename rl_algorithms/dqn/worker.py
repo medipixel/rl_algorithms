@@ -3,53 +3,67 @@ from collections import OrderedDict
 from typing import Dict, List, Tuple
 
 import numpy as np
-import ray
 import torch
-from zmq.sugar.context import Context
 
 from rl_algorithms.common.distributed.apex.worker import ApeXWorker
-from rl_algorithms.registry import build_loss
+from rl_algorithms.common.networks.brain import Brain
+from rl_algorithms.registry import WORKERS, build_loss
 from rl_algorithms.utils.config import ConfigDict
 
 
-@ray.remote
+@WORKERS.register_module
 class ApeXDQNWorker(ApeXWorker):
-    """ApeX DQN Worker Class
-
-    Attributes:
-        loss_fn (LOSS): loss function for computing priority value
-        dqn (Brain): worker brain
-
-    """
+    """ApeX DQN Worker Class"""
 
     def __init__(
         self,
         rank: int,
         args: argparse.Namespace,
-        comm_cfg: ConfigDict,
-        ctx: Context,
+        env_info: ConfigDict,
         hyper_params: ConfigDict,
-        learner_state_dict: OrderedDict,
+        backbone: ConfigDict,
+        head: ConfigDict,
+        comm_cfg: ConfigDict,
+        state_dict: OrderedDict,
+        device: str,
     ):
-        ApeXWorker.__init__(self, rank, args, comm_cfg, hyper_params, ctx)
+        ApeXWorker.__init__(self, rank, args, env_info, hyper_params, comm_cfg, device)
         self.loss_fn = build_loss(self.hyper_params.loss_type)
+        self.backbone_cfg = backbone
+        self.head_cfg = head
+        self.head_cfg.configs.state_size = self.env_info.observation_space.shape
+        self.head_cfg.configs.output_size = self.env_info.action_space.n
 
-        self._init_networks(learner_state_dict)
+        self.test_state = torch.zeros(self.head_cfg.configs.state_size)
+
+        self.max_epsilon = self.hyper_params.max_epsilon
+        self.min_epsilon = self.hyper_params.min_epsilon
+        self.epsilon = self.hyper_params.max_epsilon
+
+        self._init_networks(state_dict)
 
     def _init_networks(self, state_dict: OrderedDict):
-        self.dqn = torch.load(state_dict)
+        self.dqn = Brain(self.backbone_cfg, self.head_cfg).to(self.device)
+        self.dqn.load_state_dict(state_dict)
+        # self.og_output = self.dqn.forward(self.test_state)
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""
         # epsilon greedy policy
 
         # pylint: disable=comparison-with-callable
-        if not self.args.test and self.epsilon > np.random.random():
+        if self.epsilon > np.random.random():
             selected_action = np.array(self.env.action_space.sample())
         else:
             state = self._preprocess_state(state, self.device)
             selected_action = self.dqn(state).argmax()
             selected_action = selected_action.detach().cpu().numpy()
+
+        self.epsilon = max(
+            self.epsilon
+            - (self.max_epsilon - self.min_epsilon) * self.hyper_params.epsilon_decay,
+            self.min_epsilon,
+        )
 
         return selected_action
 
@@ -77,3 +91,4 @@ class ApeXDQNWorker(ApeXWorker):
 
     def synchronize(self, new_params: List[np.ndarray]):
         self._synchronize(self.dqn, new_params)
+        # print(self.dqn.forward(self.test_state))

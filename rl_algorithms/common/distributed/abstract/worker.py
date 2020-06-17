@@ -1,11 +1,14 @@
 from abc import ABC, abstractmethod
 import argparse
-from collections import deque
+import random
 from typing import Dict, List, Tuple
 
+import gym
 import numpy as np
 import torch
 
+from rl_algorithms.common.env.atari_wrappers import atari_env_generator
+import rl_algorithms.common.env.utils as env_utils
 from rl_algorithms.utils.config import ConfigDict
 
 
@@ -22,14 +25,36 @@ class Worker(ABC):
     """
 
     def __init__(
-        self, rank: int, args: argparse.Namespace, comm_cfg: ConfigDict,
+        self,
+        rank: int,
+        args: argparse.Namespace,
+        env_info: ConfigDict,
+        comm_cfg: ConfigDict,
+        device: str,
     ):
         """Initialize"""
         self.rank = rank
         self.args = args
+        self.env_info = env_info
         self.comm_cfg = comm_cfg
-        self.param_queue = deque(maxlen=5)
-        self.device = torch.device(self.args["worker_device"])
+        self.device = torch.device(device)
+
+        self._init_env()
+
+    # pylint: disable=attribute-defined-outside-init
+    def _init_env(self):
+        if self.env_info.is_atari:
+            self.env = atari_env_generator(
+                self.env_info.name, self.args.max_episode_steps, frame_stack=True
+            )
+        else:
+            self.env = gym.make(self.env_info.name)
+            env_utils.set_env(self.env, self.args)
+
+        random.seed(self.rank)
+        env_seed = random.randint(0, 999)
+        self.env.seed(env_seed)
+        # common_utils.set_random_seed(env_seed, self.env)
 
     @abstractmethod
     def _init_networks(self):

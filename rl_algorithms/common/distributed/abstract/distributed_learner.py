@@ -1,12 +1,11 @@
 from abc import abstractmethod
 from typing import Tuple, Union
 
-from rl_algorithms.common.abstract.learner import Learner, TensorTuple
-from rl_algorithms.common.networks.brain import Brain
+from rl_algorithms.common.abstract.learner import Learner, LearnerWrapper, TensorTuple
 from rl_algorithms.utils.config import ConfigDict
 
 
-class DistributedLearnerWrapper(Learner):
+class DistributedLearnerWrapper(LearnerWrapper):
     """Base wrapper class for distributed learners
 
     Attributes:
@@ -15,12 +14,9 @@ class DistributedLearnerWrapper(Learner):
 
     """
 
-    def __init__(self, learner: Learner, comm_config: ConfigDict):
-        Learner.__init__(
-            self, learner.args, learner.hyper_params, learner.log_cfg, learner.device
-        )
-        self.learner = learner
-        self.comm_config = comm_config
+    def __init__(self, learner: Learner, comm_cfg: ConfigDict):
+        LearnerWrapper.__init__(self, learner)
+        self.comm_cfg = comm_cfg
 
     def _init_network(self):
         """Initialize learner networks and optimizers"""
@@ -43,9 +39,11 @@ class DistributedLearnerWrapper(Learner):
         """Load params at start"""
         self.learner.load_params(path)
 
-    def get_state_dicts(self) -> Union[Brain, Tuple[Brain]]:
-        """Get the learner state_dicts that worker loads"""
-        return self.learner.get_state_dicts()
+    def get_policy(self):
+        return self.learner.get_policy()
+
+    def get_state_dict(self):
+        return self.learner.get_state_dict()
 
     @abstractmethod
     def run(self):

@@ -95,11 +95,8 @@ def numpy2floattensor(arrays: Tuple[np.ndarray]) -> Tuple[np.ndarray]:
     """Convert numpy arrays to torch float tensor."""
     tensors = []
     for array in arrays:
-        tensor = torch.FloatTensor(array).to(device)
-        if torch.cuda.is_available():
-            tensor = tensor.cuda(non_blocking=True)
+        tensor = torch.FloatTensor(array).to(device, non_blocking=True)
         tensors.append(tensor)
-
     return tuple(tensors)
 
 
@@ -107,6 +104,13 @@ def params2numpy(model):
     params = []
     new_model = deepcopy(model)
     state_dict = new_model.cpu().state_dict()
+    for param in list(state_dict):
+        params.append(state_dict[param].numpy())
+    return params
+
+
+def state_dict2numpy(state_dict):
+    params = []
     for param in list(state_dict):
         params.append(state_dict[param].numpy())
     return params

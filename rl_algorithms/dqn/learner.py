@@ -1,5 +1,6 @@
 import argparse
 from collections import OrderedDict
+from copy import deepcopy
 from typing import Tuple, Union
 
 import numpy as np
@@ -38,10 +39,9 @@ class DQNLearner(Learner):
         backbone: ConfigDict,
         head: ConfigDict,
         optim_cfg: ConfigDict,
-        device: torch.device,
+        device: str,
     ):
         Learner.__init__(self, args, env_info, hyper_params, log_cfg, device)
-
         self.backbone_cfg = backbone
         self.head_cfg = head
         self.head_cfg.configs.state_size = self.env_info.observation_space.shape
@@ -155,9 +155,10 @@ class DQNLearner(Learner):
         print("[INFO] loaded the model and optimizer from", path)
 
     def get_state_dict(self) -> OrderedDict:
-        """Return state dicts, mainly for distributed worker."""
-        return self.dqn.state_dict()
+        """Return state dicts, mainly for distributed worker"""
+        dqn = deepcopy(self.dqn)
+        return dqn.cpu().state_dict()
 
     def get_policy(self) -> nn.Module:
-        """Return model (policy) used for action selection."""
+        """Return model (policy) used for action selection, used only in grad cam"""
         return self.dqn
