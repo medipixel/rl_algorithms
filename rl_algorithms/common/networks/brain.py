@@ -114,7 +114,7 @@ class GRUBrain(Brain):
             lead_dim, batch_len, seq_len, x_shape = infer_leading_dims(x, 3)
 
             backbone_out = self.backbone(
-                x.view(batch_len * seq_len, *x_shape)
+                x.contiguous().view(batch_len * seq_len, *x_shape)
             )  # Fold if T dimension.
         else:
             if len(x.shape) == 1:
@@ -163,7 +163,7 @@ class GRUBrain(Brain):
             lead_dim, batch_len, seq_len, x_shape = infer_leading_dims(x, 3)
 
             backbone_out = self.backbone(
-                x.view(batch_len * seq_len, *x_shape)
+                x.contiguous().view(batch_len * seq_len, *x_shape)
             )  # Fold if T dimension.
         else:
             if len(x.shape) == 1:
