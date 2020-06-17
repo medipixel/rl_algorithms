@@ -104,7 +104,7 @@ class ApeXWorker(Worker):
             new_params_id = self.sub_socket.recv(zmq.DONTWAIT)
             return new_params_id
         except zmq.Again:
-            return False
+            return None
 
     def run(self):
         """Run main worker loop"""
