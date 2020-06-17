@@ -93,7 +93,7 @@ class Logger(ABC):
         try:
             log_info_id = self.pull_socket.recv(zmq.DONTWAIT)
         except zmq.Again:
-            return False
+            return None
 
         if log_info_id:
             self.log_info_queue.append(log_info_id)
