@@ -8,6 +8,8 @@
 import argparse
 import datetime
 
+import ray
+
 from rl_algorithms import build_agent
 from rl_algorithms.common.env.atari_wrappers import atari_env_generator
 import rl_algorithms.common.helper_functions as common_utils
@@ -18,12 +20,12 @@ def parse_args() -> argparse.Namespace:
     # configurations
     parser = argparse.ArgumentParser(description="Pytorch RL algorithms")
     parser.add_argument(
-        "--seed", type=int, default=777, help="random seed for reproducibility"
+        "--seed", type=int, default=161, help="random seed for reproducibility"
     )
     parser.add_argument(
         "--cfg-path",
         type=str,
-        default="./configs/pong_no_frameskip_v4/dqn.py",
+        default="./configs/pong_no_frameskip_v4/apex_dqn.py",
         help="config path",
     )
     parser.add_argument(
@@ -58,13 +60,21 @@ def parse_args() -> argparse.Namespace:
         "--episode-num", type=int, default=1500, help="total episode num"
     )
     parser.add_argument(
+        "--max-update-step", type=int, default=300000, help="max update step"
+    )
+    parser.add_argument(
         "--max-episode-steps", type=int, default=None, help="max episode step"
     )
     parser.add_argument(
-        "--interim-test-num", type=int, default=10, help="interim test number"
+        "--interim-test-num", type=int, default=5, help="interim test number"
     )
 
     return parser.parse_args()
+
+
+apex = True
+if apex:
+    ray.init()
 
 
 def main():
@@ -73,7 +83,7 @@ def main():
 
     # env initialization
     env_name = "PongNoFrameskip-v4"
-    env = atari_env_generator(env_name, args.max_episode_steps)
+    env = atari_env_generator(env_name, args.max_episode_steps, frame_stack=True)
 
     # set a random seed
     common_utils.set_random_seed(args.seed, env)
@@ -84,10 +94,11 @@ def main():
 
     cfg = Config.fromfile(args.cfg_path)
     cfg.agent.env_info = dict(
-        env_name="PongNoFrameskip-v4",
+        name="PongNoFrameskip-v4",
+        is_atari=True,
+        is_discrete=True,
         observation_space=env.observation_space,
         action_space=env.action_space,
-        is_discrete=True,
     )
     cfg.agent.log_cfg = dict(agent=cfg.agent.type, curr_time=curr_time)
     build_args = dict(args=args, env=env)

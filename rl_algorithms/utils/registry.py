@@ -1,5 +1,7 @@
 import inspect
 
+import ray
+
 from rl_algorithms.utils.config import ConfigDict
 
 
@@ -76,3 +78,37 @@ def build_from_cfg(cfg: ConfigDict, registry: Registry, default_args: dict = Non
         for name, value in default_args.items():
             args.setdefault(name, value)
     return obj_cls(**args)
+
+
+def build_ray_obj_from_cfg(
+    cfg: ConfigDict, registry: Registry, default_args: dict = None
+):
+    """Build a module from config dict.
+    Args:
+        cfg (:obj: `ConfigDict`): Config dict. It should at least contain the key "type".
+        registry (:obj:`Registry`): The registry to search the type from.
+        default_args (dict, optional): Default initialization arguments.
+    Returns:
+        obj: The constructed object.
+    """
+    assert isinstance(cfg, dict) and "type" in cfg
+    assert isinstance(default_args, dict) or default_args is None
+    args = cfg.copy()
+    obj_type = args.pop("type")
+    if isinstance(obj_type, str):
+        obj_cls = registry.get(obj_type)
+        if obj_cls is None:
+            raise KeyError(
+                "{} is not in the {} registry".format(obj_type, registry.name)
+            )
+    elif inspect.isclass(obj_type):
+        obj_cls = obj_type
+    else:
+        raise TypeError(
+            "type must be a str or valid type, but got {}".format(type(obj_type))
+        )
+
+    if default_args is not None:
+        for name, value in default_args.items():
+            args.setdefault(name, value)
+    return ray.remote(num_cpus=1)(obj_cls).remote(**args)
