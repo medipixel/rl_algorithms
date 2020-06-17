@@ -98,7 +98,7 @@ class Learner(BaseLearner):
         path = os.path.join(self.ckpt_path + self.sha + "_ep_" + str(n_episode) + ".pt")
         torch.save(params, path)
 
-        print("[INFO] Saved the model and optimizer to", path)
+        print(f"[INFO] Saved the model and optimizer to {path} \n")
 
     @abstractmethod
     def load_params(self, path: str):

@@ -126,6 +126,8 @@ class SACLearner(Learner):
         self, experience: Union[TensorTuple, Tuple[TensorTuple]]
     ) -> Tuple[torch.Tensor, torch.Tensor, list, np.ndarray]:  # type: ignore
         """Update ddpg actor and critic networks"""
+        self.update_step += 1
+
         states, actions, rewards, next_states, dones = experience
         new_actions, log_prob, pre_tanh_value, mu, std = self.actor(states)
 
@@ -249,9 +251,9 @@ class SACLearner(Learner):
         print("[INFO] loaded the model and optimizer from", path)
 
     def get_state_dict(self) -> Tuple[OrderedDict]:
-        """Return state dicts, mainly for distributed worker"""
+        """Return state dicts, mainly for distributed worker."""
         return (self.qf_1.state_dict(), self.qf_2.state_dict(), self.actor.state_dict())
 
     def get_policy(self) -> nn.Module:
-        """Return model (policy) used for action selection"""
+        """Return model (policy) used for action selection."""
         return self.actor

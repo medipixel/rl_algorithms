@@ -84,7 +84,7 @@ def main():
 
     cfg = Config.fromfile(args.cfg_path)
     cfg.agent.env_info = dict(
-        env_name="PongNoFrameskip-v4",
+        env_name=env_name,
         observation_space=env.observation_space,
         action_space=env.action_space,
         is_discrete=True,

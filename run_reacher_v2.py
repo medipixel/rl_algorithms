@@ -80,8 +80,9 @@ def main():
     args = parse_args()
 
     # env initialization
-    env = gym.make("Reacher-v2")
-    env_utils.set_env(env, args)
+    env_name = "Reacher-v2"
+    env = gym.make(env_name)
+    env = env_utils.set_env(env, args)
 
     # set a random seed
     common_utils.set_random_seed(args.seed, env)
@@ -92,7 +93,7 @@ def main():
 
     cfg = Config.fromfile(args.cfg_path)
     cfg.agent.env_info = dict(
-        env_name="Reacher-v2",
+        env_name=env_name,
         observation_space=env.observation_space,
         action_space=env.action_space,
         is_discrete=False,
