@@ -88,7 +88,7 @@ class SACfDAgent(SACAgent):
 
     def sample_experience(self) -> Tuple[torch.Tensor, ...]:
         experiences_1 = self.memory.sample(self.per_beta)
-        experiences_1 = self.numpy2floattensor(experiences_1[:6]) + experiences_1[6:]
+        experiences_1 = numpy2floattensor(experiences_1[:6]) + experiences_1[6:]
         if self.use_n_step:
             indices = experiences_1[-2]
             experiences_n = self.memory_n.sample(indices)

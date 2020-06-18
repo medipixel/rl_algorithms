@@ -24,6 +24,8 @@ def check_run_env(config_root: str, run_file: str):
             f"python {run_file} --cfg-path {config_root}{cfg} "
             + f"--off-render --episode-num 1 --max-episode-step 1 --seed 12345"
         )
+        if "r2d1" in cfg and "pong" in run_file:
+            cmd += f" --off-framestack"
 
         p = subprocess.Popen(
             cmd,
