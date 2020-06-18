@@ -87,7 +87,7 @@ class ApeX(Architecture):
         for rank in range(self.num_workers):
             worker_build_args["rank"] = rank
             worker = build_worker(self.worker_cfg, build_args=worker_build_args)
-            apex_worker = ApeXWorkerWrapper.remote(worker, self.comm_cfg)
+            apex_worker = ApeXWorkerWrapper.remote(worker, self.args, self.comm_cfg)
             self.workers.append(apex_worker)
 
         self.logger = build_logger(self.logger_cfg)
@@ -98,12 +98,5 @@ class ApeX(Architecture):
     def train(self):
         print("Running main training loop...")
         run_procs = [proc.run.remote() for proc in self.processes]
-        finished_proc = ray.wait(run_procs)
-
-        if not finished_proc:
-            # Only learner has exit criterion in while loop
-            for proc in run_procs:
-                ray.cancel(proc, force=True)
-
-        del run_procs
+        ray.get(run_procs)
         print("Exiting training...")

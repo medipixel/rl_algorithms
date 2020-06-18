@@ -65,9 +65,10 @@ class ApeXLearnerWrapper(DistributedLearnerWrapper):
         new_priors_id = pa.serialize(new_priors).to_buffer()
         self.rep_socket.send(new_priors_id)
 
-    def publish_params(self, np_state_dict: List[np.ndarray]):
+    def publish_params(self, update_step: int, np_state_dict: List[np.ndarray]):
         """Broadcast updated params to all workers"""
-        new_params_id = pa.serialize(np_state_dict).to_buffer()
+        param_info = [update_step, np_state_dict]
+        new_params_id = pa.serialize(param_info).to_buffer()
         self.pub_socket.send(new_params_id)
 
     def send_info_to_logger(
@@ -82,7 +83,7 @@ class ApeXLearnerWrapper(DistributedLearnerWrapper):
     def run(self):
         """Run main training loop"""
         self.telapsed = 0
-        while True:
+        while self.update_step < self.max_update_step:
             replay_data = self.recv_replay_data()
             if replay_data is not None:
                 replay_data = numpy2floattensor(replay_data)
@@ -96,13 +97,9 @@ class ApeXLearnerWrapper(DistributedLearnerWrapper):
                 if self.update_step % self.worker_update_interval == 0:
                     state_dict = self.get_state_dict()
                     np_state_dict = state_dict2numpy(state_dict)
-                    self.publish_params(np_state_dict)
+                    self.publish_params(self.update_step, np_state_dict)
 
                 if self.update_step % self.logger_interval == 0:
                     state_dict = self.get_state_dict()
                     np_state_dict = state_dict2numpy(state_dict)
                     self.send_info_to_logger(np_state_dict, step_info)
-
-            if self.update_step == self.max_update_step:
-                # finish training
-                break

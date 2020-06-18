@@ -111,8 +111,9 @@ class Worker(BaseWorker):
 class DistributedWorkerWrapper(BaseWorker):
     """Base wrapper class for distributed worker wrappers"""
 
-    def __init__(self, worker: Worker, comm_cfg: ConfigDict):
+    def __init__(self, worker: Worker, args: argparse.Namespace, comm_cfg: ConfigDict):
         self.worker = worker
+        self.args = args
         self.comm_cfg = comm_cfg
 
     @abstractmethod

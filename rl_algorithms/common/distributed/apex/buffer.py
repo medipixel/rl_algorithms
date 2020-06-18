@@ -78,7 +78,7 @@ class ApeXBufferWrapper(BufferWrapper):
         self.per_beta = self.per_beta + fraction * (1.0 - self.per_beta)
 
     def run(self):
-        while True:
+        while self.num_sent < self.args.max_update_step:
             self.recv_worker_data()
             if len(self.buffer) > self.hyper_params.update_starts_from:
                 self.send_batch_to_learner()

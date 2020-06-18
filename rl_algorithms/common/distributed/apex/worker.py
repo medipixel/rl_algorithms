@@ -1,3 +1,4 @@
+import argparse
 from typing import Dict
 
 import numpy as np
@@ -16,8 +17,10 @@ from rl_algorithms.utils.config import ConfigDict
 class ApeXWorkerWrapper(DistributedWorkerWrapper):
     """Wrapper class for ApeX based distributed workers"""
 
-    def __init__(self, worker: Worker, comm_cfg: ConfigDict):
-        DistributedWorkerWrapper.__init__(self, worker, comm_cfg)
+    def __init__(self, worker: Worker, args: argparse.Namespace, comm_cfg: ConfigDict):
+        DistributedWorkerWrapper.__init__(self, worker, args, comm_cfg)
+        self.update_step = 0
+
         self.worker._init_env()
         self._init_communication()
 
@@ -50,7 +53,9 @@ class ApeXWorkerWrapper(DistributedWorkerWrapper):
             pass
 
         if received:
-            new_params = pa.deserialize(new_params_id)
+            new_param_info = pa.deserialize(new_params_id)
+            update_step, new_params = new_param_info
+            self.update_step = update_step
             self.worker.synchronize(new_params)
 
     def compute_priorities(self, experience: Dict[str, np.ndarray]):
@@ -58,7 +63,7 @@ class ApeXWorkerWrapper(DistributedWorkerWrapper):
 
     def run(self):
         """Run main worker loop"""
-        while True:
+        while self.update_step < self.args.max_update_step:
             experience = self.collect_data()
             priority_values = self.compute_priorities(experience)
             worker_data = [experience, priority_values]

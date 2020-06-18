@@ -35,6 +35,7 @@ class Logger(ABC):
         self.device = torch.device("cpu")
         self.brain = Brain(backbone, head).to(self.device)
 
+        self.update_step = 0
         self.log_info_queue = deque(maxlen=100)
 
         self._init_communication()
@@ -102,16 +103,17 @@ class Logger(ABC):
         if self.args.log:
             self.set_wandb()
 
-        while True:
+        while self.update_step < self.args.max_update_step:
             self.recv_log_info()
             if self.log_info_queue:  # if non-empty
                 log_info_id = self.log_info_queue.pop()
                 log_info = pa.deserialize(log_info_id)
                 state_dict = log_info["state_dict"]
                 log_value = log_info["log_value"]
+                self.update_step = log_value["update_step"]
 
                 self.synchronize(state_dict)
-                avg_score = self.test(log_value["update_step"])
+                avg_score = self.test(self.update_step)
                 log_value["avg_score"] = avg_score
 
                 self.write_log(log_value)
