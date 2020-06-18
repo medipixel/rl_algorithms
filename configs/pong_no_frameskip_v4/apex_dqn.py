@@ -8,7 +8,6 @@ from rl_algorithms.common.helper_functions import identity
 agent = dict(
     type="ApeX",
     hyper_params=dict(
-        worker_computes_priorities=True,
         gamma=0.99,
         tau=5e-3,
         buffer_size=250000,  # openai baselines: int(1e4)
@@ -36,6 +35,7 @@ agent = dict(
         ],
         local_buffer_max_size=1000,
         worker_update_interval=50,
+        logger_interval=50,
     ),
     learner_cfg=dict(
         type="DQNLearner",
@@ -62,7 +62,7 @@ agent = dict(
             adam_eps=1e-8,  # rainbow: 1.5e-4, openai baselines: 1e-8
         ),
     ),
-    worker_cfg=dict(type="ApeXDQNWorker", device="cpu",),
+    worker_cfg=dict(type="DQNWorker", device="cpu",),
     logger_cfg=dict(type="DQNLogger",),
     comm_cfg=dict(
         learner_buffer_port=6554,
