@@ -1,7 +1,7 @@
 import argparse
-from typing import List
 
 import numpy as np
+import torch
 import wandb
 
 from rl_algorithms.common.distributed.abstract.logger import Logger
@@ -22,6 +22,14 @@ class DQNLogger(Logger):
     ):
         Logger.__init__(self, args, env_info, log_cfg, comm_cfg, backbone, head)
 
+    def load_params(self, path: str):
+        """Load model and optimizer parameters."""
+        Logger.load_params(self, path)
+
+        params = torch.load(path)
+        self.brain.load_state_dict(params["dqn_state_dict"])
+        print("[INFO] loaded the model and optimizer from", path)
+
     def select_action(self, state: np.ndarray):
         state = self._preprocess_state(state, self.device)
         selected_action = self.brain(state).argmax()
@@ -32,21 +40,22 @@ class DQNLogger(Logger):
     def write_log(self, log_value: dict):
         """Write log about loss and score"""
         print(
-            "[INFO] update_step %d, average score: %f \n"
-            "loss: %f, avg q-value: %f time elapsed: %s\n"
+            "[INFO] update_step %d, average score: %f, "
+            "loss: %f, avg q-value: %f"
             % (
                 log_value["update_step"],
                 log_value["avg_score"],
-                log_value["loss"][0],
-                log_value["loss"][1],
-                log_value["time_elapsed"],
+                log_value["step_info"][0],
+                log_value["step_info"][1],
             )
         )
 
         if self.args.log:
             wandb.log(
-                {log_value["avg_score"], log_value["loss"][0], log_value["loss"][1]}
+                {
+                    "avg_test_score": log_value["avg_score"],
+                    "loss": log_value["step_info"][0],
+                    "avg_q_value": log_value["step_info"][1],
+                },
+                step=log_value["update_step"],
             )
-
-    def synchronize(self, new_params: List[np.ndarray]):
-        self._synchronize(self.brain, new_params)

@@ -13,7 +13,7 @@ from .dqn.agent import DQNAgent
 from .dqn.learner import DQNLearner
 from .dqn.logger import DQNLogger
 from .dqn.losses import C51Loss, DQNLoss, IQNLoss
-from .dqn.worker import ApeXDQNWorker
+from .dqn.worker import DQNWorker
 from .fd.ddpg_agent import DDPGfDAgent
 from .fd.ddpg_learner import DDPGfDLearner
 from .fd.dqn_agent import DQfDAgent
@@ -61,6 +61,6 @@ __all__ = [
     "C51Loss",
     "DQNLoss",
     "ApeX",
-    "ApeXDQNWorker",
+    "DQNWorker",
     "DQNLogger",
 ]

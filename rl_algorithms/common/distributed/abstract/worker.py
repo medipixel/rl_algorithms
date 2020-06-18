@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 import argparse
+import os
 import random
-from typing import Dict, List, Tuple
+from typing import Deque, Dict, List, Tuple
 
 import gym
 import numpy as np
@@ -9,39 +10,39 @@ import torch
 
 from rl_algorithms.common.env.atari_wrappers import atari_env_generator
 import rl_algorithms.common.env.utils as env_utils
+from rl_algorithms.common.helper_functions import set_random_seed
 from rl_algorithms.utils.config import ConfigDict
 
 
-class Worker(ABC):
-    """Abstract class for distributed workers
+class BaseWorker(ABC):
+    """Base class for Worker classes"""
 
-    Attributes
-        rank (int): rank of worker process
-        args (argparse.Namespace): args
-        comm_config (ConfigDict): config of inter-process communication
-        param_queue (deque): queue to store received new network parameters
-        device (torch.device): device for worker
+    @abstractmethod
+    def collect_data(self) -> Dict[str, np.ndarray]:
+        pass
 
-    """
+
+class Worker(BaseWorker):
+    """Base class for all functioning RL workers"""
 
     def __init__(
         self,
         rank: int,
         args: argparse.Namespace,
         env_info: ConfigDict,
-        comm_cfg: ConfigDict,
+        hyper_params: ConfigDict,
         device: str,
     ):
         """Initialize"""
         self.rank = rank
         self.args = args
         self.env_info = env_info
-        self.comm_cfg = comm_cfg
+        self.hyper_params = hyper_params
         self.device = torch.device(device)
 
         self._init_env()
 
-    # pylint: disable=attribute-defined-outside-init
+    # pylint: disable=attribute-defined-outside-init, no-self-use
     def _init_env(self):
         if self.env_info.is_atari:
             self.env = atari_env_generator(
@@ -53,22 +54,14 @@ class Worker(ABC):
 
         random.seed(self.rank)
         env_seed = random.randint(0, 999)
-        self.env.seed(env_seed)
-        # common_utils.set_random_seed(env_seed, self.env)
+        set_random_seed(env_seed, self.env)
 
     @abstractmethod
-    def _init_networks(self):
-        pass
-
-    @abstractmethod
-    def _init_communication(self):
-        pass
-
-    # pylint: disable=no-self-use
-    @staticmethod
-    def _preprocess_state(state: np.ndarray, device: torch.device) -> torch.Tensor:
-        state = torch.FloatTensor(state).to(device)
-        return state
+    def load_params(self, path: str):
+        if not os.path.exists(path):
+            raise Exception(
+                f"[ERROR] the input path does not exist. Wrong path: {path}"
+            )
 
     @abstractmethod
     def select_action(self, state: np.ndarray) -> np.ndarray:
@@ -82,6 +75,11 @@ class Worker(ABC):
     def collect_data(self) -> Dict[str, np.ndarray]:
         pass
 
+    # NOTE: No need to explicitly implement for non-PER/non-Ape-X workers
+    @abstractmethod
+    def compute_priorities(self, experience: Dict[str, np.ndarray]):
+        pass
+
     @abstractmethod
     def synchronize(self, new_params: list):
         pass
@@ -92,6 +90,37 @@ class Worker(ABC):
         for param, new_param in zip(network.parameters(), new_params):
             new_param = torch.FloatTensor(new_param).to(self.device)
             param.data.copy_(new_param)
+
+    def preprocess_nstep(self, nstepqueue: Deque) -> tuple:
+        discounted_reward = 0
+        _, _, _, last_state, done = nstepqueue[-1]
+        for transition in list(reversed(nstepqueue)):
+            state, action, reward, _, _ = transition
+            discounted_reward = reward + self.hyper_params.gamma * discounted_reward
+        nstep_data = (state, action, discounted_reward, last_state, done)
+
+        return nstep_data
+
+    # pylint: disable=no-self-use
+    @staticmethod
+    def _preprocess_state(state: np.ndarray, device: torch.device) -> torch.Tensor:
+        state = torch.FloatTensor(state).to(device)
+        return state
+
+
+class DistributedWorkerWrapper(BaseWorker):
+    """Base wrapper class for distributed worker wrappers"""
+
+    def __init__(self, worker: Worker, comm_cfg: ConfigDict):
+        self.worker = worker
+        self.comm_cfg = comm_cfg
+
+    @abstractmethod
+    def _init_communication(self):
+        pass
+
+    def collect_data(self) -> Dict[str, np.ndarray]:
+        return self.worker.collect_data()
 
     @abstractmethod
     def run(self):

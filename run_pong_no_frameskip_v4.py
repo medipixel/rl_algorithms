@@ -47,6 +47,18 @@ def parse_args() -> argparse.Namespace:
         "--off-render", dest="render", action="store_false", help="turn off rendering"
     )
     parser.add_argument(
+        "--off-worker-render",
+        dest="worker_render",
+        action="store_false",
+        help="turn off rendering",
+    )
+    parser.add_argument(
+        "--off-logger-render",
+        dest="logger_render",
+        action="store_false",
+        help="turn off rendering",
+    )
+    parser.add_argument(
         "--render-after",
         type=int,
         default=0,

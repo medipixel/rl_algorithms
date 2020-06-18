@@ -43,7 +43,8 @@ def build_her(cfg: ConfigDict, build_args: dict = None):
 
 def build_worker(cfg: ConfigDict, build_args: dict = None):
     """Build ray worker using config and additional arguments."""
-    return build_ray_obj_from_cfg(cfg, WORKERS, build_args)
+    # return build_ray_obj_from_cfg(cfg, WORKERS, build_args)
+    return build_from_cfg(cfg, WORKERS, build_args)
 
 
 def build_logger(cfg: ConfigDict, build_args: dict = None):

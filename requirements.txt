@@ -9,7 +9,9 @@ cloudpickle
 opencv-python
 wandb
 addict
-
+ray
+ray[debug]
+pyzmq
 # mujoco
 
 setuptools

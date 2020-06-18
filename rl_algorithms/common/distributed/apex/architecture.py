@@ -6,7 +6,8 @@ from rl_algorithms.common.buffer.wrapper import PrioritizedBufferWrapper
 from rl_algorithms.common.distributed.abstract.architecture import Architecture
 from rl_algorithms.common.distributed.apex.buffer import ApeXBufferWrapper
 from rl_algorithms.common.distributed.apex.learner import ApeXLearnerWrapper
-from rl_algorithms.registry import AGENTS, build_learner, build_worker
+from rl_algorithms.common.distributed.apex.worker import ApeXWorkerWrapper
+from rl_algorithms.registry import AGENTS, build_learner, build_logger, build_worker
 from rl_algorithms.utils.config import ConfigDict
 
 
@@ -52,7 +53,6 @@ class ApeX(Architecture):
         self.worker_cfg.hyper_params = self.hyper_params
         self.worker_cfg.backbone = self.learner_cfg.backbone
         self.worker_cfg.head = self.learner_cfg.head
-        self.worker_cfg.comm_cfg = self.comm_cfg
 
         # organize logger configs
         self.logger_cfg.args = self.args
@@ -86,18 +86,24 @@ class ApeX(Architecture):
         self.num_workers = 4
         for rank in range(self.num_workers):
             worker_build_args["rank"] = rank
-            self.workers.append(
-                build_worker(self.worker_cfg, build_args=worker_build_args)
-            )
+            worker = build_worker(self.worker_cfg, build_args=worker_build_args)
+            apex_worker = ApeXWorkerWrapper.remote(worker, self.comm_cfg)
+            self.workers.append(apex_worker)
 
-        # self.logger = build_logger(self.logger_cfg)
+        self.logger = build_logger(self.logger_cfg)
 
         # put together all processes
-        self.processes = self.workers + [
-            self.learner,
-            self.global_buffer,
-        ]  # , self.logger]
+        self.processes = self.workers + [self.learner, self.global_buffer, self.logger]
 
     def train(self):
         print("Running main training loop...")
-        ray.wait([proc.run.remote() for proc in self.processes])
+        run_procs = [proc.run.remote() for proc in self.processes]
+        finished_proc = ray.wait(run_procs)
+
+        if not finished_proc:
+            # Only learner has exit criterion in while loop
+            for proc in run_procs:
+                ray.cancel(proc, force=True)
+
+        del run_procs
+        print("Exiting training...")

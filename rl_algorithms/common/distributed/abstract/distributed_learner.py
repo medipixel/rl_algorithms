@@ -18,11 +18,6 @@ class DistributedLearnerWrapper(LearnerWrapper):
         LearnerWrapper.__init__(self, learner)
         self.comm_cfg = comm_cfg
 
-    def _init_network(self):
-        """Initialize learner networks and optimizers"""
-        # no need to call this fn since the class takes initialized learner as input
-        self.learner._init_network()
-
     @abstractmethod
     def _init_communication(self):
         pass

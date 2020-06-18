@@ -35,11 +35,12 @@ class Logger(ABC):
         self.device = torch.device("cpu")
         self.brain = Brain(backbone, head).to(self.device)
 
-        self.log_info_queue = deque(maxlen=1000)
+        self.log_info_queue = deque(maxlen=100)
 
         self._init_communication()
         self._init_env()
 
+    # pylint: disable=attribute-defined-outside-init
     def _init_env(self):
         if self.env_info.is_atari:
             self.env = atari_env_generator(
@@ -49,6 +50,14 @@ class Logger(ABC):
             self.env = gym.make(self.env_info.name)
             env_utils.set_env(self.env, self.args)
 
+    @abstractmethod
+    def load_params(self, path: str):
+        if not os.path.exists(path):
+            raise Exception(
+                f"[ERROR] the input path does not exist. Wrong path: {path}"
+            )
+
+    # pylint: disable=attribute-defined-outside-init
     def _init_communication(self):
         ctx = zmq.Context()
         self.pull_socket = ctx.socket(zmq.PULL)
@@ -68,37 +77,25 @@ class Logger(ABC):
         state = torch.FloatTensor(state).to(device)
         return state
 
-    @abstractmethod
-    def synchronize(self, new_params: list):
-        pass
-
-    # pylint: disable=no-self-use
-    def _synchronize(self, network, new_params: List[np.ndarray]):
-        """Copy parameters from numpy arrays"""
-        for param, new_param in zip(network.parameters(), new_params):
-            new_param = torch.FloatTensor(new_param).to(self.device)
-            param.data.copy_(new_param)
-
     def set_wandb(self):
         """Set configuration for wandb logging."""
         wandb.init(
-            project=self.log_cfg.env_name,
+            project=self.env_info.name,
             name=f"{self.log_cfg.agent}/{self.log_cfg.curr_time}",
         )
         wandb.config.update(vars(self.args))
         shutil.copy(self.args.cfg_path, os.path.join(wandb.run.dir, "config.py"))
 
     def recv_log_info(self):
-        log_info_id = False
+        received = False
         try:
             log_info_id = self.pull_socket.recv(zmq.DONTWAIT)
+            received = True
         except zmq.Again:
-            return None
+            pass
 
-        if log_info_id:
+        if received:
             self.log_info_queue.append(log_info_id)
-
-        return True
 
     def run(self):
         # logger
@@ -107,11 +104,11 @@ class Logger(ABC):
 
         while True:
             self.recv_log_info()
-            if not self.log_info_queue.empty():
+            if self.log_info_queue:  # if non-empty
                 log_info_id = self.log_info_queue.pop()
                 log_info = pa.deserialize(log_info_id)
-                log_value = log_info["log_value"]
                 state_dict = log_info["state_dict"]
+                log_value = log_info["log_value"]
 
                 self.synchronize(state_dict)
                 avg_score = self.test(log_value["update_step"])
@@ -143,8 +140,8 @@ class Logger(ABC):
             step = 0
 
             while not done:
-                # if self.args.render:
-                #     self.env.render()
+                if self.args.logger_render:
+                    self.env.render()
 
                 action = self.select_action(state)
                 next_state, reward, done, _ = self.env.step(action)
@@ -161,3 +158,9 @@ class Logger(ABC):
             )
 
         return np.mean(scores)
+
+    def synchronize(self, new_params: List[np.ndarray]):
+        """Copy parameters from numpy arrays"""
+        for param, new_param in zip(self.brain.parameters(), new_params):
+            new_param = torch.FloatTensor(new_param).to(self.device)
+            param.data.copy_(new_param)
