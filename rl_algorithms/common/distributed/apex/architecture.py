@@ -101,7 +101,7 @@ class ApeX(Architecture):
         worker_build_args = dict(args=self.args, state_dict=state_dict)
 
         self.workers = []
-        self.num_workers = 4
+        self.num_workers = self.hyper_params.num_workers
         for rank in range(self.num_workers):
             worker_build_args["rank"] = rank
             worker = build_worker(self.worker_cfg, build_args=worker_build_args)

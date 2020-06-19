@@ -1,7 +1,7 @@
-"""Config for DQN on Pong-No_FrameSkip-v4.
+"""Config for ApeX-DQN on Pong-No_FrameSkip-v4.
 
-- Author: Kyunghwan Kim
-- Contact: kh.kim@medipixel.io
+- Author: Chris Yoon
+- Contact: chris.yoon@medipixel.io
 """
 from rl_algorithms.common.helper_functions import identity
 
@@ -33,6 +33,7 @@ agent = dict(
             "backbone.cnn.cnn_1.cnn",
             "backbone.cnn.cnn_2.cnn",
         ],
+        num_workers=4,
         local_buffer_max_size=1000,
         worker_update_interval=50,
         logger_interval=50,
