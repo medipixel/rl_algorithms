@@ -22,10 +22,9 @@ class ApeXWorkerWrapper(DistributedWorkerWrapper):
         self.update_step = 0
 
         self.worker._init_env()
-        self._init_communication()
 
     # pylint: disable=attribute-defined-outside-init
-    def _init_communication(self):
+    def init_communication(self):
         """Initialize sockets connecting worker-learner, worker-buffer"""
         # for receiving params from learner
         ctx = zmq.Context()

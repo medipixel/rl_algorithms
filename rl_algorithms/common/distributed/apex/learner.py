@@ -36,10 +36,8 @@ class ApeXLearnerWrapper(DistributedLearnerWrapper):
         # NOTE: disable because learner uses preprocessed n_step experience
         self.learner.use_n_step = False
 
-        self._init_communication()
-
     # pylint: disable=attribute-defined-outside-init
-    def _init_communication(self):
+    def init_communication(self):
         """Initialize sockets for communication"""
         ctx = zmq.Context()
         # Socket to send updated network parameters to worker
@@ -98,6 +96,7 @@ class ApeXLearnerWrapper(DistributedLearnerWrapper):
                     state_dict = self.get_state_dict()
                     np_state_dict = state_dict2numpy(state_dict)
                     self.publish_params(self.update_step, np_state_dict)
+                    self.learner.save_params(self.update_step)
 
                 if self.update_step % self.logger_interval == 0:
                     state_dict = self.get_state_dict()

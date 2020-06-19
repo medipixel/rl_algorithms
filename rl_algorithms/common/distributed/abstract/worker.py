@@ -117,7 +117,7 @@ class DistributedWorkerWrapper(BaseWorker):
         self.comm_cfg = comm_cfg
 
     @abstractmethod
-    def _init_communication(self):
+    def init_communication(self):
         pass
 
     def collect_data(self) -> Dict[str, np.ndarray]:

@@ -19,7 +19,7 @@ class DistributedLearnerWrapper(LearnerWrapper):
         self.comm_cfg = comm_cfg
 
     @abstractmethod
-    def _init_communication(self):
+    def init_communication(self):
         pass
 
     def update_model(self, experience: Union[TensorTuple, Tuple[TensorTuple]]) -> tuple:

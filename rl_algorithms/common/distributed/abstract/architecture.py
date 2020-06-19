@@ -9,3 +9,7 @@ class Architecture(ABC):
     @abstractmethod
     def train(self):
         pass
+
+    @abstractmethod
+    def test(self):
+        pass

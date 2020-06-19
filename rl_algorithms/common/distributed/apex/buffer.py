@@ -25,10 +25,8 @@ class ApeXBufferWrapper(BufferWrapper):
         self.per_beta = hyper_params.per_beta
         self.num_sent = 0
 
-        self._init_communication()
-
     # pylint: disable=attribute-defined-outside-init
-    def _init_communication(self):
+    def init_communication(self):
         """Initialize sockets for communication"""
         ctx = zmq.Context()
         self.req_socket = ctx.socket(zmq.REQ)

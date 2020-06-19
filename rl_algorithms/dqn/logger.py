@@ -24,9 +24,10 @@ class DQNLogger(Logger):
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
+        # Logger only runs on cpu
         Logger.load_params(self, path)
 
-        params = torch.load(path)
+        params = torch.load(path, map_location="cpu")
         self.brain.load_state_dict(params["dqn_state_dict"])
         print("[INFO] loaded the model and optimizer from", path)
 

@@ -32,13 +32,12 @@ class Logger(ABC):
         self.env_info = env_info
         self.log_cfg = log_cfg
         self.comm_cfg = comm_cfg
-        self.device = torch.device("cpu")
+        self.device = torch.device("cpu")  # Logger only runs on cpu
         self.brain = Brain(backbone, head).to(self.device)
 
         self.update_step = 0
         self.log_info_queue = deque(maxlen=100)
 
-        self._init_communication()
         self._init_env()
 
     # pylint: disable=attribute-defined-outside-init
@@ -59,7 +58,7 @@ class Logger(ABC):
             )
 
     # pylint: disable=attribute-defined-outside-init
-    def _init_communication(self):
+    def init_communication(self):
         ctx = zmq.Context()
         self.pull_socket = ctx.socket(zmq.PULL)
         self.pull_socket.bind(f"tcp://127.0.0.1:{self.comm_cfg.learner_logger_port}")
@@ -118,16 +117,16 @@ class Logger(ABC):
 
                 self.write_log(log_value)
 
-    def test(self, update_step: int):
+    def test(self, update_step: int, interim_test: bool = True):
         """Test the agent."""
-        avg_score = self._test(update_step)
+        avg_score = self._test(update_step, interim_test)
 
         # termination
         self.env.close()
 
         return avg_score
 
-    def _test(self, update_step: int, interim_test: bool = True) -> float:
+    def _test(self, update_step: int, interim_test: bool) -> float:
         """Common test routine."""
         if interim_test:
             test_num = self.args.interim_test_num
@@ -154,10 +153,16 @@ class Logger(ABC):
 
             scores.append(score)
 
-            print(
-                "[INFO] update step: %d\ttest %d\tstep: %d\ttotal score: %d"
-                % (update_step, i_episode, step, score)
-            )
+            if interim_test:
+                print(
+                    "[INFO] update step: %d\ttest %d\tstep: %d\ttotal score: %d"
+                    % (update_step, i_episode, step, score)
+                )
+            else:
+                print(
+                    "[INFO] test %d\tstep: %d\ttotal score: %d"
+                    % (i_episode, step, score)
+                )
 
         return np.mean(scores)
 

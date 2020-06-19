@@ -36,7 +36,6 @@ class ApeX(Architecture):
         self.log_cfg = log_cfg
 
         self._organize_configs()
-        self._spawn()
 
     # pylint: disable=attribute-defined-outside-init
     def _organize_configs(self):
@@ -63,7 +62,7 @@ class ApeX(Architecture):
         self.logger_cfg.head = self.learner_cfg.head
 
     def _spawn(self):
-        # create buffer
+        """Intialize distributed worker, learner and centralized replay buffer"""
         replay_buffer = ReplayBuffer(
             self.hyper_params.buffer_size, self.hyper_params.batch_size,
         )
@@ -74,11 +73,9 @@ class ApeX(Architecture):
             per_buffer, self.args, self.hyper_params, self.comm_cfg
         )
 
-        # create learner
         learner = build_learner(self.learner_cfg)
         self.learner = ApeXLearnerWrapper.remote(learner, self.comm_cfg)
 
-        # create workers
         state_dict = learner.get_state_dict()
         worker_build_args = dict(args=self.args, state_dict=state_dict)
 
@@ -92,11 +89,26 @@ class ApeX(Architecture):
 
         self.logger = build_logger(self.logger_cfg)
 
-        # put together all processes
         self.processes = self.workers + [self.learner, self.global_buffer, self.logger]
 
     def train(self):
+        print("Spawning and initializing communication...")
+        # Spawn processes:
+        self._spawn()
+        # Initialize communication
+        for proc in self.processes:
+            proc.init_communication.remote()
+
+        # Run main training loop
         print("Running main training loop...")
         run_procs = [proc.run.remote() for proc in self.processes]
         ray.get(run_procs)
         print("Exiting training...")
+
+    def test(self):
+        """Load model from checkpoint and run logger for testing"""
+        # NOTE: You could also load the Ape-X trained model on the single agent DQN
+        self.logger = build_logger(self.logger_cfg)
+        self.logger.load_params.remote(self.args.load_from)
+        ray.get([self.logger.test.remote(update_step=0, interim_test=False)])
+        print("Exiting testing...")
