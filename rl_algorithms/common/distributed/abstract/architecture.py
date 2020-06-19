@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 
 
 class Architecture(ABC):
+    """Abstract class for distributed architectures"""
+
     @abstractmethod
     def _spawn(self):
         pass

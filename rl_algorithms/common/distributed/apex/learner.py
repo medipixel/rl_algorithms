@@ -23,6 +23,10 @@ class ApeXLearnerWrapper(DistributedLearnerWrapper):
         update_step (int): counts update steps
         pub_socket (zmq.Socket): publisher socket for broadcasting params
         rep_socket (zmq.Socket): reply socket for receiving replay data & sending new priorities
+        update_step (int): number of update steps
+        max_update_step (int): maximum update steps per run
+        worker_update_interval (int): num update steps between worker synchronization
+        logger_interval (int): num update steps between logging
 
     """
 
@@ -53,6 +57,7 @@ class ApeXLearnerWrapper(DistributedLearnerWrapper):
         self.push_socket.connect(f"tcp://127.0.0.1:{self.comm_cfg.learner_logger_port}")
 
     def recv_replay_data(self):
+        """Receive replay data from gloal buffer"""
         replay_data_id = self.rep_socket.recv()
         replay_data = pa.deserialize(replay_data_id)
         return replay_data
@@ -96,9 +101,9 @@ class ApeXLearnerWrapper(DistributedLearnerWrapper):
                     state_dict = self.get_state_dict()
                     np_state_dict = state_dict2numpy(state_dict)
                     self.publish_params(self.update_step, np_state_dict)
-                    self.learner.save_params(self.update_step)
 
                 if self.update_step % self.logger_interval == 0:
                     state_dict = self.get_state_dict()
                     np_state_dict = state_dict2numpy(state_dict)
                     self.send_info_to_logger(np_state_dict, step_info)
+                    self.learner.save_params(self.update_step)

@@ -19,6 +19,23 @@ from rl_algorithms.utils.config import ConfigDict
 
 
 class Logger(ABC):
+    """Base class for loggers use in distributed training
+
+    Attributes:
+        args (argparse.Namespace): arguments including hyperparameters and training settings
+        env_info (ConfigDict): information about environment
+        log_cfg (ConfigDict): configuration for saving log and checkpoint
+        comm_config (ConfigDict): configs for communication
+        backbone (ConfigDict): backbone configs for building network
+        head (ConfigDict): head configs for building network
+        brain (Brain): logger brain for evaluation
+        update_step (int): tracker for learner update step
+        device (torch.device): device, cpu by default
+        log_info_queue (deque): queue for storing log info received from learner
+        env (gym.Env): gym environment for running test
+
+    """
+
     def __init__(
         self,
         args: argparse.Namespace,
@@ -42,6 +59,7 @@ class Logger(ABC):
 
     # pylint: disable=attribute-defined-outside-init
     def _init_env(self):
+        """Initialize gym environment"""
         if self.env_info.is_atari:
             self.env = atari_env_generator(
                 self.env_info.name, self.args.max_episode_steps
@@ -59,6 +77,7 @@ class Logger(ABC):
 
     # pylint: disable=attribute-defined-outside-init
     def init_communication(self):
+        """Initialize inter-process communication sockets"""
         ctx = zmq.Context()
         self.pull_socket = ctx.socket(zmq.PULL)
         self.pull_socket.bind(f"tcp://127.0.0.1:{self.comm_cfg.learner_logger_port}")
@@ -87,6 +106,7 @@ class Logger(ABC):
         shutil.copy(self.args.cfg_path, os.path.join(wandb.run.dir, "config.py"))
 
     def recv_log_info(self):
+        """Receive info from learner"""
         received = False
         try:
             log_info_id = self.pull_socket.recv(zmq.DONTWAIT)
@@ -98,6 +118,7 @@ class Logger(ABC):
             self.log_info_queue.append(log_info_id)
 
     def run(self):
+        """Run main logging loop; continuously receive data and log"""
         # logger
         if self.args.log:
             self.set_wandb()

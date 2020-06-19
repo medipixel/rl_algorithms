@@ -18,12 +18,36 @@ class BaseWorker(ABC):
     """Base class for Worker classes"""
 
     @abstractmethod
-    def collect_data(self) -> Dict[str, np.ndarray]:
+    def select_action(self, state: np.ndarray) -> np.ndarray:
         pass
+
+    @abstractmethod
+    def step(self, action: np.ndarray) -> Tuple[np.ndarray, np.float64, bool, dict]:
+        pass
+
+    @abstractmethod
+    def synchronize(self, new_params: list):
+        pass
+
+    # pylint: disable=no-self-use
+    def _synchronize(self, network, new_params: List[np.ndarray]):
+        """Copy parameters from numpy arrays"""
+        for param, new_param in zip(network.parameters(), new_params):
+            new_param = torch.FloatTensor(new_param).to(self.device)
+            param.data.copy_(new_param)
 
 
 class Worker(BaseWorker):
-    """Base class for all functioning RL workers"""
+    """Base class for all functioning RL workers
+
+    Attributes:
+        rank (int): rank (ID) of worker
+        args (argparse.Namespace): args from run script
+        env_info (ConfigDict): information about environment
+        hyper_params (ConfigDict): algorithm hyperparameters
+        device (torch.Device): device on which worker process runs
+        env (gym.ENV): gym environment
+    """
 
     def __init__(
         self,
@@ -44,6 +68,7 @@ class Worker(BaseWorker):
 
     # pylint: disable=attribute-defined-outside-init, no-self-use
     def _init_env(self):
+        """Intialize worker local environment"""
         if self.env_info.is_atari:
             self.env = atari_env_generator(
                 self.env_info.name, self.args.max_episode_steps, frame_stack=True
@@ -71,10 +96,6 @@ class Worker(BaseWorker):
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, np.float64, bool, dict]:
         pass
 
-    @abstractmethod
-    def collect_data(self) -> Dict[str, np.ndarray]:
-        pass
-
     # NOTE: No need to explicitly implement for non-PER/non-Ape-X workers
     @abstractmethod
     def compute_priorities(self, experience: Dict[str, np.ndarray]):
@@ -83,23 +104,6 @@ class Worker(BaseWorker):
     @abstractmethod
     def synchronize(self, new_params: list):
         pass
-
-    # pylint: disable=no-self-use
-    def _synchronize(self, network, new_params: List[np.ndarray]):
-        """Copy parameters from numpy arrays"""
-        for param, new_param in zip(network.parameters(), new_params):
-            new_param = torch.FloatTensor(new_param).to(self.device)
-            param.data.copy_(new_param)
-
-    def preprocess_nstep(self, nstepqueue: Deque) -> tuple:
-        discounted_reward = 0
-        _, _, _, last_state, done = nstepqueue[-1]
-        for transition in list(reversed(nstepqueue)):
-            state, action, reward, _, _ = transition
-            discounted_reward = reward + self.hyper_params.gamma * discounted_reward
-        nstep_data = (state, action, discounted_reward, last_state, done)
-
-        return nstep_data
 
     # pylint: disable=no-self-use
     @staticmethod
@@ -120,9 +124,33 @@ class DistributedWorkerWrapper(BaseWorker):
     def init_communication(self):
         pass
 
+    def select_action(self, state: np.ndarray) -> np.ndarray:
+        """Select an action from the input space."""
+        return self.worker.select_action(state)
+
+    def step(self, action: np.ndarray) -> Tuple[np.ndarray, np.float64, bool, dict]:
+        """Take an action and return the response of the env"""
+        return self.worker.step(action)
+
+    def synchronize(self, new_params: list):
+        """Synchronize worker brain with learner brain"""
+        self.worker.synchronize(new_params)
+
+    @abstractmethod
     def collect_data(self) -> Dict[str, np.ndarray]:
-        return self.worker.collect_data()
+        pass
 
     @abstractmethod
     def run(self):
         pass
+
+    def preprocess_nstep(self, nstepqueue: Deque) -> Tuple[np.ndarray, ...]:
+        """Return n-step transition with discounted reward"""
+        discounted_reward = 0
+        _, _, _, last_state, done = nstepqueue[-1]
+        for transition in list(reversed(nstepqueue)):
+            state, action, reward, _, _ = transition
+            discounted_reward = reward + self.hyper_params.gamma * discounted_reward
+        nstep_data = (state, action, discounted_reward, last_state, done)
+
+        return nstep_data

@@ -13,6 +13,26 @@ from rl_algorithms.utils.config import ConfigDict
 
 @AGENTS.register_module
 class ApeX(Architecture):
+    """General Ape-X architecture for distributed training
+
+    Attributes:
+        rank (int): rank (ID) of worker
+        args (argparse.Namespace): args from run script
+        env_info (ConfigDict): information about environment
+        hyper_params (ConfigDict): algorithm hyperparameters
+        learner_cfg (ConfigDict): configs for learner class
+        worker_cfg (ConfigDict): configs for worker class
+        logger_cfg (ConfigDict): configs for logger class
+        comm_cfg (ConfigDict): configs for inter-process communication
+        log_cfg (ConfigDict): configs for logging, passed on to logger_cfg
+        learner (Learner): distributed learner class
+        workers (list): List of distributed worker class
+        global buffer (ReplayBuffer): centralized buffer wrapped with PER and ApeX
+        logger (Logger): logger class
+        processes (list): List of all processes
+
+    """
+
     def __init__(
         self,
         args: ConfigDict,
@@ -39,6 +59,7 @@ class ApeX(Architecture):
 
     # pylint: disable=attribute-defined-outside-init
     def _organize_configs(self):
+        """Organize configs for initializing components from registry"""
         # organize learner configs
         self.learner_cfg.args = self.args
         self.learner_cfg.env_info = self.env_info
@@ -92,6 +113,7 @@ class ApeX(Architecture):
         self.processes = self.workers + [self.learner, self.global_buffer, self.logger]
 
     def train(self):
+        """Spawn processes and run training loop"""
         print("Spawning and initializing communication...")
         # Spawn processes:
         self._spawn()

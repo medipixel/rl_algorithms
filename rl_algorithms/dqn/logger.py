@@ -11,6 +11,8 @@ from rl_algorithms.utils.config import ConfigDict
 
 @LOGGERS.register_module
 class DQNLogger(Logger):
+    """DQN Logger for distributed training"""
+
     def __init__(
         self,
         args: argparse.Namespace,
@@ -32,6 +34,7 @@ class DQNLogger(Logger):
         print("[INFO] loaded the model and optimizer from", path)
 
     def select_action(self, state: np.ndarray):
+        """Select action to be executed at given state"""
         state = self._preprocess_state(state, self.device)
         selected_action = self.brain(state).argmax()
         selected_action = selected_action.detach().cpu().numpy()

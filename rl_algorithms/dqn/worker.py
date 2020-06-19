@@ -1,5 +1,5 @@
 import argparse
-from collections import OrderedDict, deque
+from collections import OrderedDict
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -13,6 +13,16 @@ from rl_algorithms.utils.config import ConfigDict
 
 @WORKERS.register_module
 class DQNWorker(Worker):
+    """DQN worker for distributed training
+
+    Attributes:
+        backbone (ConfigDict): backbone configs for building network
+        head (ConfigDict): head configs for building network
+        state_dict (ConfigDict): initial network state dict received form learner
+        device (str): literal to indicate cpu/cuda use
+
+    """
+
     def __init__(
         self,
         rank: int,
@@ -41,6 +51,7 @@ class DQNWorker(Worker):
 
     # pylint: disable=attribute-defined-outside-init
     def _init_networks(self, state_dict: OrderedDict):
+        """Initialize DQN policy with learner state dict"""
         self.dqn = Brain(self.backbone_cfg, self.head_cfg).to(self.device)
         self.dqn.load_state_dict(state_dict)
 
@@ -73,7 +84,7 @@ class DQNWorker(Worker):
         return selected_action
 
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, np.float64, bool, dict]:
-        """Take an action and return the response of the env."""
+        """Take an action and return the response of the env"""
         next_state, reward, done, info = self.env.step(action)
         return next_state, reward, done, info
 
@@ -94,45 +105,6 @@ class DQNWorker(Worker):
 
         return new_priorities
 
-    def collect_data(self) -> dict:
-        """Fill and return local buffer"""
-        local_memory = [0]
-        local_memory = dict(states=[], actions=[], rewards=[], next_states=[], dones=[])
-        local_memory_keys = local_memory.keys()
-        if self.use_n_step:
-            nstep_queue = deque(maxlen=self.hyper_params.n_step)
-
-        while len(local_memory["states"]) < self.hyper_params.local_buffer_max_size:
-            state = self.env.reset()
-            done = False
-            score = 0
-            num_steps = 0
-            while not done:
-                if self.args.worker_render:
-                    self.env.render()
-                num_steps += 1
-                action = self.select_action(state)
-                next_state, reward, done, _ = self.step(action)
-                transition = (state, action, reward, next_state, int(done))
-                if self.use_n_step:
-                    nstep_queue.append(transition)
-                    if self.hyper_params.n_step == len(nstep_queue):
-                        nstep_exp = self.preprocess_nstep(nstep_queue)
-                        for entry, keys in zip(nstep_exp, local_memory_keys):
-                            local_memory[keys].append(entry)
-                else:
-                    for entry, keys in zip(transition, local_memory_keys):
-                        local_memory[keys].append(entry)
-
-                state = next_state
-                score += reward
-
-            print(score, num_steps, self.epsilon)
-
-        for key in local_memory_keys:
-            local_memory[key] = np.array(local_memory[key])
-
-        return local_memory
-
     def synchronize(self, new_params: List[np.ndarray]):
+        """Synchronize worker dqn with learner dqn"""
         self._synchronize(self.dqn, new_params)

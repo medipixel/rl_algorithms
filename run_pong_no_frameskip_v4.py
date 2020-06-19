@@ -50,19 +50,25 @@ def parse_args() -> argparse.Namespace:
         "--off-worker-render",
         dest="worker_render",
         action="store_false",
-        help="turn off rendering",
+        help="turn off worker rendering",
     )
     parser.add_argument(
         "--off-logger-render",
         dest="logger_render",
         action="store_false",
-        help="turn off rendering",
+        help="turn off logger rendering",
     )
     parser.add_argument(
         "--render-after",
         type=int,
         default=0,
         help="start rendering after the input number of episode",
+    )
+    parser.add_argument(
+        "--worker-verbose",
+        dest="worker_verbose",
+        action="store_false",
+        help="turn on worker print statements",
     )
     parser.add_argument(
         "--log", dest="log", action="store_true", help="turn on logging"
