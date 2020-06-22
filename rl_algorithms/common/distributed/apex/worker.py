@@ -38,6 +38,7 @@ class ApeXWorkerWrapper(DistributedWorkerWrapper):
         self.update_step = 0
         self.hyper_params = self.worker.hyper_params
         self.use_n_step = self.hyper_params.n_step > 1
+        self.scores = dict()
 
         self.worker._init_env()
 
@@ -74,6 +75,9 @@ class ApeXWorkerWrapper(DistributedWorkerWrapper):
             update_step, new_params = new_param_info
             self.update_step = update_step
             self.worker.synchronize(new_params)
+
+            # Add new entry for scores dict
+            self.scores[self.update_step] = []
 
     def compute_priorities(self, experience: Dict[str, np.ndarray]):
         """Compute priority values (TD error) of collected experience."""
@@ -114,6 +118,8 @@ class ApeXWorkerWrapper(DistributedWorkerWrapper):
 
                 self.recv_params_from_learner()
 
+            self.scores[self.update_step].append(score)
+
             if self.args.worker_verbose:
                 print(
                     "[TRAIN] [Worker %d] Score: %d, Epsilon: %.5f "
@@ -125,10 +131,20 @@ class ApeXWorkerWrapper(DistributedWorkerWrapper):
 
         return local_memory
 
-    def run(self):
+    def run(self) -> Dict[int, float]:
         """Run main worker loop."""
+        self.scores[0] = []
         while self.update_step < self.args.max_update_step:
             experience = self.collect_data()
             priority_values = self.compute_priorities(experience)
             worker_data = [experience, priority_values]
             self.send_data_to_buffer(worker_data)
+
+        mean_scores_per_ep_step = self.compute_mean_scores(self.scores)
+        return mean_scores_per_ep_step
+
+    @staticmethod
+    def compute_mean_scores(scores: Dict[int, list]):
+        for step in scores.keys():
+            scores[step] = np.mean(scores[step])
+        return scores

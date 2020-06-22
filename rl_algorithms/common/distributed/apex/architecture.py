@@ -130,7 +130,13 @@ class ApeX(Architecture):
         # Run main training loop
         print("Running main training loop...")
         run_procs = [proc.run.remote() for proc in self.processes]
-        ray.get(run_procs)
+        futures = ray.get(run_procs)
+
+        # Retreive workers' data and write to wandb
+        # NOTE: Logger logs the mean scores of each episode per update step
+        if self.args.log:
+            worker_logs = [future for future in futures if future is not None]
+            self.logger.write_worker_log.remote(worker_logs)
         print("Exiting training...")
 
     def test(self):

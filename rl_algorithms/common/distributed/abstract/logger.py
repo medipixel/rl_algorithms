@@ -13,6 +13,7 @@ from typing import List
 
 import gym
 import numpy as np
+import plotly.graph_objects as go
 import pyarrow as pa
 import torch
 import wandb
@@ -25,7 +26,7 @@ from rl_algorithms.utils.config import ConfigDict
 
 
 class Logger(ABC):
-    """Base class for loggers use in distributed training
+    """Base class for loggers use in distributed training.
 
     Attributes:
         args (argparse.Namespace): arguments including hyperparameters and training settings
@@ -65,7 +66,7 @@ class Logger(ABC):
 
     # pylint: disable=attribute-defined-outside-init
     def _init_env(self):
-        """Initialize gym environment"""
+        """Initialize gym environment."""
         if self.env_info.is_atari:
             self.env = atari_env_generator(
                 self.env_info.name, self.args.max_episode_steps
@@ -83,7 +84,7 @@ class Logger(ABC):
 
     # pylint: disable=attribute-defined-outside-init
     def init_communication(self):
-        """Initialize inter-process communication sockets"""
+        """Initialize inter-process communication sockets."""
         ctx = zmq.Context()
         self.pull_socket = ctx.socket(zmq.PULL)
         self.pull_socket.bind(f"tcp://127.0.0.1:{self.comm_cfg.learner_logger_port}")
@@ -112,7 +113,7 @@ class Logger(ABC):
         shutil.copy(self.args.cfg_path, os.path.join(wandb.run.dir, "config.py"))
 
     def recv_log_info(self):
-        """Receive info from learner"""
+        """Receive info from learner."""
         received = False
         try:
             log_info_id = self.pull_socket.recv(zmq.DONTWAIT)
@@ -124,7 +125,7 @@ class Logger(ABC):
             self.log_info_queue.append(log_info_id)
 
     def run(self):
-        """Run main logging loop; continuously receive data and log"""
+        """Run main logging loop; continuously receive data and log."""
         if self.args.log:
             self.set_wandb()
 
@@ -141,6 +142,47 @@ class Logger(ABC):
                 avg_score = self.test(self.update_step)
                 log_value["avg_score"] = avg_score
                 self.write_log(log_value)
+
+    def write_worker_log(self, worker_logs: List[dict]):
+        """Log the mean scores of each episode per update step to wandb."""
+        # NOTE: Worker plots are passed onto wandb.log as matplotlib.pyplot
+        #       since wandb doesn't support logging multiple lines to single plot
+        if self.args.log:
+            self.set_wandb()
+            # Plot individual workers
+            fig = go.Figure()
+            worker_id = 0
+            for worker_log in worker_logs:
+                fig.add_trace(
+                    go.Scatter(
+                        x=list(worker_log.keys()),
+                        y=list(worker_log.values()),
+                        mode="lines",
+                        name=f"Worker {worker_id}",
+                        line=dict(width=2),
+                    )
+                )
+                worker_id = worker_id + 1
+
+            # Plot mean scores
+            steps = worker_logs[0].keys()
+            mean_scores = []
+            for step in steps:
+                each_scores = [worker_log[step] for worker_log in worker_logs]
+                mean_scores.append(np.mean(each_scores))
+
+            fig.add_trace(
+                go.Scatter(
+                    x=list(worker_logs[0].keys()),
+                    y=mean_scores,
+                    mode="lines+markers",
+                    name="Mean scores",
+                    line=dict(width=5),
+                )
+            )
+
+            # Write to wandb
+            wandb.log({"Worker scores": fig})
 
     def test(self, update_step: int, interim_test: bool = True):
         """Test the agent."""
