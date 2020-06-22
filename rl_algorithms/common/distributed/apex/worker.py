@@ -22,7 +22,7 @@ from rl_algorithms.utils.config import ConfigDict
 
 @ray.remote(num_cpus=1)
 class ApeXWorkerWrapper(DistributedWorkerWrapper):
-    """Wrapper class for ApeX based distributed workers
+    """Wrapper class for ApeX based distributed workers.
 
     Attributes:
         hyper_params (ConfigDict): worker hyper_params
@@ -43,7 +43,7 @@ class ApeXWorkerWrapper(DistributedWorkerWrapper):
 
     # pylint: disable=attribute-defined-outside-init
     def init_communication(self):
-        """Initialize sockets connecting worker-learner, worker-buffer"""
+        """Initialize sockets connecting worker-learner, worker-buffer."""
         # for receiving params from learner
         ctx = zmq.Context()
         self.sub_socket = ctx.socket(zmq.SUB)
@@ -56,12 +56,12 @@ class ApeXWorkerWrapper(DistributedWorkerWrapper):
         self.push_socket.connect(f"tcp://127.0.0.1:{self.comm_cfg.worker_buffer_port}")
 
     def send_data_to_buffer(self, replay_data):
-        """Send replay data to global buffer"""
+        """Send replay data to global buffer."""
         replay_data_id = pa.serialize(replay_data).to_buffer()
         self.push_socket.send(replay_data_id)
 
     def recv_params_from_learner(self):
-        """Get new params and sync. return True if success, False otherwise"""
+        """Get new params and sync. return True if success, False otherwise."""
         received = False
         try:
             new_params_id = self.sub_socket.recv(zmq.DONTWAIT)
@@ -76,11 +76,11 @@ class ApeXWorkerWrapper(DistributedWorkerWrapper):
             self.worker.synchronize(new_params)
 
     def compute_priorities(self, experience: Dict[str, np.ndarray]):
-        """Compute priority values (TD error) of collected experience"""
+        """Compute priority values (TD error) of collected experience."""
         return self.worker.compute_priorities(experience)
 
     def collect_data(self) -> dict:
-        """Fill and return local buffer"""
+        """Fill and return local buffer."""
         local_memory = [0]
         local_memory = dict(states=[], actions=[], rewards=[], next_states=[], dones=[])
         local_memory_keys = local_memory.keys()
@@ -126,7 +126,7 @@ class ApeXWorkerWrapper(DistributedWorkerWrapper):
         return local_memory
 
     def run(self):
-        """Run main worker loop"""
+        """Run main worker loop."""
         while self.update_step < self.args.max_update_step:
             experience = self.collect_data()
             priority_values = self.compute_priorities(experience)

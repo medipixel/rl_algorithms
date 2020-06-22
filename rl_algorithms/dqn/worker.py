@@ -57,7 +57,7 @@ class DQNWorker(Worker):
 
     # pylint: disable=attribute-defined-outside-init
     def _init_networks(self, state_dict: OrderedDict):
-        """Initialize DQN policy with learner state dict"""
+        """Initialize DQN policy with learner state dict."""
         self.dqn = Brain(self.backbone_cfg, self.head_cfg).to(self.device)
         self.dqn.load_state_dict(state_dict)
 
@@ -76,9 +76,10 @@ class DQNWorker(Worker):
         if self.epsilon > np.random.random():
             selected_action = np.array(self.env.action_space.sample())
         else:
-            state = self._preprocess_state(state, self.device)
-            selected_action = self.dqn(state).argmax()
-            selected_action = selected_action.detach().cpu().numpy()
+            with torch.no_grad():
+                state = self._preprocess_state(state, self.device)
+                selected_action = self.dqn(state).argmax()
+            selected_action = selected_action.cpu().numpy()
 
         # Decay epsilon
         self.epsilon = max(
@@ -90,12 +91,12 @@ class DQNWorker(Worker):
         return selected_action
 
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, np.float64, bool, dict]:
-        """Take an action and return the response of the env"""
+        """Take an action and return the response of the env."""
         next_state, reward, done, info = self.env.step(action)
         return next_state, reward, done, info
 
     def compute_priorities(self, memory: Dict[str, np.ndarray]) -> np.ndarray:
-        """Compute initial priority values of experiences in local memory"""
+        """Compute initial priority values of experiences in local memory."""
         states = torch.FloatTensor(memory["states"]).to(self.device)
         actions = torch.LongTensor(memory["actions"]).to(self.device)
         rewards = torch.FloatTensor(memory["rewards"].reshape(-1, 1)).to(self.device)
@@ -112,5 +113,5 @@ class DQNWorker(Worker):
         return new_priorities
 
     def synchronize(self, new_params: List[np.ndarray]):
-        """Synchronize worker dqn with learner dqn"""
+        """Synchronize worker dqn with learner dqn."""
         self._synchronize(self.dqn, new_params)

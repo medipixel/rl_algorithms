@@ -25,7 +25,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--cfg-path",
         type=str,
-        default="./configs/pong_no_frameskip_v4/apex_dqn.py",
+        default="./configs/pong_no_frameskip_v4/dqn.py",
         help="config path",
     )
     parser.add_argument(
@@ -67,7 +67,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--worker-verbose",
         dest="worker_verbose",
-        action="store_false",
+        action="store_true",
         help="turn on worker print statements",
     )
     parser.add_argument(
@@ -78,7 +78,7 @@ def parse_args() -> argparse.Namespace:
         "--episode-num", type=int, default=1500, help="total episode num"
     )
     parser.add_argument(
-        "--max-update-step", type=int, default=30000, help="max update step"
+        "--max-update-step", type=int, default=100000, help="max update step"
     )
     parser.add_argument(
         "--max-episode-steps", type=int, default=None, help="max episode step"

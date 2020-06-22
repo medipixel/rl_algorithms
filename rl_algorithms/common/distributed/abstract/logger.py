@@ -125,7 +125,6 @@ class Logger(ABC):
 
     def run(self):
         """Run main logging loop; continuously receive data and log"""
-        # logger
         if self.args.log:
             self.set_wandb()
 
@@ -141,7 +140,6 @@ class Logger(ABC):
                 self.synchronize(state_dict)
                 avg_score = self.test(self.update_step)
                 log_value["avg_score"] = avg_score
-
                 self.write_log(log_value)
 
     def test(self, update_step: int, interim_test: bool = True):
@@ -150,7 +148,6 @@ class Logger(ABC):
 
         # termination
         self.env.close()
-
         return avg_score
 
     def _test(self, update_step: int, interim_test: bool) -> float:

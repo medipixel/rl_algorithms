@@ -80,7 +80,7 @@ class DQNLearner(Learner):
     def update_model(
         self, experience: Union[TensorTuple, Tuple[TensorTuple]]
     ) -> Tuple[torch.Tensor, torch.Tensor, list, np.ndarray]:  # type: ignore
-        """Update dqn and dqn target"""
+        """Update dqn and dqn target."""
 
         if self.use_n_step:
             experience_1, experience_n = experience
@@ -160,10 +160,10 @@ class DQNLearner(Learner):
         print("[INFO] loaded the model and optimizer from", path)
 
     def get_state_dict(self) -> OrderedDict:
-        """Return state dicts, mainly for distributed worker"""
+        """Return state dicts, mainly for distributed worker."""
         dqn = deepcopy(self.dqn)
         return dqn.cpu().state_dict()
 
     def get_policy(self) -> nn.Module:
-        """Return model (policy) used for action selection, used only in grad cam"""
+        """Return model (policy) used for action selection, used only in grad cam."""
         return self.dqn

@@ -19,7 +19,7 @@ from rl_algorithms.utils.config import ConfigDict
 
 @AGENTS.register_module
 class ApeX(Architecture):
-    """General Ape-X architecture for distributed training
+    """General Ape-X architecture for distributed training.
 
     Attributes:
         rank (int): rank (ID) of worker
@@ -65,7 +65,7 @@ class ApeX(Architecture):
 
     # pylint: disable=attribute-defined-outside-init
     def _organize_configs(self):
-        """Organize configs for initializing components from registry"""
+        """Organize configs for initializing components from registry."""
         # organize learner configs
         self.learner_cfg.args = self.args
         self.learner_cfg.env_info = self.env_info
@@ -89,7 +89,7 @@ class ApeX(Architecture):
         self.logger_cfg.head = self.learner_cfg.head
 
     def _spawn(self):
-        """Intialize distributed worker, learner and centralized replay buffer"""
+        """Intialize distributed worker, learner and centralized replay buffer."""
         replay_buffer = ReplayBuffer(
             self.hyper_params.buffer_size, self.hyper_params.batch_size,
         )
@@ -119,7 +119,7 @@ class ApeX(Architecture):
         self.processes = self.workers + [self.learner, self.global_buffer, self.logger]
 
     def train(self):
-        """Spawn processes and run training loop"""
+        """Spawn processes and run training loop."""
         print("Spawning and initializing communication...")
         # Spawn processes:
         self._spawn()
@@ -134,7 +134,7 @@ class ApeX(Architecture):
         print("Exiting training...")
 
     def test(self):
-        """Load model from checkpoint and run logger for testing"""
+        """Load model from checkpoint and run logger for testing."""
         # NOTE: You could also load the Ape-X trained model on the single agent DQN
         self.logger = build_logger(self.logger_cfg)
         self.logger.load_params.remote(self.args.load_from)

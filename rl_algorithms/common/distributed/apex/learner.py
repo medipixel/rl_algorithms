@@ -21,7 +21,7 @@ from rl_algorithms.utils.config import ConfigDict
 
 @ray.remote(num_gpus=1)
 class ApeXLearnerWrapper(DistributedLearnerWrapper):
-    """Learner Wrapper to enable Ape-X distributed training
+    """Learner Wrapper to enable Ape-X distributed training.
 
     Attributes:
         learner (Learner): learner
@@ -48,7 +48,7 @@ class ApeXLearnerWrapper(DistributedLearnerWrapper):
 
     # pylint: disable=attribute-defined-outside-init
     def init_communication(self):
-        """Initialize sockets for communication"""
+        """Initialize sockets for communication."""
         ctx = zmq.Context()
         # Socket to send updated network parameters to worker
         self.pub_socket = ctx.socket(zmq.PUB)
@@ -63,19 +63,19 @@ class ApeXLearnerWrapper(DistributedLearnerWrapper):
         self.push_socket.connect(f"tcp://127.0.0.1:{self.comm_cfg.learner_logger_port}")
 
     def recv_replay_data(self):
-        """Receive replay data from gloal buffer"""
+        """Receive replay data from gloal buffer."""
         replay_data_id = self.rep_socket.recv()
         replay_data = pa.deserialize(replay_data_id)
         return replay_data
 
     def send_new_priorities(self, indices: np.ndarray, priorities: np.ndarray):
-        """Send new priority values and corresponding indices to buffer"""
+        """Send new priority values and corresponding indices to buffer."""
         new_priors = [indices, priorities]
         new_priors_id = pa.serialize(new_priors).to_buffer()
         self.rep_socket.send(new_priors_id)
 
     def publish_params(self, update_step: int, np_state_dict: List[np.ndarray]):
-        """Broadcast updated params to all workers"""
+        """Broadcast updated params to all workers."""
         param_info = [update_step, np_state_dict]
         new_params_id = pa.serialize(param_info).to_buffer()
         self.pub_socket.send(new_params_id)
@@ -83,14 +83,14 @@ class ApeXLearnerWrapper(DistributedLearnerWrapper):
     def send_info_to_logger(
         self, np_state_dict: List[np.ndarray], step_info: list,
     ):
-        """Send new params and log info to logger"""
+        """Send new params and log info to logger."""
         log_value = dict(update_step=self.update_step, step_info=step_info)
         log_info = dict(log_value=log_value, state_dict=np_state_dict)
         log_info_id = pa.serialize(log_info).to_buffer()
         self.push_socket.send(log_info_id)
 
     def run(self):
-        """Run main training loop"""
+        """Run main training loop."""
         self.telapsed = 0
         while self.update_step < self.max_update_step:
             replay_data = self.recv_replay_data()

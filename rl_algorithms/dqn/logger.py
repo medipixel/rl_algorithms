@@ -17,7 +17,7 @@ from rl_algorithms.utils.config import ConfigDict
 
 @LOGGERS.register_module
 class DQNLogger(Logger):
-    """DQN Logger for distributed training"""
+    """DQN Logger for distributed training."""
 
     def __init__(
         self,
@@ -40,15 +40,16 @@ class DQNLogger(Logger):
         print("[INFO] loaded the model and optimizer from", path)
 
     def select_action(self, state: np.ndarray):
-        """Select action to be executed at given state"""
-        state = self._preprocess_state(state, self.device)
-        selected_action = self.brain(state).argmax()
-        selected_action = selected_action.detach().cpu().numpy()
+        """Select action to be executed at given state."""
+        with torch.no_grad():
+            state = self._preprocess_state(state, self.device)
+            selected_action = self.brain(state).argmax()
+        selected_action = selected_action.cpu().numpy()
 
         return selected_action
 
     def write_log(self, log_value: dict):
-        """Write log about loss and score"""
+        """Write log about loss and score."""
         print(
             "[INFO] update_step %d, average score: %f, "
             "loss: %f, avg q-value: %f"

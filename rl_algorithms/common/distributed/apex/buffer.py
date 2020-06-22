@@ -17,7 +17,7 @@ from rl_algorithms.utils.config import ConfigDict
 
 @ray.remote
 class ApeXBufferWrapper(BufferWrapper):
-    """Wrapper for Ape-X global buffer
+    """Wrapper for Ape-X global buffer.
 
     Attributes:
         per_buffer (ReplayBuffer): prioritized replay buffer
@@ -43,7 +43,7 @@ class ApeXBufferWrapper(BufferWrapper):
 
     # pylint: disable=attribute-defined-outside-init
     def init_communication(self):
-        """Initialize sockets for communication"""
+        """Initialize sockets for communication."""
         ctx = zmq.Context()
         self.req_socket = ctx.socket(zmq.REQ)
         self.req_socket.connect(f"tcp://127.0.0.1:{self.comm_cfg.learner_buffer_port}")
@@ -75,7 +75,7 @@ class ApeXBufferWrapper(BufferWrapper):
                 self.buffer.update_priorities([len(self.buffer) - 1], priorities[idx])
 
     def send_batch_to_learner(self):
-        """Send batch to learner and receive priorities"""
+        """Send batch to learner and receive priorities."""
         # Send batch and request priorities (blocking recv)
         batch = self.buffer.sample(self.per_beta)
         batch_id = pa.serialize(batch).to_buffer()
