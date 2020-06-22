@@ -184,7 +184,6 @@ class GRUBrain(Brain):
             dim=2,
         )
         hidden = torch.transpose(hidden, 0, 1)
-        hidden = None if hidden is None else hidden
 
         # Unroll gru
         gru_out, hidden = self.gru(gru_input, hidden)

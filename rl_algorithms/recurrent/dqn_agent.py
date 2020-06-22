@@ -72,9 +72,10 @@ class R2D1Agent(DQNAgent):
 
         # epsilon greedy policy
         state = self._preprocess_state(state)
-        selected_action, hidden_state = self.learner.dqn(
-            state, hidden_state, prev_action, prev_reward
-        )
+        with torch.no_grad():
+            selected_action, hidden_state = self.learner.dqn(
+                state, hidden_state, prev_action, prev_reward
+            )
         selected_action = selected_action.detach().argmax().cpu().numpy()
         if not self.args.test and self.epsilon > np.random.random():
             selected_action = np.array(self.env.action_space.sample())
