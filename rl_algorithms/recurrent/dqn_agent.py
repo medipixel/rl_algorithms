@@ -1,7 +1,8 @@
 """R2D1 agent, which implement R2D2 but without distributed actor.
-- Author: Kyunghwan Kim, Curt Park, Euijin Jeong
-- Contact:kh.kim@medipixel.io, curt.park@medipixel.io, euijin.jeong@medipixel.io
-- Paper: https://openreview.net/pdf?id=r1lyTjAqYX (R2D1)
+
+- Author: Euijin Jeong
+- Contact: euijin.jeong@medipixel.io
+- Paper: https://openreview.net/pdf?id=r1lyTjAqYX (R2D2)
 """
 
 import time
@@ -148,7 +149,7 @@ class R2D1Agent(DQNAgent):
         for self.i_episode in range(1, self.args.episode_num + 1):
             state = self.env.reset()
             hidden_in = torch.zeros(
-                [1, 1, self.learner.head_cfg.configs.rnn_hidden_size], dtype=torch.float
+                [1, 1, self.learner.gru_cfg.rnn_hidden_size], dtype=torch.float
             ).to(device)
             prev_action = torch.zeros(
                 1, 1, self.learner.head_cfg.configs.output_size
@@ -233,7 +234,7 @@ class R2D1Agent(DQNAgent):
         score_list = []
         for i_episode in range(test_num):
             hidden_in = torch.zeros(
-                [1, 1, self.learner.head_cfg.configs.rnn_hidden_size], dtype=torch.float
+                [1, 1, self.learner.gru_cfg.rnn_hidden_size], dtype=torch.float
             ).to(device)
             prev_action = torch.zeros(
                 1, 1, self.learner.head_cfg.configs.output_size

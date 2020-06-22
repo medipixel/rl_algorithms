@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Brain module for backbone & head holder.
 
-- Authors: Euijin Jeong & Kyunghwan Kim
+- Authors: Euijin Jeong, Kyunghwan Kim
 - Contacts: euijin.jeong@medipixel.io
             kh.kim@medipixel.io
 """
@@ -61,7 +61,7 @@ class GRUBrain(Brain):
     """Class for holding backbone, GRU, and head networks."""
 
     def __init__(
-        self, backbone_cfg: ConfigDict, head_cfg: ConfigDict,
+        self, backbone_cfg: ConfigDict, head_cfg: ConfigDict, gru_cfg: ConfigDict,
     ):
         self.action_size = head_cfg.configs.output_size
         """Initialize. Generate different structure whether it has CNN module or not."""
@@ -75,18 +75,14 @@ class GRUBrain(Brain):
             head_cfg.configs.input_size = self.calculate_fc_input_size(
                 head_cfg.configs.state_size
             )
-        self.fc = nn.Linear(
-            head_cfg.configs.input_size, head_cfg.configs.rnn_hidden_size,
-        )
+        self.fc = nn.Linear(head_cfg.configs.input_size, gru_cfg.rnn_hidden_size,)
         self.gru = nn.GRU(
-            head_cfg.configs.rnn_hidden_size
-            + self.action_size
-            + 1,  # 1 is for prev_reward
-            head_cfg.configs.rnn_hidden_size,
+            gru_cfg.rnn_hidden_size + self.action_size + 1,  # 1 is for prev_reward
+            gru_cfg.rnn_hidden_size,
             batch_first=True,
         )
 
-        head_cfg.configs.input_size = head_cfg.configs.rnn_hidden_size
+        head_cfg.configs.input_size = gru_cfg.rnn_hidden_size
         self.head = build_head(head_cfg)
 
     def forward(

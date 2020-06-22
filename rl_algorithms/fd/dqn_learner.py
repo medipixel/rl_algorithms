@@ -64,7 +64,6 @@ class DQfDLearner(DQNLearner):
             experience_1 = experience
 
         weights, indices, eps_d = experience_1[-3:]
-        eps_d = eps_d
         actions = experience_1[1]
 
         # 1 step loss

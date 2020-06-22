@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
-"""Recurrent Replay buffer for baselines."""
+"""Recurrent Replay buffer for baselines.
+
+- Author: Euijin Jeong
+- Contact: euijin.jeong@medipixel.io
+"""
 
 from collections import deque
 from typing import Any, Deque, List, Tuple
@@ -156,7 +160,7 @@ class RecurrentReplayBuffer(BaseBuffer):
         return states, actions, rewards, hidden_state, dones
 
     def _initialize_local_buffers(self):
-        """Initialze local buffers for state, action, resward, hidden_state, done."""
+        """Initialze local buffers for state, action, reward, hidden_state, done."""
         self.local_obs_buf = np.zeros(
             [self.sequence_size] + list(self.init_state.shape),
             dtype=self.init_state.dtype,
@@ -191,7 +195,7 @@ class RecurrentReplayBuffer(BaseBuffer):
     def _initialize_buffers(
         self, state: np.ndarray, action: np.ndarray, hidden: torch.Tensor
     ) -> None:
-        """Initialze global buffers for state, action, resward, hidden_state, done."""
+        """Initialze global buffers for state, action, reward, hidden_state, done."""
         # In case action of demo is not np.ndarray
         self.init_state = state
         self.init_action = action

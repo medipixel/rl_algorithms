@@ -3,8 +3,8 @@
 
 This module has R2D1 loss functions.
 
-- Author: Curt Park & Euijin Jeong
-- Contact: curt.park@medipixel.io & euijin.jeong@medipixel.op
+- Author: Euijin Jeong
+- Contact: euijin.jeong@medipixel.io
 """
 
 from typing import Tuple

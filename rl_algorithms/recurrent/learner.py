@@ -11,13 +11,12 @@ import torch.optim as optim
 from rl_algorithms.common.abstract.learner import Learner, TensorTuple
 import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.common.networks.brain import GRUBrain
-from rl_algorithms.dqn.learner import DQNLearner
 from rl_algorithms.registry import LEARNERS, build_loss
 from rl_algorithms.utils.config import ConfigDict
 
 
 @LEARNERS.register_module
-class R2D1Learner(DQNLearner):
+class R2D1Learner(Learner):
     """Learner for R2D1 Agent.
 
     Attributes:
@@ -37,23 +36,14 @@ class R2D1Learner(DQNLearner):
         hyper_params: ConfigDict,
         log_cfg: ConfigDict,
         backbone: ConfigDict,
+        gru: ConfigDict,
         head: ConfigDict,
         optim_cfg: ConfigDict,
         device: torch.device,
     ):
-        DQNLearner.__init__(
-            self,
-            args,
-            env_info,
-            hyper_params,
-            log_cfg,
-            backbone,
-            head,
-            optim_cfg,
-            device,
-        )
-
+        Learner.__init__(self, args, env_info, hyper_params, log_cfg, device)
         self.backbone_cfg = backbone
+        self.gru_cfg = gru
         self.head_cfg = head
         self.head_cfg.configs.state_size = self.env_info.observation_space.shape
         self.head_cfg.configs.output_size = self.env_info.action_space.n
@@ -65,8 +55,12 @@ class R2D1Learner(DQNLearner):
     # pylint: disable=attribute-defined-outside-init
     def _init_network(self):
         """Initialize networks and optimizers."""
-        self.dqn = GRUBrain(self.backbone_cfg, self.head_cfg).to(self.device)
-        self.dqn_target = GRUBrain(self.backbone_cfg, self.head_cfg).to(self.device)
+        self.dqn = GRUBrain(self.backbone_cfg, self.head_cfg, self.gru_cfg).to(
+            self.device
+        )
+        self.dqn_target = GRUBrain(self.backbone_cfg, self.head_cfg, self.gru_cfg).to(
+            self.device
+        )
         self.loss_fn = build_loss(self.hyper_params.loss_type)
 
         self.dqn_target.load_state_dict(self.dqn.state_dict())

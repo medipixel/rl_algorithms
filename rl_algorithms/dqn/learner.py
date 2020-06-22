@@ -89,6 +89,7 @@ class DQNLearner(Learner):
         dq_loss_element_wise, q_values = self.loss_fn(
             self.dqn, self.dqn_target, experience_1, gamma, self.head_cfg
         )
+
         dq_loss = torch.mean(dq_loss_element_wise * weights)
 
         # n step loss
