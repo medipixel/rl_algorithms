@@ -89,7 +89,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--integration-test",
         dest="integration_test",
-        action="store_false",
+        action="store_true",
         help="indicate integration test",
     )
     return parser.parse_args()
