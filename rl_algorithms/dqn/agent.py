@@ -126,8 +126,9 @@ class DQNAgent(Agent):
         if not self.args.test and self.epsilon > np.random.random():
             selected_action = np.array(self.env.action_space.sample())
         else:
-            state = self._preprocess_state(state)
-            selected_action = self.learner.dqn(state).argmax()
+            with torch.no_grad():
+                state = self._preprocess_state(state)
+                selected_action = self.learner.dqn(state).argmax()
             selected_action = selected_action.detach().cpu().numpy()
         return selected_action
 

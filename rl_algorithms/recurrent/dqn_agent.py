@@ -78,6 +78,7 @@ class R2D1Agent(DQNAgent):
                 state, hidden_state, prev_action, prev_reward
             )
         selected_action = selected_action.detach().argmax().cpu().numpy()
+
         if not self.args.test and self.epsilon > np.random.random():
             selected_action = np.array(self.env.action_space.sample())
         return selected_action, hidden_state

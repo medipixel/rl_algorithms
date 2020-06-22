@@ -3,7 +3,6 @@ from typing import Any, Tuple
 import torch
 
 from rl_algorithms.common.helper_functions import make_one_hot
-from rl_algorithms.utils.config import ConfigDict
 
 
 def infer_leading_dims(tensor: torch.Tensor, dim: int) -> Tuple[int, int, int, Tuple]:
@@ -76,7 +75,9 @@ def valid_from_done(done: torch.Tensor) -> torch.Tensor:
     return valid
 
 
-def slice_r2d1_arguments(experiences: Tuple[Any, ...], head_cfg: ConfigDict) -> Tuple:
+def slice_r2d1_arguments(
+    experiences: Tuple[Any, ...], burn_in_step: int, output_size: int,
+) -> tuple:
     """Get mini-batch sequence-size transitions and slice
     in accordance with R2D1 agent loss calculating process.
     return tuples bound by target relationship.
@@ -86,37 +87,25 @@ def slice_r2d1_arguments(experiences: Tuple[Any, ...], head_cfg: ConfigDict) -> 
     """
     states, actions, rewards, hiddens, dones = experiences[:5]
 
-    burnin_states = states[:, 1 : head_cfg.configs.burn_in_step]
-    target_burnin_states = states[:, 1 : head_cfg.configs.burn_in_step + 1]
-    agent_states = states[:, head_cfg.configs.burn_in_step : -1]
-    target_states = states[:, head_cfg.configs.burn_in_step + 1 :]
+    burnin_states = states[:, 1:burn_in_step]
+    target_burnin_states = states[:, 1 : burn_in_step + 1]
+    agent_states = states[:, burn_in_step:-1]
+    target_states = states[:, burn_in_step + 1 :]
 
-    burnin_prev_actions = make_one_hot(
-        actions[:, : head_cfg.configs.burn_in_step - 1], head_cfg.configs.output_size,
-    )
-    target_burnin_prev_actions = make_one_hot(
-        actions[:, : head_cfg.configs.burn_in_step], head_cfg.configs.output_size
-    )
-    agent_actions = actions[:, head_cfg.configs.burn_in_step : -1].long().unsqueeze(-1)
-    prev_actions = make_one_hot(
-        actions[:, head_cfg.configs.burn_in_step - 1 : -2],
-        head_cfg.configs.output_size,
-    )
-    target_prev_actions = make_one_hot(
-        actions[:, head_cfg.configs.burn_in_step : -1].long(),
-        head_cfg.configs.output_size,
-    )
+    burnin_prev_actions = make_one_hot(actions[:, : burn_in_step - 1], output_size,)
+    target_burnin_prev_actions = make_one_hot(actions[:, :burn_in_step], output_size)
+    agent_actions = actions[:, burn_in_step:-1].long().unsqueeze(-1)
+    prev_actions = make_one_hot(actions[:, burn_in_step - 1 : -2], output_size,)
+    target_prev_actions = make_one_hot(actions[:, burn_in_step:-1].long(), output_size,)
 
-    burnin_prev_rewards = rewards[:, : head_cfg.configs.burn_in_step - 1].unsqueeze(-1)
-    target_burnin_prev_rewards = rewards[:, : head_cfg.configs.burn_in_step].unsqueeze(
-        -1
-    )
-    agent_rewards = rewards[:, head_cfg.configs.burn_in_step : -1].unsqueeze(-1)
-    prev_rewards = rewards[:, head_cfg.configs.burn_in_step - 1 : -2].unsqueeze(-1)
+    burnin_prev_rewards = rewards[:, : burn_in_step - 1].unsqueeze(-1)
+    target_burnin_prev_rewards = rewards[:, :burn_in_step].unsqueeze(-1)
+    agent_rewards = rewards[:, burn_in_step:-1].unsqueeze(-1)
+    prev_rewards = rewards[:, burn_in_step - 1 : -2].unsqueeze(-1)
     target_prev_rewards = agent_rewards
-    burnin_dones = dones[:, 1 : head_cfg.configs.burn_in_step].unsqueeze(-1)
-    burnin_target_dones = dones[:, 1 : head_cfg.configs.burn_in_step + 1].unsqueeze(-1)
-    agent_dones = dones[:, head_cfg.configs.burn_in_step : -1].unsqueeze(-1)
+    burnin_dones = dones[:, 1:burn_in_step].unsqueeze(-1)
+    burnin_target_dones = dones[:, 1 : burn_in_step + 1].unsqueeze(-1)
+    agent_dones = dones[:, burn_in_step:-1].unsqueeze(-1)
     init_rnn_state = hiddens[:, 0].squeeze(1).contiguous()
 
     burnin_state_tuple = (burnin_states, target_burnin_states)

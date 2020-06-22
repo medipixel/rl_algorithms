@@ -89,9 +89,10 @@ class R2D1Learner(Learner):
 
         weights, indices = experience_1[-3:-1]
         gamma = self.hyper_params.gamma
+        burn_in_step = self.gru_cfg.burn_in_step
 
         dq_loss_element_wise, q_values = self.loss_fn(
-            self.dqn, self.dqn_target, experience_1, gamma, self.head_cfg
+            self.dqn, self.dqn_target, experience_1, gamma, self.head_cfg, burn_in_step
         )
         dq_loss = torch.mean(dq_loss_element_wise * weights)
 
@@ -100,7 +101,12 @@ class R2D1Learner(Learner):
             gamma = self.hyper_params.gamma ** self.hyper_params.n_step
 
             dq_loss_n_element_wise, q_values_n = self.loss_fn(
-                self.dqn, self.dqn_target, experience_n, gamma, self.head_cfg
+                self.dqn,
+                self.dqn_target,
+                experience_n,
+                gamma,
+                self.head_cfg,
+                burn_in_step,
             )
 
             # to update loss and priorities
