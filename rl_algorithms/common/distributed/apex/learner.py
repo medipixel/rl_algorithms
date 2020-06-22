@@ -1,3 +1,9 @@
+"""Learner Wrapper to enable Ape-X distributed training
+
+- Author: Chris Yoon
+- Contact: chris.yoon@medipixel.io
+"""
+
 from typing import List
 
 import numpy as np

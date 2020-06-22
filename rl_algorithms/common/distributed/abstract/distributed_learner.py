@@ -1,3 +1,9 @@
+"""Base wrapper class for distributed learners
+
+- Author: Chris Yoon
+- Contact: chris.yoon@medipixel.io
+"""
+
 from abc import abstractmethod
 from typing import Tuple, Union
 

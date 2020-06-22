@@ -1,3 +1,9 @@
+"""DQN Logger for distributed training
+
+- Author: Chris Yoon
+- Contact: chris.yoon@medipixel.io
+"""
+
 import argparse
 
 import numpy as np

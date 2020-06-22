@@ -1,13 +1,18 @@
 """Test only one step of run file for training."""
 
+import json
 import os
 import os.path as osp
 import re
 import shutil
 import subprocess
 
+import ray
 
-def check_run_env(config_root: str, run_file: str):
+from rl_algorithms.utils.config import Config
+
+
+def check_run_apex(config_root: str, run_file: str):
     """Test that 1 episode of run file works well."""
     test_dir = osp.dirname(osp.abspath(__file__))
     pkg_root_dir = osp.dirname(osp.dirname(test_dir))
@@ -20,12 +25,12 @@ def check_run_env(config_root: str, run_file: str):
         if "__" in cfg:
             continue
 
-        if "apex" in cfg:
+        if "apex" not in cfg:
             continue
 
         cmd = (
             f"python {run_file} --cfg-path {config_root}{cfg} "
-            + f"--off-render --episode-num 1 --max-episode-step 1 --seed 12345"
+            + f"--off-worker-render --off-logger-render --max-update-step 1 --seed 12345"
         )
 
         p = subprocess.Popen(
@@ -37,6 +42,7 @@ def check_run_env(config_root: str, run_file: str):
         )
         output, _ = p.communicate()
 
+        print(output)
         # Find saved checkpoint path
         pattern = r"./checkpoint/.+/"
         save_path = re.findall(pattern, str(output))[0]
@@ -57,22 +63,22 @@ def check_save_path(save_path: str):
 
 def test_run_lunarlander_continuous():
     """Test all agents that train LunarLanderContinuous-v2 env."""
-    check_run_env(
+    check_run_apex(
         "configs/lunarlander_continuous_v2/", "run_lunarlander_continuous_v2.py"
     )
 
 
 def test_run_lunarlander():
     """Test all agents that train LunarLander-v2 env."""
-    check_run_env("configs/lunarlander_v2/", "run_lunarlander_v2.py")
+    check_run_apex("configs/lunarlander_v2/", "run_lunarlander_v2.py")
 
 
 def test_run_pong_no_frame_skip():
     """Test all agents that train PongNoFrameskip-v4 env."""
-    check_run_env("configs/pong_no_frameskip_v4/", "run_pong_no_frameskip_v4.py")
+    check_run_apex("configs/pong_no_frameskip_v4/", "run_pong_no_frameskip_v4.py")
 
 
 if __name__ == "__main__":
-    test_run_lunarlander_continuous()
-    test_run_lunarlander()
+    # test_run_lunarlander_continuous()
+    # test_run_lunarlander()
     test_run_pong_no_frame_skip()

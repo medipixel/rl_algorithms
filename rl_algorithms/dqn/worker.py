@@ -1,3 +1,9 @@
+"""DQN worker for distributed training
+
+- Author: Chris Yoon
+- Contact: chris.yoon@medipixel.io
+"""
+
 import argparse
 from collections import OrderedDict
 from typing import Dict, List, Tuple

@@ -78,7 +78,7 @@ def parse_args() -> argparse.Namespace:
         "--episode-num", type=int, default=1500, help="total episode num"
     )
     parser.add_argument(
-        "--max-update-step", type=int, default=300000, help="max update step"
+        "--max-update-step", type=int, default=30000, help="max update step"
     )
     parser.add_argument(
         "--max-episode-steps", type=int, default=None, help="max episode step"
@@ -86,13 +86,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--interim-test-num", type=int, default=5, help="interim test number"
     )
-
+    parser.add_argument(
+        "--integration-test",
+        dest="integration_test",
+        action="store_false",
+        help="indicate integration test",
+    )
     return parser.parse_args()
-
-
-apex = True
-if apex:
-    ray.init()
 
 
 def main():
@@ -111,6 +111,18 @@ def main():
     curr_time = NOWTIMES.strftime("%y%m%d_%H%M%S")
 
     cfg = Config.fromfile(args.cfg_path)
+
+    # If running integration test, simplify experiment
+    if args.integration_test:
+        cfg.agent.hyper_params.update_starts_from = (
+            cfg.agent.hyper_params.batch_size
+        ) = 10
+        if cfg.agent.type == "ApeX":
+            cfg.agent.hyper_params.num_workers = 1
+            cfg.agent.hyper_params.worker_update_interval = (
+                cfg.agent.hyper_params.logger_interval
+            ) = 1
+
     cfg.agent.env_info = dict(
         name="PongNoFrameskip-v4",
         is_atari=True,
@@ -120,7 +132,12 @@ def main():
     )
     cfg.agent.log_cfg = dict(agent=cfg.agent.type, curr_time=curr_time)
     build_args = dict(args=args, env=env)
+
     agent = build_agent(cfg.agent, build_args)
+
+    # Initialize ray if using ApeX
+    if cfg.agent.type == "ApeX":
+        ray.init()
 
     if not args.test:
         agent.train()

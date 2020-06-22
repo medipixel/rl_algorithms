@@ -1,3 +1,9 @@
+"""General Ape-X architecture for distributed training
+
+- Author: Chris Yoon
+- Contact: chris.yoon@medipixel.io
+"""
+
 import gym
 import ray
 

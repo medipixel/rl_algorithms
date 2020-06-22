@@ -1,3 +1,9 @@
+"""Wrapper for Ape-X global buffer
+
+- Author: Chris Yoon
+- Contact: chris.yoon@medipixel.io
+"""
+
 import argparse
 
 import pyarrow as pa
@@ -11,6 +17,16 @@ from rl_algorithms.utils.config import ConfigDict
 
 @ray.remote
 class ApeXBufferWrapper(BufferWrapper):
+    """Wrapper for Ape-X global buffer
+
+    Attributes:
+        per_buffer (ReplayBuffer): prioritized replay buffer
+        args (arpgarse.Namespace): args from run script
+        hyper_params (ConfigDict): algorithm hyperparameters
+        comm_config (ConfigDict): configs for communication
+
+    """
+
     def __init__(
         self,
         per_buffer: PrioritizedBufferWrapper,

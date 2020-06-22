@@ -1,3 +1,9 @@
+"""Base class for loggers use in distributed training
+
+- Author: Chris Yoon
+- Contact: chris.yoon@medipixel.io
+"""
+
 from abc import ABC, abstractmethod
 import argparse
 from collections import deque

@@ -1,3 +1,9 @@
+"""Worker classes for distributed training
+
+- Author: Chris Yoon
+- Contact: chris.yoon@medipixel.io
+"""
+
 from abc import ABC, abstractmethod
 import argparse
 import os

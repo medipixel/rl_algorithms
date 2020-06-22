@@ -1,3 +1,9 @@
+"""Abstract class for distributed architectures
+
+- Author: Chris Yoon
+- Contact: chris.yoon@medipixel.io
+"""
+
 from abc import ABC, abstractmethod
 
 

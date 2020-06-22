@@ -1,3 +1,8 @@
+"""Learner for DQN Agent
+
+- Author: Chris Yoon
+- Contact: chris.yoon@medipixel.io
+"""
 import argparse
 from collections import OrderedDict
 from copy import deepcopy
