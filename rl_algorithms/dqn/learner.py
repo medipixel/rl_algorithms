@@ -1,5 +1,11 @@
+"""Learner for DQN Agent.
+
+- Author: Chris Yoon
+- Contact: chris.yoon@medipixel.io
+"""
 import argparse
 from collections import OrderedDict
+from copy import deepcopy
 from typing import Tuple, Union
 
 import numpy as np
@@ -38,10 +44,9 @@ class DQNLearner(Learner):
         backbone: ConfigDict,
         head: ConfigDict,
         optim_cfg: ConfigDict,
-        device: torch.device,
+        device: str,
     ):
         Learner.__init__(self, args, env_info, hyper_params, log_cfg, device)
-
         self.backbone_cfg = backbone
         self.head_cfg = head
         self.head_cfg.configs.state_size = self.env_info.observation_space.shape
@@ -75,7 +80,7 @@ class DQNLearner(Learner):
     def update_model(
         self, experience: Union[TensorTuple, Tuple[TensorTuple]]
     ) -> Tuple[torch.Tensor, torch.Tensor, list, np.ndarray]:  # type: ignore
-        """Update dqn and dqn target"""
+        """Update dqn and dqn target."""
 
         if self.use_n_step:
             experience_1, experience_n = experience
@@ -157,8 +162,9 @@ class DQNLearner(Learner):
 
     def get_state_dict(self) -> OrderedDict:
         """Return state dicts, mainly for distributed worker."""
-        return self.dqn.state_dict()
+        dqn = deepcopy(self.dqn)
+        return dqn.cpu().state_dict()
 
     def get_policy(self) -> nn.Module:
-        """Return model (policy) used for action selection."""
+        """Return model (policy) used for action selection, used only in grad cam."""
         return self.dqn

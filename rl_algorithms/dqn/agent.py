@@ -200,8 +200,10 @@ class DQNAgent(Agent):
         pass
 
     def sample_experience(self) -> Tuple[torch.Tensor, ...]:
+        """Sample experience from replay buffer."""
         experiences_1 = self.memory.sample(self.per_beta)
         experiences_1 = numpy2floattensor(experiences_1[:6]) + experiences_1[6:]
+
         if self.use_n_step:
             indices = experiences_1[-2]
             experiences_n = self.memory_n.sample(indices)
@@ -231,7 +233,6 @@ class DQNAgent(Agent):
             while not done:
                 if self.args.render and self.i_episode >= self.args.render_after:
                     self.env.render()
-
                 action = self.select_action(state)
                 next_state, reward, done, _ = self.step(action)
                 self.total_step += 1

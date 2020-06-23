@@ -25,7 +25,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--cfg-path",
         type=str,
-        default="./configs/lunarlander_continuous_v2/per_ddpg.py",
+        default="./configs/lunarlander_continuous_v2/ddpg.py",
         help="config path",
     )
     parser.add_argument(
@@ -70,6 +70,12 @@ def parse_args() -> argparse.Namespace:
         default="data/lunarlander_continuous_demo.pkl",
         help="demonstration path for learning from demo",
     )
+    parser.add_argument(
+        "--integration-test",
+        dest="integration_test",
+        action="store_true",
+        help="indicate integration test",
+    )
 
     return parser.parse_args()
 
@@ -91,8 +97,13 @@ def main():
     curr_time = NOWTIMES.strftime("%y%m%d_%H%M%S")
 
     cfg = Config.fromfile(args.cfg_path)
+
+    # If running integration test, simplify experiment
+    if args.integration_test:
+        cfg = common_utils.set_cfg_for_intergration_test(cfg)
+
     cfg.agent.env_info = dict(
-        env_name=env_name,
+        name=env_name,
         observation_space=env.observation_space,
         action_space=env.action_space,
         is_discrete=False,

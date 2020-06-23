@@ -1,3 +1,9 @@
+"""Base Learner & LearnerWrapper class.
+
+- Author: Chris Yoon
+- Contact: chris.yoon@medipixel.io
+"""
+
 from abc import ABC, abstractmethod
 import argparse
 from collections import OrderedDict
@@ -54,18 +60,17 @@ class Learner(BaseLearner):
         env_info: ConfigDict,
         hyper_params: ConfigDict,
         log_cfg: ConfigDict,
-        device: torch.device,
+        device: str,
     ):
         """Initialize."""
         self.args = args
         self.env_info = env_info
         self.hyper_params = hyper_params
-        self.device = device
+        self.device = torch.device(device)
 
         if not self.args.test:
             self.ckpt_path = (
-                "./checkpoint/"
-                f"{env_info.env_name}/{log_cfg.agent}/{log_cfg.curr_time}/"
+                f"./checkpoint/{env_info.name}/{log_cfg.agent}/{log_cfg.curr_time}/"
             )
             os.makedirs(self.ckpt_path, exist_ok=True)
 
@@ -117,7 +122,7 @@ class Learner(BaseLearner):
 
 
 class LearnerWrapper(BaseLearner):
-    """Base class for all learner wrappers"""
+    """Base class for all learner wrappers."""
 
     def __init__(self, learner: BaseLearner):
         """Initialize."""
@@ -134,3 +139,45 @@ class LearnerWrapper(BaseLearner):
 
     def get_state_dict(self) -> Union[OrderedDict, Tuple[OrderedDict]]:
         return self.learner.get_state_dict()
+
+
+class DistributedLearnerWrapper(LearnerWrapper):
+    """Base wrapper class for distributed learners.
+
+    Attributes:
+        learner (Learner): learner
+        comm_config (ConfigDict): configs for communication
+
+    """
+
+    def __init__(self, learner: Learner, comm_cfg: ConfigDict):
+        LearnerWrapper.__init__(self, learner)
+        self.comm_cfg = comm_cfg
+
+    @abstractmethod
+    def init_communication(self):
+        pass
+
+    def update_model(self, experience: Union[TensorTuple, Tuple[TensorTuple]]) -> tuple:
+        """Run one step of learner model update."""
+        return self.learner.update_model(experience)
+
+    def save_params(self, n_update_step: int):
+        """Save learner params at defined directory."""
+        self.learner.save_params(n_update_step)
+
+    def load_params(self, path: str):
+        """Load params at start."""
+        self.learner.load_params(path)
+
+    def get_policy(self):
+        """Return model (policy) used for action selection, used only in grad cam."""
+        return self.learner.get_policy()
+
+    def get_state_dict(self):
+        """Return state dicts."""
+        return self.learner.get_state_dict()
+
+    @abstractmethod
+    def run(self):
+        pass

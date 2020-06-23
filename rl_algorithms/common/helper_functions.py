@@ -4,7 +4,6 @@
 - Author: Curt Park
 - Contact: curt.park@medipixel.io
 """
-
 from collections import deque
 import random
 from typing import Deque, List, Tuple
@@ -13,6 +12,8 @@ import gym
 import numpy as np
 import torch
 import torch.nn as nn
+
+from rl_algorithms.utils.config import ConfigDict
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -94,8 +95,36 @@ def numpy2floattensor(arrays: Tuple[np.ndarray]) -> Tuple[np.ndarray]:
     """Convert numpy arrays to torch float tensor."""
     tensors = []
     for array in arrays:
-        tensor = torch.FloatTensor(array).to(device)
-        if torch.cuda.is_available():
-            tensor = tensor.cuda(non_blocking=True)
+        tensor = torch.FloatTensor(array).to(device, non_blocking=True)
         tensors.append(tensor)
     return tuple(tensors)
+
+
+def state_dict2numpy(state_dict) -> List[np.ndarray]:
+    """Convert Pytorch state dict to list of numpy arrays."""
+    params = []
+    for param in list(state_dict):
+        params.append(state_dict[param].numpy())
+    return params
+
+
+def set_cfg_for_intergration_test(cfg: ConfigDict) -> ConfigDict:
+    """Set specific values in config for intergration test."""
+    if "batch_size" in cfg.agent.hyper_params:
+        cfg.agent.hyper_params.batch_size = 10
+    if "update_starts_from" in cfg.agent.hyper_params:
+        cfg.agent.hyper_params.update_starts_from = 50
+    if "initial_random_action" in cfg.agent.hyper_params:
+        cfg.agent.hyper_params.initial_random_action = 10
+    if cfg.agent.type == "ApeX":
+        cfg.agent.hyper_params.num_workers = 1
+        cfg.agent.hyper_params.worker_update_interval = 1
+        cfg.agent.hyper_params.logger_interval = 1
+        cfg.agent.hyper_params.buffer_size = 50
+    if cfg.agent.type == "PPOAgent":
+        cfg.agent.hyper_params.epoch = 1
+        cfg.agent.hyper_params.n_workers = 1
+        cfg.agent.hyper_params.rollout_len = 10
+    if "fD" in cfg.agent.type:
+        cfg.agent.hyper_params.pretrain_step = 1
+    return cfg
