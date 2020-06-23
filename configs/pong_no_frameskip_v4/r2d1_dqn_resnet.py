@@ -53,14 +53,11 @@ agent = dict(
                 channel_compression=4,  # compression ratio
             ),
         ),
+        gru=dict(rnn_hidden_size=512, burn_in_step=10,),
         head=dict(
             type="DuelingMLP",
             configs=dict(
-                rnn_hidden_size=512,
-                burn_in_step=10,
-                hidden_sizes=[512],
-                use_noisy_net=False,
-                output_activation=identity,
+                hidden_sizes=[512], use_noisy_net=False, output_activation=identity,
             ),
         ),
         optim_cfg=dict(
