@@ -129,6 +129,7 @@ def set_cfg_for_intergration_test(cfg: ConfigDict) -> ConfigDict:
         cfg.agent.hyper_params.num_workers = 1
         cfg.agent.hyper_params.worker_update_interval = 1
         cfg.agent.hyper_params.logger_interval = 1
+        cfg.agent.hyper_params.buffer_size = 10
     if cfg.agent.type == "PPOAgent":
         cfg.agent.hyper_params.epoch = 1
         cfg.agent.hyper_params.n_workers = 1
