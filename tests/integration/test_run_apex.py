@@ -29,7 +29,7 @@ def check_run_apex(config_root: str, run_file: str):
             continue
 
         cmd = (
-            f"python {run_file} --cfg-path {config_root}{cfg} "
+            f"python {run_file} --cfg-path {config_root}{cfg} --integration-test "
             + f"--off-worker-render --off-logger-render --max-update-step 1 --seed 12345"
         )
 
@@ -61,24 +61,10 @@ def check_save_path(save_path: str):
     shutil.rmtree(save_path)
 
 
-def test_run_lunarlander_continuous():
-    """Test all agents that train LunarLanderContinuous-v2 env."""
-    check_run_apex(
-        "configs/lunarlander_continuous_v2/", "run_lunarlander_continuous_v2.py"
-    )
-
-
-def test_run_lunarlander():
-    """Test all agents that train LunarLander-v2 env."""
-    check_run_apex("configs/lunarlander_v2/", "run_lunarlander_v2.py")
-
-
 def test_run_pong_no_frame_skip():
     """Test all agents that train PongNoFrameskip-v4 env."""
     check_run_apex("configs/pong_no_frameskip_v4/", "run_pong_no_frameskip_v4.py")
 
 
 if __name__ == "__main__":
-    # test_run_lunarlander_continuous()
-    # test_run_lunarlander()
     test_run_pong_no_frame_skip()

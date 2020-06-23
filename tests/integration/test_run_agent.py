@@ -24,7 +24,7 @@ def check_run_env(config_root: str, run_file: str):
             continue
 
         cmd = (
-            f"python {run_file} --cfg-path {config_root}{cfg} "
+            f"python {run_file} --cfg-path {config_root}{cfg} --integration-test "
             + f"--off-render --episode-num 1 --max-episode-step 1 --seed 12345"
         )
 
@@ -36,12 +36,12 @@ def check_run_env(config_root: str, run_file: str):
             shell=True,
         )
         output, _ = p.communicate()
+        print(str(output))
+        assert p.returncode == 0
 
         # Find saved checkpoint path
         pattern = r"./checkpoint/.+/"
         save_path = re.findall(pattern, str(output))[0]
-
-        assert p.returncode == 0
         print(save_path)
 
         check_save_path(save_path)

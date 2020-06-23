@@ -114,14 +114,7 @@ def main():
 
     # If running integration test, simplify experiment
     if args.integration_test:
-        cfg.agent.hyper_params.update_starts_from = (
-            cfg.agent.hyper_params.batch_size
-        ) = 10
-        if cfg.agent.type == "ApeX":
-            cfg.agent.hyper_params.num_workers = 1
-            cfg.agent.hyper_params.worker_update_interval = (
-                cfg.agent.hyper_params.logger_interval
-            ) = 1
+        cfg = common_utils.set_cfg_for_intergration_test(cfg)
 
     cfg.agent.env_info = dict(
         name="PongNoFrameskip-v4",
