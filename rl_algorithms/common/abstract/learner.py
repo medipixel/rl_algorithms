@@ -171,9 +171,11 @@ class DistributedLearnerWrapper(LearnerWrapper):
         self.learner.load_params(path)
 
     def get_policy(self):
+        """Return model (policy) used for action selection, used only in grad cam."""
         return self.learner.get_policy()
 
     def get_state_dict(self):
+        """Return state dicts."""
         return self.learner.get_state_dict()
 
     @abstractmethod

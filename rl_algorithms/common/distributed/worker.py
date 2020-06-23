@@ -1,4 +1,4 @@
-"""Wrapper class for ApeX based distributed workers
+"""Wrapper class for ApeX based distributed workers.
 
 - Author: Chris Yoon
 - Contact: chris.yoon@medipixel.io
@@ -65,6 +65,7 @@ class ApeXWorkerWrapper(DistributedWorkerWrapper):
             new_params_id = self.sub_socket.recv(zmq.DONTWAIT)
             received = True
         except zmq.Again:
+            # Although learner doesn't send params, don't wait
             pass
 
         if received:
@@ -82,7 +83,6 @@ class ApeXWorkerWrapper(DistributedWorkerWrapper):
 
     def collect_data(self) -> dict:
         """Fill and return local buffer."""
-        local_memory = [0]
         local_memory = dict(states=[], actions=[], rewards=[], next_states=[], dones=[])
         local_memory_keys = local_memory.keys()
         if self.use_n_step:

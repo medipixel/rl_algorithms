@@ -19,7 +19,7 @@ from rl_algorithms.utils.config import ConfigDict
 
 @WORKERS.register_module
 class DQNWorker(Worker):
-    """DQN worker for distributed training
+    """DQN worker for distributed training.
 
     Attributes:
         backbone (ConfigDict): backbone configs for building network

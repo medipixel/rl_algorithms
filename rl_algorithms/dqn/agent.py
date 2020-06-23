@@ -200,8 +200,6 @@ class DQNAgent(Agent):
         pass
 
     def sample_experience(self) -> Tuple[torch.Tensor, ...]:
-        # tracker = Stopwatch()
-
         experience_1 = self.memory.sample(self.per_beta)
 
         if self.use_n_step:

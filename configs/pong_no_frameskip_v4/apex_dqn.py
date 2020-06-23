@@ -3,6 +3,7 @@
 - Author: Chris Yoon
 - Contact: chris.yoon@medipixel.io
 """
+
 from rl_algorithms.common.helper_functions import identity
 
 agent = dict(

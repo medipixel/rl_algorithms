@@ -111,9 +111,9 @@ class Worker(BaseWorker):
     def synchronize(self, new_params: list):
         pass
 
-    # pylint: disable=no-self-use
     @staticmethod
     def _preprocess_state(state: np.ndarray, device: torch.device) -> torch.Tensor:
+        """Preprocess state so that actor selects an action."""
         state = torch.FloatTensor(state).to(device)
         return state
 

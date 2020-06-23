@@ -5,7 +5,6 @@
 - Contact: curt.park@medipixel.io
 """
 from collections import deque
-from copy import deepcopy
 import random
 from typing import Deque, List, Tuple
 
@@ -101,16 +100,8 @@ def numpy2floattensor(arrays: Tuple[np.ndarray]) -> Tuple[np.ndarray]:
     return tuple(tensors)
 
 
-def params2numpy(model):
-    params = []
-    new_model = deepcopy(model)
-    state_dict = new_model.cpu().state_dict()
-    for param in list(state_dict):
-        params.append(state_dict[param].numpy())
-    return params
-
-
-def state_dict2numpy(state_dict):
+def state_dict2numpy(state_dict) -> List[np.ndarray]:
+    """Convert Pytorch state dict to list of numpy arrays."""
     params = []
     for param in list(state_dict):
         params.append(state_dict[param].numpy())

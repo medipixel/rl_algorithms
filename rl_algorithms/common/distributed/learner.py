@@ -34,6 +34,7 @@ class ApeXLearnerWrapper(DistributedLearnerWrapper):
     """
 
     def __init__(self, learner: Learner, comm_cfg: ConfigDict):
+        """Initialize."""
         DistributedLearnerWrapper.__init__(self, learner, comm_cfg)
         self.update_step = 0
         self.max_update_step = self.learner.args.max_update_step

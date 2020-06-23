@@ -2,6 +2,8 @@
 
 - Author: Chris Yoon
 - Contact: chris.yoon@medipixel.io
+- Paper: https://arxiv.org/pdf/1803.00933.pdf
+- Reference: https://github.com/haje01/distper
 """
 
 import gym
