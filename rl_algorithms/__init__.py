@@ -5,7 +5,7 @@ from .bc.ddpg_learner import BCDDPGLearner
 from .bc.her import LunarLanderContinuousHER, ReacherHER
 from .bc.sac_agent import BCSACAgent
 from .bc.sac_learner import BCSACLearner
-from .common.distributed.apex.architecture import ApeX
+from .common.distributed.apex import ApeX
 from .common.networks.backbones import CNN, ResNet
 from .ddpg.agent import DDPGAgent
 from .ddpg.learner import DDPGLearner

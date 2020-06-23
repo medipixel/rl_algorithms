@@ -94,6 +94,6 @@ class ApeXBufferWrapper(BufferWrapper):
     def run(self):
         while self.num_sent < self.args.max_update_step:
             self.recv_worker_data()
-            if len(self.buffer) > self.hyper_params.update_starts_from:
+            if len(self.buffer) >= self.hyper_params.update_starts_from:
                 self.send_batch_to_learner()
                 self.update_priority_beta()

@@ -36,7 +36,7 @@ agent = dict(
         num_workers=4,
         local_buffer_max_size=1000,
         worker_update_interval=50,
-        logger_interval=50,
+        logger_interval=2000,
     ),
     learner_cfg=dict(
         type="DQNLearner",

@@ -1,4 +1,4 @@
-"""Base class for loggers use in distributed training
+"""Base class for loggers use in distributed training.
 
 - Author: Chris Yoon
 - Contact: chris.yoon@medipixel.io
@@ -25,7 +25,7 @@ from rl_algorithms.common.networks.brain import Brain
 from rl_algorithms.utils.config import ConfigDict
 
 
-class Logger(ABC):
+class DistributedLogger(ABC):
     """Base class for loggers use in distributed training.
 
     Attributes:

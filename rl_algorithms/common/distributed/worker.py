@@ -13,10 +13,7 @@ import pyarrow as pa
 import ray
 import zmq
 
-from rl_algorithms.common.distributed.abstract.worker import (
-    DistributedWorkerWrapper,
-    Worker,
-)
+from rl_algorithms.common.abstract.worker import DistributedWorkerWrapper, Worker
 from rl_algorithms.utils.config import ConfigDict
 
 

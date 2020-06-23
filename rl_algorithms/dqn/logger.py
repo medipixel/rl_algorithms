@@ -1,4 +1,4 @@
-"""DQN Logger for distributed training
+"""DQN Logger for distributed training.
 
 - Author: Chris Yoon
 - Contact: chris.yoon@medipixel.io
@@ -10,13 +10,13 @@ import numpy as np
 import torch
 import wandb
 
-from rl_algorithms.common.distributed.abstract.logger import Logger
+from rl_algorithms.common.abstract.distributed_logger import DistributedLogger
 from rl_algorithms.registry import LOGGERS
 from rl_algorithms.utils.config import ConfigDict
 
 
 @LOGGERS.register_module
-class DQNLogger(Logger):
+class DQNLogger(DistributedLogger):
     """DQN Logger for distributed training."""
 
     def __init__(
@@ -28,12 +28,14 @@ class DQNLogger(Logger):
         backbone: ConfigDict,
         head: ConfigDict,
     ):
-        Logger.__init__(self, args, env_info, log_cfg, comm_cfg, backbone, head)
+        DistributedLogger.__init__(
+            self, args, env_info, log_cfg, comm_cfg, backbone, head
+        )
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
         # Logger only runs on cpu
-        Logger.load_params(self, path)
+        DistributedLogger.load_params(self, path)
 
         params = torch.load(path, map_location="cpu")
         self.brain.load_state_dict(params["dqn_state_dict"])

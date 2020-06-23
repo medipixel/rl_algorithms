@@ -1,4 +1,4 @@
-"""Worker classes for distributed training
+"""Worker classes for distributed training.
 
 - Author: Chris Yoon
 - Contact: chris.yoon@medipixel.io

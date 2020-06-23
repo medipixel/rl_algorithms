@@ -1,4 +1,4 @@
-"""DQN worker for distributed training
+"""DQN worker for distributed training.
 
 - Author: Chris Yoon
 - Contact: chris.yoon@medipixel.io
@@ -11,7 +11,7 @@ from typing import Dict, List, Tuple
 import numpy as np
 import torch
 
-from rl_algorithms.common.distributed.abstract.worker import Worker
+from rl_algorithms.common.abstract.worker import Worker
 from rl_algorithms.common.networks.brain import Brain
 from rl_algorithms.registry import WORKERS, build_loss
 from rl_algorithms.utils.config import ConfigDict

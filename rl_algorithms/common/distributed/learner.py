@@ -1,4 +1,4 @@
-"""Learner Wrapper to enable Ape-X distributed training
+"""Learner Wrapper to enable Ape-X distributed training.
 
 - Author: Chris Yoon
 - Contact: chris.yoon@medipixel.io
@@ -11,10 +11,7 @@ import pyarrow as pa
 import ray
 import zmq
 
-from rl_algorithms.common.abstract.learner import Learner
-from rl_algorithms.common.distributed.abstract.distributed_learner import (
-    DistributedLearnerWrapper,
-)
+from rl_algorithms.common.abstract.learner import DistributedLearnerWrapper, Learner
 from rl_algorithms.common.helper_functions import numpy2floattensor, state_dict2numpy
 from rl_algorithms.utils.config import ConfigDict
 

@@ -1,4 +1,4 @@
-"""General Ape-X architecture for distributed training
+"""General Ape-X architecture for distributed training.
 
 - Author: Chris Yoon
 - Contact: chris.yoon@medipixel.io
@@ -7,12 +7,12 @@
 import gym
 import ray
 
+from rl_algorithms.common.abstract.architecture import Architecture
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
 from rl_algorithms.common.buffer.wrapper import PrioritizedBufferWrapper
-from rl_algorithms.common.distributed.abstract.architecture import Architecture
-from rl_algorithms.common.distributed.apex.buffer import ApeXBufferWrapper
-from rl_algorithms.common.distributed.apex.learner import ApeXLearnerWrapper
-from rl_algorithms.common.distributed.apex.worker import ApeXWorkerWrapper
+from rl_algorithms.common.distributed.buffer import ApeXBufferWrapper
+from rl_algorithms.common.distributed.learner import ApeXLearnerWrapper
+from rl_algorithms.common.distributed.worker import ApeXWorkerWrapper
 from rl_algorithms.registry import AGENTS, build_learner, build_logger, build_worker
 from rl_algorithms.utils.config import ConfigDict
 
@@ -34,7 +34,7 @@ class ApeX(Architecture):
         learner (Learner): distributed learner class
         workers (list): List of distributed worker class
         global buffer (ReplayBuffer): centralized buffer wrapped with PER and ApeX
-        logger (Logger): logger class
+        logger (DistributedLogger): logger class
         processes (list): List of all processes
 
     """
@@ -135,7 +135,7 @@ class ApeX(Architecture):
         # Retreive workers' data and write to wandb
         # NOTE: Logger logs the mean scores of each episode per update step
         if self.args.log:
-            worker_logs = [future for future in futures if future is not None]
+            worker_logs = [f for f in futures if f is not None]
             self.logger.write_worker_log.remote(worker_logs)
         print("Exiting training...")
 

@@ -122,14 +122,14 @@ def set_cfg_for_intergration_test(cfg: ConfigDict) -> ConfigDict:
     if "batch_size" in cfg.agent.hyper_params:
         cfg.agent.hyper_params.batch_size = 10
     if "update_starts_from" in cfg.agent.hyper_params:
-        cfg.agent.hyper_params.update_starts_from = 10
+        cfg.agent.hyper_params.update_starts_from = 50
     if "initial_random_action" in cfg.agent.hyper_params:
         cfg.agent.hyper_params.initial_random_action = 10
     if cfg.agent.type == "ApeX":
         cfg.agent.hyper_params.num_workers = 1
         cfg.agent.hyper_params.worker_update_interval = 1
         cfg.agent.hyper_params.logger_interval = 1
-        cfg.agent.hyper_params.buffer_size = 10
+        cfg.agent.hyper_params.buffer_size = 50
     if cfg.agent.type == "PPOAgent":
         cfg.agent.hyper_params.epoch = 1
         cfg.agent.hyper_params.n_workers = 1

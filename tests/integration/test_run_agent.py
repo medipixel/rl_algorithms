@@ -17,15 +17,13 @@ def check_run_env(config_root: str, run_file: str):
     configs = os.listdir(config_root)
     for cfg in configs:
         # except such as __init__, __pycache__
-        if "__" in cfg:
-            continue
-
-        if "apex" in cfg:
+        if "__" in cfg or "apex" in cfg:
             continue
 
         cmd = (
             f"python {run_file} --cfg-path {config_root}{cfg} --integration-test "
-            + f"--off-render --episode-num 1 --max-episode-step 1 --seed 12345"
+            + f"--off-render --episode-num 1 --max-episode-step 1 --seed 12345 "
+            + f"--interim-test-num 1"
         )
 
         p = subprocess.Popen(
