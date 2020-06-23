@@ -106,8 +106,9 @@ class TD3Agent(Agent):
         ):
             return np.array(self.env_info.action_space.sample())
 
-        state = torch.FloatTensor(state).to(device)
-        selected_action = self.learner.actor(state).detach().cpu().numpy()
+        with torch.no_grad():
+            state = torch.FloatTensor(state).to(device)
+            selected_action = self.learner.actor(state).detach().cpu().numpy()
 
         if not self.args.test:
             noise = self.exploration_noise.sample()

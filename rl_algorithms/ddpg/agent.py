@@ -106,7 +106,8 @@ class DDPGAgent(Agent):
         ):
             return np.array(self.env_info.action_space.sample())
 
-        selected_action = self.learner.actor(state).detach().cpu().numpy()
+        with torch.no_grad():
+            selected_action = self.learner.actor(state).detach().cpu().numpy()
 
         if not self.args.test:
             noise = self.noise.sample()

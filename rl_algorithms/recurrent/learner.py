@@ -10,14 +10,14 @@ import torch.optim as optim
 
 from rl_algorithms.common.abstract.learner import Learner, TensorTuple
 import rl_algorithms.common.helper_functions as common_utils
-from rl_algorithms.common.networks.brain import Brain
+from rl_algorithms.common.networks.brain import GRUBrain
 from rl_algorithms.registry import LEARNERS, build_loss
 from rl_algorithms.utils.config import ConfigDict
 
 
 @LEARNERS.register_module
-class DQNLearner(Learner):
-    """Learner for DQN Agent.
+class R2D1Learner(Learner):
+    """Learner for R2D1 Agent.
 
     Attributes:
         args (argparse.Namespace): arguments including hyperparameters and training settings
@@ -36,13 +36,14 @@ class DQNLearner(Learner):
         hyper_params: ConfigDict,
         log_cfg: ConfigDict,
         backbone: ConfigDict,
+        gru: ConfigDict,
         head: ConfigDict,
         optim_cfg: ConfigDict,
         device: torch.device,
     ):
         Learner.__init__(self, args, env_info, hyper_params, log_cfg, device)
-
         self.backbone_cfg = backbone
+        self.gru_cfg = gru
         self.head_cfg = head
         self.head_cfg.configs.state_size = self.env_info.observation_space.shape
         self.head_cfg.configs.output_size = self.env_info.action_space.n
@@ -54,8 +55,12 @@ class DQNLearner(Learner):
     # pylint: disable=attribute-defined-outside-init
     def _init_network(self):
         """Initialize networks and optimizers."""
-        self.dqn = Brain(self.backbone_cfg, self.head_cfg).to(self.device)
-        self.dqn_target = Brain(self.backbone_cfg, self.head_cfg).to(self.device)
+        self.dqn = GRUBrain(self.backbone_cfg, self.head_cfg, self.gru_cfg).to(
+            self.device
+        )
+        self.dqn_target = GRUBrain(self.backbone_cfg, self.head_cfg, self.gru_cfg).to(
+            self.device
+        )
         self.loss_fn = build_loss(self.hyper_params.loss_type)
 
         self.dqn_target.load_state_dict(self.dqn.state_dict())
@@ -83,13 +88,12 @@ class DQNLearner(Learner):
             experience_1 = experience
 
         weights, indices = experience_1[-3:-1]
-
         gamma = self.hyper_params.gamma
+        burn_in_step = self.gru_cfg.burn_in_step
 
         dq_loss_element_wise, q_values = self.loss_fn(
-            self.dqn, self.dqn_target, experience_1, gamma, self.head_cfg
+            self.dqn, self.dqn_target, experience_1, gamma, self.head_cfg, burn_in_step
         )
-
         dq_loss = torch.mean(dq_loss_element_wise * weights)
 
         # n step loss
@@ -97,7 +101,12 @@ class DQNLearner(Learner):
             gamma = self.hyper_params.gamma ** self.hyper_params.n_step
 
             dq_loss_n_element_wise, q_values_n = self.loss_fn(
-                self.dqn, self.dqn_target, experience_n, gamma, self.head_cfg
+                self.dqn,
+                self.dqn_target,
+                experience_n,
+                gamma,
+                self.head_cfg,
+                burn_in_step,
             )
 
             # to update loss and priorities
@@ -144,7 +153,6 @@ class DQNLearner(Learner):
 
         Learner._save_params(self, params, n_episode)
 
-    # pylint: disable=attribute-defined-outside-init
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
         Learner.load_params(self, path)
@@ -156,9 +164,9 @@ class DQNLearner(Learner):
         print("[INFO] loaded the model and optimizer from", path)
 
     def get_state_dict(self) -> OrderedDict:
-        """Return state dicts, mainly for distributed worker."""
+        """Return state dicts, mainly for distributed worker"""
         return self.dqn.state_dict()
 
     def get_policy(self) -> nn.Module:
-        """Return model (policy) used for action selection."""
+        """Return model (policy) used for action selection"""
         return self.dqn

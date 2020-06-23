@@ -19,6 +19,9 @@ from .fd.sac_agent import SACfDAgent
 from .fd.sac_learner import SACfDLearner
 from .ppo.agent import PPOAgent
 from .ppo.learner import PPOLearner
+from .recurrent.dqn_agent import R2D1Agent
+from .recurrent.learner import R2D1Learner
+from .recurrent.losses import R2D1C51Loss, R2D1DQNLoss, R2D1IQNLoss
 from .registry import build_agent, build_her
 from .sac.agent import SACAgent
 from .sac.learner import SACLearner
@@ -33,6 +36,7 @@ __all__ = [
     "DQNAgent",
     "DDPGfDAgent",
     "DQfDAgent",
+    "R2D1Agent",
     "SACfDAgent",
     "PPOAgent",
     "SACAgent",
@@ -48,6 +52,7 @@ __all__ = [
     "PPOLearner",
     "SACLearner",
     "TD3Learner",
+    "R2D1Learner",
     "LunarLanderContinuousHER",
     "ReacherHER",
     "build_agent",
@@ -57,4 +62,7 @@ __all__ = [
     "IQNLoss",
     "C51Loss",
     "DQNLoss",
+    "R2D1IQNLoss",
+    "R2D1C51Loss",
+    "R2D1DQNLoss",
 ]

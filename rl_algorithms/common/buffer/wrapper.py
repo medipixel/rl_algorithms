@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """Wrappers for buffer.
 
-- Author: Kyunghwan Kim & Euijin Jeong
-- Contact: kh.kim@medipixel.io & euijin.jeong@medipixel.io
+- Author: Kyunghwan Kim, Euijin Jeong
+- Contacts: kh.kim@medipixel.io
+            euijin.jeong@medipixel.io
 - Paper: https://arxiv.org/pdf/1511.05952.pdf
          https://arxiv.org/pdf/1707.08817.pdf
 """
@@ -118,12 +119,9 @@ class PrioritizedBufferWrapper(BufferWrapper):
 
         weights = np.array(weights_)
         eps_d = np.array(eps_d)
+        experiences = self.buffer.sample(indices)
 
-        weights = weights.reshape(-1, 1)
-
-        states, actions, rewards, next_states, dones = self.buffer.sample(indices)
-
-        return states, actions, rewards, next_states, dones, weights, indices, eps_d
+        return experiences + (weights, indices, eps_d)
 
     def update_priorities(self, indices: list, priorities: np.ndarray):
         """Update priorities of sampled transitions."""

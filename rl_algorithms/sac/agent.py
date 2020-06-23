@@ -102,10 +102,11 @@ class SACAgent(Agent):
         ):
             return np.array(self.env.action_space.sample())
 
-        if self.args.test:
-            _, _, _, selected_action, _ = self.learner.actor(state)
-        else:
-            selected_action, _, _, _, _ = self.learner.actor(state)
+        with torch.no_grad():
+            if self.args.test:
+                _, _, _, selected_action, _ = self.learner.actor(state)
+            else:
+                selected_action, _, _, _, _ = self.learner.actor(state)
 
         return selected_action.detach().cpu().numpy()
 

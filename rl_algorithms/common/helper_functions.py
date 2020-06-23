@@ -98,5 +98,4 @@ def numpy2floattensor(arrays: Tuple[np.ndarray]) -> Tuple[np.ndarray]:
         if torch.cuda.is_available():
             tensor = tensor.cuda(non_blocking=True)
         tensors.append(tensor)
-
     return tuple(tensors)
