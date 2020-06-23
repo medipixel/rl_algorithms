@@ -63,6 +63,7 @@ This project follows the [all-contributors](https://github.com/all-contributors/
 7. [Rainbow DQN](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/dqn)
 8. [Rainbow IQN (without DuelingNet)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/dqn) - DuelingNet [degrades performance](https://github.com/medipixel/rl_algorithms/pull/137)
 9. Rainbow IQN (with [ResNet](https://github.com/medipixel/rl_algorithms/blob/master/rl_algorithms/common/networks/backbones/resnet.py))
+10. [Recurrent Replay DQN (R2D1)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/recurrent/dqn_agent.py)
 
 
 ## Performance
@@ -204,6 +205,8 @@ python <run-file> -h
     - Start rendering after the number of episodes.
 - `--load-from <save-file-path>`
     - Load the saved models and optimizers at the beginning.
+- `--off-framestack`
+    - Turn off framestack
 
 #### Show feature map with Grad-CAM
 You can show a feature map that the trained agent extract using **[Grad-CAM(Gradient-weighted Class Activation Mapping)](https://arxiv.org/pdf/1610.02391.pdf)**. Grad-CAM is a way of combining feature maps using the gradient signal, and produce a coarse localization map of the important regions in the image. You can use it by adding [Grad-CAM config](https://github.com/medipixel/rl_algorithms/blob/master/configs/pong_no_frameskip_v4/dqn.py#L39) and `--grad-cam` flag when you run. For example:
@@ -249,3 +252,4 @@ This won't be frequently updated.
 16. [W. Dabney et al., "Implicit Quantile Networks for Distributional Reinforcement Learning." arXiv preprint arXiv:1806.06923, 2018.](https://arxiv.org/pdf/1806.06923.pdf)
 17. [Ramprasaath R. Selvaraju et al., "Grad-CAM: Visual Explanations from Deep Networks via Gradient-based Localization." arXiv preprint arXiv:1610.02391, 2016.](https://arxiv.org/pdf/1610.02391.pdf)
 18. [Kaiming He et al., "Deep Residual Learning for Image Recognition." arXiv preprint arXiv:1512.03385, 2015.](https://arxiv.org/pdf/1512.03385)
+19. [Steven Kapturowski et al., "Recurrent Experience Replay in Distributed Reinforcement Learning." in International Conference on Learning Representations https://openreview.net/forum?id=r1lyTjAqYX, 2019.](https://openreview.net/forum?id=r1lyTjAqYX)
