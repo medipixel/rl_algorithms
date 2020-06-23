@@ -205,8 +205,7 @@ python <run-file> -h
     - Start rendering after the number of episodes.
 - `--load-from <save-file-path>`
     - Load the saved models and optimizers at the beginning.
-- `--off-framestack`
-    - Turn off framestack
+    
 
 #### Show feature map with Grad-CAM
 You can show a feature map that the trained agent extract using **[Grad-CAM(Gradient-weighted Class Activation Mapping)](https://arxiv.org/pdf/1610.02391.pdf)**. Grad-CAM is a way of combining feature maps using the gradient signal, and produce a coarse localization map of the important regions in the image. You can use it by adding [Grad-CAM config](https://github.com/medipixel/rl_algorithms/blob/master/configs/pong_no_frameskip_v4/dqn.py#L39) and `--grad-cam` flag when you run. For example:
