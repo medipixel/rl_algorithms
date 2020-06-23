@@ -1,6 +1,7 @@
-"""Config for R2D1DQN on PongNoFrameskip-v4.
-- Author: Kyunghwan Kim, Euijin Jeong
-- Contact: kh.kim@medipixel.io, euijin.jeong@medipixel.io
+"""Config for R2D1 on PongNoFrameskip-v4.
+
+- Author: Euijin Jeong
+- Contact: euijin.jeong@medipixel.io
 """
 from rl_algorithms.common.helper_functions import identity
 
@@ -48,14 +49,11 @@ agent = dict(
                 paddings=[1, 0, 0],
             ),
         ),
+        gru=dict(rnn_hidden_size=512, burn_in_step=10,),
         head=dict(
             type="DuelingMLP",
             configs=dict(
-                rnn_hidden_size=512,
-                burn_in_step=10,
-                hidden_sizes=[512],
-                use_noisy_net=False,
-                output_activation=identity,
+                hidden_sizes=[512], use_noisy_net=False, output_activation=identity,
             ),
         ),
         optim_cfg=dict(

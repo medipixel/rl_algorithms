@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Brain module for backbone & head holder.
 
-- Authors: Euijin Jeong & Kyunghwan Kim
+- Authors: Euijin Jeong, Kyunghwan Kim
 - Contacts: euijin.jeong@medipixel.io
             kh.kim@medipixel.io
 """
@@ -61,32 +61,19 @@ class GRUBrain(Brain):
     """Class for holding backbone, GRU, and head networks."""
 
     def __init__(
-        self, backbone_cfg: ConfigDict, head_cfg: ConfigDict,
+        self, backbone_cfg: ConfigDict, head_cfg: ConfigDict, gru_cfg: ConfigDict,
     ):
         self.action_size = head_cfg.configs.output_size
         """Initialize. Generate different structure whether it has CNN module or not."""
         Brain.__init__(self, backbone_cfg, head_cfg)
-        if not backbone_cfg:
-            self.backbone = identity
-            head_cfg.configs.input_size = head_cfg.configs.state_size[0]
-
-        else:
-            self.backbone = build_backbone(backbone_cfg)
-            head_cfg.configs.input_size = self.calculate_fc_input_size(
-                head_cfg.configs.state_size
-            )
-        self.fc = nn.Linear(
-            head_cfg.configs.input_size, head_cfg.configs.rnn_hidden_size,
-        )
+        self.fc = nn.Linear(head_cfg.configs.input_size, gru_cfg.rnn_hidden_size,)
         self.gru = nn.GRU(
-            head_cfg.configs.rnn_hidden_size
-            + self.action_size
-            + 1,  # 1 is for prev_reward
-            head_cfg.configs.rnn_hidden_size,
+            gru_cfg.rnn_hidden_size + self.action_size + 1,  # 1 is for prev_reward
+            gru_cfg.rnn_hidden_size,
             batch_first=True,
         )
 
-        head_cfg.configs.input_size = head_cfg.configs.rnn_hidden_size
+        head_cfg.configs.input_size = gru_cfg.rnn_hidden_size
         self.head = build_head(head_cfg)
 
     def forward(
@@ -135,7 +122,6 @@ class GRUBrain(Brain):
             dim=2,
         )
         hidden = torch.transpose(hidden, 0, 1)
-        hidden = None if hidden is None else hidden
 
         # Unroll gru
         gru_out, hidden = self.gru(gru_input, hidden)

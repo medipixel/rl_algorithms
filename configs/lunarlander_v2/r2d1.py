@@ -1,7 +1,7 @@
-"""Config for R2D1C51 on LunarLander-v2.
+"""Config for R2D1 on LunarLander-v2.
 
-- Author: Kyunghwan Kim, Euijin Jeong
-- Contact: kh.kim@medipixel.io, euijin.jeong@medipixel.io
+- Author: Euijin Jeong
+- Contact: euijin.jeong@medipixel.io
 """
 from rl_algorithms.common.helper_functions import identity
 
@@ -34,11 +34,10 @@ agent = dict(
     learner_cfg=dict(
         type="R2D1Learner",
         backbone=dict(),
+        gru=dict(rnn_hidden_size=64, burn_in_step=16,),
         head=dict(
             type="C51DuelingMLP",
             configs=dict(
-                rnn_hidden_size=64,
-                burn_in_step=16,
                 hidden_sizes=[128, 64],
                 v_min=-300,
                 v_max=300,

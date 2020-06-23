@@ -1,4 +1,4 @@
-"""Config for DQN on Pong-No_FrameSkip-v4.
+"""Config for DQN(IQN) on Pong-No_FrameSkip-v4.
 
 - Author: Kyunghwan Kim
 - Contact: kh.kim@medipixel.io

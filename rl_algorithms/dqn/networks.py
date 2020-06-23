@@ -199,7 +199,7 @@ class IQNMLP(MLP, NoisyMLPHandler):
 
         quantile_values = super(IQNMLP, self).forward(quantile_net)
 
-        return quantile_values, quantiles
+        return quantile_values, quantiles.to(device)
 
     def forward(self, state: torch.Tensor) -> torch.Tensor:
         """Forward method implementation."""
