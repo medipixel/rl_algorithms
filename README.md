@@ -205,6 +205,16 @@ python <run-file> -h
     - Start rendering after the number of episodes.
 - `--load-from <save-file-path>`
     - Load the saved models and optimizers at the beginning.
+
+#### Arguments for distributed training in run-files
+- `--max-episode-steps <int>`
+    - Set maximum update step for learner as a stopping criterion for training loop. If the number is less than or equal to 0, it uses the default maximum step number of the environment.
+- `--off-worker-render`
+    - Turn off rendering of individual workers.
+- `--off-logger-render`
+    - Turn off rendering of logger tests.
+- `--worker-verbose`
+    - Turn on printing episode run info for individual workers 
     
 
 #### Show feature map with Grad-CAM
