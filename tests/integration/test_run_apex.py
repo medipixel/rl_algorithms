@@ -39,13 +39,12 @@ def check_run_apex(config_root: str, run_file: str):
             shell=True,
         )
         output, _ = p.communicate()
+        print(str(output))
+        assert p.returncode == 0
 
-        print(output)
         # Find saved checkpoint path
         pattern = r"./checkpoint/.+/"
         save_path = re.findall(pattern, str(output))[0]
-
-        assert p.returncode == 0
         print(save_path)
 
         check_save_path(save_path)
