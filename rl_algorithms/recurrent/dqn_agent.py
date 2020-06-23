@@ -12,7 +12,7 @@ import numpy as np
 import torch
 import wandb
 
-from rl_algorithms.common.buffer.recurrent_replay_buffer import RecurrentReplayBuffer
+from rl_algorithms.common.buffer.replay_buffer import RecurrentReplayBuffer
 from rl_algorithms.common.buffer.wrapper import PrioritizedBufferWrapper
 import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.common.helper_functions import numpy2floattensor
