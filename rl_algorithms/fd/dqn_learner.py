@@ -64,7 +64,6 @@ class DQfDLearner(DQNLearner):
             experience_1 = experience
 
         weights, indices, eps_d = experience_1[-3:]
-        eps_d = eps_d.cpu().numpy()
         actions = experience_1[1]
 
         # 1 step loss
@@ -134,6 +133,6 @@ class DQfDLearner(DQNLearner):
             supervised_loss.item(),
             q_values.mean().item(),
             n_demo,
-            indices.long().cpu().numpy(),
+            indices,
             new_priorities,
         )

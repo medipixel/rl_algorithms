@@ -51,6 +51,7 @@ class Agent(ABC):
         self.log_cfg = log_cfg
         self.log_cfg.env_name = env.spec.id if env.spec is not None else env.name
 
+        self.total_step = 0
         self.learner = None
 
         if isinstance(env.action_space, Discrete):
@@ -83,6 +84,7 @@ class Agent(ABC):
             name=f"{self.log_cfg.agent}/{self.log_cfg.curr_time}",
         )
         wandb.config.update(vars(self.args))
+        wandb.config.update(self.hyper_params)
         shutil.copy(self.args.cfg_path, os.path.join(wandb.run.dir, "config.py"))
 
     def interim_test(self):
@@ -122,6 +124,7 @@ class Agent(ABC):
         else:
             test_num = self.args.episode_num
 
+        score_list = []
         for i_episode in range(test_num):
             state = self.env.reset()
             done = False
@@ -142,9 +145,15 @@ class Agent(ABC):
             print(
                 "[INFO] test %d\tstep: %d\ttotal score: %d" % (i_episode, step, score)
             )
+            score_list.append(score)
 
-            if self.args.log:
-                wandb.log({"test score": score})
+        if self.args.log:
+            wandb.log(
+                {
+                    "test score": round(sum(score_list) / len(score_list), 2),
+                    "test total step": self.total_step,
+                }
+            )
 
     def test_with_gradcam(self):
         """Test agent with Grad-CAM."""

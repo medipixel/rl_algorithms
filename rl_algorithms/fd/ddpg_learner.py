@@ -131,11 +131,11 @@ class DDPGfDLearner(DDPGLearner):
         new_priorities += self.hyper_params.lambda3 * actor_loss_element_wise.pow(2)
         new_priorities += self.hyper_params.per_eps
         new_priorities = new_priorities.data.cpu().numpy().squeeze()
-        new_priorities += eps_d.cpu().numpy()
+        new_priorities += eps_d
 
         return (
             actor_loss.item(),
             critic_loss.item(),
-            indices.long().cpu().numpy(),
+            indices,
             new_priorities,
         )

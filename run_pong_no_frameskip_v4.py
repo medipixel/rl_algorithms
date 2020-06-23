@@ -75,7 +75,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--save-period", type=int, default=20, help="save model period")
     parser.add_argument(
-        "--episode-num", type=int, default=1500, help="total episode num"
+        "--episode-num", type=int, default=500, help="total episode num"
     )
     parser.add_argument(
         "--max-update-step", type=int, default=100000, help="max update step"
@@ -92,6 +92,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="indicate integration test",
     )
+    parser.add_argument(
+        "--off-framestack",
+        dest="framestack",
+        action="store_false",
+        help="turn off framestack",
+    )
     return parser.parse_args()
 
 
@@ -101,7 +107,9 @@ def main():
 
     # env initialization
     env_name = "PongNoFrameskip-v4"
-    env = atari_env_generator(env_name, args.max_episode_steps, frame_stack=True)
+    env = atari_env_generator(
+        env_name, args.max_episode_steps, frame_stack=args.framestack
+    )
 
     # set a random seed
     common_utils.set_random_seed(args.seed, env)
