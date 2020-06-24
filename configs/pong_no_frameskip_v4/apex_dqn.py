@@ -41,7 +41,7 @@ agent = dict(
     ),
     learner_cfg=dict(
         type="DQNLearner",
-        device="cuda",
+        device="cuda:0",
         backbone=dict(
             type="CNN",
             configs=dict(

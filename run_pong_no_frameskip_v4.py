@@ -8,8 +8,6 @@
 import argparse
 import datetime
 
-import ray
-
 from rl_algorithms import build_agent
 from rl_algorithms.common.env.atari_wrappers import atari_env_generator
 import rl_algorithms.common.helper_functions as common_utils
@@ -135,10 +133,6 @@ def main():
     build_args = dict(args=args, env=env)
 
     agent = build_agent(cfg.agent, build_args)
-
-    # Initialize ray if using ApeX
-    if cfg.agent.type == "ApeX":
-        ray.init()
 
     if not args.test:
         agent.train()
