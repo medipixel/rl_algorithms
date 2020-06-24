@@ -66,8 +66,8 @@ class DQNLogger(DistributedLogger):
         if self.args.log:
             wandb.log(
                 {
-                    "avg_test_score": log_value["avg_score"],
-                    "loss": log_value["step_info"][0],
+                    "test_score": log_value["avg_score"],
+                    "dqn loss": log_value["step_info"][0],
                     "avg_q_value": log_value["step_info"][1],
                 },
                 step=log_value["update_step"],
