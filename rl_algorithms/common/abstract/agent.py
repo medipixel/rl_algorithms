@@ -150,7 +150,7 @@ class Agent(ABC):
         if self.args.log:
             wandb.log(
                 {
-                    "test score": round(sum(score_list) / len(score_list), 2),
+                    "avg test score": round(sum(score_list) / len(score_list), 2),
                     "test total step": self.total_step,
                 }
             )

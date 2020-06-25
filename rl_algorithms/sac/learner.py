@@ -125,7 +125,7 @@ class SACLearner(Learner):
     def update_model(
         self, experience: Union[TensorTuple, Tuple[TensorTuple]]
     ) -> Tuple[torch.Tensor, torch.Tensor, list, np.ndarray]:  # type: ignore
-        """Update ddpg actor and critic networks"""
+        """Update actor and critic networks."""
         self.update_step += 1
 
         states, actions, rewards, next_states, dones = experience
