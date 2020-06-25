@@ -41,10 +41,28 @@ def parse_args() -> argparse.Namespace:
         "--off-render", dest="render", action="store_false", help="turn off rendering"
     )
     parser.add_argument(
+        "--off-worker-render",
+        dest="worker_render",
+        action="store_false",
+        help="turn off worker rendering",
+    )
+    parser.add_argument(
+        "--off-logger-render",
+        dest="logger_render",
+        action="store_false",
+        help="turn off logger rendering",
+    )
+    parser.add_argument(
         "--render-after",
         type=int,
         default=0,
         help="start rendering after the input number of episode",
+    )
+    parser.add_argument(
+        "--worker-verbose",
+        dest="worker_verbose",
+        action="store_true",
+        help="turn on worker print statements",
     )
     parser.add_argument(
         "--log", dest="log", action="store_true", help="turn on logging"
@@ -54,6 +72,9 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--episode-num", type=int, default=1500, help="total episode num"
+    )
+    parser.add_argument(
+        "--max-update-step", type=int, default=100000, help="max update step"
     )
     parser.add_argument(
         "--max-episode-steps", type=int, default=300, help="max episode step"
@@ -107,6 +128,7 @@ def main():
         observation_space=env.observation_space,
         action_space=env.action_space,
         is_discrete=True,
+        is_atari=False,
     )
     cfg.agent.log_cfg = dict(agent=cfg.agent.type, curr_time=curr_time)
     build_args = dict(args=args, env=env)

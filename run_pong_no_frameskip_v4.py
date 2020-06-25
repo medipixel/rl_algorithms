@@ -124,10 +124,10 @@ def main():
 
     cfg.agent.env_info = dict(
         name="PongNoFrameskip-v4",
-        is_atari=True,
-        is_discrete=True,
         observation_space=env.observation_space,
         action_space=env.action_space,
+        is_discrete=True,
+        is_atari=True,
     )
     cfg.agent.log_cfg = dict(agent=cfg.agent.type, curr_time=curr_time)
     build_args = dict(args=args, env=env)

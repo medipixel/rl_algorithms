@@ -15,11 +15,11 @@ docker-push:
 	docker push medipixel/rl_algorithms
 
 dev:
-	pip install -r requirements.txt
-	pip install -r requirements-dev.txt
+	pip install -U -r requirements.txt
+	pip install -U -r requirements-dev.txt
 	pre-commit install
 	python setup.py develop
 
 dep:
-	pip install -r -U requirements.txt
+	pip install -U -r requirements.txt
 	python setup.py install
