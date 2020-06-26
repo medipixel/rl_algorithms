@@ -69,71 +69,92 @@ This project follows the [all-contributors](https://github.com/all-contributors/
 ## Performance
 
 We have tested each algorithm on some of the following environments.
+- [PongNoFrameskip-v4](https://github.com/medipixel/rl_algorithms/tree/master/configs/pong_no_frameskip_v4)
 - [LunarLanderContinuous-v2](https://github.com/medipixel/rl_algorithms/tree/master/configs/lunarlander_continuous_v2)
 - [LunarLander_v2](https://github.com/medipixel/rl_algorithms/tree/master/configs/lunarlander_v2)
 - [Reacher-v2](https://github.com/medipixel/rl_algorithms/tree/master/configs/reacher-v2)
-- [PongNoFrameskip-v4](https://github.com/medipixel/rl_algorithms/tree/master/configs/pong_no_frameskip_v4)
 
-The performance is measured on the commit [4248057](https://github.com/medipixel/rl_algorithms/pull/158). Please note that this won't be frequently updated.
+❗Please note that this won't be frequently updated.
 
-
-#### Reacher-v2
-
-We reproduced the performance of **DDPG**, **TD3**, and **SAC** on Reacher-v2 (Mujoco). They reach the score around -3.5 to -4.5.
-See [W&B Log](https://app.wandb.ai/medipixel_rl/reacher-v2/reports?view=curt-park%2FBaselines%20%23158) for more details.
-
-![reacher-v2_baselines](https://user-images.githubusercontent.com/17582508/56282421-163bc200-614a-11e9-8d4d-2bb520575fbb.png)
 
 #### PongNoFrameskip-v4
 
 **RainbowIQN** learns the game incredibly fast! It accomplishes the perfect score (21) [within 100 episodes](https://app.wandb.ai/curt-park/dqn/runs/b2p9e9f7/logs)!
 The idea of RainbowIQN is roughly suggested from [W. Dabney et al.](https://arxiv.org/pdf/1806.06923.pdf).
-See [W&B Log](https://app.wandb.ai/curt-park/dqn/reports?view=curt-park%2FPong%20%28DQN%20%2F%20C51%20%2F%20IQN%20%2F%20IQN%20-double%20q%29) for more details.
+
+See [W&B Log](https://app.wandb.ai/curt-park/dqn/reports?view=curt-park%2FPong%20%28DQN%20%2F%20C51%20%2F%20IQN%20%2F%20IQN%20-double%20q%29) for more details. (The performance is measured on the commit [4248057](https://github.com/medipixel/rl_algorithms/pull/158))
 
 ![pong_dqn](https://user-images.githubusercontent.com/17582508/56282434-1e93fd00-614a-11e9-9c31-af32e119d5b6.png)
 
+**RainbowIQN with ResNet**'s performance and learning speed were similar to those of RainbowIQN. Also we confirmed that **R2D1 (w/ Dueling, PER)** converges well in the Pong enviornment, though not as fast as RainbowIQN (in terms of update step).
+
+Although we were only able to test **Ape-X DQN (w/ Dueling)** with 4 workers due to limitations to computing power, we observed a significant speed-up in carrying out update steps (with batch size 512). Ape-X DQN learns Pong game in about 2 hours, compared to 4 hours for serial Dueling DQN.
+
+See [W&B Log](https://app.wandb.ai/medipixel_rl/PongNoFrameskip-v4/reports/200626-integration-test--VmlldzoxNTE1NjE) for more details. (The performance is measured on the commit [9e897ad](https://github.com/medipixel/rl_algorithms/commit/9e897adfe93600c1db85ce1a7e064064b025c2c3))
+![pong dqn with resnet & rnn](https://user-images.githubusercontent.com/17582508/85813189-80fc7a80-b79d-11ea-96cf-947a62e380f3.png)
+
+![apex dqn](https://user-images.githubusercontent.com/17582508/85814263-83ac9f00-b7a0-11ea-9cdc-ff29de9a6d54.png)
+
 #### LunarLander-v2 / LunarLanderContinuous-v2
 
-We used these environments just for a quick verification of each algorithm, so some of experiments may not show the best performance. Click the following lines to see the figures.
+We used these environments just for a quick verification of each algorithm, so some of experiments may not show the best performance. 
 
-<details><summary><b>LunarLander-v2: RainbowDQN, RainbowDQfD</b></summary>
+##### 👇 Click the following lines to see the figures.
+<details><summary><b>LunarLander-v2: RainbowDQN, RainbowDQfD, R2D1 </b></summary>
 <p><br>
-See <a href="https://app.wandb.ai/medipixel_rl/lunarlander_v2/reports?view=curt-park%2FBaselines%20%23158">W&B log</a> for more details.
+See <a href="https://app.wandb.ai/medipixel_rl/LunarLander-v2/reports/200626-integration-test--VmlldzoxNTE2MzA">W&B log</a> for more details. (The performance is measured on the commit <a href="https://github.com/medipixel/rl_algorithms/commit/9e897adfe93600c1db85ce1a7e064064b025c2c3">9e897ad</a>)
 
-![lunarlander-v2_dqn](https://user-images.githubusercontent.com/17582508/56282616-85b1b180-614a-11e9-99a7-b2d9715a6bc6.png)
+![lunarlander-v2_dqn](https://user-images.githubusercontent.com/17582508/85815561-a5f3ec00-b7a3-11ea-8d7c-8d54953d0c07.png)
 </p>
 </details>
 
 <details><summary><b>LunarLanderContinuous-v2: A2C, PPO, DDPG, TD3, SAC</b></summary>
 <p><br>
-See <a href="https://app.wandb.ai/medipixel_rl/lunarlander_continuous_v2/reports?view=curt-park%2FBaselines%20%23158">W&B log</a> for more details.
+See <a href="https://app.wandb.ai/medipixel_rl/LunarLanderContinuous-v2/reports/200626-integration-test--VmlldzoxNDg1MjU">W&B log</a> for more details. (The performance is measured on the commit <a href="https://github.com/medipixel/rl_algorithms/commit/9e897adfe93600c1db85ce1a7e064064b025c2c3">9e897ad</a>)
 
-![lunarlandercontinuous-v2_baselines](https://user-images.githubusercontent.com/14961526/56286075-bcd89080-6153-11e9-9ef5-8336bd5e2114.png)
+![lunarlandercontinuous-v2_baselines](https://user-images.githubusercontent.com/17582508/85818298-43065300-b7ab-11ea-9ee0-1eda855498ed.png)
 </p>
 </details>
 
 <details><summary><b>LunarLanderContinuous-v2: DDPG, DDPGfD, BC-DDPG</b></summary>
 <p><br>
-See <a href="https://app.wandb.ai/medipixel_rl/lunarlander_continuous_v2/reports?view=curt-park%2FDDPG%20%23158">W&B log</a> for more details.
+See <a href="https://app.wandb.ai/medipixel_rl/LunarLanderContinuous-v2/reports/200626-integration-test--VmlldzoxNDg1MjU">W&B log</a> for more details. (The performance is measured on the commit <a href="https://github.com/medipixel/rl_algorithms/commit/9e897adfe93600c1db85ce1a7e064064b025c2c3">9e897ad</a>)
 
-![lunarlandercontinuous-v2_ddpg](https://user-images.githubusercontent.com/17582508/56282350-ea204100-6149-11e9-8642-0b9d6171ad9f.png)
+![lunarlandercontinuous-v2_ddpg](https://user-images.githubusercontent.com/17582508/85818519-c9bb3000-b7ab-11ea-9473-08476a959a0c.png)
 </p>
 </details>
 
 <details><summary><b>LunarLanderContinuous-v2: SAC, SACfD, BC-SAC</b></summary>
 <p><br>
-See <a href="https://app.wandb.ai/medipixel_rl/lunarlander_continuous_v2/reports?view=curt-park%2FSAC%20%23158">W&B log</a> for more details.
+See <a href="https://app.wandb.ai/medipixel_rl/LunarLanderContinuous-v2/reports/200626-integration-test--VmlldzoxNDg1MjU">W&B log</a> for more details. (The performance is measured on the commit <a href="https://github.com/medipixel/rl_algorithms/commit/9e897adfe93600c1db85ce1a7e064064b025c2c3">9e897ad</a>)
 
-![lunarlandercontinuous-v2_sac](https://user-images.githubusercontent.com/17582508/56282450-2c498280-614a-11e9-836d-86fdc240cd17.png)
+![lunarlandercontinuous-v2_sac](https://user-images.githubusercontent.com/17582508/85818654-1acb2400-b7ac-11ea-8641-d559839cab62.png)
 </p>
 </details>
+
+#### Reacher-v2
+
+We reproduced the performance of **DDPG**, **TD3**, and **SAC** on Reacher-v2 (Mujoco). They reach the score around -3.5 to -4.5.
+
+##### 👇 Click the following the line to see the figures.
+
+<details><summary><b>Reacher-v2: DDPG, TD3, SAC</b></summary>
+<p><br>
+
+See [W&B Log](https://app.wandb.ai/medipixel_rl/reacher-v2/reports?view=curt-park%2FBaselines%20%23158) for more details.
+
+![reacher-v2_baselines](https://user-images.githubusercontent.com/17582508/56282421-163bc200-614a-11e9-8d4d-2bb520575fbb.png)
+
+</p>
+</details>
+
 
 ## Getting started
 
 #### Prerequisites
 * This repository is tested on [Anaconda](https://www.anaconda.com/distribution/) virtual environment with python 3.6.1+
     ```
-    $ conda create -n rl_algorithms python=3.6.1
+    $ conda create -n rl_algorithms python=3.6.9
     $ conda activate rl_algorithms
     ```
 * In order to run Mujoco environments (e.g. `Reacher-v2`), you need to acquire [Mujoco license](https://www.roboti.us/license.html).
@@ -237,7 +258,7 @@ For more details, read [W&B tutorial](https://docs.wandb.com/docs/started.html).
 
 ## Class Diagram
 Class diagram at [#135](https://github.com/medipixel/rl_algorithms/pull/135).
-This won't be frequently updated.
+❗This won't be frequently updated.
 ![RL_Algorithms_ClassDiagram](https://user-images.githubusercontent.com/16010242/55934443-812d5a80-5c6b-11e9-9b31-fa8214965a55.png)
 
 ## References
