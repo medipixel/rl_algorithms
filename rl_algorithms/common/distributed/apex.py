@@ -71,6 +71,8 @@ class ApeX(Architecture):
 
         self._organize_configs()
 
+        ray.init()
+
     # pylint: disable=attribute-defined-outside-init
     def _organize_configs(self):
         """Organize configs for initializing components from registry."""
@@ -129,7 +131,7 @@ class ApeX(Architecture):
     def train(self):
         """Spawn processes and run training loop."""
         print("Spawning and initializing communication...")
-        # Spawn processes:
+        # Spawn processes
         self._spawn()
 
         # Initialize communication

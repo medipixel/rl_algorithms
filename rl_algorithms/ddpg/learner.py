@@ -98,7 +98,7 @@ class DDPGLearner(Learner):
     def update_model(
         self, experience: Tuple[torch.Tensor, ...]
     ) -> Tuple[torch.Tensor, ...]:
-        """Update ddpg actor and critic networks"""
+        """Update actor and critic networks."""
         states, actions, rewards, next_states, dones = experience
 
         # G_t   = r + gamma * v(s_{t+1})  if state != Terminal

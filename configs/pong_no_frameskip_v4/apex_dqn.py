@@ -34,6 +34,7 @@ agent = dict(
             "backbone.cnn.cnn_1.cnn",
             "backbone.cnn.cnn_2.cnn",
         ],
+        # ApeX
         num_workers=2,
         local_buffer_max_size=1000,
         worker_update_interval=50,
@@ -41,7 +42,7 @@ agent = dict(
     ),
     learner_cfg=dict(
         type="DQNLearner",
-        device="cuda",
+        device="cuda:0",
         backbone=dict(
             type="CNN",
             configs=dict(

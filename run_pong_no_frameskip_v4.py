@@ -8,8 +8,6 @@
 import argparse
 import datetime
 
-import ray
-
 from rl_algorithms import build_agent
 from rl_algorithms.common.env.atari_wrappers import atari_env_generator
 import rl_algorithms.common.helper_functions as common_utils
@@ -126,19 +124,15 @@ def main():
 
     cfg.agent.env_info = dict(
         name="PongNoFrameskip-v4",
-        is_atari=True,
-        is_discrete=True,
         observation_space=env.observation_space,
         action_space=env.action_space,
+        is_discrete=True,
+        is_atari=True,
     )
     cfg.agent.log_cfg = dict(agent=cfg.agent.type, curr_time=curr_time)
     build_args = dict(args=args, env=env)
 
     agent = build_agent(cfg.agent, build_args)
-
-    # Initialize ray if using ApeX
-    if cfg.agent.type == "ApeX":
-        ray.init()
 
     if not args.test:
         agent.train()

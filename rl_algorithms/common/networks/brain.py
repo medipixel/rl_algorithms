@@ -6,6 +6,8 @@
             kh.kim@medipixel.io
 """
 
+from typing import Tuple, Union
+
 import torch
 import torch.nn as nn
 
@@ -34,7 +36,7 @@ class Brain(nn.Module):
             )
         self.head = build_head(head_cfg)
 
-    def forward(self, x: torch.Tensor):
+    def forward(self, x: torch.Tensor) -> Union[torch.Tensor, Tuple[torch.Tensor, ...]]:
         """Forward method implementation. Use in get_action method in agent."""
         x = self.backbone(x)
         x = self.head(x)

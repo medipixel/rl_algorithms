@@ -57,7 +57,7 @@ class BCDDPGLearner(DDPGLearner):
     def update_model(
         self, experience: TensorTuple, demos: TensorTuple
     ) -> TensorTuple:  # type: ignore
-        """Update ddpg actor and critic networks"""
+        """Update actor and critic networks."""
         exp_states, exp_actions, exp_rewards, exp_next_states, exp_dones = experience
         demo_states, demo_actions, demo_rewards, demo_next_states, demo_dones = demos
 
