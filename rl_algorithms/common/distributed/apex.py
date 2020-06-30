@@ -5,6 +5,7 @@
 - Paper: https://arxiv.org/pdf/1803.00933.pdf
 - Reference: https://github.com/haje01/distper
 """
+import os
 
 import gym
 import ray
@@ -17,6 +18,11 @@ from rl_algorithms.common.distributed.learner import ApeXLearnerWrapper
 from rl_algorithms.common.distributed.worker import ApeXWorkerWrapper
 from rl_algorithms.registry import AGENTS, build_learner, build_logger, build_worker
 from rl_algorithms.utils.config import ConfigDict
+
+# NOTE: Setting LRU_CACHE_CAPACITY to a low number fixes CPU memory leak.
+# For PyTorch <= 1.5, it is necessary to set cache capacity manually.
+# See https://github.com/pytorch/pytorch/issues/27971
+os.environ["LRU_CACHE_CAPACITY"] = "10"
 
 
 @AGENTS.register_module

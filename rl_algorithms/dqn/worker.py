@@ -60,6 +60,7 @@ class DQNWorker(Worker):
         """Initialize DQN policy with learner state dict."""
         self.dqn = Brain(self.backbone_cfg, self.head_cfg).to(self.device)
         self.dqn.load_state_dict(state_dict)
+        self.dqn.eval()
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
@@ -98,18 +99,22 @@ class DQNWorker(Worker):
     def compute_priorities(self, memory: Dict[str, np.ndarray]) -> np.ndarray:
         """Compute initial priority values of experiences in local memory."""
         states = torch.FloatTensor(memory["states"]).to(self.device)
-        actions = torch.LongTensor(memory["actions"]).to(self.device)
+        actions = torch.FloatTensor(memory["actions"]).long().to(self.device)
         rewards = torch.FloatTensor(memory["rewards"].reshape(-1, 1)).to(self.device)
         next_states = torch.FloatTensor(memory["next_states"]).to(self.device)
         dones = torch.FloatTensor(memory["dones"].reshape(-1, 1)).to(self.device)
         memory_tensors = (states, actions, rewards, next_states, dones)
 
-        dq_loss_element_wise, _ = self.loss_fn(
-            self.dqn, self.dqn, memory_tensors, self.hyper_params.gamma, self.head_cfg
-        )
+        with torch.no_grad():
+            dq_loss_element_wise, _ = self.loss_fn(
+                self.dqn,
+                self.dqn,
+                memory_tensors,
+                self.hyper_params.gamma,
+                self.head_cfg,
+            )
         loss_for_prior = dq_loss_element_wise.detach().cpu().numpy()
         new_priorities = loss_for_prior + self.hyper_params.per_eps
-
         return new_priorities
 
     def synchronize(self, new_params: List[np.ndarray]):

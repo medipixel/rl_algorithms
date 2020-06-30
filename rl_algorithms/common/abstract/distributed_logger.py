@@ -199,6 +199,7 @@ class DistributedLogger(ABC):
         else:
             test_num = self.args.episode_num
 
+        self.brain.eval()
         scores = []
         for i_episode in range(test_num):
             state = self.env.reset()
