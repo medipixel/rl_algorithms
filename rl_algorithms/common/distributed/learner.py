@@ -50,6 +50,7 @@ class ApeXLearnerWrapper(DistributedLearnerWrapper):
         ctx = zmq.Context()
         # Socket to send updated network parameters to worker
         self.pub_socket = ctx.socket(zmq.PUB)
+        self.pub_socket.setsockopt(zmq.SNDHWM, 2)
         self.pub_socket.bind(f"tcp://127.0.0.1:{self.comm_cfg.learner_worker_port}")
 
         # Socket to receive replay data and send new priorities to buffer

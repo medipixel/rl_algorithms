@@ -11,9 +11,9 @@ agent = dict(
     hyper_params=dict(
         gamma=0.99,
         tau=5e-3,
-        buffer_size=int(2.5e5),  # openai baselines: int(1e4)
+        buffer_size=int(1e5),  # openai baselines: int(1e4)
         batch_size=512,  # openai baselines: 32
-        update_starts_from=int(1e5),  # openai baselines: int(1e4)
+        update_starts_from=int(3e4),  # openai baselines: int(1e4)
         multiple_update=1,  # multiple learning updates
         train_freq=1,  # in openai baselines, train_freq = 4
         gradient_clip=10.0,  # dueling: 10.0
@@ -27,17 +27,17 @@ agent = dict(
         # Epsilon Greedy
         max_epsilon=1.0,
         min_epsilon=0.1,  # openai baselines: 0.01
-        epsilon_decay=1e-6,  # openai baselines: 1e-7 / 1e-1
+        epsilon_decay=5e-7,  # openai baselines: 1e-7 / 1e-1
         # grad_cam
         grad_cam_layer_list=[
             "backbone.cnn.cnn_0.cnn",
             "backbone.cnn.cnn_1.cnn",
             "backbone.cnn.cnn_2.cnn",
         ],
-        num_workers=4,
+        num_workers=2,
         local_buffer_max_size=1000,
         worker_update_interval=50,
-        logger_interval=2000,
+        logger_interval=1000,
     ),
     learner_cfg=dict(
         type="DQNLearner",

@@ -3,7 +3,6 @@
 - Author: Chris Yoon
 - Contact: chris.yoon@medipixel.io
 """
-
 import argparse
 from collections import deque
 from typing import Dict
@@ -46,7 +45,7 @@ class ApeXWorkerWrapper(DistributedWorkerWrapper):
         ctx = zmq.Context()
         self.sub_socket = ctx.socket(zmq.SUB)
         self.sub_socket.setsockopt_string(zmq.SUBSCRIBE, "")
-        self.sub_socket.setsockopt(zmq.CONFLATE, 1)
+        self.sub_socket.setsockopt(zmq.RCVHWM, 2)
         self.sub_socket.connect(f"tcp://127.0.0.1:{self.comm_cfg.learner_worker_port}")
 
         # for sending replay data to buffer
