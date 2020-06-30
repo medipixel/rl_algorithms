@@ -120,4 +120,3 @@ class DQNWorker(Worker):
     def synchronize(self, new_params: List[np.ndarray]):
         """Synchronize worker dqn with learner dqn."""
         self._synchronize(self.dqn, new_params)
-        self.dqn.eval()

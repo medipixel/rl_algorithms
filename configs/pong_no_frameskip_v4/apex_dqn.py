@@ -53,7 +53,7 @@ agent = dict(
             ),
         ),
         head=dict(
-            type="MLP",
+            type="DuelingMLP",
             configs=dict(
                 use_noisy_net=False, hidden_sizes=[512], output_activation=identity
             ),
