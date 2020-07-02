@@ -12,8 +12,10 @@ import ray
 
 from rl_algorithms.common.abstract.architecture import Architecture
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
-from rl_algorithms.common.buffer.wrapper import PrioritizedBufferWrapper
-from rl_algorithms.common.distributed.buffer import ApeXBufferWrapper
+from rl_algorithms.common.buffer.wrapper import (
+    ApeXBufferWrapper,
+    PrioritizedBufferWrapper,
+)
 from rl_algorithms.common.distributed.learner import ApeXLearnerWrapper
 from rl_algorithms.common.distributed.worker import ApeXWorkerWrapper
 from rl_algorithms.registry import AGENTS, build_learner, build_logger, build_worker

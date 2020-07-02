@@ -129,7 +129,7 @@ class ApeXWorkerWrapper(DistributedWorkerWrapper):
 
     def run(self) -> Dict[int, float]:
         """Run main worker loop."""
-        self.scores[0] = []
+        self.scores[self.update_step] = []
         while self.update_step < self.args.max_update_step:
             experience = self.collect_data()
             priority_values = self.compute_priorities(experience)
@@ -142,5 +142,8 @@ class ApeXWorkerWrapper(DistributedWorkerWrapper):
     @staticmethod
     def compute_mean_scores(scores: Dict[int, list]):
         for step in scores.keys():
-            scores[step] = np.mean(scores[step])
+            if scores[step] is not None:
+                scores[step] = np.mean(scores[step])
+            else:
+                scores.pop(step)
         return scores

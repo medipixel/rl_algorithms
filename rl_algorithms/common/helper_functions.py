@@ -108,6 +108,23 @@ def state_dict2numpy(state_dict) -> List[np.ndarray]:
     return params
 
 
+def smoothen_graph(scalars: List[float], weight: float = 0.6) -> List[float]:
+    """Smoothen result graph using exponential moving average formula as TensorBoard.
+
+        Reference:
+            https://docs.wandb.com/library/technical-faq#what-formula-do-you-use-for-your-smoothing-algorithm
+    """
+    last = scalars[0]  # First value in the plot (first timestep)
+    smoothed = list()
+    for point in scalars:
+        # Calculate smoothed value
+        smoothed_val = last * weight + (1 - weight) * point
+        smoothed.append(smoothed_val)
+        last = smoothed_val
+
+    return smoothed
+
+
 def set_cfg_for_intergration_test(cfg: ConfigDict) -> ConfigDict:
     """Set specific values in config for intergration test."""
     if "batch_size" in cfg.agent.hyper_params:

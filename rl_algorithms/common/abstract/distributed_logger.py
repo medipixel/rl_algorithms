@@ -21,6 +21,7 @@ import zmq
 
 from rl_algorithms.common.env.atari_wrappers import atari_env_generator
 import rl_algorithms.common.env.utils as env_utils
+from rl_algorithms.common.helper_functions import smoothen_graph
 from rl_algorithms.common.networks.brain import Brain
 from rl_algorithms.utils.config import ConfigDict
 
@@ -156,7 +157,7 @@ class DistributedLogger(ABC):
                 fig.add_trace(
                     go.Scatter(
                         x=list(worker_log.keys()),
-                        y=list(worker_log.values()),
+                        y=smoothen_graph(list(worker_log.values())),
                         mode="lines",
                         name=f"Worker {worker_id}",
                         line=dict(width=2),

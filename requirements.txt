@@ -7,17 +7,16 @@ scipy
 typing
 cloudpickle
 opencv-python
-wandb
 addict
 # mujoco
 
 # for distributed learning
 ray
-ray[debug]
 pyzmq
 pyarrow
 
 # for log
+wandb
 matplotlib
 plotly
 
