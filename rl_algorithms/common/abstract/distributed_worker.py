@@ -20,7 +20,7 @@ from rl_algorithms.common.helper_functions import set_random_seed
 from rl_algorithms.utils.config import ConfigDict
 
 
-class BaseWorker(ABC):
+class BaseDistributedWorker(ABC):
     """Base class for Worker classes."""
 
     @abstractmethod
@@ -43,7 +43,7 @@ class BaseWorker(ABC):
             param.data.copy_(new_param)
 
 
-class Worker(BaseWorker):
+class DistributedWorker(BaseDistributedWorker):
     """Base class for all functioning RL workers.
 
     Attributes:
@@ -118,10 +118,12 @@ class Worker(BaseWorker):
         return state
 
 
-class DistributedWorkerWrapper(BaseWorker):
+class DistributedWorkerWrapper(BaseDistributedWorker):
     """Base wrapper class for distributed worker wrappers."""
 
-    def __init__(self, worker: Worker, args: argparse.Namespace, comm_cfg: ConfigDict):
+    def __init__(
+        self, worker: DistributedWorker, args: argparse.Namespace, comm_cfg: ConfigDict
+    ):
         self.worker = worker
         self.args = args
         self.comm_cfg = comm_cfg

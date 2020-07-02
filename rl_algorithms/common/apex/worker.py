@@ -12,7 +12,10 @@ import pyarrow as pa
 import ray
 import zmq
 
-from rl_algorithms.common.abstract.worker import DistributedWorkerWrapper, Worker
+from rl_algorithms.common.abstract.distributed_worker import (
+    DistributedWorker,
+    DistributedWorkerWrapper,
+)
 from rl_algorithms.utils.config import ConfigDict
 
 
@@ -29,7 +32,9 @@ class ApeXWorkerWrapper(DistributedWorkerWrapper):
 
     """
 
-    def __init__(self, worker: Worker, args: argparse.Namespace, comm_cfg: ConfigDict):
+    def __init__(
+        self, worker: DistributedWorker, args: argparse.Namespace, comm_cfg: ConfigDict
+    ):
         DistributedWorkerWrapper.__init__(self, worker, args, comm_cfg)
         self.update_step = 0
         self.hyper_params = self.worker.hyper_params
