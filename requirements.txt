@@ -12,6 +12,7 @@ addict
 
 # for distributed learning
 ray
+ray[debug]
 pyzmq
 pyarrow
 
