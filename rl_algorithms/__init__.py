@@ -10,9 +10,9 @@ from .common.networks.backbones import CNN, ResNet
 from .ddpg.agent import DDPGAgent
 from .ddpg.learner import DDPGLearner
 from .dqn.agent import DQNAgent
+from .dqn.distributed_logger import DQNLogger
 from .dqn.distributed_worker import DQNWorker
 from .dqn.learner import DQNLearner
-from .dqn.logger import DQNLogger
 from .dqn.losses import C51Loss, DQNLoss, IQNLoss
 from .fd.ddpg_agent import DDPGfDAgent
 from .fd.ddpg_learner import DDPGfDLearner

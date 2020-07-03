@@ -123,8 +123,9 @@ class ApeXWorkerWrapper(DistributedWorkerWrapper):
 
             if self.args.worker_verbose:
                 print(
-                    "[TRAIN] [Worker %d] Score: %d, Epsilon: %.5f "
-                    % (self.worker.rank, score, self.worker.epsilon)
+                    f"[TRAIN] [Worker {self.worker.rank}] "
+                    + f"Update step: {self.update_step}, Score: {score}, "
+                    + f"Epsilon: {self.worker.epsilon:.5f}"
                 )
 
         for key in local_memory_keys:
@@ -146,9 +147,11 @@ class ApeXWorkerWrapper(DistributedWorkerWrapper):
 
     @staticmethod
     def compute_mean_scores(scores: Dict[int, list]):
-        for step in scores.keys():
-            if scores[step] is not None:
+        for step in list(scores):
+            if scores[step]:
                 scores[step] = np.mean(scores[step])
             else:
+                # Delete empty score list
+                # made when network is updated before termination of episode
                 scores.pop(step)
         return scores
