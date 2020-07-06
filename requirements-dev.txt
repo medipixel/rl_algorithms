@@ -1,8 +1,8 @@
 pre-commit
 
 # formatting
-black
-isort
+black == 19.10b0
+isort == 4.3.21
 
 # testing
 pylint == 2.3.0
