@@ -12,7 +12,10 @@ import pyarrow as pa
 import ray
 import zmq
 
-from rl_algorithms.common.abstract.worker import DistributedWorkerWrapper, Worker
+from rl_algorithms.common.abstract.distributed_worker import (
+    DistributedWorker,
+    DistributedWorkerWrapper,
+)
 from rl_algorithms.utils.config import ConfigDict
 
 
@@ -29,7 +32,9 @@ class ApeXWorkerWrapper(DistributedWorkerWrapper):
 
     """
 
-    def __init__(self, worker: Worker, args: argparse.Namespace, comm_cfg: ConfigDict):
+    def __init__(
+        self, worker: DistributedWorker, args: argparse.Namespace, comm_cfg: ConfigDict
+    ):
         DistributedWorkerWrapper.__init__(self, worker, args, comm_cfg)
         self.update_step = 0
         self.hyper_params = self.worker.hyper_params
@@ -118,8 +123,9 @@ class ApeXWorkerWrapper(DistributedWorkerWrapper):
 
             if self.args.worker_verbose:
                 print(
-                    "[TRAIN] [Worker %d] Score: %d, Epsilon: %.5f "
-                    % (self.worker.rank, score, self.worker.epsilon)
+                    f"[TRAIN] [Worker {self.worker.rank}] "
+                    + f"Update step: {self.update_step}, Score: {score}, "
+                    + f"Epsilon: {self.worker.epsilon:.5f}"
                 )
 
         for key in local_memory_keys:
@@ -129,7 +135,7 @@ class ApeXWorkerWrapper(DistributedWorkerWrapper):
 
     def run(self) -> Dict[int, float]:
         """Run main worker loop."""
-        self.scores[0] = []
+        self.scores[self.update_step] = []
         while self.update_step < self.args.max_update_step:
             experience = self.collect_data()
             priority_values = self.compute_priorities(experience)
@@ -141,6 +147,11 @@ class ApeXWorkerWrapper(DistributedWorkerWrapper):
 
     @staticmethod
     def compute_mean_scores(scores: Dict[int, list]):
-        for step in scores.keys():
-            scores[step] = np.mean(scores[step])
+        for step in list(scores):
+            if scores[step]:
+                scores[step] = np.mean(scores[step])
+            else:
+                # Delete empty score list
+                # made when network is updated before termination of episode
+                scores.pop(step)
         return scores

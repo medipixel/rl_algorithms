@@ -11,14 +11,14 @@ from typing import Dict, List, Tuple
 import numpy as np
 import torch
 
-from rl_algorithms.common.abstract.worker import Worker
+from rl_algorithms.common.abstract.distributed_worker import DistributedWorker
 from rl_algorithms.common.networks.brain import Brain
 from rl_algorithms.registry import WORKERS, build_loss
 from rl_algorithms.utils.config import ConfigDict
 
 
 @WORKERS.register_module
-class DQNWorker(Worker):
+class DQNWorker(DistributedWorker):
     """DQN worker for distributed training.
 
     Attributes:
@@ -40,7 +40,7 @@ class DQNWorker(Worker):
         state_dict: OrderedDict,
         device: str,
     ):
-        Worker.__init__(self, rank, args, env_info, hyper_params, device)
+        DistributedWorker.__init__(self, rank, args, env_info, hyper_params, device)
         self.loss_fn = build_loss(self.hyper_params.loss_type)
         self.backbone_cfg = backbone
         self.head_cfg = head
@@ -64,7 +64,7 @@ class DQNWorker(Worker):
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
-        Worker.load_params(self, path)
+        DistributedWorker.load_params(self, path)
 
         params = torch.load(path)
         self.dqn.load_state_dict(params["dqn_state_dict"])

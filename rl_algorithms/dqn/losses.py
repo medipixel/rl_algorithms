@@ -201,9 +201,11 @@ class C51Loss:
             )
 
         dist, q_values = model.forward_(states)
-        log_p = torch.log(dist[range(batch_size), actions.long()])
+        log_p = torch.log(
+            torch.clamp(dist[range(batch_size), actions.long()], min=1e-7)
+        )
 
-        dq_loss_element_wise = -(proj_dist * log_p).sum(1)
+        dq_loss_element_wise = -(proj_dist * log_p).sum(1, keepdim=True)
 
         return dq_loss_element_wise, q_values
 

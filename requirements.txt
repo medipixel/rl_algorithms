@@ -7,7 +7,6 @@ scipy
 typing
 cloudpickle
 opencv-python
-wandb
 addict
 # mujoco
 
@@ -18,6 +17,7 @@ pyzmq
 pyarrow
 
 # for log
+wandb
 matplotlib
 plotly
 

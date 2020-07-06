@@ -161,7 +161,7 @@ class IQNMLP(MLP, NoisyMLPHandler):
             init_fn=init_fn,
         )
 
-        IQNMLP.n_quantiles = configs.n_quantile_samples
+        self.n_quantiles = configs.n_quantile_samples
         self.quantile_embedding_dim = configs.quantile_embedding_dim
         self.input_size = configs.input_size
         self.output_size = configs.output_size
@@ -203,9 +203,8 @@ class IQNMLP(MLP, NoisyMLPHandler):
 
     def forward(self, state: torch.Tensor) -> torch.Tensor:
         """Forward method implementation."""
-
-        quantile_values, _ = self.forward_(state, IQNMLP.n_quantiles)
-        quantile_values = quantile_values.view(IQNMLP.n_quantiles, -1, self.output_size)
+        quantile_values, _ = self.forward_(state, self.n_quantiles)
+        quantile_values = quantile_values.view(self.n_quantiles, -1, self.output_size)
         q = torch.mean(quantile_values, dim=0)
 
         return q
