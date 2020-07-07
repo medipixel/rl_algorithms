@@ -23,8 +23,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--cfg-path",
         type=str,
-        default="./configs/pong_no_frameskip_v4/dqn.py",
+        default="./configs/pong_no_frameskip_v4/distillation_dqn.py",
         help="config path",
+    )
+    parser.add_argument(
+        "--buffer-path", type=str, default=None, help="buffer path",
     )
     parser.add_argument(
         "--test", dest="test", action="store_true", help="test mode (no training)"
