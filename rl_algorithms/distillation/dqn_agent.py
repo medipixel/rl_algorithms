@@ -13,7 +13,7 @@
          https://arxiv.org/pdf/1806.06923.pdf (IQN)
 """
 
-import pickle
+import os
 from typing import Tuple
 
 import numpy as np
@@ -35,17 +35,18 @@ class DistillationDQN(DQNAgent):
     # pylint: disable=attribute-defined-outside-init
     def _initialize(self):
         """Initialize non-common things."""
+        self.softmax_tau = 0.01
+        self.buffer_path = (
+            f"./distillation_buffer/{self.env_name}/"
+            + f"{self.log_cfg.agent}/{self.log_cfg.curr_time}/"
+        )
+        if self.args.buffer_path:
+            self.buffer_path = "./" + self.args.buffer_path
+        os.makedirs(self.buffer_path, exist_ok=True)
         # replay memory for a single step
         self.memory = DistillationBuffer(
-            self.hyper_params.buffer_size, self.hyper_params.batch_size,
+            self.hyper_params.batch_size, self.buffer_path,
         )
-
-        if self.args.distillation:
-            with open(self.hyper_params.buffer_path, "rb") as f:
-                self.memory = pickle.load(f)
-            print(f"[INFO] Load distillation buffer: {self.hyper_params.buffer_path}")
-
-        self.softmax_tau = 0.01
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""
@@ -87,7 +88,7 @@ class DistillationDQN(DQNAgent):
             score = 0
             step = 0
 
-            while not done:
+            while not done and self.memory.idx != self.hyper_params.buffer_size:
                 if self.args.render:
                     self.env.render()
 
@@ -100,22 +101,26 @@ class DistillationDQN(DQNAgent):
 
             print(
                 "[INFO] test %d\tstep: %d\ttotal score: %d\tbuffer_size: %d"
-                % (i_episode, step, score, len(self.memory))
+                % (i_episode, step, score, self.memory.idx)
             )
 
             if self.args.log:
                 wandb.log({"test score": score})
 
-            if len(self.memory) == self.hyper_params.buffer_size:
-                # Save buffer for distillation
-                print("[Info] Save replay buffer.")
-                with open(self.hyper_params.buffer_path, "wb") as f:
-                    pickle.dump(self.memory, f, protocol=4)
+            if self.memory.idx == self.hyper_params.buffer_size:
+                print("[INFO] Buffer saved completely. (%s)" % (self.buffer_path))
                 break
 
     def update_distillation(self) -> Tuple[torch.Tensor, ...]:
         """Update the student network."""
         states, q_values = self.memory.sample_for_diltillation()
+
+        states = states.float().to(device)
+        q_values = q_values.float().to(device)
+
+        if torch.cuda.is_available():
+            states = states.cuda(non_blocking=True)
+            q_values = q_values.cuda(non_blocking=True)
 
         pred_q = self.dqn(states)
         target = F.softmax(q_values / self.softmax_tau, dim=1)
@@ -133,12 +138,13 @@ class DistillationDQN(DQNAgent):
         if self.args.log:
             self.set_wandb()
 
-        iter_1 = len(self.memory) // self.hyper_params.batch_size
+        iter_1 = self.memory.buffer_size // self.hyper_params.batch_size
         train_steps = iter_1 * self.hyper_params.epochs
         print(
             f"[INFO] Total epochs: {self.hyper_params.epochs}\t Train steps: {train_steps}"
         )
         n_epoch = 0
+        self.memory.reset_dataloader()
         for steps in range(train_steps):
             loss = self.update_distillation()
 
@@ -152,5 +158,6 @@ class DistillationDQN(DQNAgent):
                 )
                 self.save_params(steps)
                 n_epoch += 1
+                self.memory.reset_dataloader()
 
         self.save_params(steps)
