@@ -149,7 +149,9 @@ class ApeX(Architecture):
         # NOTE: Logger logs the mean scores of each episode per update step
         if self.args.log:
             worker_logs = [f for f in futures if f is not None]
-            self.logger.write_worker_log.remote(worker_logs)
+            self.logger.write_worker_log.remote(
+                worker_logs, self.hyper_params.worker_update_interval
+            )
         print("Exiting training...")
 
     def test(self):
