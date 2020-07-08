@@ -23,7 +23,7 @@ import wandb
 
 from rl_algorithms.common.buffer.distillation_buffer import DistillationBuffer
 from rl_algorithms.dqn.agent import DQNAgent
-from rl_algorithms.registry import AGENTS
+from rl_algorithms.registry import AGENTS, build_learner
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -37,7 +37,7 @@ class DistillationDQN(DQNAgent):
         """Initialize non-common things."""
         self.softmax_tau = 0.01
         self.buffer_path = (
-            f"./distillation_buffer/{self.env_name}/"
+            f"./distillation_buffer/{self.log_cfg.env_name}/"
             + f"{self.log_cfg.agent}/{self.log_cfg.curr_time}/"
         )
         if self.args.buffer_path:
@@ -48,13 +48,15 @@ class DistillationDQN(DQNAgent):
             self.hyper_params.batch_size, self.buffer_path,
         )
 
+        self.learner = build_learner(self.learner_cfg)
+
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""
         self.curr_state = state
         # epsilon greedy policy
         # pylint: disable=comparison-with-callable
         state = self._preprocess_state(state)
-        q_values = self.dqn(state)
+        q_values = self.learner.dqn(state)
 
         if not self.args.test and self.epsilon > np.random.random():
             selected_action = np.array(self.env.action_space.sample())
@@ -122,14 +124,14 @@ class DistillationDQN(DQNAgent):
             states = states.cuda(non_blocking=True)
             q_values = q_values.cuda(non_blocking=True)
 
-        pred_q = self.dqn(states)
+        pred_q = self.learner.dqn(states)
         target = F.softmax(q_values / self.softmax_tau, dim=1)
         log_softmax_pred_q = F.log_softmax(pred_q, dim=1)
         loss = F.kl_div(log_softmax_pred_q, target, reduction="sum")
 
-        self.dqn_optim.zero_grad()
+        self.learner.dqn_optim.zero_grad()
         loss.backward()
-        self.dqn_optim.step()
+        self.learner.dqn_optim.step()
 
         return loss.item(), pred_q.mean().item()
 
@@ -156,8 +158,8 @@ class DistillationDQN(DQNAgent):
                     f"Training {n_epoch} epochs, {steps} steps.. "
                     + f"loss: {loss[0]}, avg_q_value: {loss[1]}"
                 )
-                self.save_params(steps)
+                self.learner.save_params(steps)
                 n_epoch += 1
                 self.memory.reset_dataloader()
 
-        self.save_params(steps)
+        self.learner.save_params(steps)

@@ -1,4 +1,4 @@
-"""Config for DQN on Pong-No_FrameSkip-v4.
+"""Config for DQN(IQN) on Pong-No_FrameSkip-v4.
 
 - Author: Kyunghwan Kim
 - Contact: kh.kim@medipixel.io
@@ -10,7 +10,7 @@ agent = dict(
     hyper_params=dict(
         gamma=0.99,
         tau=5e-3,
-        buffer_size=int(5000),  # distillation buffer size
+        buffer_size=int(100000),  # openai baselines: int(1e4)
         batch_size=64,  # openai baselines: 32
         update_starts_from=int(1e4),  # openai baselines: int(1e4)
         multiple_update=1,  # multiple learning updates
@@ -22,10 +22,10 @@ agent = dict(
         per_alpha=0.6,  # openai baselines: 0.6
         per_beta=0.4,
         per_eps=1e-6,
-        loss_type=dict(type="DQNLoss"),
+        loss_type=dict(type="IQNLoss"),
         # Epsilon Greedy
-        max_epsilon=1.0,
-        min_epsilon=0.01,  # openai baselines: 0.01
+        max_epsilon=0.0,
+        min_epsilon=0.0,  # openai baselines: 0.01
         epsilon_decay=1e-6,  # openai baselines: 1e-7 / 1e-1
         # grad_cam
         grad_cam_layer_list=[
@@ -33,28 +33,40 @@ agent = dict(
             "backbone.cnn.cnn_1.cnn",
             "backbone.cnn.cnn_2.cnn",
         ],
-        # Distillation
-        epochs=int(20),
+        # distillation
+        epochs=20,
     ),
-    backbone=dict(
-        type="CNN",
-        configs=dict(
-            input_sizes=[4, 32, 64],
-            output_sizes=[32, 64, 64],
-            kernel_sizes=[8, 4, 3],
-            strides=[4, 2, 1],
-            paddings=[1, 0, 0],
+    learner_cfg=dict(
+        type="DQNLearner",
+        backbone=dict(
+            type="CNN",
+            configs=dict(
+                input_sizes=[4, 32, 64],
+                output_sizes=[32, 64, 64],
+                kernel_sizes=[8, 4, 3],
+                strides=[4, 2, 1],
+                paddings=[1, 0, 0],
+            ),
         ),
-    ),
-    head=dict(
-        type="DuelingMLP",
-        configs=dict(
-            use_noisy_net=False, hidden_sizes=[512], output_activation=identity
+        head=dict(
+            type="IQNMLP",
+            configs=dict(
+                hidden_sizes=[512],
+                n_tau_samples=64,
+                n_tau_prime_samples=64,
+                n_quantile_samples=32,
+                quantile_embedding_dim=64,
+                kappa=1.0,
+                output_activation=identity,
+                # NoisyNet
+                use_noisy_net=False,
+                std_init=0.5,
+            ),
         ),
-    ),
-    optim_cfg=dict(
-        lr_dqn=1e-4,  # dueling: 6.25e-5, openai baselines: 1e-4
-        weight_decay=0.0,  # this makes saturation in cnn weights
-        adam_eps=1e-8,  # rainbow: 1.5e-4, openai baselines: 1e-8
+        optim_cfg=dict(
+            lr_dqn=1e-4,  # dueling: 6.25e-5, openai baselines: 1e-4
+            weight_decay=0.0,  # this makes saturation in cnn weights
+            adam_eps=1e-8,  # rainbow: 1.5e-4, openai baselines: 1e-8
+        ),
     ),
 )
