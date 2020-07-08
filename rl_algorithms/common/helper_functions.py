@@ -6,7 +6,7 @@
 """
 from collections import OrderedDict, deque
 import random
-from typing import Deque, List, Tuple
+from typing import Deque, Dict, List, Tuple
 
 import gym
 import numpy as np
@@ -100,7 +100,7 @@ def numpy2floattensor(arrays: Tuple[np.ndarray]) -> Tuple[np.ndarray]:
     return tuple(tensors)
 
 
-def state_dict2numpy(state_dict) -> List[np.ndarray]:
+def state_dict2numpy(state_dict) -> Dict[str, np.ndarray]:
     """Convert Pytorch state dict to list of numpy arrays."""
     np_state_dict = OrderedDict()
     for param in list(state_dict):
