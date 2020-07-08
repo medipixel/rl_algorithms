@@ -144,7 +144,7 @@ class DistributedLogger(ABC):
                 log_value["avg_score"] = avg_score
                 self.write_log(log_value)
 
-    def write_worker_log(self, worker_logs: List[dict]):
+    def write_worker_log(self, worker_logs: List[dict], worker_update_interval: int):
         """Log the mean scores of each episode per update step to wandb."""
         # NOTE: Worker plots are passed onto wandb.log as matplotlib.pyplot
         #       since wandb doesn't support logging multiple lines to single plot
@@ -166,15 +166,25 @@ class DistributedLogger(ABC):
                 worker_id = worker_id + 1
 
             # Plot mean scores
-            steps = worker_logs[0].keys()
+            logged_update_steps = list(
+                range(
+                    0,
+                    self.args.max_update_step + worker_update_interval,
+                    worker_update_interval,
+                )
+            )
+
             mean_scores = []
-            for step in steps:
-                each_scores = [worker_log[step] for worker_log in worker_logs]
-                mean_scores.append(np.mean(each_scores))
+            for step in logged_update_steps:
+                scores_for_step = []
+                for worker_log in worker_logs:
+                    if step in list(worker_log):
+                        scores_for_step.append(worker_log[step])
+                mean_scores.append(np.mean(scores_for_step))
 
             fig.add_trace(
                 go.Scatter(
-                    x=list(worker_logs[0].keys()),
+                    x=logged_update_steps,
                     y=mean_scores,
                     mode="lines+markers",
                     name="Mean scores",
