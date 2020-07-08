@@ -167,11 +167,7 @@ class DistributedLogger(ABC):
 
             # Plot mean scores
             logged_update_steps = list(
-                range(
-                    0,
-                    self.args.max_update_step + worker_update_interval,
-                    worker_update_interval,
-                )
+                range(0, self.args.max_update_step + 1, worker_update_interval)
             )
 
             mean_scores = []
