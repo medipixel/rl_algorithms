@@ -6,7 +6,7 @@
 
 import argparse
 from collections import OrderedDict
-from typing import Dict, List, Tuple
+from typing import Dict, Tuple
 
 import numpy as np
 import torch
@@ -117,6 +117,6 @@ class DQNWorker(DistributedWorker):
         new_priorities = loss_for_prior + self.hyper_params.per_eps
         return new_priorities
 
-    def synchronize(self, new_params: List[np.ndarray]):
+    def synchronize(self, new_state_dict: Dict[str, np.ndarray]):
         """Synchronize worker dqn with learner dqn."""
-        self._synchronize(self.dqn, new_params)
+        self._synchronize(self.dqn, new_state_dict)

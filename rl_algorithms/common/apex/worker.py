@@ -74,9 +74,9 @@ class ApeXWorkerWrapper(DistributedWorkerWrapper):
 
         if received:
             new_param_info = pa.deserialize(new_params_id)
-            update_step, new_params = new_param_info
+            update_step, new_state_dict = new_param_info
             self.update_step = update_step
-            self.worker.synchronize(new_params)
+            self.worker.synchronize(new_state_dict)
 
             # Add new entry for scores dict
             self.scores[self.update_step] = []

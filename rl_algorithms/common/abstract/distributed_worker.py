@@ -17,6 +17,7 @@ import torch
 from rl_algorithms.common.env.atari_wrappers import atari_env_generator
 import rl_algorithms.common.env.utils as env_utils
 from rl_algorithms.common.helper_functions import set_random_seed
+from rl_algorithms.common.networks.brain import Brain
 from rl_algorithms.utils.config import ConfigDict
 
 
@@ -32,15 +33,20 @@ class BaseDistributedWorker(ABC):
         pass
 
     @abstractmethod
-    def synchronize(self, new_params: list):
+    def synchronize(self, param_name_list: List[str], new_params: list):
         pass
 
     # pylint: disable=no-self-use
-    def _synchronize(self, network, new_params: List[np.ndarray]):
+    def _synchronize(self, network: Brain, new_state_dict: Dict[str, np.ndarray]):
         """Copy parameters from numpy arrays."""
-        for param, new_param in zip(network.parameters(), new_params):
-            new_param = torch.FloatTensor(new_param).to(self.device)
-            param.data.copy_(new_param)
+        param_name_list = list(new_state_dict.keys())
+        for worker_named_param in network.named_parameters():
+            worker_param_name = worker_named_param[0]
+            if worker_param_name in param_name_list:
+                new_param = torch.FloatTensor(new_state_dict[worker_param_name]).to(
+                    self.device
+                )
+                worker_named_param[1].data.copy_(new_param)
 
 
 class DistributedWorker(BaseDistributedWorker):
@@ -108,7 +114,7 @@ class DistributedWorker(BaseDistributedWorker):
         pass
 
     @abstractmethod
-    def synchronize(self, new_params: list):
+    def synchronize(self, new_params_list: List[str], new_params: List[np.ndarray]):
         pass
 
     @staticmethod
@@ -140,9 +146,9 @@ class DistributedWorkerWrapper(BaseDistributedWorker):
         """Take an action and return the response of the env."""
         return self.worker.step(action)
 
-    def synchronize(self, new_params: list):
+    def synchronize(self, new_state_dict: Dict[str, np.ndarray]):
         """Synchronize worker brain with learner brain."""
-        self.worker.synchronize(new_params)
+        self.worker.synchronize(new_state_dict)
 
     @abstractmethod
     def collect_data(self) -> Dict[str, np.ndarray]:
