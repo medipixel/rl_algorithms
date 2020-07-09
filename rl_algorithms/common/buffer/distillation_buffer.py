@@ -16,23 +16,24 @@ class DistillationBuffer:
     """Fixed-size buffer to store experience tuples.
 
     Attributes:
-        obs_buf (np.ndarray): observations
-        q_value_buf (np.ndarray): q_values for distillation
-        buffer_size (int): size of buffers
-        batch_size (int): batch size for training
-        length (int): amount of memory filled
-        idx (int): memory index to add the next incoming transition
+        batch_size (int): size of batch size from distillation buffer for training
+        buffer_path (str): distillation buffer path
+        curr_time (str): program's start time to distinguish between teacher agents
+        idx (int): index of transition data
+        buffer_size (int): distillation buffer size
+        dataloader (DataLoader): pytorch library for random batch data sampling
 
     """
 
     def __init__(
-        self, batch_size: int, buffer_path, curr_time,
+        self, batch_size: int, buffer_path: str, curr_time: str,
     ):
         """Initialize a DistillationBuffer object.
 
         Args:
-            buffer_size (int): size of replay buffer for experience
-            batch_size (int): size of a batched sampled from replay buffer for training
+            batch_size (int): size of a batched sampled from distillation buffer for training
+            buffer_path (str): distillation buffer path
+            curr_time (str): program's start time to distinguish between teacher agents
 
         """
         self.batch_size = batch_size
@@ -43,9 +44,7 @@ class DistillationBuffer:
         self.dataloader = None
 
     def add(self, transition: Tuple[np.ndarray, np.ndarray]) -> Tuple[Any, ...]:
-        """Add a new experience to memory.
-        If the buffer is empty, it is respectively initialized by size of arguments.
-        """
+        """Add transition to distillation buffer"""
         file_path = os.path.join(
             self.buffer_path,
             self.curr_time + "_transition_step_" + str(self.idx) + ".pkl",
@@ -55,6 +54,7 @@ class DistillationBuffer:
         self.idx += 1
 
     def reset_dataloader(self):
+        """Initialize and reset DataLoader class"""
         dataset = DistillationDataset(self.buffer_path, self.buffer_size)
         self.dataloader = iter(
             DataLoader(dataset, batch_size=self.batch_size, shuffle=True, num_workers=4)
@@ -68,18 +68,34 @@ class DistillationBuffer:
 
 
 class DistillationDataset(Dataset):
-    def __init__(self, buffer_path, buffer_size):
+    """pytorch Dataset class for random batch data sampling
+
+    Attributes:
+        buffer_path (str): distillation buffer path
+        buffer_size (int): distillation buffer size
+
+    """
+
+    def __init__(self, buffer_path: str, buffer_size: int):
+        """Initialize a DistillationBuffer object.
+
+        Args:
+            buffer_size (int): distillation buffer size
+            buffer_path (str): distillation buffer path
+            file_name_list (list): transition's file name list in distillation buffer path
+
+        """
         self.buffer_path = buffer_path
-        self.buffer_length = buffer_size
+        self.buffer_size = buffer_size
+        self.file_name_list = os.listdir(self.buffer_path)
 
     def __len__(self):
         "Denotes the total number of samples"
-        return self.buffer_length
+        return self.buffer_size
 
     def __getitem__(self, index):
         "Generates one sample of data"
-        file_name = os.listdir(self.buffer_path)[index]
-        file_path = os.path.join(self.buffer_path, file_name)
+        file_path = os.path.join(self.buffer_path, self.file_name_list[index])
         with open(file_path, "rb") as f:
             transition = pickle.load(f)
         return transition
