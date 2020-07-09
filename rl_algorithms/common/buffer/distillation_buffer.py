@@ -26,7 +26,7 @@ class DistillationBuffer:
     """
 
     def __init__(
-        self, batch_size: int, buffer_path,
+        self, batch_size: int, buffer_path, curr_time,
     ):
         """Initialize a DistillationBuffer object.
 
@@ -39,20 +39,23 @@ class DistillationBuffer:
         self.buffer_path = buffer_path
         self.idx = 0
         self.buffer_size = len(next(os.walk(self.buffer_path))[2])
-
+        self.curr_time = curr_time
         self.dataloader = None
 
     def add(self, transition: Tuple[np.ndarray, np.ndarray]) -> Tuple[Any, ...]:
         """Add a new experience to memory.
         If the buffer is empty, it is respectively initialized by size of arguments.
         """
-        file_path = self.buffer_path + "transition_step_" + str(self.idx) + ".pkl"
+        file_path = os.path.join(
+            self.buffer_path,
+            self.curr_time + "_transition_step_" + str(self.idx) + ".pkl",
+        )
         with open(file_path, "wb") as f:
             pickle.dump(transition, f, protocol=pickle.HIGHEST_PROTOCOL)
         self.idx += 1
 
     def reset_dataloader(self):
-        dataset = DistillationDataset(self.buffer_path)
+        dataset = DistillationDataset(self.buffer_path, self.buffer_size)
         self.dataloader = iter(
             DataLoader(dataset, batch_size=self.batch_size, shuffle=True, num_workers=4)
         )
@@ -65,9 +68,9 @@ class DistillationBuffer:
 
 
 class DistillationDataset(Dataset):
-    def __init__(self, buffer_path):
+    def __init__(self, buffer_path, buffer_size):
         self.buffer_path = buffer_path
-        self.buffer_length = len(next(os.walk(self.buffer_path))[2])
+        self.buffer_length = buffer_size
 
     def __len__(self):
         "Denotes the total number of samples"
@@ -75,7 +78,8 @@ class DistillationDataset(Dataset):
 
     def __getitem__(self, index):
         "Generates one sample of data"
-        file_path = self.buffer_path + "transition_step_" + str(index) + ".pkl"
+        file_name = os.listdir(self.buffer_path)[index]
+        file_path = os.path.join(self.buffer_path, file_name)
         with open(file_path, "rb") as f:
             transition = pickle.load(f)
         return transition

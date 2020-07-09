@@ -11,7 +11,7 @@ agent = dict(
         gamma=0.99,
         tau=5e-3,
         buffer_size=int(100000),  # openai baselines: int(1e4)
-        batch_size=64,  # openai baselines: 32
+        batch_size=32,  # openai baselines: 32
         update_starts_from=int(1e4),  # openai baselines: int(1e4)
         multiple_update=1,  # multiple learning updates
         train_freq=4,  # in openai baselines, train_freq = 4
@@ -59,7 +59,7 @@ agent = dict(
                 kappa=1.0,
                 output_activation=identity,
                 # NoisyNet
-                use_noisy_net=False,
+                use_noisy_net=True,
                 std_init=0.5,
             ),
         ),
