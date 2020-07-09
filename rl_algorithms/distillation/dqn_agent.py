@@ -36,6 +36,8 @@ class DistillationDQN(DQNAgent):
     def _initialize(self):
         """Initialize non-common things."""
         self.softmax_tau = 0.01
+        self.learner = build_learner(self.learner_cfg)
+
         self.buffer_path = (
             f"./distillation_buffer/{self.log_cfg.env_name}/"
             + f"{self.log_cfg.agent}/{self.log_cfg.curr_time}/"
@@ -43,12 +45,10 @@ class DistillationDQN(DQNAgent):
         if self.args.buffer_path:
             self.buffer_path = "./" + self.args.buffer_path
         os.makedirs(self.buffer_path, exist_ok=True)
-        # replay memory for a single step
-        self.memory = DistillationBuffer(
-            self.hyper_params.batch_size, self.buffer_path,
-        )
 
-        self.learner = build_learner(self.learner_cfg)
+        self.memory = DistillationBuffer(
+            self.hyper_params.batch_size, self.buffer_path, self.log_cfg.curr_time,
+        )
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""
