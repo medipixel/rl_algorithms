@@ -57,7 +57,7 @@ agent = dict(
                 kappa=1.0,
                 output_activation=identity,
                 # NoisyNet
-                use_noisy_net=False,
+                use_noisy_net=True,
                 std_init=0.5,
             ),
         ),

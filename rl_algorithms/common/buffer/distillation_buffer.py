@@ -13,13 +13,17 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 class DistillationBuffer:
-    """Fixed-size buffer to store experience tuples.
+    """Class for managing reading and writing of distillation data.
+       Distillation data is stored in the buffer_path location on the actual hard disk.
+       The data collected by the teacher is stored as individual pickle files.
+       It is also read as batch through the pytorch DataLoader class.
+    
 
     Attributes:
         batch_size (int): size of batch size from distillation buffer for training
         buffer_path (str): distillation buffer path
         curr_time (str): program's start time to distinguish between teacher agents
-        idx (int): index of transition data
+        idx (int): index of data
         buffer_size (int): distillation buffer size
         dataloader (DataLoader): pytorch library for random batch data sampling
 
@@ -43,32 +47,34 @@ class DistillationBuffer:
         self.curr_time = curr_time
         self.dataloader = None
 
-    def add(self, transition: Tuple[np.ndarray, np.ndarray]) -> Tuple[Any, ...]:
-        """Add transition to distillation buffer"""
+    def add(self, data: Tuple[np.ndarray, np.ndarray]) -> Tuple[Any, ...]:
+        """Store one dataset(state, Q values) collected by teacher to buffer_path hard disk."""
         file_path = os.path.join(
             self.buffer_path,
             self.curr_time + "_transition_step_" + str(self.idx) + ".pkl",
         )
         with open(file_path, "wb") as f:
-            pickle.dump(transition, f, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
         self.idx += 1
 
     def reset_dataloader(self):
-        """Initialize and reset DataLoader class"""
+        """Initialize and reset DataLoader class.
+           DataLoader class must be reset for every epoch.
+        """
         dataset = DistillationDataset(self.buffer_path, self.buffer_size)
         self.dataloader = iter(
             DataLoader(dataset, batch_size=self.batch_size, shuffle=True, num_workers=4)
         )
 
     def sample_for_diltillation(self):
-        """Sample a batch of state and Q-value for policy distillation."""
+        """Sample a batch of state and Q-value for student's learning."""
         assert self.buffer_size >= self.batch_size
 
         return next(self.dataloader)
 
 
 class DistillationDataset(Dataset):
-    """pytorch Dataset class for random batch data sampling
+    """pytorch Dataset class for random batch data sampling.
 
     Attributes:
         buffer_path (str): distillation buffer path
@@ -90,11 +96,11 @@ class DistillationDataset(Dataset):
         self.file_name_list = os.listdir(self.buffer_path)
 
     def __len__(self):
-        "Denotes the total number of samples"
+        """Denotes the total number of samples."""
         return self.buffer_size
 
     def __getitem__(self, index):
-        "Generates one sample of data"
+        """Generates one sample of data."""
         file_path = os.path.join(self.buffer_path, self.file_name_list[index])
         with open(file_path, "rb") as f:
             transition = pickle.load(f)

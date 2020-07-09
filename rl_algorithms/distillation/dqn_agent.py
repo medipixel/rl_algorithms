@@ -71,8 +71,8 @@ class DistillationDQN(DQNAgent):
         """Take an action and return the response of the env."""
         next_state, reward, done, info = self.env.step(action)
 
-        transition = (self.curr_state, q_values)
-        self.memory.add(transition)
+        data = (self.curr_state, q_values)
+        self.memory.add(data)
 
         return next_state, reward, done, info
 
