@@ -17,7 +17,6 @@ class DistillationBuffer:
        Distillation data is stored in the buffer_path location on the actual hard disk.
        The data collected by the teacher is stored as individual pickle files.
        It is also read as batch through the pytorch DataLoader class.
-    
 
     Attributes:
         batch_size (int): size of batch size from distillation buffer for training
