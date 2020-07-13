@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 import argparse
 import os
 import random
-from typing import Deque, Dict, List, Tuple
+from typing import Deque, Dict, Tuple
 
 import gym
 import numpy as np
@@ -33,7 +33,7 @@ class BaseDistributedWorker(ABC):
         pass
 
     @abstractmethod
-    def synchronize(self, param_name_list: List[str], new_params: list):
+    def synchronize(self, new_state_dict: Dict[str, np.ndarray]):
         pass
 
     # pylint: disable=no-self-use
@@ -114,7 +114,7 @@ class DistributedWorker(BaseDistributedWorker):
         pass
 
     @abstractmethod
-    def synchronize(self, new_params_list: List[str], new_params: List[np.ndarray]):
+    def synchronize(self, new_state_dict: Dict[str, np.ndarray]):
         pass
 
     @staticmethod
