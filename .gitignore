@@ -13,4 +13,4 @@ dist
 *.egg-info
 
 # data
-data
+data/distillation_buffer

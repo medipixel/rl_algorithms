@@ -8,7 +8,7 @@ integration-test:
 
 format:
 	black . --exclude checkpoint wandb
-	isort -y --skip checkpoint --skip wandb --skip data
+	isort -y --skip checkpoint --skip wandb
 
 docker-push:
 	docker build -t medipixel/rl_algorithms .
