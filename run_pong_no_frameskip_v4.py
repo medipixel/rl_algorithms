@@ -27,9 +27,6 @@ def parse_args() -> argparse.Namespace:
         help="config path",
     )
     parser.add_argument(
-        "--buffer-path", type=str, default=None, help="buffer path",
-    )
-    parser.add_argument(
         "--test", dest="test", action="store_true", help="test mode (no training)"
     )
     parser.add_argument(
@@ -37,12 +34,6 @@ def parse_args() -> argparse.Namespace:
         dest="grad_cam",
         action="store_true",
         help="test mode with viewing Grad-CAM",
-    )
-    parser.add_argument(
-        "--distillation",
-        dest="distillation",
-        action="store_true",
-        help="distillation mode",
     )
     parser.add_argument(
         "--load-from",
@@ -82,7 +73,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--save-period", type=int, default=20, help="save model period")
     parser.add_argument(
-        "--episode-num", type=int, default=500, help="total episode num"
+        "--episode-num", type=int, default=5000, help="total episode num"
     )
     parser.add_argument(
         "--max-update-step", type=int, default=100000, help="max update step"
@@ -105,6 +96,19 @@ def parse_args() -> argparse.Namespace:
         action="store_false",
         help="turn off framestack",
     )
+    parser.add_argument(
+        "--distillation",
+        dest="distillation",
+        action="store_true",
+        help="distillation mode",
+    )
+    parser.add_argument(
+        "--distillation-buffer-path",
+        type=str,
+        default=None,
+        help="distillation buffer storage directory",
+    )
+
     return parser.parse_args()
 
 
