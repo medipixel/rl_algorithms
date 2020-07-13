@@ -9,7 +9,7 @@ import argparse
 from collections import deque
 import os
 import shutil
-from typing import List
+from typing import Dict, List
 
 import gym
 import numpy as np
@@ -240,8 +240,13 @@ class DistributedLogger(ABC):
 
         return np.mean(scores)
 
-    def synchronize(self, new_params: List[np.ndarray]):
-        """Copy parameters from numpy arrays"""
-        for param, new_param in zip(self.brain.parameters(), new_params):
-            new_param = torch.FloatTensor(new_param).to(self.device)
-            param.data.copy_(new_param)
+    def synchronize(self, state_dict: Dict[str, np.ndarray]):
+        """Copy parameters from numpy arrays."""
+        param_name_list = list(state_dict.keys())
+        for logger_named_param in self.brain.named_parameters():
+            logger_param_name = logger_named_param[0]
+            if logger_param_name in param_name_list:
+                new_param = torch.FloatTensor(state_dict[logger_param_name]).to(
+                    self.device
+                )
+                logger_named_param[1].data.copy_(new_param)

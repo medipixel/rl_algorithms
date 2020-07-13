@@ -4,9 +4,9 @@
 - Author: Curt Park
 - Contact: curt.park@medipixel.io
 """
-from collections import deque
+from collections import OrderedDict, deque
 import random
-from typing import Deque, List, Tuple
+from typing import Deque, Dict, List, Tuple
 
 import gym
 import numpy as np
@@ -100,12 +100,12 @@ def numpy2floattensor(arrays: Tuple[np.ndarray]) -> Tuple[np.ndarray]:
     return tuple(tensors)
 
 
-def state_dict2numpy(state_dict) -> List[np.ndarray]:
+def state_dict2numpy(state_dict) -> Dict[str, np.ndarray]:
     """Convert Pytorch state dict to list of numpy arrays."""
-    params = []
+    np_state_dict = OrderedDict()
     for param in list(state_dict):
-        params.append(state_dict[param].numpy())
-    return params
+        np_state_dict[param] = state_dict[param].numpy()
+    return np_state_dict
 
 
 def smoothen_graph(scalars: List[float], weight: float = 0.6) -> List[float]:
