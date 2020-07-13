@@ -10,8 +10,6 @@ agent = dict(
     hyper_params=dict(
         gamma=0.99,
         tau=5e-3,
-        buffer_size=int(1e5),  # distillation buffer size
-        batch_size=32,  # distillation batch size
         update_starts_from=int(1e4),  # openai baselines: int(1e4)
         multiple_update=1,  # multiple learning updates
         train_freq=4,  # in openai baselines, train_freq = 4
@@ -27,14 +25,16 @@ agent = dict(
         max_epsilon=0.0,
         min_epsilon=0.0,  # openai baselines: 0.01
         epsilon_decay=1e-6,  # openai baselines: 1e-7 / 1e-1
-        # grad_cam
+        # Grad_cam
         grad_cam_layer_list=[
             "backbone.cnn.cnn_0.cnn",
             "backbone.cnn.cnn_1.cnn",
             "backbone.cnn.cnn_2.cnn",
         ],
-        # distillation
-        epochs=20,
+        # Distillation
+        epochs=20,  # epoch of student training
+        buffer_size=int(50000),  # distillation buffer size
+        batch_size=32,  # distillation batch size
     ),
     learner_cfg=dict(
         type="DQNLearner",

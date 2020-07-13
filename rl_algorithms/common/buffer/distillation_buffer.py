@@ -73,7 +73,7 @@ class DistillationBuffer:
 
 
 class DistillationDataset(Dataset):
-    """pytorch Dataset class for random batch data sampling.
+    """Pytorch Dataset class for random batch data sampling.
 
     Attributes:
         buffer_path (str): distillation buffer path

@@ -13,5 +13,4 @@ dist
 *.egg-info
 
 # data
-data/distillation_buffer*.pkl
-distillation_buffer
+data

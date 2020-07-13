@@ -1,16 +1,10 @@
 # -*- coding: utf-8 -*-
-"""DQN agent for episodic tasks in OpenAI Gym.
+"""DQN distillation class for collect teacher's data and train student.
 
-- Author: Kyunghwan Kim
-- Contact: kh.kim@medipixel.io
+- Author: Kyunghwan Kim, Minseop Kim
+- Contact: kh.kim@medipixel.io, minseop.kim@medipixel.io
 - Paper: https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf (DQN)
-         https://arxiv.org/pdf/1509.06461.pdf (Double DQN)
-         https://arxiv.org/pdf/1511.05952.pdf (PER)
-         https://arxiv.org/pdf/1511.06581.pdf (Dueling)
-         https://arxiv.org/pdf/1706.10295.pdf (NoisyNet)
-         https://arxiv.org/pdf/1707.06887.pdf (C51)
-         https://arxiv.org/pdf/1710.02298.pdf (Rainbow)
-         https://arxiv.org/pdf/1806.06923.pdf (IQN)
+         https://arxiv.org/pdf/1511.06295.pdf (Policy Distillation)
 """
 
 import os
@@ -30,7 +24,10 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 @AGENTS.register_module
 class DistillationDQN(DQNAgent):
-    """DQN for policy distillation."""
+    """DQN for policy distillation.
+       Use _test function to collect teacher's distillation data.
+       Use train_distillation function to train student model.
+    """
 
     # pylint: disable=attribute-defined-outside-init
     def _initialize(self):
@@ -39,7 +36,7 @@ class DistillationDQN(DQNAgent):
         self.learner = build_learner(self.learner_cfg)
 
         self.buffer_path = (
-            f"./distillation_buffer/{self.log_cfg.env_name}/"
+            f"./data/distillation_buffer/{self.log_cfg.env_name}/"
             + f"{self.log_cfg.agent}/{self.log_cfg.curr_time}/"
         )
         if self.args.buffer_path:
@@ -68,7 +65,7 @@ class DistillationDQN(DQNAgent):
     def step(
         self, action: np.ndarray, q_values: np.ndarray
     ) -> Tuple[np.ndarray, np.float64, bool, dict]:
-        """Take an action and return the response of the env."""
+        """Take an action and store distillation data to buffer storage."""
         next_state, reward, done, info = self.env.step(action)
 
         data = (self.curr_state, q_values)
@@ -77,7 +74,7 @@ class DistillationDQN(DQNAgent):
         return next_state, reward, done, info
 
     def _test(self, interim_test: bool = False):
-        """Common test routine."""
+        """Test teacher and collect distillation data."""
 
         if interim_test:
             test_num = self.args.interim_test_num
@@ -114,7 +111,7 @@ class DistillationDQN(DQNAgent):
                 break
 
     def update_distillation(self) -> Tuple[torch.Tensor, ...]:
-        """Update the student network."""
+        """Make relaxed softmax target and KL-Div loss and updates student model's params."""
         states, q_values = self.memory.sample_for_diltillation()
 
         states = states.float().to(device)
@@ -136,7 +133,8 @@ class DistillationDQN(DQNAgent):
         return loss.item(), pred_q.mean().item()
 
     def train_distillation(self):
-        """Train the model."""
+        """Train the student model from teacher's data."""
+        assert self.memory.buffer_size >= self.hyper_params.batch_size
         if self.args.log:
             self.set_wandb()
 

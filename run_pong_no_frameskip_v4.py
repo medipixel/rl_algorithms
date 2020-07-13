@@ -23,7 +23,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--cfg-path",
         type=str,
-        default="./configs/pong_no_frameskip_v4/distillation_dqn.py",
+        default="./configs/pong_no_frameskip_v4/dqn.py",
         help="config path",
     )
     parser.add_argument(
@@ -132,7 +132,7 @@ def main():
         cfg = common_utils.set_cfg_for_intergration_test(cfg)
 
     cfg.agent.env_info = dict(
-        name="PongNoFrameskip-v4",
+        name=env_name,
         observation_space=env.observation_space,
         action_space=env.action_space,
         is_discrete=True,

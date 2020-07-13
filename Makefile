@@ -1,14 +1,14 @@
 test:
 	black . --check
 	isort -y --check-only --skip checkpoint --skip wandb
-	env PYTHONPATH=. pytest --pylint --flake8 --cov=tests --ignore=checkpoint --ignore=distillation_buffer --ignore=wandb --ignore tests/integration
+	env PYTHONPATH=. pytest --pylint --flake8 --cov=tests --ignore=checkpoint --ignore=data --ignore=wandb --ignore tests/integration
 
 integration-test:
 	env PYTHONPATH=. pytest tests/integration --cov=tests
 
 format:
 	black . --exclude checkpoint wandb
-	isort -y --skip checkpoint --skip wandb --skip distillation_buffer
+	isort -y --skip checkpoint --skip wandb --skip data
 
 docker-push:
 	docker build -t medipixel/rl_algorithms .
