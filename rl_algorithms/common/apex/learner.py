@@ -4,7 +4,7 @@
 - Contact: chris.yoon@medipixel.io
 """
 
-from typing import List
+from typing import Dict, List
 
 import numpy as np
 import pyarrow as pa
@@ -73,7 +73,7 @@ class ApeXLearnerWrapper(DistributedLearnerWrapper):
         new_priors_id = pa.serialize(new_priors).to_buffer()
         self.rep_socket.send(new_priors_id)
 
-    def publish_params(self, update_step: int, np_state_dict: List[np.ndarray]):
+    def publish_params(self, update_step: int, np_state_dict: Dict[str, np.ndarray]):
         """Broadcast updated params to all workers."""
         param_info = [update_step, np_state_dict]
         new_params_id = pa.serialize(param_info).to_buffer()
