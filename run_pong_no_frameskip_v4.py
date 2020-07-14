@@ -97,12 +97,6 @@ def parse_args() -> argparse.Namespace:
         help="turn off framestack",
     )
     parser.add_argument(
-        "--distillation",
-        dest="distillation",
-        action="store_true",
-        help="distillation mode",
-    )
-    parser.add_argument(
         "--distillation-buffer-path",
         type=str,
         default=None,
@@ -147,10 +141,8 @@ def main():
 
     agent = build_agent(cfg.agent, build_args)
 
-    if not args.test and not args.distillation:
+    if not args.test:
         agent.train()
-    elif args.distillation:
-        agent.train_distillation()
     elif args.test and args.grad_cam:
         agent.test_with_gradcam()
     else:

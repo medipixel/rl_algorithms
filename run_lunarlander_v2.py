@@ -98,13 +98,7 @@ def parse_args() -> argparse.Namespace:
         help="indicate integration test",
     )
     parser.add_argument(
-        "--distillation",
-        dest="distillation",
-        action="store_true",
-        help="distillation mode",
-    )
-    parser.add_argument(
-        "--buffer-path",
+        "--distillation-buffer-path",
         type=str,
         default=None,
         help="distillation buffer storage directory",
@@ -146,12 +140,10 @@ def main():
     build_args = dict(args=args, env=env)
     agent = build_agent(cfg.agent, build_args)
 
-    if args.test:
-        agent.test()
-    elif args.distillation:
-        agent.train_distillation()
-    else:
+    if not args.test:
         agent.train()
+    else:
+        agent.test()
 
 
 if __name__ == "__main__":

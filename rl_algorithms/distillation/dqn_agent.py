@@ -39,8 +39,8 @@ class DistillationDQN(DQNAgent):
             f"./data/distillation_buffer/{self.log_cfg.env_name}/"
             + f"{self.log_cfg.agent}/{self.log_cfg.curr_time}/"
         )
-        if self.args.buffer_path:
-            self.buffer_path = "./" + self.args.buffer_path
+        if self.args.distillation_buffer_path:
+            self.buffer_path = "./" + self.args.distillation_buffer_path
         os.makedirs(self.buffer_path, exist_ok=True)
 
         self.memory = DistillationBuffer(
@@ -132,7 +132,7 @@ class DistillationDQN(DQNAgent):
 
         return loss.item(), pred_q.mean().item()
 
-    def train_distillation(self):
+    def train(self):
         """Train the student model from teacher's data."""
         assert self.memory.buffer_size >= self.hyper_params.batch_size
         if self.args.log:

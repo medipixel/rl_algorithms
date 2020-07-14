@@ -259,7 +259,7 @@ When you do this, the model structure of **distillation config file** should be 
 
 Second, you can train the student model with the following command:
 ```
-python run_env_name.py --distillation --distillation-buffer-path <path-where-data-is-stored> --cfg-path <distillation-config-path>
+python run_env_name.py --distillation-buffer-path <path-where-data-is-stored> --cfg-path <distillation-config-path>
 ```
 You can set `epoch` and `batch_size` of the student learning through `epochs` and `batch_size` variables in the distillation config file. The checkpoint file of the student will be saved in `./checkpoint/env_name/DistillationDQN/`.
 
