@@ -147,14 +147,14 @@ def main():
 
     agent = build_agent(cfg.agent, build_args)
 
-    if args.test:
-        agent.test()
-    elif args.test and args.grad_cam:
-        agent.test_with_gradcam()
+    if not args.test and not args.distillation:
+        agent.train()
     elif args.distillation:
         agent.train_distillation()
+    elif args.test and args.grad_cam:
+        agent.test_with_gradcam()
     else:
-        agent.train()
+        agent.test()
 
 
 if __name__ == "__main__":
