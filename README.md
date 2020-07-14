@@ -249,7 +249,7 @@ It can be only used the agent that uses convolutional layers like **DQN for Pong
 <img src="https://user-images.githubusercontent.com/17582508/79204132-02b75a00-7e77-11ea-9c78-ab543055bd4f.gif" width="400" height="400" align="center"/>
 
 #### Using policy distillation
-You can use policy distillation if you have checkpoints of a learned agent,
+You can use policy distillation if you have checkpoints of a learned agent.
 
 First, collect the data in the desired directory(`distillation-buffer-path`) with the learned teacher agent:
 ```
@@ -280,7 +280,9 @@ For more details, read [W&B tutorial](https://docs.wandb.com/docs/started.html).
 
 ## Class Diagram
 Class diagram at [#135](https://github.com/medipixel/rl_algorithms/pull/135).
+
 ❗This won't be frequently updated.
+
 ![RL_Algorithms_ClassDiagram](https://user-images.githubusercontent.com/16010242/55934443-812d5a80-5c6b-11e9-9b31-fa8214965a55.png)
 
 ## References
