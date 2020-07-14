@@ -68,7 +68,7 @@ class DQNLogger(DistributedLogger):
                 {
                     "test score": log_value["avg_score"],
                     "dqn loss": log_value["step_info"][0],
-                    "avg q value": log_value["step_info"][1],
+                    "avg q values": log_value["step_info"][1],
                 },
                 step=log_value["update_step"],
             )

@@ -65,6 +65,7 @@ This project follows the [all-contributors](https://github.com/all-contributors/
 9. Rainbow IQN (with [ResNet](https://github.com/medipixel/rl_algorithms/blob/master/rl_algorithms/common/networks/backbones/resnet.py))
 10. [Recurrent Replay DQN (R2D1)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/recurrent)
 11. [Distributed Pioritized Experience Replay (Ape-X)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/common/distributed)
+12. [Policy Distillation](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/distillation)
 
 ## Performance
 
@@ -247,6 +248,27 @@ It can be only used the agent that uses convolutional layers like **DQN for Pong
 
 <img src="https://user-images.githubusercontent.com/17582508/79204132-02b75a00-7e77-11ea-9c78-ab543055bd4f.gif" width="400" height="400" align="center"/>
 
+#### Using policy distillation
+You can use policy distillation if you have checkpoints of a learned agent.
+
+First, collect the data in the desired directory(`distillation-buffer-path`) with the learned teacher agent:
+```
+python run_env_name.py --test --load-from <teacher-checkpoint-path> --distillation-buffer-path <path-to-store-data> --cfg-path <distillation-config-path>
+```
+When you do this, the model structure of **distillation config file** should be the same as the teacher. You can set the number of data to be stored by the `buffer_size` variable in the distillation config file.
+
+Second, you can train the student model with the following command:
+```
+python run_env_name.py --distillation-buffer-path <path-where-data-is-stored> --cfg-path <distillation-config-path>
+```
+You can set `epoch` and `batch_size` of the student learning through `epochs` and `batch_size` variables in the distillation config file. The checkpoint file of the student will be saved in `./checkpoint/env_name/DistillationDQN/`.
+
+Finally, You can test performance in the same way as **the original agent** using the checkpoint file of the student:
+```
+python run_env_name.py --test --load-from <student-checkpoint-path> --cfg-path <config-path>
+```
+You **must use the original agent config file** with the same model structure as the student, not the distillation config file. (e.g. `distillation_dqn.py` -> `dqn.py`)
+
 #### W&B for logging
 We use [W&B](https://www.wandb.com/) for logging of network parameters and others. For logging, please follow the steps below after requirement installation:
 
@@ -258,7 +280,9 @@ For more details, read [W&B tutorial](https://docs.wandb.com/docs/started.html).
 
 ## Class Diagram
 Class diagram at [#135](https://github.com/medipixel/rl_algorithms/pull/135).
+
 ❗This won't be frequently updated.
+
 ![RL_Algorithms_ClassDiagram](https://user-images.githubusercontent.com/16010242/55934443-812d5a80-5c6b-11e9-9b31-fa8214965a55.png)
 
 ## References

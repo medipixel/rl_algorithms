@@ -17,7 +17,7 @@ def check_run_env(config_root: str, run_file: str):
     configs = os.listdir(config_root)
     for cfg in configs:
         # except such as __init__, __pycache__
-        if "__" in cfg or "apex" in cfg:
+        if "__" in cfg or "apex" in cfg or "distillation" in cfg:
             continue
 
         cmd = (

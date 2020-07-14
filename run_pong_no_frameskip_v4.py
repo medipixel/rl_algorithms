@@ -73,7 +73,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--save-period", type=int, default=20, help="save model period")
     parser.add_argument(
-        "--episode-num", type=int, default=500, help="total episode num"
+        "--episode-num", type=int, default=5000, help="total episode num"
     )
     parser.add_argument(
         "--max-update-step", type=int, default=100000, help="max update step"
@@ -96,6 +96,13 @@ def parse_args() -> argparse.Namespace:
         action="store_false",
         help="turn off framestack",
     )
+    parser.add_argument(
+        "--distillation-buffer-path",
+        type=str,
+        default=None,
+        help="distillation buffer storage directory",
+    )
+
     return parser.parse_args()
 
 
@@ -123,7 +130,7 @@ def main():
         cfg = common_utils.set_cfg_for_intergration_test(cfg)
 
     cfg.agent.env_info = dict(
-        name="PongNoFrameskip-v4",
+        name=env_name,
         observation_space=env.observation_space,
         action_space=env.action_space,
         is_discrete=True,

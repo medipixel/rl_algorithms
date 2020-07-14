@@ -71,7 +71,7 @@ def parse_args() -> argparse.Namespace:
         "--save-period", type=int, default=100, help="save model period"
     )
     parser.add_argument(
-        "--episode-num", type=int, default=1500, help="total episode num"
+        "--episode-num", type=int, default=5000, help="total episode num"
     )
     parser.add_argument(
         "--max-update-step", type=int, default=100000, help="max update step"
@@ -96,6 +96,12 @@ def parse_args() -> argparse.Namespace:
         dest="integration_test",
         action="store_true",
         help="indicate integration test",
+    )
+    parser.add_argument(
+        "--distillation-buffer-path",
+        type=str,
+        default=None,
+        help="distillation buffer storage directory",
     )
 
     return parser.parse_args()
