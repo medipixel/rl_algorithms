@@ -143,8 +143,8 @@ class Agent(ABC):
                 score += reward
                 step += 1
             if score == 2: success += 1
-            if (test_num + 1) % 100 == 0:
-                print((success)/(test_num+1))
+            if (i_episode + 1) % 100 == 0:
+                print((success)/(i_episode+1))
             print(
                 "[INFO] test %d\tstep: %d\ttotal score: %d" % (i_episode, step, score)
             )
