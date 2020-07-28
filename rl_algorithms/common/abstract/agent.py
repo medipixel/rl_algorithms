@@ -125,6 +125,7 @@ class Agent(ABC):
             test_num = self.args.episode_num
 
         score_list = []
+        success = 0
         for i_episode in range(test_num):
             state = self.env.reset()
             done = False
@@ -141,7 +142,9 @@ class Agent(ABC):
                 state = next_state
                 score += reward
                 step += 1
-
+            if score == 2: success += 1
+            if (test_num + 1) % 100 == 0:
+                print((success)/(test_num+1))
             print(
                 "[INFO] test %d\tstep: %d\ttotal score: %d" % (i_episode, step, score)
             )
