@@ -244,17 +244,26 @@ python <run-file> -h
     - Turn on printing episode run info for individual workers 
     
 
-#### Show feature map with Grad-CAM
-You can show a feature map that the trained agent extract using **[Grad-CAM(Gradient-weighted Class Activation Mapping)](https://arxiv.org/pdf/1610.02391.pdf)**. Grad-CAM is a way of combining feature maps using the gradient signal, and produce a coarse localization map of the important regions in the image. You can use it by adding [Grad-CAM config](https://github.com/medipixel/rl_algorithms/blob/master/configs/pong_no_frameskip_v4/dqn.py#L39) and `--grad-cam` flag when you run. For example:
+#### Show feature map with Grad-CAM and Saliency-map
+You can show a feature map that the trained agent extract using **[Grad-CAM(Gradient-weighted Class Activation Mapping)](https://arxiv.org/pdf/1610.02391.pdf)** and **[Saliency map](https://arxiv.org/pdf/1312.6034.pdf)**. 
+
+Grad-CAM is a way of combining feature maps using the gradient signal, and produce a coarse localization map of the important regions in the image. You can use it by adding [Grad-CAM config](https://github.com/medipixel/rl_algorithms/blob/master/configs/pong_no_frameskip_v4/dqn.py#L39) and `--grad-cam` flag when you run. For example:
 ```
 python run_env_name.py --cfg-path <config-path> --test --grad-cam
 ```
-
 The results will be rendered as follows:
 
 <img src="https://user-images.githubusercontent.com/17582508/79204132-02b75a00-7e77-11ea-9c78-ab543055bd4f.gif" width="400" height="400" align="center"/>
 
-It can be only used the agent that uses convolutional layers like **DQN for Pong environment**. You can see feature maps of all the configured convolution layers.
+You can also use Saliency-map in a similar way to Grad-CAM just by adding `--saliency-map` flag. Saliency-map need trained weight carried by `--load-from` flag. 
+```
+python run_env_name.py --cfg-path <config-path> --load-from <save-file-path> --test --saliency-map
+```
+Saliency map will be stored in data/saliency_map
+
+<img src="https://user-images.githubusercontent.com/16518993/106556182-56a84200-6562-11eb-8c9c-a5b19629335c.gif" width="400" height="140" align="center"/>
+
+Both Grad-CAM and Saliency-map can be only used for the agent that uses convolutional layers like **DQN for Pong environment**. You can see feature maps of all the configured convolution layers.
 
 
 #### Using policy distillation
