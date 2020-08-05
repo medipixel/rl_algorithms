@@ -89,6 +89,11 @@ class MLP(nn.Module):
 
         return x
 
+    def forward_feature(self, x: torch.Tensor) -> torch.Tensor:
+        for hidden_layer in self.hidden_layers:
+            x = self.hidden_activation(hidden_layer(x))
+        return x
+
 
 @HEADS.register_module
 class GaussianDist(MLP):

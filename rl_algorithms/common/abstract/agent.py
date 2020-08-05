@@ -7,19 +7,195 @@
 
 from abc import ABC, abstractmethod
 import argparse
+from datetime import datetime
 import os
+import pickle
 import shutil
 from typing import Tuple, Union
 
+from PIL import Image
 import cv2
 import gym
 from gym.spaces import Discrete
+import matplotlib.pyplot as plt
 import numpy as np
+from scipy.ndimage.filters import gaussian_filter1d
 import torch
+import torchvision.transforms as T
 import wandb
 
 from rl_algorithms.common.grad_cam import GradCAM
 from rl_algorithms.utils.config import ConfigDict
+
+
+SQUEEZENET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
+SQUEEZENET_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+
+plt.rcParams["figure.figsize"] = (10.0, 8.0)  # set default size of plots
+plt.rcParams["image.interpolation"] = "nearest"
+plt.rcParams["image.cmap"] = "gray"
+
+
+def preprocess(img, size=224):
+    transform = T.Compose(
+        [
+            T.Resize(size),
+            T.ToTensor(),
+            T.Normalize(mean=SQUEEZENET_MEAN.tolist(), std=SQUEEZENET_STD.tolist()),
+            T.Lambda(lambda x: x[None]),
+        ]
+    )
+    return transform(img)
+
+
+def deprocess(img, should_rescale=True):
+    transform = T.Compose(
+        [
+            T.Lambda(lambda x: x[0]),
+            T.Normalize(mean=[0, 0, 0], std=(1.0 / SQUEEZENET_STD).tolist()),
+            T.Normalize(mean=(-SQUEEZENET_MEAN).tolist(), std=[1, 1, 1]),
+            T.Lambda(rescale) if should_rescale else T.Lambda(lambda x: x),
+            T.ToPILImage(),
+        ]
+    )
+    return transform(img)
+
+
+def rescale(x):
+    low, high = x.min(), x.max()
+    x_rescaled = (x - low) / (high - low)
+    return x_rescaled
+
+
+def blur_image(X, sigma=1):
+    X_np = X.cpu().clone().numpy()
+    X_np = gaussian_filter1d(X_np, sigma, axis=2)
+    X_np = gaussian_filter1d(X_np, sigma, axis=3)
+    X.copy_(torch.Tensor(X_np).type_as(X))
+    return X
+
+
+def load_imagenet_val(num=None):
+    """Load a handful of validation images from ImageNet.
+
+    Inputs:
+    - num: Number of images to load (max of 25)
+
+    Returns:
+    - X: numpy array with shape [num, 224, 224, 3]
+    - y: numpy array of integer image labels, shape [num]
+    - class_names: dict mapping integer label to class name
+    """
+    imagenet_fn = "./datasets/imagenet_val_25.npz"
+    if not os.path.isfile(imagenet_fn):
+        print("file %s not found" % imagenet_fn)
+        print("Run the following:")
+        print("cd cs231n/datasets")
+        print("bash get_imagenet_val.sh")
+        assert False, "Need to download imagenet_val_25.npz"
+    print("is working")
+    # modify the default parameters of np.load
+    np_load_old = np.load
+
+    # pylint: disable=unnecessary-lambda
+    np.load = lambda *a, **k: np_load_old(*a, allow_pickle=True, **k)
+    f = np.load(imagenet_fn)
+    X = f["X"]
+    y = f["y"]
+    class_names = f["label_map"].item()
+    if num is not None:
+        X = X[:num]
+        y = y[:num]
+    return X, y, class_names
+
+
+# Example of using gather to select one entry from each row in PyTorch
+def gather_example():
+    N, C = 4, 5
+    s = torch.randn(N, C)
+    y = torch.LongTensor([1, 2, 1, 3])
+    print(s)
+    print(y)
+    print(s.gather(1, y.view(-1, 1)).squeeze())
+
+
+def compute_saliency_maps(X, y, model):
+    """
+    Compute a class saliency map using the model for images X and labels y.
+
+    Input:
+    - X: Input images; Tensor of shape (N, 3, H, W)
+    - y: Labels for X; LongTensor of shape (N,)
+    - model: A pretrained CNN that will be used to compute the saliency map.
+
+    Returns:
+    - saliency: A Tensor of shape (N, H, W) giving the saliency maps for the input
+    images.
+    """
+    # Make sure the model is in "test" mode
+    model.eval()
+
+    # Make input tensor require gradient
+    X.requires_grad_()
+
+    saliency = None
+    ##############################################################################
+    # TODO: Implement this function. Perform a forward and backward pass through #
+    # the model to compute the gradient of the correct class score with respect  #
+    # to each input image. You first want to compute the loss over the correct   #
+    # scores (we'll combine losses across a batch by summing), and then compute  #
+    # the gradients with a backward pass.                                        #
+    ##############################################################################
+    # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+
+    # forward pass
+    scores = model(X)
+    # print(scores.shape) # torch.Size([5, 1000]) since 5 images, 1000 classes
+    scores = (scores.gather(1, y.unsqueeze(0))).squeeze(0)
+    # print(scores.shape) # torch.Size([5])
+
+    # backward pass
+    scores.backward(torch.FloatTensor([1.0] * 1).to(device))
+
+    # saliency
+    saliency, _ = torch.max(X.grad.data.abs(), dim=1)
+
+    return saliency
+
+
+def show_saliency_maps(i, X, y, model, pixel_grad_dir):
+
+    # Convert X and y from numpy arrays to Torch Tensors
+    X_tensor = torch.Tensor(X).float().to(device).unsqueeze(0)
+    y = int(y)
+    y_tensor = torch.LongTensor([y]).to(device)
+
+    # Compute saliency maps for images in X
+    saliency = compute_saliency_maps(X_tensor, y_tensor, model)
+
+    # and saliency maps together.
+
+    # image
+    saliency = saliency.cpu().numpy()
+    input_image = np.rot90(X[-1], 3)
+    input_image = Image.fromarray(np.uint8(input_image * 255.0))
+    input_image.save(pixel_grad_dir + "/input_image/{}.png".format(i))
+
+    # numpy array
+    with open(pixel_grad_dir + "/state/{}.pkl".format(i), "wb") as f:
+        pickle.dump(X, f)
+
+    cmap = plt.cm.hot
+    norm = plt.Normalize(saliency.min(), saliency.max())
+    saliency = cmap(norm(saliency[0]))
+    saliency = np.rot90(saliency, 3)
+    saliency = Image.fromarray(np.uint8(saliency * 255.0))
+    saliency.save(pixel_grad_dir + "/saliency/{}.png".format(i))
+
+    overlay = Image.blend(input_image.convert("RGBA"), saliency, alpha=0.5)
+    overlay.save(pixel_grad_dir + "/overlay/{}.png".format(i))
+
+    print(i)
 
 
 class Agent(ABC):
@@ -122,6 +298,15 @@ class Agent(ABC):
         else:
             test_num = self.args.episode_num
 
+        if self.args.save_pixel_gradient:
+            date_time = datetime.now().strftime("%m_%d_%Y_%H_%M_%S")
+            os.mkdir("./rl_algorithms/pixel_grad/{}".format(date_time))
+            os.mkdir("./rl_algorithms/pixel_grad/{}/input_image".format(date_time))
+            os.mkdir("./rl_algorithms/pixel_grad/{}/state".format(date_time))
+            os.mkdir("./rl_algorithms/pixel_grad/{}/saliency".format(date_time))
+            os.mkdir("./rl_algorithms/pixel_grad/{}/overlay".format(date_time))
+            pixel_grad_dir = "./rl_algorithms/pixel_grad/{}/".format(date_time)
+            i = 0
         score_list = []
         for i_episode in range(test_num):
             state = self.env.reset()
@@ -134,6 +319,13 @@ class Agent(ABC):
                     self.env.render()
 
                 action = self.select_action(state)
+                if self.args.save_pixel_gradient:
+                    for param in self.learner.dqn.parameters():
+                        param.requires_grad = False
+                    show_saliency_maps(
+                        i, state, action, self.learner.dqn, pixel_grad_dir
+                    )
+                    i += 1
                 next_state, reward, done, _ = self.step(action)
 
                 state = next_state

@@ -97,9 +97,6 @@ def parse_args() -> argparse.Namespace:
         help="turn off framestack",
     )
     parser.add_argument(
-        "--student", dest="student", action="store_true", help="train student",
-    )
-    parser.add_argument(
         "--save-pixel-gradient",
         dest="save_pixel_gradient",
         action="store_false",
@@ -132,7 +129,7 @@ def main():
         cfg = common_utils.set_cfg_for_intergration_test(cfg)
 
     cfg.agent.env_info = dict(
-        name=env_name,
+        name="PongNoFrameskip-v4",
         observation_space=env.observation_space,
         action_space=env.action_space,
         is_discrete=True,
@@ -143,12 +140,47 @@ def main():
 
     agent = build_agent(cfg.agent, build_args)
 
-    if not args.test:
-        agent.train()
-    elif args.test and args.grad_cam:
-        agent.test_with_gradcam()
-    else:
-        agent.test()
+    import natsort
+    import os
+    import pickle
+
+    # from tsne import bh_sne
+    from MulticoreTSNE import MulticoreTSNE as TSNE
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    feature_list = []
+    label_list = []
+
+    save_dir = "rl_algorithms/pixel_grad/08_05_2020_11_27_10/state/"
+    x_list = os.listdir(save_dir)
+    x_list = natsort.natsorted(x_list)
+    for _, x_dir in enumerate(x_list):
+        with open(save_dir + x_dir, "rb") as f:
+            state = pickle.load(f)
+        state = np.array(state)
+        feature = agent.learner.dqn.forward_feature(state).detach().cpu().numpy()
+        q_value = np.max(
+            agent.learner.dqn(agent._preprocess_state(state)).detach().cpu().numpy()
+        )
+        feature_list.append(np.squeeze(feature))
+        label_list.append(q_value)
+
+    feature_list = np.stack(feature_list, axis=0).astype("float64")
+    # label_list = np.expand_dims(np.array(label_list), axis=-1)
+    print("bh_sne processing..")
+    output_2d = TSNE(n_jobs=8).fit_transform(feature_list)
+    np.save("./rl_algorithms/tsne_result/output_2d.npy", output_2d, allow_pickle=False)
+
+    plt.rcParams["figure.figsize"] = 20, 20
+    # slice_len = len(x_list)
+    # for i in zip(["red", "yellow", "blue", "purple", "green"], )
+    plt.scatter(output_2d[:, 0], output_2d[:, 1], c=label_list, cmap="jet")
+    plt.savefig("./rl_algorithms/tsne_result/output_2d.png", bbox_inches="tight")
+    plt.show()
+    print("test")
+
+    # left data
 
 
 if __name__ == "__main__":
