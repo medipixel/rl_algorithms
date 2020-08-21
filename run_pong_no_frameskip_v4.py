@@ -97,10 +97,13 @@ def parse_args() -> argparse.Namespace:
         help="turn off framestack",
     )
     parser.add_argument(
-        "--distillation-buffer-path",
-        type=str,
-        default=None,
-        help="distillation buffer storage directory",
+        "--save-distillation-data",
+        dest="save_distillation_data",
+        action="store_true",
+        help="save distillation data",
+    )
+    parser.add_argument(
+        "--save-distillation-size", type=int, default=10000, help="max update step"
     )
 
     return parser.parse_args()

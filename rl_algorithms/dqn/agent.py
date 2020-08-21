@@ -14,6 +14,8 @@
 """
 
 import argparse
+import os
+import pickle
 import time
 from typing import Tuple
 
@@ -92,6 +94,15 @@ class DQNAgent(Agent):
             self.max_epsilon = hyper_params.max_epsilon
             self.min_epsilon = hyper_params.min_epsilon
             self.epsilon = hyper_params.max_epsilon
+
+        if self.args.save_distillation_data:
+            self.save_distillation_dir = (
+                "./data/distillation_buffer/"
+                + env_info.name
+                + time.strftime("/%Y%m%d%H%M%S/")
+            )
+            os.makedirs(self.save_distillation_dir)
+            self.save_count = 0
 
         self._initialize()
 
@@ -199,6 +210,23 @@ class DQNAgent(Agent):
         """Pretraining steps."""
         pass
 
+    def _save_distillation_data(self, state):
+        q = (
+            self.learner.dqn(self._preprocess_state(state))
+            .squeeze()
+            .detach()
+            .cpu()
+            .numpy()
+        )
+        with open(
+            self.save_distillation_dir + "%d.pkl" % self.save_count + "", "wb"
+        ) as f:
+            pickle.dump([state, q], f, protocol=pickle.HIGHEST_PROTOCOL)
+        self.save_count += 1
+        if self.save_count >= self.args.save_distillation_size:
+            return True
+        return False
+
     def sample_experience(self) -> Tuple[torch.Tensor, ...]:
         """Sample experience from replay buffer."""
         experiences_1 = self.memory.sample(self.per_beta)
@@ -235,6 +263,10 @@ class DQNAgent(Agent):
                     self.env.render()
                 action = self.select_action(state)
                 next_state, reward, done, _ = self.step(action)
+                if self.args.save_distillation_data:
+                    if self._save_distillation_data(state):
+                        print("finish collecting distillation data")
+                        exit()
                 self.total_step += 1
                 self.episode_step += 1
 
@@ -279,3 +311,46 @@ class DQNAgent(Agent):
         self.env.close()
         self.learner.save_params(self.i_episode)
         self.interim_test()
+
+    def _test(self, interim_test: bool = False):
+        """Common test routine."""
+
+        if interim_test:
+            test_num = self.args.interim_test_num
+        else:
+            test_num = self.args.episode_num
+
+        score_list = []
+        for i_episode in range(test_num):
+            state = self.env.reset()
+            done = False
+            score = 0
+            step = 0
+
+            while not done:
+                if self.args.render:
+                    self.env.render()
+
+                action = self.select_action(state)
+                next_state, reward, done, _ = self.step(action)
+                if self.args.save_distillation_data:
+                    if self._save_distillation_data(state):
+                        print("finish collecting distillation data")
+                        exit()
+
+                state = next_state
+                score += reward
+                step += 1
+
+            print(
+                "[INFO] test %d\tstep: %d\ttotal score: %d" % (i_episode, step, score)
+            )
+            score_list.append(score)
+
+        if self.args.log:
+            wandb.log(
+                {
+                    "avg test score": round(sum(score_list) / len(score_list), 2),
+                    "test total step": self.total_step,
+                }
+            )

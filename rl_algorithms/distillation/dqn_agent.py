@@ -7,7 +7,6 @@
          https://arxiv.org/pdf/1511.06295.pdf (Policy Distillation)
 """
 
-import os
 from typing import Tuple
 
 import numpy as np
@@ -39,9 +38,7 @@ class DistillationDQN(DQNAgent):
             f"./data/distillation_buffer/{self.log_cfg.env_name}/"
             + f"{self.log_cfg.agent}/{self.log_cfg.curr_time}/"
         )
-        if self.args.distillation_buffer_path:
-            self.buffer_path = "./" + self.args.distillation_buffer_path
-        os.makedirs(self.buffer_path, exist_ok=True)
+        self.buffer_path = self.hyper_params.buffer_path
 
         self.memory = DistillationBuffer(
             self.hyper_params.batch_size, self.buffer_path, self.log_cfg.curr_time,
@@ -134,6 +131,7 @@ class DistillationDQN(DQNAgent):
 
     def train(self):
         """Train the student model from teacher's data."""
+        self.memory.reset_dataloader()
         assert self.memory.buffer_size >= self.hyper_params.batch_size
         if self.args.log:
             self.set_wandb()
@@ -144,7 +142,6 @@ class DistillationDQN(DQNAgent):
             f"[INFO] Total epochs: {self.hyper_params.epochs}\t Train steps: {train_steps}"
         )
         n_epoch = 0
-        self.memory.reset_dataloader()
         for steps in range(train_steps):
             loss = self.update_distillation()
 
