@@ -96,11 +96,10 @@ class DistillationDQN(DQNAgent):
         self, action: np.ndarray, q_values: np.ndarray = None
     ) -> Tuple[np.ndarray, np.float64, bool, dict]:
         """Take an action and store distillation data to buffer storage."""
-        next_state, reward, done, info = self.env.step(action)
         if self.args.test and not self.args.teacher and not self.args.student:
+            next_state, reward, done, info = self.env.step(action)
             data = (self.curr_state, q_values)
             self.memory.add(data)
-
             return next_state, reward, done, info
         else:
             return DQNAgent.step(self, action)

@@ -141,13 +141,16 @@ class DQNAgent(Agent):
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, np.float64, bool, dict]:
         """Take an action and return the response of the env."""
         next_state, reward, done, info = self.env.step(action)
+
         if not self.args.test:
             # if the last state is not a terminal state, store done as false
             done_bool = (
                 False if self.episode_step == self.args.max_episode_steps else done
             )
+
             transition = (self.curr_state, action, reward, next_state, done_bool)
             self._add_transition_to_memory(transition)
+
         return next_state, reward, done, info
 
     def _add_transition_to_memory(self, transition: Tuple[np.ndarray, ...]):

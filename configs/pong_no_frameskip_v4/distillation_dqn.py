@@ -36,7 +36,7 @@ agent = dict(
         ],
         # Distillation
         epochs=20,  # epoch of student training
-        buffer_size=int(50000),  # distillation buffer size
+        buffer_size=int(1e4),  # distillation buffer size
         batch_size=32,  # distillation batch size
     ),
     learner_cfg=dict(

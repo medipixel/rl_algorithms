@@ -82,7 +82,7 @@ def parse_args() -> argparse.Namespace:
         "--max-episode-steps", type=int, default=None, help="max episode step"
     )
     parser.add_argument(
-        "--interim-test-num", type=int, default=5, help="interim test number"
+        "--interim-test-num", type=int, default=10, help="interim test number"
     )
     parser.add_argument(
         "--integration-test",
