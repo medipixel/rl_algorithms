@@ -8,6 +8,8 @@
 """
 
 import os
+import pickle
+import time
 from typing import Tuple
 
 import numpy as np
@@ -32,83 +34,115 @@ class DistillationDQN(DQNAgent):
     # pylint: disable=attribute-defined-outside-init
     def _initialize(self):
         """Initialize non-common things."""
-        self.softmax_tau = 0.01
-        self.learner = build_learner(self.learner_cfg)
+        if self.args.student or self.args.test:
 
-        self.buffer_path = (
-            f"./data/distillation_buffer/{self.log_cfg.env_name}/"
-            + f"{self.log_cfg.agent}/{self.log_cfg.curr_time}/"
-        )
-        if self.args.distillation_buffer_path:
-            self.buffer_path = "./" + self.args.distillation_buffer_path
-        os.makedirs(self.buffer_path, exist_ok=True)
+            self.softmax_tau = 0.01
+            self.learner = build_learner(self.learner_cfg)
+            self.buffer_path = self.hyper_params.buffer_path
+            if not self.args.student:
+                self.buffer_path = (
+                    f"./data/distillation_buffer/{self.log_cfg.env_name}/"
+                    + f"{self.log_cfg.agent}/{self.log_cfg.curr_time}/"
+                )
+                if self.args.distillation_buffer_path:
+                    self.buffer_path = "./" + self.args.distillation_buffer_path
+                os.makedirs(self.buffer_path, exist_ok=True)
 
-        self.memory = DistillationBuffer(
-            self.hyper_params.batch_size, self.buffer_path, self.log_cfg.curr_time,
-        )
-
-    def select_action(self, state: np.ndarray) -> np.ndarray:
-        """Select an action from the input space."""
-        self.curr_state = state
-        # epsilon greedy policy
-        # pylint: disable=comparison-with-callable
-        state = self._preprocess_state(state)
-        q_values = self.learner.dqn(state)
-
-        if not self.args.test and self.epsilon > np.random.random():
-            selected_action = np.array(self.env.action_space.sample())
+            self.memory = DistillationBuffer(
+                self.hyper_params.batch_size, self.buffer_path, self.log_cfg.curr_time,
+            )
         else:
-            selected_action = q_values.argmax()
-            selected_action = selected_action.detach().cpu().numpy()
-        return selected_action, q_values.squeeze().detach().cpu().numpy()
+            DQNAgent._initialize(self)
+            self.save_distillation_dir = (
+                "./data/distillation_buffer/"
+                + self.env_info.name
+                + time.strftime("/%Y%m%d%H%M%S/")
+            )
+            os.makedirs(self.save_distillation_dir)
+            self.save_count = 0
+
+    def select_action(self, state: np.ndarray, is_test=False) -> np.ndarray:
+        """Select an action from the input space."""
+
+        if not is_test and self.args.teacher:
+            if not os.path.exists(
+                self.save_distillation_dir + "{}/".format(self.i_episode)
+            ):
+                os.mkdir(self.save_distillation_dir + "{}/".format(self.i_episode))
+            current_ep_dir = (
+                self.save_distillation_dir
+                + "{}/{}.pkl".format(self.i_episode, self.save_count)
+                + ""
+            )
+            with open(current_ep_dir, "wb") as f:
+                pickle.dump(state, f, protocol=pickle.HIGHEST_PROTOCOL)
+            self.save_count += 1
+            return DQNAgent.select_action(self, state)
+        else:
+            self.curr_state = state
+            # epsilon greedy policy
+            # pylint: disable=comparison-with-callable
+            state = self._preprocess_state(state)
+            q_values = self.learner.dqn(state)
+
+            if not self.args.test and self.epsilon > np.random.random():
+                selected_action = np.array(self.env.action_space.sample())
+            else:
+                selected_action = q_values.argmax()
+                selected_action = selected_action.detach().cpu().numpy()
+            return selected_action, q_values.squeeze().detach().cpu().numpy()
 
     def step(
-        self, action: np.ndarray, q_values: np.ndarray
+        self, action: np.ndarray, q_values: np.ndarray = None
     ) -> Tuple[np.ndarray, np.float64, bool, dict]:
         """Take an action and store distillation data to buffer storage."""
         next_state, reward, done, info = self.env.step(action)
+        if self.args.test and not self.args.teacher and not self.args.student:
+            data = (self.curr_state, q_values)
+            self.memory.add(data)
 
-        data = (self.curr_state, q_values)
-        self.memory.add(data)
-
-        return next_state, reward, done, info
+            return next_state, reward, done, info
+        else:
+            return DQNAgent.step(self, action)
 
     def _test(self, interim_test: bool = False):
         """Test teacher and collect distillation data."""
-
-        if interim_test:
-            test_num = self.args.interim_test_num
+        if self.args.teacher:
+            DQNAgent._test(self, interim_test=True)
         else:
-            test_num = self.args.episode_num
+            if interim_test:
+                test_num = self.args.interim_test_num
+            else:
+                test_num = self.args.episode_num
 
-        for i_episode in range(test_num):
-            state = self.env.reset()
-            done = False
-            score = 0
-            step = 0
+            for i_episode in range(test_num):
+                state = self.env.reset()
+                done = False
+                score = 0
+                step = 0
 
-            while not done and self.memory.idx != self.hyper_params.buffer_size:
-                if self.args.render:
-                    self.env.render()
+                while not done and self.memory.idx != self.hyper_params.buffer_size:
+                    if self.args.render:
+                        self.env.render()
 
-                action, q_value = self.select_action(state)
-                next_state, reward, done, _ = self.step(action, q_value)
+                    action, q_value = self.select_action(state, is_test=True)
+                    next_state, reward, done, _ = self.step(action, q_value)
 
-                state = next_state
-                score += reward
-                step += 1
+                    state = next_state
+                    score += reward
+                    step += 1
 
-            print(
-                "[INFO] test %d\tstep: %d\ttotal score: %d\tbuffer_size: %d"
-                % (i_episode, step, score, self.memory.idx)
-            )
+                print(
+                    "[INFO] test %d\tstep: %d\ttotal score: %d\tbuffer_size: %d"
+                    % (i_episode, step, score, self.memory.idx)
+                )
 
-            if self.args.log:
-                wandb.log({"test score": score})
+                if self.args.log:
+                    wandb.log({"test score": score})
 
-            if self.memory.idx == self.hyper_params.buffer_size:
-                print("[INFO] Buffer saved completely. (%s)" % (self.buffer_path))
-                break
+                if self.memory.idx == self.hyper_params.buffer_size:
+                    print("[INFO] Buffer saved completely. (%s)" % (self.buffer_path))
+                    break
 
     def update_distillation(self) -> Tuple[torch.Tensor, ...]:
         """Make relaxed softmax target and KL-Div loss and updates student model's params."""
@@ -134,30 +168,33 @@ class DistillationDQN(DQNAgent):
 
     def train(self):
         """Train the student model from teacher's data."""
-        self.memory.reset_dataloader()
-        assert self.memory.buffer_size >= self.hyper_params.batch_size
-        if self.args.log:
-            self.set_wandb()
-
-        iter_1 = self.memory.buffer_size // self.hyper_params.batch_size
-        train_steps = iter_1 * self.hyper_params.epochs
-        print(
-            f"[INFO] Total epochs: {self.hyper_params.epochs}\t Train steps: {train_steps}"
-        )
-        n_epoch = 0
-        for steps in range(train_steps):
-            loss = self.update_distillation()
-
+        if self.args.student:
+            self.memory.reset_dataloader()
+            assert self.memory.buffer_size >= self.hyper_params.batch_size
             if self.args.log:
-                wandb.log({"dqn loss": loss[0], "avg q values": loss[1]})
+                self.set_wandb()
 
-            if steps % iter_1 == 0:
-                print(
-                    f"Training {n_epoch} epochs, {steps} steps.. "
-                    + f"loss: {loss[0]}, avg_q_value: {loss[1]}"
-                )
-                self.learner.save_params(steps)
-                n_epoch += 1
-                self.memory.reset_dataloader()
+            iter_1 = self.memory.buffer_size // self.hyper_params.batch_size
+            train_steps = iter_1 * self.hyper_params.epochs
+            print(
+                f"[INFO] Total epochs: {self.hyper_params.epochs}\t Train steps: {train_steps}"
+            )
+            n_epoch = 0
+            for steps in range(train_steps):
+                loss = self.update_distillation()
 
-        self.learner.save_params(steps)
+                if self.args.log:
+                    wandb.log({"dqn loss": loss[0], "avg q values": loss[1]})
+
+                if steps % iter_1 == 0:
+                    print(
+                        f"Training {n_epoch} epochs, {steps} steps.. "
+                        + f"loss: {loss[0]}, avg_q_value: {loss[1]}"
+                    )
+                    self.learner.save_params(steps)
+                    n_epoch += 1
+                    self.memory.reset_dataloader()
+
+            self.learner.save_params(steps)
+        else:
+            DQNAgent.train(self)

@@ -32,9 +32,7 @@ agent = dict(
             "backbone.cnn.cnn_2.cnn",
         ],
         buffer_path=[
-            "data/distillation_buffer/PongNoFrameskip-v4/20200821134905",
-            "data/distillation_buffer/PongNoFrameskip-v4/20200821142921",
-            "data/distillation_buffer/PongNoFrameskip-v4/20200821145228",
+            "./data/distillation_buffer/PongNoFrameskip-v4/DistillationDQN/200825_110701/"
         ],
         # Distillation
         epochs=20,  # epoch of student training
