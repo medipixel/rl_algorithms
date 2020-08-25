@@ -134,6 +134,7 @@ class DistillationDQN(DQNAgent):
 
     def train(self):
         """Train the student model from teacher's data."""
+        self.memory.reset_dataloader()
         assert self.memory.buffer_size >= self.hyper_params.batch_size
         if self.args.log:
             self.set_wandb()
@@ -144,7 +145,6 @@ class DistillationDQN(DQNAgent):
             f"[INFO] Total epochs: {self.hyper_params.epochs}\t Train steps: {train_steps}"
         )
         n_epoch = 0
-        self.memory.reset_dataloader()
         for steps in range(train_steps):
             loss = self.update_distillation()
 

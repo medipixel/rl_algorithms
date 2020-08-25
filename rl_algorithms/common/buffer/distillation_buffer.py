@@ -3,7 +3,7 @@
 
 import os
 import pickle
-from typing import Any, Tuple
+from typing import Any, List, Tuple
 
 import numpy as np
 import torch
@@ -20,7 +20,7 @@ class DistillationBuffer:
 
     Attributes:
         batch_size (int): size of batch size from distillation buffer for training
-        buffer_path (str): distillation buffer path
+        buffer_path (list): list of distillation buffer path
         curr_time (str): program's start time to distinguish between teacher agents
         idx (int): index of data
         buffer_size (int): distillation buffer size
@@ -35,14 +35,14 @@ class DistillationBuffer:
 
         Args:
             batch_size (int): size of a batched sampled from distillation buffer for training
-            buffer_path (str): distillation buffer path
+            buffer_path (list): list of distillation buffer path
             curr_time (str): program's start time to distinguish between teacher agents
 
         """
         self.batch_size = batch_size
         self.buffer_path = buffer_path
         self.idx = 0
-        self.buffer_size = len(next(os.walk(self.buffer_path))[2])
+        self.buffer_size = 0
         self.curr_time = curr_time
         self.dataloader = None
 
@@ -60,7 +60,8 @@ class DistillationBuffer:
         """Initialize and reset DataLoader class.
            DataLoader class must be reset for every epoch.
         """
-        dataset = DistillationDataset(self.buffer_path, self.buffer_size)
+        dataset = DistillationDataset(self.buffer_path)
+        self.buffer_size = len(dataset)
         self.dataloader = iter(
             DataLoader(dataset, batch_size=self.batch_size, shuffle=True, num_workers=4)
         )
@@ -81,7 +82,7 @@ class DistillationDataset(Dataset):
 
     """
 
-    def __init__(self, buffer_path: str, buffer_size: int):
+    def __init__(self, buffer_path: List[str]):
         """Initialize a DistillationBuffer object.
 
         Args:
@@ -91,16 +92,17 @@ class DistillationDataset(Dataset):
 
         """
         self.buffer_path = buffer_path
-        self.buffer_size = buffer_size
-        self.file_name_list = os.listdir(self.buffer_path)
+        self.file_name_list = []
+        for _dir in self.buffer_path:
+            tmp = os.listdir(_dir)
+            self.file_name_list += [_dir + "/" + x for x in tmp]
 
     def __len__(self):
         """Denotes the total number of samples."""
-        return self.buffer_size
+        return len(self.file_name_list)
 
     def __getitem__(self, index):
         """Generates one sample of data."""
-        file_path = os.path.join(self.buffer_path, self.file_name_list[index])
-        with open(file_path, "rb") as f:
+        with open(self.file_name_list[index], "rb") as f:
             transition = pickle.load(f)
         return transition

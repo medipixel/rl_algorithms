@@ -6,7 +6,7 @@ box2d-py
 scipy
 typing
 cloudpickle
-opencv-python
+opencv-python==4.3.0.36
 addict
 # mujoco
 
