@@ -20,7 +20,7 @@ class DistillationBuffer:
 
     Attributes:
         batch_size (int): size of batch size from distillation buffer for training
-        buffer_path (str): distillation buffer path
+        buffer_path (list): list of distillation buffer path
         curr_time (str): program's start time to distinguish between teacher agents
         idx (int): index of data
         buffer_size (int): distillation buffer size
@@ -35,7 +35,7 @@ class DistillationBuffer:
 
         Args:
             batch_size (int): size of a batched sampled from distillation buffer for training
-            buffer_path (str): distillation buffer path
+            buffer_path (list): list of distillation buffer path
             curr_time (str): program's start time to distinguish between teacher agents
 
         """
