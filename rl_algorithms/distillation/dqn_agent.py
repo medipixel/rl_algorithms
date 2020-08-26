@@ -42,7 +42,7 @@ class DistillationDQN(DQNAgent):
             + self.args.student
             + self.args.add_expert_q
             + self.args.test
-            == 0
+            == 1
         )
 
         if self.args.student or self.args.test:
@@ -114,7 +114,9 @@ class DistillationDQN(DQNAgent):
         """Take an action and store distillation data to buffer storage."""
         if self.args.test and not self.args.teacher and not self.args.student:
             next_state, reward, done, info = self.env.step(action)
+
             data = (self.curr_state, q_values)
+
             self.memory.add(data)
             return next_state, reward, done, info
         else:
@@ -122,6 +124,7 @@ class DistillationDQN(DQNAgent):
 
     def _test(self, interim_test: bool = False):
         """Test teacher and collect distillation data."""
+
         if self.args.teacher:
             DQNAgent._test(self, interim_test=True)
         else:
