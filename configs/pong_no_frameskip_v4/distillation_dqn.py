@@ -31,13 +31,11 @@ agent = dict(
             "backbone.cnn.cnn_1.cnn",
             "backbone.cnn.cnn_2.cnn",
         ],
-        buffer_path=[
-            "./data/distillation_buffer/PongNoFrameskip-v4/DistillationDQN/200825_110701/"
-        ],
+        buffer_path=["data/distillation_buffer/PongNoFrameskip-v4/20200826103157"],
         # Distillation
         epochs=20,  # epoch of student training
         buffer_size=int(1e4),  # distillation buffer size
-        batch_size=32,  # distillation batch size
+        batch_size=512,  # distillation batch size
     ),
     learner_cfg=dict(
         type="DQNLearner",

@@ -15,6 +15,7 @@ from typing import Tuple
 import numpy as np
 import torch
 import torch.nn.functional as F
+from tqdm import tqdm
 import wandb
 
 from rl_algorithms.common.buffer.distillation_buffer import DistillationBuffer
@@ -34,7 +35,9 @@ class DistillationDQN(DQNAgent):
     # pylint: disable=attribute-defined-outside-init
     def _initialize(self):
         """Initialize non-common things."""
+
         if self.args.student or self.args.test:
+            # Training student or generating distillation data(test) requires DistillationBuffer.
 
             self.softmax_tau = 0.01
             self.learner = build_learner(self.learner_cfg)
@@ -52,6 +55,9 @@ class DistillationDQN(DQNAgent):
                 self.hyper_params.batch_size, self.buffer_path, self.log_cfg.curr_time,
             )
         else:
+            # Since raining teacher do not require DistillationBuffer,
+            # it overloads DQNAgent._initialize.
+
             DQNAgent._initialize(self)
             self.save_distillation_dir = (
                 "./data/distillation_buffer/"
@@ -65,6 +71,7 @@ class DistillationDQN(DQNAgent):
         """Select an action from the input space."""
 
         if not is_test and self.args.teacher:
+            # Save states during training teacher.
             if not os.path.exists(
                 self.save_distillation_dir + "{}/".format(self.i_episode)
             ):
@@ -75,7 +82,7 @@ class DistillationDQN(DQNAgent):
                 + ""
             )
             with open(current_ep_dir, "wb") as f:
-                pickle.dump(state, f, protocol=pickle.HIGHEST_PROTOCOL)
+                pickle.dump([state], f, protocol=pickle.HIGHEST_PROTOCOL)
             self.save_count += 1
             return DQNAgent.select_action(self, state)
         else:
@@ -195,5 +202,28 @@ class DistillationDQN(DQNAgent):
                     self.memory.reset_dataloader()
 
             self.learner.save_params(steps)
-        else:
+
+        elif self.args.add_expert_q:
+            # Add expert's q to the train phase states.
+
+            # Gather train phase states.
+            self.file_name_list = []
+            for _dir in self.hyper_params.buffer_path:
+                sub_dirs = os.listdir(_dir)
+                for _subdir in sub_dirs:
+                    current_dir = "./" + _dir + "/" + _subdir + "/"
+                    tmp = os.listdir(current_dir)
+                    self.file_name_list += [[current_dir, x] for x in tmp]
+
+            for _dir in tqdm(self.file_name_list):
+                with open(_dir[0] + _dir[1], "rb") as f:
+                    state = pickle.load(f)[0]
+
+                torch_state = torch.from_numpy(state).float().to(device)
+                pred_q = self.learner.dqn(torch_state).squeeze().detach().cpu().numpy()
+
+                with open(self.save_distillation_dir + _dir[1], "wb") as f:
+                    pickle.dump([state, pred_q], f, protocol=pickle.HIGHEST_PROTOCOL)
+
+        elif self.args.teacher:
             DQNAgent.train(self)
