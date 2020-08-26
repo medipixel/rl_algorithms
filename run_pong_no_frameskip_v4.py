@@ -82,7 +82,7 @@ def parse_args() -> argparse.Namespace:
         "--max-episode-steps", type=int, default=None, help="max episode step"
     )
     parser.add_argument(
-        "--interim-test-num", type=int, default=10, help="interim test number"
+        "--interim-test-num", type=int, default=5, help="interim test number"
     )
     parser.add_argument(
         "--integration-test",
@@ -109,7 +109,10 @@ def parse_args() -> argparse.Namespace:
         "--teacher", dest="teacher", action="store_true", help="train teacher",
     )
     parser.add_argument(
-        "--change-q", dest="change_q", action="store_true", help="train teacher",
+        "--add-expert-q",
+        dest="add_expert_q",
+        action="store_true",
+        help="train teacher",
     )
 
     return parser.parse_args()

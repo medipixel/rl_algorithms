@@ -36,6 +36,15 @@ class DistillationDQN(DQNAgent):
     def _initialize(self):
         """Initialize non-common things."""
 
+        # You must choose one of them.
+        assert (
+            self.args.teacher
+            + self.args.student
+            + self.args.add_expert_q
+            + self.args.test
+            == 0
+        )
+
         if self.args.student or self.args.test:
             # Training student or generating distillation data(test) requires DistillationBuffer.
 
