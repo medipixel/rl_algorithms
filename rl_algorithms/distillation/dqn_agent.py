@@ -79,21 +79,24 @@ class DistillationDQN(DQNAgent):
     def select_action(self, state: np.ndarray, is_test=False) -> np.ndarray:
         """Select an action from the input space."""
 
-        if not is_test and self.args.teacher:
-            # Save states during training teacher.
-            if not os.path.exists(
-                self.save_distillation_dir + "{}/".format(self.i_episode)
-            ):
-                os.mkdir(self.save_distillation_dir + "{}/".format(self.i_episode))
-            current_ep_dir = (
-                self.save_distillation_dir
-                + "{}/{}.pkl".format(self.i_episode, self.save_count)
-                + ""
-            )
-            with open(current_ep_dir, "wb") as f:
-                pickle.dump([state], f, protocol=pickle.HIGHEST_PROTOCOL)
-            self.save_count += 1
-            return DQNAgent.select_action(self, state)
+        if self.args.teacher:
+            if is_test:
+                return DQNAgent.select_action(self, state)
+            else:
+                # Save states during training teacher.
+                if not os.path.exists(
+                    self.save_distillation_dir + "{}/".format(self.i_episode)
+                ):
+                    os.mkdir(self.save_distillation_dir + "{}/".format(self.i_episode))
+                current_ep_dir = (
+                    self.save_distillation_dir
+                    + "{}/{}.pkl".format(self.i_episode, self.save_count)
+                    + ""
+                )
+                with open(current_ep_dir, "wb") as f:
+                    pickle.dump([state], f, protocol=pickle.HIGHEST_PROTOCOL)
+                self.save_count += 1
+                return DQNAgent.select_action(self, state)
         else:
             self.curr_state = state
             # epsilon greedy policy
@@ -125,14 +128,35 @@ class DistillationDQN(DQNAgent):
     def _test(self, interim_test: bool = False):
         """Test teacher and collect distillation data."""
 
-        if self.args.teacher:
-            DQNAgent._test(self, interim_test=True)
+        if interim_test:
+            test_num = self.args.interim_test_num
         else:
-            if interim_test:
-                test_num = self.args.interim_test_num
-            else:
-                test_num = self.args.episode_num
+            test_num = self.args.episode_num
+        if self.args.teacher:
+            score_list = []
+            for i_episode in range(test_num):
+                state = self.env.reset()
+                done = False
+                score = 0
+                step = 0
 
+                while not done:
+                    if self.args.render:
+                        self.env.render()
+
+                    action = self.select_action(state, is_test=True)
+                    next_state, reward, done, _ = self.step(action)
+
+                    state = next_state
+                    score += reward
+                    step += 1
+
+                print(
+                    "[INFO] test %d\tstep: %d\ttotal score: %d"
+                    % (i_episode, step, score)
+                )
+                score_list.append(score)
+        else:
             for i_episode in range(test_num):
                 state = self.env.reset()
                 done = False
