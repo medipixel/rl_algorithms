@@ -76,7 +76,7 @@ class DistillationDQN(DQNAgent):
             os.makedirs(self.save_distillation_dir)
             self.save_count = 0
 
-    def select_action(self, state: np.ndarray, is_test=False) -> np.ndarray:
+    def select_action(self, state: np.ndarray, is_test: bool = False) -> np.ndarray:
         """Select an action from the input space."""
 
         if self.args.teacher:
@@ -128,10 +128,8 @@ class DistillationDQN(DQNAgent):
     def _test(self, interim_test: bool = False):
         """Test teacher and collect distillation data."""
 
-        if interim_test:
-            test_num = self.args.interim_test_num
-        else:
-            test_num = self.args.episode_num
+        test_num = self.args.interim_test_num if interim_test else self.args.episode_num
+
         if self.args.teacher:
             score_list = []
             for i_episode in range(test_num):
@@ -156,6 +154,14 @@ class DistillationDQN(DQNAgent):
                     % (i_episode, step, score)
                 )
                 score_list.append(score)
+
+            if self.args.log:
+                wandb.log(
+                    {
+                        "avg test score": round(sum(score_list) / len(score_list), 2),
+                        "test total step": self.total_step,
+                    }
+                )
         else:
             for i_episode in range(test_num):
                 state = self.env.reset()
