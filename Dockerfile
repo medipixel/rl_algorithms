@@ -10,10 +10,6 @@ RUN apt-get install -y python3-pip python3-dev \
     && pip3 install --upgrade pip
 RUN apt-get update
 
-# set pip config
-RUN mkdir /root/.pip
-COPY pip.conf /root/.pip/pip.conf
-
 # set workspace
 RUN mkdir /workspace/
 WORKDIR /workspace
