@@ -76,13 +76,35 @@ class DistillationDQN(DQNAgent):
             os.makedirs(self.save_distillation_dir)
             self.save_count = 0
 
-    def select_action(self, state: np.ndarray, is_test: bool = False) -> np.ndarray:
+    def get_action_and_q(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""
+        self.curr_state = state
+        # epsilon greedy policy
+        # pylint: disable=comparison-with-callable
+        state = self._preprocess_state(state)
+        q_values = self.learner.dqn(state)
+        selected_action = q_values.argmax()
+        selected_action = selected_action.detach().cpu().numpy()
+        return selected_action, q_values.squeeze().detach().cpu().numpy()
 
-        if self.args.teacher:
-            if is_test:
-                return DQNAgent.select_action(self, state)
-            else:
+    def step(
+        self, action: np.ndarray, q_values: np.ndarray = None
+    ) -> Tuple[np.ndarray, np.float64, bool, dict]:
+        """Take an action and store distillation data to buffer storage."""
+
+        output = None
+        if self.args.test:
+            if self.args.teacher:
+                output = DQNAgent.step(self, action)
+            elif not self.args.student:
+                next_state, reward, done, info = self.env.step(action)
+
+                data = (self.curr_state, q_values)
+
+                self.memory.add(data)
+                output = next_state, reward, done, info
+        else:
+            if self.args.teacher:
                 # Save states during training teacher.
                 if not os.path.exists(
                     self.save_distillation_dir + "{}/".format(self.i_episode)
@@ -94,36 +116,12 @@ class DistillationDQN(DQNAgent):
                     + ""
                 )
                 with open(current_ep_dir, "wb") as f:
-                    pickle.dump([state], f, protocol=pickle.HIGHEST_PROTOCOL)
+                    pickle.dump([self.curr_state], f, protocol=pickle.HIGHEST_PROTOCOL)
                 self.save_count += 1
-                return DQNAgent.select_action(self, state)
-        else:
-            self.curr_state = state
-            # epsilon greedy policy
-            # pylint: disable=comparison-with-callable
-            state = self._preprocess_state(state)
-            q_values = self.learner.dqn(state)
 
-            if not self.args.test and self.epsilon > np.random.random():
-                selected_action = np.array(self.env.action_space.sample())
-            else:
-                selected_action = q_values.argmax()
-                selected_action = selected_action.detach().cpu().numpy()
-            return selected_action, q_values.squeeze().detach().cpu().numpy()
+            output = DQNAgent.step(self, action)
 
-    def step(
-        self, action: np.ndarray, q_values: np.ndarray = None
-    ) -> Tuple[np.ndarray, np.float64, bool, dict]:
-        """Take an action and store distillation data to buffer storage."""
-        if self.args.test and not self.args.teacher and not self.args.student:
-            next_state, reward, done, info = self.env.step(action)
-
-            data = (self.curr_state, q_values)
-
-            self.memory.add(data)
-            return next_state, reward, done, info
-        else:
-            return DQNAgent.step(self, action)
+        return output
 
     def _test(self, interim_test: bool = False):
         """Test teacher and collect distillation data."""
@@ -142,7 +140,7 @@ class DistillationDQN(DQNAgent):
                     if self.args.render:
                         self.env.render()
 
-                    action = self.select_action(state, is_test=True)
+                    action = self.select_action(state)
                     next_state, reward, done, _ = self.step(action)
 
                     state = next_state
@@ -173,7 +171,7 @@ class DistillationDQN(DQNAgent):
                     if self.args.render:
                         self.env.render()
 
-                    action, q_value = self.select_action(state, is_test=True)
+                    action, q_value = self.get_action_and_q(state)
                     next_state, reward, done, _ = self.step(action, q_value)
 
                     state = next_state
