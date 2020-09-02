@@ -12,6 +12,7 @@ import pickle
 import time
 from typing import Tuple
 
+from natsort import natsorted
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -71,7 +72,7 @@ class DistillationDQN(DQNAgent):
             self.save_distillation_dir = (
                 "./data/distillation_buffer/"
                 + self.env_info.name
-                + time.strftime("/%Y%m%d%H%M%S/")
+                + time.strftime("/%Y%m%d%H%M%S")
             )
             os.makedirs(self.save_distillation_dir)
             self.save_count = 0
@@ -106,14 +107,8 @@ class DistillationDQN(DQNAgent):
         else:
             if self.args.teacher:
                 # Save states during training teacher.
-                if not os.path.exists(
-                    self.save_distillation_dir + "{}/".format(self.i_episode)
-                ):
-                    os.mkdir(self.save_distillation_dir + "{}/".format(self.i_episode))
                 current_ep_dir = (
-                    self.save_distillation_dir
-                    + "{}/{}.pkl".format(self.i_episode, self.save_count)
-                    + ""
+                    self.save_distillation_dir + "/{}.pkl".format(self.save_count) + ""
                 )
                 with open(current_ep_dir, "wb") as f:
                     pickle.dump([self.curr_state], f, protocol=pickle.HIGHEST_PROTOCOL)
@@ -262,8 +257,28 @@ class DistillationDQN(DQNAgent):
                 torch_state = torch.from_numpy(state).float().to(device)
                 pred_q = self.learner.dqn(torch_state).squeeze().detach().cpu().numpy()
 
-                with open(self.save_distillation_dir + _dir[1], "wb") as f:
+                with open(self.save_distillation_dir + "/" + _dir[1], "wb") as f:
                     pickle.dump([state, pred_q], f, protocol=pickle.HIGHEST_PROTOCOL)
 
         elif self.args.teacher:
             DQNAgent.train(self)
+
+            if self.hyper_params.n_frame_from_last is not None:
+                # Save last n_frame at new directory.
+                print("saving last %d frames.." % self.hyper_params.n_frame_from_last)
+                last_frame_dir = (
+                    self.save_distillation_dir
+                    + "_last_%d/" % self.hyper_params.n_frame_from_last
+                )
+                os.makedirs(last_frame_dir)
+
+                # Load directory.
+                episode_dir_list = natsorted(os.listdir(self.save_distillation_dir))
+                episode_dir_list = episode_dir_list[
+                    -self.hyper_params.n_frame_from_last :
+                ]
+                for _dir in tqdm(episode_dir_list):
+                    with open(self.save_distillation_dir + "/" + _dir, "rb") as f:
+                        tmp = pickle.load(f)
+                    with open(last_frame_dir + _dir, "wb") as f:
+                        pickle.dump(tmp, f, protocol=pickle.HIGHEST_PROTOCOL)
