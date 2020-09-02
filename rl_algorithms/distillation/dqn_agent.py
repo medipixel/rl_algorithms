@@ -38,13 +38,7 @@ class DistillationDQN(DQNAgent):
         """Initialize non-common things."""
 
         # You must choose one of them.
-        assert (
-            self.args.teacher
-            + self.args.student
-            + self.args.add_expert_q
-            + self.args.test
-            == 1
-        )
+        assert self.args.student + self.args.add_expert_q + self.args.test == 1
 
         if self.args.student or self.args.test:
             # Training student or generating distillation data(test) requires DistillationBuffer.
@@ -95,7 +89,7 @@ class DistillationDQN(DQNAgent):
 
         output = None
         if self.args.test:
-            if self.args.teacher:
+            if not self.args.student:
                 output = DQNAgent.step(self, action)
             elif not self.args.student:
                 next_state, reward, done, info = self.env.step(action)
@@ -105,8 +99,8 @@ class DistillationDQN(DQNAgent):
                 self.memory.add(data)
                 output = next_state, reward, done, info
         else:
-            if self.args.teacher:
-                # Save states during training teacher.
+            if not self.args.student:
+                # Save states during teacher training.
                 current_ep_dir = (
                     self.save_distillation_dir + "/{}.pkl".format(self.save_count) + ""
                 )
@@ -122,8 +116,36 @@ class DistillationDQN(DQNAgent):
         """Test teacher and collect distillation data."""
 
         test_num = self.args.interim_test_num if interim_test else self.args.episode_num
+        if self.args.student:
+            for i_episode in range(test_num):
+                state = self.env.reset()
+                done = False
+                score = 0
+                step = 0
 
-        if self.args.teacher:
+                while not done and self.memory.idx != self.hyper_params.buffer_size:
+                    if self.args.render:
+                        self.env.render()
+
+                    action, q_value = self.get_action_and_q(state)
+                    next_state, reward, done, _ = self.step(action, q_value)
+
+                    state = next_state
+                    score += reward
+                    step += 1
+
+                print(
+                    "[INFO] test %d\tstep: %d\ttotal score: %d\tbuffer_size: %d"
+                    % (i_episode, step, score, self.memory.idx)
+                )
+
+                if self.args.log:
+                    wandb.log({"test score": score})
+
+                if self.memory.idx == self.hyper_params.buffer_size:
+                    print("[INFO] Buffer saved completely. (%s)" % (self.buffer_path))
+                    break
+        else:
             score_list = []
             for i_episode in range(test_num):
                 state = self.env.reset()
@@ -155,35 +177,6 @@ class DistillationDQN(DQNAgent):
                         "test total step": self.total_step,
                     }
                 )
-        else:
-            for i_episode in range(test_num):
-                state = self.env.reset()
-                done = False
-                score = 0
-                step = 0
-
-                while not done and self.memory.idx != self.hyper_params.buffer_size:
-                    if self.args.render:
-                        self.env.render()
-
-                    action, q_value = self.get_action_and_q(state)
-                    next_state, reward, done, _ = self.step(action, q_value)
-
-                    state = next_state
-                    score += reward
-                    step += 1
-
-                print(
-                    "[INFO] test %d\tstep: %d\ttotal score: %d\tbuffer_size: %d"
-                    % (i_episode, step, score, self.memory.idx)
-                )
-
-                if self.args.log:
-                    wandb.log({"test score": score})
-
-                if self.memory.idx == self.hyper_params.buffer_size:
-                    print("[INFO] Buffer saved completely. (%s)" % (self.buffer_path))
-                    break
 
     def update_distillation(self) -> Tuple[torch.Tensor, ...]:
         """Make relaxed softmax target and KL-Div loss and updates student model's params."""
@@ -260,7 +253,7 @@ class DistillationDQN(DQNAgent):
                 with open(self.save_distillation_dir + "/" + _dir[1], "wb") as f:
                     pickle.dump([state, pred_q], f, protocol=pickle.HIGHEST_PROTOCOL)
 
-        elif self.args.teacher:
+        else:
             DQNAgent.train(self)
 
             if self.hyper_params.n_frame_from_last is not None:
