@@ -99,9 +99,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--student", dest="student", action="store_true", help="train student",
     )
-    parser.add_argument(
-        "--add-expert-q", dest="add_expert_q", action="store_true", help="add expert q",
-    )
 
     return parser.parse_args()
 

@@ -3,9 +3,8 @@
 
 import os
 import pickle
-from typing import Any, List, Tuple
+from typing import List
 
-import numpy as np
 import torch
 from torch.utils.data import DataLoader, Dataset
 
@@ -45,22 +44,14 @@ class DistillationBuffer:
         self.buffer_size = 0
         self.curr_time = curr_time
         self.dataloader = None
-
-    def add(self, data: Tuple[np.ndarray, np.ndarray]) -> Tuple[Any, ...]:
-        """Store one dataset(state, Q values) collected by teacher to buffer_path hard disk."""
-        file_path = os.path.join(
-            self.buffer_path,
-            self.curr_time + "_transition_step_" + str(self.idx) + ".pkl",
-        )
-        with open(file_path, "wb") as f:
-            pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
-        self.idx += 1
+        self.contain_q = None
 
     def reset_dataloader(self):
         """Initialize and reset DataLoader class.
            DataLoader class must be reset for every epoch.
         """
         dataset = DistillationDataset(self.buffer_path)
+        self.contain_q = dataset.contain_q
         self.buffer_size = len(dataset)
         self.dataloader = iter(
             DataLoader(dataset, batch_size=self.batch_size, shuffle=True, num_workers=4)
@@ -78,7 +69,6 @@ class DistillationDataset(Dataset):
 
     Attributes:
         buffer_path (str): distillation buffer path
-        buffer_size (int): distillation buffer size
 
     """
 
@@ -86,16 +76,23 @@ class DistillationDataset(Dataset):
         """Initialize a DistillationBuffer object.
 
         Args:
-            buffer_size (int): distillation buffer size
             buffer_path (str): distillation buffer path
             file_name_list (list): transition's file name list in distillation buffer path
 
         """
         self.buffer_path = buffer_path
         self.file_name_list = []
+        self.contain_q = 0
         for _dir in self.buffer_path:
             tmp = os.listdir(_dir)
             self.file_name_list += [_dir + "/" + x for x in tmp]
+            with open(self.file_name_list[-1], "rb") as f:
+                data = pickle.load(f)
+            self.contain_q = int(len(data) == 2)
+
+        assert (
+            self.contain_q == len(self.buffer_path) or self.contain_q == 0
+        ), "There is a mixture of data with q present and non-existent ones in buffer-path."
 
     def __len__(self):
         """Denotes the total number of samples."""

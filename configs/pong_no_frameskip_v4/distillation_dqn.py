@@ -38,8 +38,11 @@ agent = dict(
         ],
         # Distillation
         epochs=20,  # epoch of student training
-        buffer_size=int(5e4),  # distillation buffer size
+        buffer_size=int(5e4),
         batch_size=32,  # distillation batch size
+        n_frame_from_last=int(
+            1e4
+        ),  # number of frames you want to save from the end of training
     ),
     learner_cfg=dict(
         type="DQNLearner",

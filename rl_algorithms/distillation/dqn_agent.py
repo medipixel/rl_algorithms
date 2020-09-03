@@ -38,38 +38,33 @@ class DistillationDQN(DQNAgent):
         """Initialize non-common things."""
 
         # You must choose one of them.
-        assert self.args.student + self.args.add_expert_q + self.args.test == 1
+        if not self.args.student:
+            # Since raining teacher do not require DistillationBuffer,
+            # it overloads DQNAgent._initialize.
 
-        if self.args.student or self.args.test:
+            DQNAgent._initialize(self)
+            self.make_distillation_dir()
+        else:
             # Training student or generating distillation data(test) requires DistillationBuffer.
 
             self.softmax_tau = 0.01
             self.learner = build_learner(self.learner_cfg)
             self.buffer_path = self.hyper_params.buffer_path
-            if not self.args.student:
-                self.buffer_path = (
-                    f"./data/distillation_buffer/{self.log_cfg.env_name}/"
-                    + f"{self.log_cfg.agent}/{self.log_cfg.curr_time}/"
-                )
-                if self.args.distillation_buffer_path:
-                    self.buffer_path = "./" + self.args.distillation_buffer_path
-                os.makedirs(self.buffer_path, exist_ok=True)
 
             self.memory = DistillationBuffer(
                 self.hyper_params.batch_size, self.buffer_path, self.log_cfg.curr_time,
             )
-        else:
-            # Since raining teacher do not require DistillationBuffer,
-            # it overloads DQNAgent._initialize.
+            if self.args.test:
+                self.make_distillation_dir()
 
-            DQNAgent._initialize(self)
-            self.save_distillation_dir = (
-                "./data/distillation_buffer/"
-                + self.env_info.name
-                + time.strftime("/%Y%m%d%H%M%S")
-            )
-            os.makedirs(self.save_distillation_dir)
-            self.save_count = 0
+    def make_distillation_dir(self):
+        self.save_distillation_dir = (
+            "./data/distillation_buffer/"
+            + self.env_info.name
+            + time.strftime("/%Y%m%d%H%M%S")
+        )
+        os.makedirs(self.save_distillation_dir)
+        self.save_count = 0
 
     def get_action_and_q(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""
@@ -88,27 +83,33 @@ class DistillationDQN(DQNAgent):
         """Take an action and store distillation data to buffer storage."""
 
         output = None
-        if self.args.test:
-            if not self.args.student:
-                output = DQNAgent.step(self, action)
-            elif not self.args.student:
-                next_state, reward, done, info = self.env.step(action)
-
-                data = (self.curr_state, q_values)
-
-                self.memory.add(data)
-                output = next_state, reward, done, info
+        if (
+            self.args.test
+            and hasattr(self, "memory")
+            and not isinstance(self.memory, DistillationBuffer)
+        ):
+            # it means this step is for teacher training's interim test.
+            output = DQNAgent.step(self, action)
         else:
-            if not self.args.student:
-                # Save states during teacher training.
-                current_ep_dir = (
-                    self.save_distillation_dir + "/{}.pkl".format(self.save_count) + ""
-                )
+            current_ep_dir = (
+                self.save_distillation_dir + "/{}.pkl".format(self.save_count) + ""
+            )
+            self.save_count += 1
+            if self.args.test:
+                # it means that code is running for generating expert's test data.
+                next_state, reward, done, info = self.env.step(action)
+                with open(current_ep_dir, "wb") as f:
+                    pickle.dump(
+                        [self.curr_state, q_values], f, protocol=pickle.HIGHEST_PROTOCOL
+                    )
+                if self.save_count >= self.hyper_params.n_frame_from_last:
+                    done = True
+                output = next_state, reward, done, info
+            else:
+                # it means this step is for teacher training.
                 with open(current_ep_dir, "wb") as f:
                     pickle.dump([self.curr_state], f, protocol=pickle.HIGHEST_PROTOCOL)
-                self.save_count += 1
-
-            output = DQNAgent.step(self, action)
+                output = DQNAgent.step(self, action)
 
         return output
 
@@ -116,36 +117,7 @@ class DistillationDQN(DQNAgent):
         """Test teacher and collect distillation data."""
 
         test_num = self.args.interim_test_num if interim_test else self.args.episode_num
-        if self.args.student:
-            for i_episode in range(test_num):
-                state = self.env.reset()
-                done = False
-                score = 0
-                step = 0
-
-                while not done and self.memory.idx != self.hyper_params.buffer_size:
-                    if self.args.render:
-                        self.env.render()
-
-                    action, q_value = self.get_action_and_q(state)
-                    next_state, reward, done, _ = self.step(action, q_value)
-
-                    state = next_state
-                    score += reward
-                    step += 1
-
-                print(
-                    "[INFO] test %d\tstep: %d\ttotal score: %d\tbuffer_size: %d"
-                    % (i_episode, step, score, self.memory.idx)
-                )
-
-                if self.args.log:
-                    wandb.log({"test score": score})
-
-                if self.memory.idx == self.hyper_params.buffer_size:
-                    print("[INFO] Buffer saved completely. (%s)" % (self.buffer_path))
-                    break
-        else:
+        if hasattr(self, "memory"):
             score_list = []
             for i_episode in range(test_num):
                 state = self.env.reset()
@@ -177,6 +149,38 @@ class DistillationDQN(DQNAgent):
                         "test total step": self.total_step,
                     }
                 )
+        else:
+            for i_episode in range(test_num):
+                state = self.env.reset()
+                done = False
+                score = 0
+                step = 0
+
+                while not done:
+                    if self.args.render:
+                        self.env.render()
+
+                    action, q_value = self.get_action_and_q(state)
+                    next_state, reward, done, _ = self.step(action, q_value)
+
+                    state = next_state
+                    score += reward
+                    step += 1
+
+                print(
+                    "[INFO] test %d\tstep: %d\ttotal score: %d\tbuffer_size: %d"
+                    % (i_episode, step, score, self.save_count)
+                )
+
+                if self.args.log:
+                    wandb.log({"test score": score})
+
+                if self.save_count >= self.hyper_params.n_frame_from_last:
+                    print(
+                        "[INFO] test data saved completely. (%s)"
+                        % (self.save_distillation_dir)
+                    )
+                    break
 
     def update_distillation(self) -> Tuple[torch.Tensor, ...]:
         """Make relaxed softmax target and KL-Div loss and updates student model's params."""
@@ -200,10 +204,48 @@ class DistillationDQN(DQNAgent):
 
         return loss.item(), pred_q.mean().item()
 
+    def add_expert_q(self):
+        self.make_distillation_dir()
+
+        # load expert agent and generate q
+        file_name_list = []
+
+        for _dir in self.hyper_params.buffer_path:
+            data = os.listdir(_dir)
+            file_name_list += ["./" + _dir + "/" + x for x in data]
+
+        for i in tqdm(range(len(file_name_list))):
+            with open(file_name_list[i], "rb") as f:
+                state = pickle.load(f)[0]
+
+            torch_state = torch.from_numpy(state).float().to(device)
+            pred_q = self.learner.dqn(torch_state).squeeze().detach().cpu().numpy()
+
+            with open(self.save_distillation_dir + "/" + str(i) + ".pkl", "wb") as f:
+                pickle.dump([state, pred_q], f, protocol=pickle.HIGHEST_PROTOCOL)
+        print(
+            "Data containing expert Q has been saved at {}".format(
+                self.save_distillation_dir
+            )
+        )
+
     def train(self):
-        """Train the student model from teacher's data."""
+        """Execute appropriate learning code according to student or not."""
         if self.args.student:
             self.memory.reset_dataloader()
+            if not self.memory.contain_q:
+                print("train-phase student training. Generating expert agent Q..")
+                assert (
+                    self.args.load_from is not None
+                ), "Train-phase training requires expert agent. Please use load-from argument."
+                self.add_expert_q()
+                self.hyper_params.buffer_path = [self.save_distillation_dir]
+                self.args.load_from = None
+                self._initialize()
+                self.memory.reset_dataloader()
+                print("start student training..")
+
+            # train student
             assert self.memory.buffer_size >= self.hyper_params.batch_size
             if self.args.log:
                 self.set_wandb()
@@ -230,28 +272,6 @@ class DistillationDQN(DQNAgent):
                     self.memory.reset_dataloader()
 
             self.learner.save_params(steps)
-
-        elif self.args.add_expert_q:
-            # Add expert's q to the train phase states.
-
-            # Gather train phase states.
-            self.file_name_list = []
-            for _dir in self.hyper_params.buffer_path:
-                sub_dirs = os.listdir(_dir)
-                for _subdir in sub_dirs:
-                    current_dir = "./" + _dir + "/" + _subdir + "/"
-                    tmp = os.listdir(current_dir)
-                    self.file_name_list += [[current_dir, x] for x in tmp]
-
-            for _dir in tqdm(self.file_name_list):
-                with open(_dir[0] + _dir[1], "rb") as f:
-                    state = pickle.load(f)[0]
-
-                torch_state = torch.from_numpy(state).float().to(device)
-                pred_q = self.learner.dqn(torch_state).squeeze().detach().cpu().numpy()
-
-                with open(self.save_distillation_dir + "/" + _dir[1], "wb") as f:
-                    pickle.dump([state, pred_q], f, protocol=pickle.HIGHEST_PROTOCOL)
 
         else:
             DQNAgent.train(self)
