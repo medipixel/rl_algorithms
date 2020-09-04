@@ -37,7 +37,6 @@ class DistillationDQN(DQNAgent):
     def _initialize(self):
         """Initialize non-common things."""
 
-        # You must choose one of them.
         if not self.args.student:
             # Since raining teacher do not require DistillationBuffer,
             # it overloads DQNAgent._initialize.
@@ -45,7 +44,7 @@ class DistillationDQN(DQNAgent):
             DQNAgent._initialize(self)
             self.make_distillation_dir()
         else:
-            # Training student or generating distillation data(test) requires DistillationBuffer.
+            # Training student or generating distillation data(test).
 
             self.softmax_tau = 0.01
             self.learner = build_learner(self.learner_cfg)
@@ -58,6 +57,7 @@ class DistillationDQN(DQNAgent):
                 self.make_distillation_dir()
 
     def make_distillation_dir(self):
+        """Make directory for saving distillation data."""
         self.save_distillation_dir = (
             "./data/distillation_buffer/"
             + self.env_info.name
@@ -88,7 +88,7 @@ class DistillationDQN(DQNAgent):
             and hasattr(self, "memory")
             and not isinstance(self.memory, DistillationBuffer)
         ):
-            # it means this step is for teacher training's interim test.
+            # Teacher training's interim test.
             output = DQNAgent.step(self, action)
         else:
             current_ep_dir = (
@@ -96,7 +96,7 @@ class DistillationDQN(DQNAgent):
             )
             self.save_count += 1
             if self.args.test:
-                # it means that code is running for generating expert's test data.
+                # Generating expert's test-phase data.
                 next_state, reward, done, info = self.env.step(action)
                 with open(current_ep_dir, "wb") as f:
                     pickle.dump(
@@ -106,7 +106,7 @@ class DistillationDQN(DQNAgent):
                     done = True
                 output = next_state, reward, done, info
             else:
-                # it means this step is for teacher training.
+                # Teacher training.
                 with open(current_ep_dir, "wb") as f:
                     pickle.dump([self.curr_state], f, protocol=pickle.HIGHEST_PROTOCOL)
                 output = DQNAgent.step(self, action)
@@ -118,6 +118,7 @@ class DistillationDQN(DQNAgent):
 
         test_num = self.args.interim_test_num if interim_test else self.args.episode_num
         if hasattr(self, "memory"):
+            # Teacher training interim test.
             score_list = []
             for i_episode in range(test_num):
                 state = self.env.reset()
@@ -150,6 +151,7 @@ class DistillationDQN(DQNAgent):
                     }
                 )
         else:
+            # Gather test-phase data
             for i_episode in range(test_num):
                 state = self.env.reset()
                 done = False
@@ -205,9 +207,8 @@ class DistillationDQN(DQNAgent):
         return loss.item(), pred_q.mean().item()
 
     def add_expert_q(self):
+        """Generate Q of gathered states using laoded agent."""
         self.make_distillation_dir()
-
-        # load expert agent and generate q
         file_name_list = []
 
         for _dir in self.hyper_params.buffer_path:
@@ -230,7 +231,7 @@ class DistillationDQN(DQNAgent):
         )
 
     def train(self):
-        """Execute appropriate learning code according to student or not."""
+        """Execute appropriate learning code according to the running type."""
         if self.args.student:
             self.memory.reset_dataloader()
             if not self.memory.contain_q:
@@ -277,7 +278,7 @@ class DistillationDQN(DQNAgent):
             DQNAgent.train(self)
 
             if self.hyper_params.n_frame_from_last is not None:
-                # Save last n_frame at new directory.
+                # Copy last n_frame in new directory.
                 print("saving last %d frames.." % self.hyper_params.n_frame_from_last)
                 last_frame_dir = (
                     self.save_distillation_dir
