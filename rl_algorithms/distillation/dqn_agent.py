@@ -35,7 +35,7 @@ class DistillationDQN(DQNAgent):
     # pylint: disable=attribute-defined-outside-init
     def _initialize(self):
         """Initialize non-common things."""
-
+        self.save_distillation_dir = None
         if not self.args.student:
             # Since raining teacher do not require DistillationBuffer,
             # it overloads DQNAgent._initialize.
