@@ -12,7 +12,6 @@ import pickle
 import time
 from typing import Tuple
 
-from natsort import natsorted
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -92,7 +91,7 @@ class DistillationDQN(DQNAgent):
             output = DQNAgent.step(self, action)
         else:
             current_ep_dir = (
-                self.save_distillation_dir + "/{}.pkl".format(self.save_count) + ""
+                self.save_distillation_dir + "/{0:07}.pkl".format(self.save_count) + ""
             )
             self.save_count += 1
             if self.args.test:
@@ -287,7 +286,7 @@ class DistillationDQN(DQNAgent):
                 os.makedirs(last_frame_dir)
 
                 # Load directory.
-                episode_dir_list = natsorted(os.listdir(self.save_distillation_dir))
+                episode_dir_list = sorted(os.listdir(self.save_distillation_dir))
                 episode_dir_list = episode_dir_list[
                     -self.hyper_params.n_frame_from_last :
                 ]

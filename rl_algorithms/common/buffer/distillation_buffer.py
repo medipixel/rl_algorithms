@@ -82,17 +82,24 @@ class DistillationDataset(Dataset):
         """
         self.buffer_path = buffer_path
         self.file_name_list = []
-        self.contain_q = 0
+        self.contain_q = None
+
+        sum_data_len = 0
         for _dir in self.buffer_path:
             tmp = os.listdir(_dir)
             self.file_name_list += [_dir + "/" + x for x in tmp]
             with open(self.file_name_list[-1], "rb") as f:
                 data = pickle.load(f)
-            self.contain_q = int(len(data) == 2)
+            sum_data_len += int(len(data) == 2)
 
-        assert (
-            self.contain_q == len(self.buffer_path) or self.contain_q == 0
-        ), "There is a mixture of data with q present and non-existent ones in buffer-path."
+        if sum_data_len == len(self.buffer_path):
+            self.contain_q = True
+        elif sum_data_len == 0:
+            self.contain_q = False
+        else:
+            raise AssertionError(
+                "There is a mixture of data with q present and non-existent ones in buffer-path."
+            )
 
     def __len__(self):
         """Denotes the total number of samples."""
