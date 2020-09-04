@@ -44,14 +44,14 @@ class DistillationBuffer:
         self.buffer_size = 0
         self.curr_time = curr_time
         self.dataloader = None
-        self.contain_q = None
+        self.is_contain_q = False
 
     def reset_dataloader(self):
         """Initialize and reset DataLoader class.
            DataLoader class must be reset for every epoch.
         """
         dataset = DistillationDataset(self.buffer_path)
-        self.contain_q = dataset.contain_q
+        self.is_contain_q = dataset.is_contain_q
         self.buffer_size = len(dataset)
         self.dataloader = iter(
             DataLoader(dataset, batch_size=self.batch_size, shuffle=True, num_workers=4)
@@ -82,7 +82,6 @@ class DistillationDataset(Dataset):
         """
         self.buffer_path = buffer_path
         self.file_name_list = []
-        self.contain_q = None
 
         sum_data_len = 0
         for _dir in self.buffer_path:
@@ -93,9 +92,9 @@ class DistillationDataset(Dataset):
             sum_data_len += int(len(data) == 2)
 
         if sum_data_len == len(self.buffer_path):
-            self.contain_q = True
+            self.is_contain_q = True
         elif sum_data_len == 0:
-            self.contain_q = False
+            self.is_contain_q = False
         else:
             raise AssertionError(
                 "There is a mixture of data with q present and non-existent ones in buffer-path."
