@@ -73,7 +73,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--save-period", type=int, default=20, help="save model period")
     parser.add_argument(
-        "--episode-num", type=int, default=5000, help="total episode num"
+        "--episode-num", type=int, default=500, help="total episode num"
     )
     parser.add_argument(
         "--max-update-step", type=int, default=100000, help="max update step"
@@ -97,10 +97,7 @@ def parse_args() -> argparse.Namespace:
         help="turn off framestack",
     )
     parser.add_argument(
-        "--distillation-buffer-path",
-        type=str,
-        default=None,
-        help="distillation buffer storage directory",
+        "--student", dest="student", action="store_true", help="train student",
     )
 
     return parser.parse_args()

@@ -8,6 +8,8 @@ typing
 cloudpickle
 opencv-python==4.3.0.36
 addict
+tqdm
+
 # mujoco
 
 # for distributed learning
