@@ -3,6 +3,8 @@
 - Author: Kyunghwan Kim
 - Contact: kh.kim@medipixel.io
 """
+import torch
+
 from rl_algorithms.common.helper_functions import identity
 
 agent = dict(
@@ -33,6 +35,7 @@ agent = dict(
     ),
     learner_cfg=dict(
         type="SACfDLearner",
+        device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
         backbone=dict(actor=dict(), critic_vf=dict(), critic_qf=dict()),
         head=dict(
             actor=dict(

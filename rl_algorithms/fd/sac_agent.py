@@ -23,7 +23,7 @@ from rl_algorithms.common.helper_functions import numpy2floattensor
 from rl_algorithms.registry import AGENTS, build_learner
 from rl_algorithms.sac.agent import SACAgent
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 @AGENTS.register_module
@@ -88,11 +88,17 @@ class SACfDAgent(SACAgent):
 
     def sample_experience(self) -> Tuple[torch.Tensor, ...]:
         experiences_1 = self.memory.sample(self.per_beta)
-        experiences_1 = numpy2floattensor(experiences_1[:6]) + experiences_1[6:]
+        experiences_1 = (
+            numpy2floattensor(experiences_1[:6], self.learner_cfg.device)
+            + experiences_1[6:]
+        )
         if self.use_n_step:
             indices = experiences_1[-2]
             experiences_n = self.memory_n.sample(indices)
-            return experiences_1, numpy2floattensor(experiences_n)
+            return (
+                experiences_1,
+                numpy2floattensor(experiences_n, self.learner_cfg.device),
+            )
 
         return experiences_1
 

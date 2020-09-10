@@ -19,7 +19,7 @@ from rl_algorithms.common.helper_functions import numpy2floattensor
 from rl_algorithms.dqn.agent import DQNAgent
 from rl_algorithms.registry import AGENTS, build_learner
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 @AGENTS.register_module
@@ -120,9 +120,9 @@ class R2D1Agent(DQNAgent):
     def sample_experience(self) -> Tuple[torch.Tensor, ...]:
         experiences_1 = self.memory.sample(self.per_beta)
         experiences_1 = (
-            numpy2floattensor(experiences_1[:3])
+            numpy2floattensor(experiences_1[:3], self.learner_cfg.device)
             + (experiences_1[3],)
-            + numpy2floattensor(experiences_1[4:6])
+            + numpy2floattensor(experiences_1[4:6], self.learner_cfg.device)
             + (experiences_1[6:])
         )
         if self.use_n_step:
@@ -130,9 +130,9 @@ class R2D1Agent(DQNAgent):
             experiences_n = self.memory_n.sample(indices)
             return (
                 experiences_1,
-                numpy2floattensor(experiences_n[:3])
+                numpy2floattensor(experiences_n[:3], self.learner_cfg.device)
                 + (experiences_n[3],)
-                + numpy2floattensor(experiences_n[4:]),
+                + numpy2floattensor(experiences_n[4:], self.learner_cfg.device),
             )
 
         return experiences_1
@@ -151,11 +151,11 @@ class R2D1Agent(DQNAgent):
             state = self.env.reset()
             hidden_in = torch.zeros(
                 [1, 1, self.learner.gru_cfg.rnn_hidden_size], dtype=torch.float
-            ).to(device)
+            ).to(self.learner_cfg.device)
             prev_action = torch.zeros(
                 1, 1, self.learner.head_cfg.configs.output_size
-            ).to(device)
-            prev_reward = torch.zeros(1, 1, 1).to(device)
+            ).to(self.learner_cfg.device)
+            prev_reward = torch.zeros(1, 1, 1).to(self.learner_cfg.device)
             self.episode_step = 0
             self.sequence_step = 0
             losses = list()
@@ -196,7 +196,7 @@ class R2D1Agent(DQNAgent):
                         self.min_epsilon,
                     )
 
-                    # Increase priority beta
+                    # Increase priority betadevice
                     fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)
                     self.per_beta = self.per_beta + fraction * (1.0 - self.per_beta)
 
@@ -205,7 +205,7 @@ class R2D1Agent(DQNAgent):
                 prev_action = common_utils.make_one_hot(
                     torch.as_tensor(action), self.learner.head_cfg.configs.output_size
                 )
-                prev_reward = torch.as_tensor(reward).to(device)
+                prev_reward = torch.as_tensor(reward).to(self.learner_cfg.device)
                 score += reward
 
             t_end = time.time()
@@ -236,11 +236,11 @@ class R2D1Agent(DQNAgent):
         for i_episode in range(test_num):
             hidden_in = torch.zeros(
                 [1, 1, self.learner.gru_cfg.rnn_hidden_size], dtype=torch.float
-            ).to(device)
+            ).to(self.learner_cfg.device)
             prev_action = torch.zeros(
                 1, 1, self.learner.head_cfg.configs.output_size
-            ).to(device)
-            prev_reward = torch.zeros(1, 1, 1).to(device)
+            ).to(self.learner_cfg.device)
+            prev_reward = torch.zeros(1, 1, 1).to(self.learner_cfg.device)
             state = self.env.reset()
             done = False
             score = 0
@@ -260,7 +260,7 @@ class R2D1Agent(DQNAgent):
                 prev_action = common_utils.make_one_hot(
                     torch.as_tensor(action), self.learner.head_cfg.configs.output_size
                 )
-                prev_reward = torch.as_tensor(reward).to(device)
+                prev_reward = torch.as_tensor(reward).to(self.learner_cfg.device)
                 score += reward
                 step += 1
 

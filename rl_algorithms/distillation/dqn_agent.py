@@ -22,7 +22,7 @@ from rl_algorithms.common.buffer.distillation_buffer import DistillationBuffer
 from rl_algorithms.dqn.agent import DQNAgent
 from rl_algorithms.registry import AGENTS, build_learner
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 @AGENTS.register_module
@@ -187,8 +187,8 @@ class DistillationDQN(DQNAgent):
         """Make relaxed softmax target and KL-Div loss and updates student model's params."""
         states, q_values = self.memory.sample_for_diltillation()
 
-        states = states.float().to(device)
-        q_values = q_values.float().to(device)
+        states = states.float().to(self.learner_cfg.device)
+        q_values = q_values.float().to(self.learner_cfg.device)
 
         if torch.cuda.is_available():
             states = states.cuda(non_blocking=True)
@@ -218,7 +218,7 @@ class DistillationDQN(DQNAgent):
             with open(file_name_list[i], "rb") as f:
                 state = pickle.load(f)[0]
 
-            torch_state = torch.from_numpy(state).float().to(device)
+            torch_state = torch.from_numpy(state).float().to(self.learner_cfg.device)
             pred_q = self.learner.dqn(torch_state).squeeze().detach().cpu().numpy()
 
             with open(self.save_distillation_dir + "/" + str(i) + ".pkl", "wb") as f:

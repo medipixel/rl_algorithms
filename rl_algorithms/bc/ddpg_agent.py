@@ -15,11 +15,11 @@ import torch
 import wandb
 
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
-from rl_algorithms.common.helper_functions import np2tensor, numpy2floattensor
+from rl_algorithms.common.helper_functions import numpy2floattensor
 from rl_algorithms.ddpg.agent import DDPGAgent
 from rl_algorithms.registry import AGENTS, build_her, build_learner
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 @AGENTS.register_module
@@ -84,7 +84,7 @@ class BCDDPGAgent(DDPGAgent):
         if self.hyper_params.use_her:
             self.desired_state = self.her.get_desired_state()
             state = np.concatenate((state, self.desired_state), axis=-1)
-        state = np2tensor(state, device)
+        state = numpy2floattensor(state, self.learner_cfg.device)
         return state
 
     def _add_transition_to_memory(self, transition: Tuple[np.ndarray, ...]):
@@ -170,8 +170,8 @@ class BCDDPGAgent(DDPGAgent):
                         experience = self.memory.sample()
                         demos = self.demo_memory.sample()
                         experience, demos = (
-                            numpy2floattensor(experience),
-                            numpy2floattensor(demos),
+                            numpy2floattensor(experience, self.learner_cfg.device),
+                            numpy2floattensor(demos, self.learner_cfg.device),
                         )
                         loss = self.learner.update_model(experience, demos)
                         losses.append(loss)  # for logging

@@ -17,12 +17,12 @@ import wandb
 
 from rl_algorithms.common.abstract.agent import Agent
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
-from rl_algorithms.common.helper_functions import np2tensor, numpy2floattensor
+from rl_algorithms.common.helper_functions import numpy2floattensor
 from rl_algorithms.common.noise import GaussianNoise
 from rl_algorithms.registry import AGENTS, build_learner
 from rl_algorithms.utils.config import ConfigDict
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 @AGENTS.register_module
@@ -78,7 +78,7 @@ class TD3Agent(Agent):
         self.learner_cfg.hyper_params = self.hyper_params
         self.learner_cfg.log_cfg = self.log_cfg
         self.learner_cfg.noise_cfg = noise_cfg
-        self.learner_cfg.device = device
+        # self.learner_cfg.device = device
 
         # noise instance to make randomness of action
         self.exploration_noise = GaussianNoise(
@@ -107,7 +107,7 @@ class TD3Agent(Agent):
             return np.array(self.env_info.action_space.sample())
 
         with torch.no_grad():
-            state = np2tensor(state, device)
+            state = numpy2floattensor(state, self.learner_cfg.device)
             selected_action = self.learner.actor(state).detach().cpu().numpy()
 
         if not self.args.test:
@@ -192,7 +192,7 @@ class TD3Agent(Agent):
 
                 if len(self.memory) >= self.hyper_params.batch_size:
                     experience = self.memory.sample()
-                    experience = numpy2floattensor(experience)
+                    experience = numpy2floattensor(experience, self.learner_cfg.device)
                     loss = self.learner.update_model(experience)
                     loss_episode.append(loss)  # for logging
 
