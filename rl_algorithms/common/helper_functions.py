@@ -95,9 +95,23 @@ def numpy2floattensor(arrays: Tuple[np.ndarray]) -> Tuple[np.ndarray]:
     """Convert numpy arrays to torch float tensor."""
     tensors = []
     for array in arrays:
-        tensor = torch.FloatTensor(array).to(device, non_blocking=True)
+        tensor = (
+            torch.from_numpy(array).cpu.float()
+            if device == "cpu"
+            else torch.from_numpy(array).cuda(non_blocking=True).float()
+        )
         tensors.append(tensor)
     return tuple(tensors)
+
+
+def np2tensor(array: np.array, dev: str) -> torch.tensor:
+    """Convert numpy array to float tensor. """
+    tensor = (
+        torch.from_numpy(array).cpu.float()
+        if dev == "cpu"
+        else torch.from_numpy(array).cuda(non_blocking=True).float()
+    )
+    return tensor
 
 
 def state_dict2numpy(state_dict) -> Dict[str, np.ndarray]:
@@ -112,7 +126,8 @@ def smoothen_graph(scalars: List[float], weight: float = 0.6) -> List[float]:
     """Smoothen result graph using exponential moving average formula as TensorBoard.
 
         Reference:
-            https://docs.wandb.com/library/technical-faq#what-formula-do-you-use-for-your-smoothing-algorithm
+            https://docs.wandb.com/library/technical-faq
+            #what-formula-do-you-use-for-your-smoothing-algorithm
     """
     last = scalars[0]  # First value in the plot (first timestep)
     smoothed = list()

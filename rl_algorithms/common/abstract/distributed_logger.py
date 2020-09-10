@@ -21,7 +21,7 @@ import zmq
 
 from rl_algorithms.common.env.atari_wrappers import atari_env_generator
 import rl_algorithms.common.env.utils as env_utils
-from rl_algorithms.common.helper_functions import smoothen_graph
+from rl_algorithms.common.helper_functions import np2tensor, smoothen_graph
 from rl_algorithms.common.networks.brain import Brain
 from rl_algorithms.utils.config import ConfigDict
 
@@ -101,7 +101,7 @@ class DistributedLogger(ABC):
     # pylint: disable=no-self-use
     @staticmethod
     def _preprocess_state(state: np.ndarray, device: torch.device) -> torch.Tensor:
-        state = torch.FloatTensor(state).to(device)
+        state = np2tensor(state, device)
         return state
 
     def set_wandb(self):
@@ -246,7 +246,5 @@ class DistributedLogger(ABC):
         for logger_named_param in self.brain.named_parameters():
             logger_param_name = logger_named_param[0]
             if logger_param_name in param_name_list:
-                new_param = torch.FloatTensor(state_dict[logger_param_name]).to(
-                    self.device
-                )
+                new_param = np2tensor(state_dict[logger_param_name], self.device)
                 logger_named_param[1].data.copy_(new_param)

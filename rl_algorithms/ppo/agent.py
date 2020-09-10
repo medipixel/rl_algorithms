@@ -16,6 +16,7 @@ import wandb
 
 from rl_algorithms.common.abstract.agent import Agent
 from rl_algorithms.common.env.utils import env_generator, make_envs
+from rl_algorithms.common.helper_functions import np2tensor
 from rl_algorithms.registry import AGENTS, build_learner
 from rl_algorithms.utils.config import ConfigDict
 
@@ -98,7 +99,7 @@ class PPOAgent(Agent):
 
     def select_action(self, state: np.ndarray) -> torch.Tensor:
         """Select an action from the input space."""
-        state = torch.FloatTensor(state).to(device)
+        state = np2tensor(state, device)
         selected_action, dist = self.learner.actor(state)
 
         if self.args.test and not self.is_discrete:
@@ -123,8 +124,8 @@ class PPOAgent(Agent):
                 np.where(self.episode_steps == self.args.max_episode_steps)
             ] = False
 
-            self.rewards.append(torch.FloatTensor(reward).unsqueeze(1).to(device))
-            self.masks.append(torch.FloatTensor(1 - done_bool).unsqueeze(1).to(device))
+            self.rewards.append(np2tensor(reward, device).unsqueeze(1))
+            self.masks.append(np2tensor((1 - done_bool), device).unsqueeze(1))
 
         return next_state, reward, done, info
 

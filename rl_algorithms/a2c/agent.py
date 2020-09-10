@@ -14,6 +14,7 @@ import torch
 import wandb
 
 from rl_algorithms.common.abstract.agent import Agent
+from rl_algorithms.common.helper_functions import np2tensor
 from rl_algorithms.registry import AGENTS, build_learner
 from rl_algorithms.utils.config import ConfigDict
 
@@ -70,7 +71,7 @@ class A2CAgent(Agent):
 
     def select_action(self, state: np.ndarray) -> torch.Tensor:
         """Select an action from the input space."""
-        state = torch.FloatTensor(state).to(device)
+        state = np2tensor(state, device)
 
         selected_action, dist = self.learner.actor(state)
 

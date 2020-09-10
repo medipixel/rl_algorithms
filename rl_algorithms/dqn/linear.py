@@ -62,7 +62,11 @@ class NoisyLinear(nn.Module):
     @staticmethod
     def scale_noise(size: int) -> torch.Tensor:
         """Set scale to make noise (factorized gaussian noise)."""
-        x = torch.FloatTensor(np.random.normal(loc=0.0, scale=1.0, size=size))
+        x = (
+            torch.from_numpy(np.random.normal(loc=0.0, scale=1.0, size=size))
+            .cpu()
+            .float()
+        )
 
         return x.sign().mul(x.abs().sqrt())
 

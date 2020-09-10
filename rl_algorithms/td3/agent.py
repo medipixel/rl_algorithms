@@ -17,7 +17,7 @@ import wandb
 
 from rl_algorithms.common.abstract.agent import Agent
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
-from rl_algorithms.common.helper_functions import numpy2floattensor
+from rl_algorithms.common.helper_functions import np2tensor, numpy2floattensor
 from rl_algorithms.common.noise import GaussianNoise
 from rl_algorithms.registry import AGENTS, build_learner
 from rl_algorithms.utils.config import ConfigDict
@@ -107,7 +107,7 @@ class TD3Agent(Agent):
             return np.array(self.env_info.action_space.sample())
 
         with torch.no_grad():
-            state = torch.FloatTensor(state).to(device)
+            state = np2tensor(state, device)
             selected_action = self.learner.actor(state).detach().cpu().numpy()
 
         if not self.args.test:

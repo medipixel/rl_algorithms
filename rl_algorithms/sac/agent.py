@@ -18,7 +18,7 @@ import wandb
 
 from rl_algorithms.common.abstract.agent import Agent
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
-from rl_algorithms.common.helper_functions import numpy2floattensor
+from rl_algorithms.common.helper_functions import np2tensor, numpy2floattensor
 from rl_algorithms.registry import AGENTS, build_learner
 from rl_algorithms.utils.config import ConfigDict
 
@@ -113,7 +113,7 @@ class SACAgent(Agent):
     # pylint: disable=no-self-use
     def _preprocess_state(self, state: np.ndarray) -> torch.Tensor:
         """Preprocess state so that actor selects an action."""
-        state = torch.FloatTensor(state).to(device)
+        state = np2tensor(state, device)
         return state
 
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, np.float64, bool, dict]:

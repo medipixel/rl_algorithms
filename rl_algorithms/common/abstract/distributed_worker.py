@@ -16,7 +16,7 @@ import torch
 
 from rl_algorithms.common.env.atari_wrappers import atari_env_generator
 import rl_algorithms.common.env.utils as env_utils
-from rl_algorithms.common.helper_functions import set_random_seed
+from rl_algorithms.common.helper_functions import np2tensor, set_random_seed
 from rl_algorithms.common.networks.brain import Brain
 from rl_algorithms.utils.config import ConfigDict
 
@@ -43,9 +43,7 @@ class BaseDistributedWorker(ABC):
         for worker_named_param in network.named_parameters():
             worker_param_name = worker_named_param[0]
             if worker_param_name in param_name_list:
-                new_param = torch.FloatTensor(new_state_dict[worker_param_name]).to(
-                    self.device
-                )
+                new_param = np2tensor(new_state_dict[worker_param_name], self.device)
                 worker_named_param[1].data.copy_(new_param)
 
 
@@ -120,7 +118,7 @@ class DistributedWorker(BaseDistributedWorker):
     @staticmethod
     def _preprocess_state(state: np.ndarray, device: torch.device) -> torch.Tensor:
         """Preprocess state so that actor selects an action."""
-        state = torch.FloatTensor(state).to(device)
+        state = np2tensor(state, device)
         return state
 
 

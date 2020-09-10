@@ -17,7 +17,7 @@ import torch
 import wandb
 
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
-from rl_algorithms.common.helper_functions import numpy2floattensor
+from rl_algorithms.common.helper_functions import np2tensor, numpy2floattensor
 from rl_algorithms.registry import AGENTS, build_her, build_learner
 from rl_algorithms.sac.agent import SACAgent
 
@@ -83,7 +83,7 @@ class BCSACAgent(SACAgent):
         if self.hyper_params.use_her:
             self.desired_state = self.her.get_desired_state()
             state = np.concatenate((state, self.desired_state), axis=-1)
-        state = torch.FloatTensor(state).to(device)
+        state = np2tensor(state, device)
         return state
 
     def _add_transition_to_memory(self, transition: Tuple[np.ndarray, ...]):

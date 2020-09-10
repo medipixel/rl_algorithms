@@ -131,7 +131,7 @@ class TD3Learner(Learner):
         masks = 1 - dones
 
         # get actions with noise
-        noise = torch.FloatTensor(self.target_policy_noise.sample()).to(self.device)
+        noise = common_utils.np2tensor(self.target_policy_noise.sample(), self.device)
         clipped_noise = torch.clamp(
             noise,
             -self.noise_cfg.target_policy_noise_clip,
