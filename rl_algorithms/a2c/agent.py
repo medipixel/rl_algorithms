@@ -18,8 +18,6 @@ from rl_algorithms.common.helper_functions import numpy2floattensor
 from rl_algorithms.registry import AGENTS, build_learner
 from rl_algorithms.utils.config import ConfigDict
 
-# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
 
 @AGENTS.register_module
 class A2CAgent(Agent):
@@ -65,7 +63,9 @@ class A2CAgent(Agent):
         self.learner_cfg.env_info = self.env_info
         self.learner_cfg.hyper_params = self.hyper_params
         self.learner_cfg.log_cfg = self.log_cfg
-        # self.learner_cfg.device = device
+        self.learner_cfg.device = torch.device(
+            "cuda:0" if torch.cuda.is_available() else "cpu"
+        )
 
         self.learner = build_learner(self.learner_cfg)
 

@@ -77,6 +77,9 @@ class DQNAgent(Agent):
         self.learner_cfg.env_info = self.env_info
         self.learner_cfg.hyper_params = self.hyper_params
         self.learner_cfg.log_cfg = self.log_cfg
+        self.learner_cfg.device = torch.device(
+            "cuda:0" if torch.cuda.is_available() else "cpu"
+        )
 
         self.per_beta = hyper_params.per_beta
         self.use_n_step = hyper_params.n_step > 1

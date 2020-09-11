@@ -19,8 +19,6 @@ from rl_algorithms.common.helper_functions import numpy2floattensor
 from rl_algorithms.dqn.agent import DQNAgent
 from rl_algorithms.registry import AGENTS, build_learner
 
-# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
 
 @AGENTS.register_module
 class R2D1Agent(DQNAgent):

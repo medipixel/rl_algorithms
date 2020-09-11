@@ -3,7 +3,6 @@
 - Author: Kyunghwan Kim
 - Contact: kh.kim@medipixel.io
 """
-import torch
 
 from rl_algorithms.common.helper_functions import identity
 
@@ -40,7 +39,6 @@ agent = dict(
     ),
     learner_cfg=dict(
         type="DQNLearner",
-        device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
         backbone=dict(
             type="ResNet",
             configs=dict(

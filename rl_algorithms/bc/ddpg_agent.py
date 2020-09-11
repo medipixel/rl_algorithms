@@ -19,8 +19,6 @@ from rl_algorithms.common.helper_functions import numpy2floattensor
 from rl_algorithms.ddpg.agent import DDPGAgent
 from rl_algorithms.registry import AGENTS, build_her, build_learner
 
-# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
 
 @AGENTS.register_module
 class BCDDPGAgent(DDPGAgent):
@@ -77,6 +75,10 @@ class BCDDPGAgent(DDPGAgent):
 
         self.learner_cfg.type = "BCDDPGLearner"
         self.learner_cfg.hyper_params = self.hyper_params
+        self.learner_cfg.device = torch.device(
+            "cuda:0" if torch.cuda.is_available() else "cpu"
+        )
+
         self.learner = build_learner(self.learner_cfg)
 
     def _preprocess_state(self, state: np.ndarray) -> torch.Tensor:

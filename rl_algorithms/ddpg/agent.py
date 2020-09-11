@@ -22,8 +22,6 @@ from rl_algorithms.common.noise import OUNoise
 from rl_algorithms.registry import AGENTS, build_learner
 from rl_algorithms.utils.config import ConfigDict
 
-# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
 
 @AGENTS.register_module
 class DDPGAgent(Agent):
@@ -72,7 +70,9 @@ class DDPGAgent(Agent):
         self.learner_cfg.hyper_params = self.hyper_params
         self.learner_cfg.log_cfg = self.log_cfg
         self.learner_cfg.noise_cfg = noise_cfg
-        # self.learner_cfg.device = device
+        self.learner_cfg.device = torch.device(
+            "cuda:0" if torch.cuda.is_available() else "cpu"
+        )
 
         # set noise
         self.noise = OUNoise(

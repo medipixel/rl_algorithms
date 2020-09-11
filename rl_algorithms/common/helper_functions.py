@@ -91,22 +91,25 @@ def get_n_step_info(
     return reward, next_state, done
 
 
-def numpy2floattensor(arrays: Tuple[np.ndarray], dev: str) -> Tuple[torch.Tensor]:
-    """Convert numpy arrays to torch float tensor."""
-    dev = str(dev)
-    if isinstance(arrays, tuple):
+def numpy2floattensor(arrays: Tuple[np.ndarray], device_: str) -> Tuple[torch.Tensor]:
+    """
+       Convert numpy numpy array with Tuple type to torch float tensor within Tuple.
+       Convert numpy array to torch float tensor.
+    """
+    device_ = str(device_)
+    if isinstance(arrays, tuple):  # check Tuple or not
         tensors = []
         for array in arrays:
             tensor = (
                 torch.from_numpy(array).cpu().float()
-                if dev == "cpu"
+                if device_ == "cpu"
                 else torch.from_numpy(array).cuda(non_blocking=True).float()
             )
             tensors.append(tensor)
         return tuple(tensors)
     tensor = (
         torch.from_numpy(arrays).cpu().float()
-        if dev == "cpu"
+        if device_ == "cpu"
         else torch.from_numpy(arrays).cuda(non_blocking=True).float()
     )
     return tensor

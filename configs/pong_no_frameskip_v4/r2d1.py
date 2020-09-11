@@ -4,8 +4,6 @@
 - Contact: euijin.jeong@medipixel.io
 """
 
-import torch
-
 from rl_algorithms.common.helper_functions import identity
 
 agent = dict(
@@ -42,7 +40,6 @@ agent = dict(
     ),
     learner_cfg=dict(
         type="R2D1Learner",
-        device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
         backbone=dict(
             type="CNN",
             configs=dict(

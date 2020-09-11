@@ -26,7 +26,6 @@ agent = dict(
     ),
     learner_cfg=dict(
         type="PPOLearner",
-        device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
         backbone=dict(actor=dict(), critic=dict(),),
         head=dict(
             actor=dict(
