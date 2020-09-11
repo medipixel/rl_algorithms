@@ -294,3 +294,12 @@ class DistillationDQN(DQNAgent):
                         tmp = pickle.load(f)
                     with open(last_frame_dir + _dir, "wb") as f:
                         pickle.dump(tmp, f, protocol=pickle.HIGHEST_PROTOCOL)
+                print("\nsuccessfully saved")
+                print(
+                    "All train-phase dir: {}".format(self.save_distillation_dir + "/")
+                )
+                print(
+                    "last {} frames dir: {}".format(
+                        self.hyper_params.n_frame_from_last, last_frame_dir
+                    )
+                )
