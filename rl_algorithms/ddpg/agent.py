@@ -22,8 +22,6 @@ from rl_algorithms.common.noise import OUNoise
 from rl_algorithms.registry import AGENTS, build_learner
 from rl_algorithms.utils.config import ConfigDict
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
 
 @AGENTS.register_module
 class DDPGAgent(Agent):
@@ -72,7 +70,6 @@ class DDPGAgent(Agent):
         self.learner_cfg.hyper_params = self.hyper_params
         self.learner_cfg.log_cfg = self.log_cfg
         self.learner_cfg.noise_cfg = noise_cfg
-        self.learner_cfg.device = device
 
         # set noise
         self.noise = OUNoise(
@@ -118,7 +115,7 @@ class DDPGAgent(Agent):
     # pylint: disable=no-self-use
     def _preprocess_state(self, state: np.ndarray) -> torch.Tensor:
         """Preprocess state so that actor selects an action."""
-        state = torch.FloatTensor(state).to(device)
+        state = numpy2floattensor(state, self.learner.device)
         return state
 
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, np.float64, bool, dict]:
@@ -206,7 +203,7 @@ class DDPGAgent(Agent):
                 if len(self.memory) >= self.hyper_params.batch_size:
                     for _ in range(self.hyper_params.multiple_update):
                         experience = self.memory.sample()
-                        experience = numpy2floattensor(experience)
+                        experience = numpy2floattensor(experience, self.learner.device)
                         loss = self.learner.update_model(experience)
                         losses.append(loss)  # for logging
 

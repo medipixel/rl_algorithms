@@ -94,7 +94,10 @@ class ApeXLearnerWrapper(DistributedLearnerWrapper):
         while self.update_step < self.max_update_step:
             replay_data = self.recv_replay_data()
             if replay_data is not None:
-                replay_data = numpy2floattensor(replay_data[:6]) + replay_data[6:]
+                replay_data = (
+                    numpy2floattensor(replay_data[:6], self.learner.device)
+                    + replay_data[6:]
+                )
                 info = self.update_model(replay_data)
                 indices, new_priorities = info[-2:]
                 step_info = info[:-2]

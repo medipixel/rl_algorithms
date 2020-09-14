@@ -97,7 +97,8 @@ class DistillationDataset(Dataset):
             self.is_contain_q = False
         else:
             raise AssertionError(
-                "There is a mixture of data with q present and non-existent ones in buffer-path."
+                "There is a mixture of data with q present and non-existent ones"
+                + "in buffer-path."
             )
 
     def __len__(self):

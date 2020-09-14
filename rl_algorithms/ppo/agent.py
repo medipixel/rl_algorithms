@@ -16,10 +16,9 @@ import wandb
 
 from rl_algorithms.common.abstract.agent import Agent
 from rl_algorithms.common.env.utils import env_generator, make_envs
+from rl_algorithms.common.helper_functions import numpy2floattensor
 from rl_algorithms.registry import AGENTS, build_learner
 from rl_algorithms.utils.config import ConfigDict
-
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 @AGENTS.register_module
@@ -87,7 +86,6 @@ class PPOAgent(Agent):
         self.learner_cfg.env_info = self.env_info
         self.learner_cfg.hyper_params = self.hyper_params
         self.learner_cfg.log_cfg = self.log_cfg
-        self.learner_cfg.device = device
 
         if not self.args.test:
             self.env = env_multi
@@ -98,7 +96,7 @@ class PPOAgent(Agent):
 
     def select_action(self, state: np.ndarray) -> torch.Tensor:
         """Select an action from the input space."""
-        state = torch.FloatTensor(state).to(device)
+        state = numpy2floattensor(state, self.learner.device)
         selected_action, dist = self.learner.actor(state)
 
         if self.args.test and not self.is_discrete:
@@ -123,8 +121,12 @@ class PPOAgent(Agent):
                 np.where(self.episode_steps == self.args.max_episode_steps)
             ] = False
 
-            self.rewards.append(torch.FloatTensor(reward).unsqueeze(1).to(device))
-            self.masks.append(torch.FloatTensor(1 - done_bool).unsqueeze(1).to(device))
+            self.rewards.append(
+                numpy2floattensor(reward, self.learner.device).unsqueeze(1)
+            )
+            self.masks.append(
+                numpy2floattensor((1 - done_bool), self.learner.device).unsqueeze(1)
+            )
 
         return next_state, reward, done, info
 

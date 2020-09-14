@@ -8,6 +8,7 @@ from torch.nn.utils import clip_grad_norm_
 import torch.optim as optim
 
 from rl_algorithms.common.abstract.learner import Learner, TensorTuple
+from rl_algorithms.common.helper_functions import numpy2floattensor
 from rl_algorithms.common.networks.brain import Brain
 import rl_algorithms.ppo.utils as ppo_utils
 from rl_algorithms.registry import LEARNERS
@@ -38,9 +39,10 @@ class PPOLearner(Learner):
         backbone: ConfigDict,
         head: ConfigDict,
         optim_cfg: ConfigDict,
-        device: torch.device,
     ):
-        Learner.__init__(self, args, env_info, hyper_params, log_cfg, device)
+        Learner.__init__(
+            self, args, env_info, hyper_params, log_cfg,
+        )
 
         self.backbone_cfg = backbone
         self.head_cfg = head
@@ -81,7 +83,7 @@ class PPOLearner(Learner):
     def update_model(self, experience: TensorTuple, epsilon: float) -> TensorTuple:
         """Update PPO actor and critic networks"""
         states, actions, rewards, values, log_probs, next_state, masks = experience
-        next_state = torch.FloatTensor(next_state).to(self.device)
+        next_state = numpy2floattensor(next_state, self.device)
         next_value = self.critic(next_state)
 
         returns = ppo_utils.compute_gae(

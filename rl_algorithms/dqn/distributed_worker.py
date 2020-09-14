@@ -12,6 +12,7 @@ import numpy as np
 import torch
 
 from rl_algorithms.common.abstract.distributed_worker import DistributedWorker
+from rl_algorithms.common.helper_functions import numpy2floattensor
 from rl_algorithms.common.networks.brain import Brain
 from rl_algorithms.registry import WORKERS, build_loss
 from rl_algorithms.utils.config import ConfigDict
@@ -98,11 +99,11 @@ class DQNWorker(DistributedWorker):
 
     def compute_priorities(self, memory: Dict[str, np.ndarray]) -> np.ndarray:
         """Compute initial priority values of experiences in local memory."""
-        states = torch.FloatTensor(memory["states"]).to(self.device)
-        actions = torch.FloatTensor(memory["actions"]).long().to(self.device)
-        rewards = torch.FloatTensor(memory["rewards"].reshape(-1, 1)).to(self.device)
-        next_states = torch.FloatTensor(memory["next_states"]).to(self.device)
-        dones = torch.FloatTensor(memory["dones"].reshape(-1, 1)).to(self.device)
+        states = numpy2floattensor(memory["states"], self.device)
+        actions = numpy2floattensor(memory["actions"], self.device).long()
+        rewards = numpy2floattensor(memory["rewards"].reshape(-1, 1), self.device)
+        next_states = numpy2floattensor(memory["next_states"], self.device)
+        dones = numpy2floattensor(memory["dones"].reshape(-1, 1), self.device)
         memory_tensors = (states, actions, rewards, next_states, dones)
 
         with torch.no_grad():

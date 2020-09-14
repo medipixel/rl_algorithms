@@ -9,6 +9,7 @@ from torch.nn.utils import clip_grad_norm_
 import torch.optim as optim
 
 from rl_algorithms.common.abstract.learner import Learner, TensorTuple
+from rl_algorithms.common.helper_functions import numpy2floattensor
 from rl_algorithms.common.networks.brain import Brain
 from rl_algorithms.registry import LEARNERS
 from rl_algorithms.utils.config import ConfigDict
@@ -38,9 +39,8 @@ class A2CLearner(Learner):
         backbone: ConfigDict,
         head: ConfigDict,
         optim_cfg: ConfigDict,
-        device: torch.device,
     ):
-        Learner.__init__(self, args, env_info, hyper_params, log_cfg, device)
+        Learner.__init__(self, args, env_info, hyper_params, log_cfg)
 
         self.backbone_cfg = backbone
         self.head_cfg = head
@@ -79,7 +79,7 @@ class A2CLearner(Learner):
         """Update A2C actor and critic networks"""
 
         log_prob, pred_value, next_state, reward, done = experience
-        next_state = torch.FloatTensor(next_state).to(self.device)
+        next_state = numpy2floattensor(next_state, self.device)
 
         # Q_t   = r + gamma * V(s_{t+1})  if state != Terminal
         #       = r                       otherwise

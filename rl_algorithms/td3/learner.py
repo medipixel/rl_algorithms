@@ -47,9 +47,8 @@ class TD3Learner(Learner):
         head: ConfigDict,
         optim_cfg: ConfigDict,
         noise_cfg: ConfigDict,
-        device: torch.device,
     ):
-        Learner.__init__(self, args, env_info, hyper_params, log_cfg, device)
+        Learner.__init__(self, args, env_info, hyper_params, log_cfg)
 
         self.backbone_cfg = backbone
         self.head_cfg = head
@@ -131,7 +130,9 @@ class TD3Learner(Learner):
         masks = 1 - dones
 
         # get actions with noise
-        noise = torch.FloatTensor(self.target_policy_noise.sample()).to(self.device)
+        noise = common_utils.numpy2floattensor(
+            self.target_policy_noise.sample(), self.device
+        )
         clipped_noise = torch.clamp(
             noise,
             -self.noise_cfg.target_policy_noise_clip,

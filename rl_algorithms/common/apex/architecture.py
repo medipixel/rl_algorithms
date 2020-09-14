@@ -9,6 +9,7 @@ import os
 
 import gym
 import ray
+import torch
 
 from rl_algorithms.common.abstract.architecture import Architecture
 from rl_algorithms.common.apex.learner import ApeXLearnerWrapper
@@ -72,6 +73,10 @@ class ApeX(Architecture):
         self.log_cfg = log_cfg
 
         self._organize_configs()
+
+        assert (
+            torch.cuda.is_available()
+        ), "Training with CPU do not guarantee performance. Please run with GPU device."
 
         ray.init()
 

@@ -21,8 +21,6 @@ from rl_algorithms.common.helper_functions import numpy2floattensor
 from rl_algorithms.registry import AGENTS, build_her, build_learner
 from rl_algorithms.sac.agent import SACAgent
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
 
 @AGENTS.register_module
 class BCSACAgent(SACAgent):
@@ -83,7 +81,7 @@ class BCSACAgent(SACAgent):
         if self.hyper_params.use_her:
             self.desired_state = self.her.get_desired_state()
             state = np.concatenate((state, self.desired_state), axis=-1)
-        state = torch.FloatTensor(state).to(device)
+        state = numpy2floattensor(state, self.learner.device)
         return state
 
     def _add_transition_to_memory(self, transition: Tuple[np.ndarray, ...]):
@@ -179,8 +177,8 @@ class BCSACAgent(SACAgent):
                         experience = self.memory.sample()
                         demos = self.demo_memory.sample()
                         experience, demo = (
-                            numpy2floattensor(experience),
-                            numpy2floattensor(demos),
+                            numpy2floattensor(experience, self.learner.device),
+                            numpy2floattensor(demos, self.learner.device),
                         )
                         loss = self.learner.update_model(experience, demo)
                         loss_episode.append(loss)  # for logging

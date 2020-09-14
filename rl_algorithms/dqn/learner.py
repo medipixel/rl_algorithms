@@ -44,9 +44,8 @@ class DQNLearner(Learner):
         backbone: ConfigDict,
         head: ConfigDict,
         optim_cfg: ConfigDict,
-        device: str,
     ):
-        Learner.__init__(self, args, env_info, hyper_params, log_cfg, device)
+        Learner.__init__(self, args, env_info, hyper_params, log_cfg)
         self.backbone_cfg = backbone
         self.head_cfg = head
         self.head_cfg.configs.state_size = self.env_info.observation_space.shape

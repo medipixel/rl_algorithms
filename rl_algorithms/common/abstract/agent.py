@@ -21,8 +21,6 @@ import wandb
 from rl_algorithms.common.grad_cam import GradCAM
 from rl_algorithms.utils.config import ConfigDict
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
 
 class Agent(ABC):
     """Abstract Agent used for all agents.

@@ -10,7 +10,6 @@ import pickle
 import time
 
 import numpy as np
-import torch
 import wandb
 
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
@@ -18,8 +17,6 @@ from rl_algorithms.common.buffer.wrapper import PrioritizedBufferWrapper
 import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.dqn.agent import DQNAgent
 from rl_algorithms.registry import AGENTS, build_learner
-
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 @AGENTS.register_module

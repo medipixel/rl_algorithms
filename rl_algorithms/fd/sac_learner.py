@@ -29,18 +29,9 @@ class SACfDLearner(SACLearner):
         backbone: ConfigDict,
         head: ConfigDict,
         optim_cfg: ConfigDict,
-        device: torch.device,
     ):
         SACLearner.__init__(
-            self,
-            args,
-            env_info,
-            hyper_params,
-            log_cfg,
-            backbone,
-            head,
-            optim_cfg,
-            device,
+            self, args, env_info, hyper_params, log_cfg, backbone, head, optim_cfg,
         )
 
         self.use_n_step = self.hyper_params.n_step > 1

@@ -39,18 +39,9 @@ class DQfDLearner(DQNLearner):
         backbone: ConfigDict,
         head: ConfigDict,
         optim_cfg: ConfigDict,
-        device: torch.device,
     ):
         DQNLearner.__init__(
-            self,
-            args,
-            env_info,
-            hyper_params,
-            log_cfg,
-            backbone,
-            head,
-            optim_cfg,
-            device,
+            self, args, env_info, hyper_params, log_cfg, backbone, head, optim_cfg,
         )
 
     def update_model(
