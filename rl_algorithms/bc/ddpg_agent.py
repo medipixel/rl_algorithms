@@ -75,7 +75,6 @@ class BCDDPGAgent(DDPGAgent):
 
         self.learner_cfg.type = "BCDDPGLearner"
         self.learner_cfg.hyper_params = self.hyper_params
-
         self.learner = build_learner(self.learner_cfg)
 
     def _preprocess_state(self, state: np.ndarray) -> torch.Tensor:
