@@ -184,7 +184,7 @@ class IQNMLP(MLP, NoisyMLPHandler):
         # on v0.4.1
         # check: https://bit.ly/2TXlNbq
         quantiles = np.random.rand(n_tau_samples * batch_size, 1)
-        quantiles = numpy2floattensor(quantiles, device)
+        quantiles = numpy2floattensor(quantiles, torch.device("cpu"))
         quantile_net = quantiles.repeat(1, self.quantile_embedding_dim)
         quantile_net = (
             torch.arange(1, self.quantile_embedding_dim + 1, dtype=torch.float)
