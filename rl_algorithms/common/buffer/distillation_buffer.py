@@ -59,7 +59,9 @@ class DistillationBuffer:
 
     def sample_for_diltillation(self):
         """Sample a batch of state and Q-value for student's learning."""
-        assert self.buffer_size >= self.batch_size
+        assert self.buffer_size >= self.batch_size, "buffer size({}) < ({})".format(
+            self.buffer_size, self.batch_size
+        )
 
         return next(self.dataloader)
 
