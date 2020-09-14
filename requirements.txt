@@ -20,8 +20,8 @@ pyarrow
 
 # for log
 wandb
+six==1.13 # wandb requires six>=1.13.0
 matplotlib
 plotly
-
 setuptools
 wheel
