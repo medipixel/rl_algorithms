@@ -4,7 +4,7 @@
 [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/medipixel/rl_algorithms.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/medipixel/rl_algorithms/context:python)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-7-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-8-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 </p>
@@ -43,6 +43,9 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
     <td align="center"><a href="https://github.com/minseop4898"><img src="https://avatars1.githubusercontent.com/u/34338299?v=4" width="100px;" alt=""/><br /><sub><b>김민섭</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=minseop4898" title="Code">💻</a></td>
     <td align="center"><a href="https://github.com/jinPrelude"><img src="https://avatars1.githubusercontent.com/u/16518993?v=4" width="100px;" alt=""/><br /><sub><b>Leejin Jung</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=jinPrelude" title="Code">💻</a></td>
     <td align="center"><a href="https://github.com/cyoon1729"><img src="https://avatars2.githubusercontent.com/u/33583101?v=4" width="100px;" alt=""/><br /><sub><b>Chris Yoon</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=cyoon1729" title="Code">💻</a></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="https://jiseonghan.github.io/"><img src="https://avatars2.githubusercontent.com/u/48741026?v=4" width="100px;" alt=""/><br /><sub><b>Jiseong Han</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=jiseongHAN" title="Code">💻</a></td>
   </tr>
 </table>
 
