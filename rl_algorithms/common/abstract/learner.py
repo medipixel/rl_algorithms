@@ -60,13 +60,12 @@ class Learner(BaseLearner):
         env_info: ConfigDict,
         hyper_params: ConfigDict,
         log_cfg: ConfigDict,
-        device: str,
     ):
         """Initialize."""
         self.args = args
         self.env_info = env_info
         self.hyper_params = hyper_params
-        self.device = torch.device(device)
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
         if not self.args.test:
             self.ckpt_path = (

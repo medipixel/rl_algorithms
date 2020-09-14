@@ -39,7 +39,6 @@ class DDPGfDLearner(DDPGLearner):
         head: ConfigDict,
         optim_cfg: ConfigDict,
         noise_cfg: ConfigDict,
-        device: torch.device,
     ):
         DDPGLearner.__init__(
             self,
@@ -51,7 +50,6 @@ class DDPGfDLearner(DDPGLearner):
             head,
             optim_cfg,
             noise_cfg,
-            device,
         )
 
         self.use_n_step = self.hyper_params.n_step > 1

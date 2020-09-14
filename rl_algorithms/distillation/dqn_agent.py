@@ -19,6 +19,7 @@ from tqdm import tqdm
 import wandb
 
 from rl_algorithms.common.buffer.distillation_buffer import DistillationBuffer
+from rl_algorithms.common.helper_functions import numpy2floattensor
 from rl_algorithms.dqn.agent import DQNAgent
 from rl_algorithms.registry import AGENTS, build_learner
 
@@ -216,7 +217,7 @@ class DistillationDQN(DQNAgent):
             with open(file_name_list[i], "rb") as f:
                 state = pickle.load(f)[0]
 
-            torch_state = torch.from_numpy(state).float().to(self.device)
+            torch_state = numpy2floattensor(state, self.device)
             pred_q = self.learner.dqn(torch_state).squeeze().detach().cpu().numpy()
 
             with open(self.save_distillation_dir + "/" + str(i) + ".pkl", "wb") as f:

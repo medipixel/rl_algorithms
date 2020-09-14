@@ -75,9 +75,6 @@ class BCDDPGAgent(DDPGAgent):
 
         self.learner_cfg.type = "BCDDPGLearner"
         self.learner_cfg.hyper_params = self.hyper_params
-        self.learner_cfg.device = torch.device(
-            "cuda:0" if torch.cuda.is_available() else "cpu"
-        )
 
         self.learner = build_learner(self.learner_cfg)
 
@@ -86,7 +83,7 @@ class BCDDPGAgent(DDPGAgent):
         if self.hyper_params.use_her:
             self.desired_state = self.her.get_desired_state()
             state = np.concatenate((state, self.desired_state), axis=-1)
-        state = numpy2floattensor(state, self.learner_cfg.device)
+        state = numpy2floattensor(state, self.learner.device)
         return state
 
     def _add_transition_to_memory(self, transition: Tuple[np.ndarray, ...]):
@@ -172,8 +169,8 @@ class BCDDPGAgent(DDPGAgent):
                         experience = self.memory.sample()
                         demos = self.demo_memory.sample()
                         experience, demos = (
-                            numpy2floattensor(experience, self.learner_cfg.device),
-                            numpy2floattensor(demos, self.learner_cfg.device),
+                            numpy2floattensor(experience, self.learner.device),
+                            numpy2floattensor(demos, self.learner.device),
                         )
                         loss = self.learner.update_model(experience, demos)
                         losses.append(loss)  # for logging

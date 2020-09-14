@@ -86,9 +86,6 @@ class PPOAgent(Agent):
         self.learner_cfg.env_info = self.env_info
         self.learner_cfg.hyper_params = self.hyper_params
         self.learner_cfg.log_cfg = self.log_cfg
-        self.learner_cfg.device = torch.device(
-            "cuda:0" if torch.cuda.is_available() else "cpu"
-        )
 
         if not self.args.test:
             self.env = env_multi
@@ -99,7 +96,7 @@ class PPOAgent(Agent):
 
     def select_action(self, state: np.ndarray) -> torch.Tensor:
         """Select an action from the input space."""
-        state = numpy2floattensor(state, self.learner_cfg.device)
+        state = numpy2floattensor(state, self.learner.device)
         selected_action, dist = self.learner.actor(state)
 
         if self.args.test and not self.is_discrete:
@@ -125,10 +122,10 @@ class PPOAgent(Agent):
             ] = False
 
             self.rewards.append(
-                numpy2floattensor(reward, self.learner_cfg.device).unsqueeze(1)
+                numpy2floattensor(reward, self.learner.device).unsqueeze(1)
             )
             self.masks.append(
-                numpy2floattensor((1 - done_bool), self.learner_cfg.device).unsqueeze(1)
+                numpy2floattensor((1 - done_bool), self.learner.device).unsqueeze(1)
             )
 
         return next_state, reward, done, info

@@ -39,7 +39,6 @@ class BCDDPGLearner(DDPGLearner):
         head: ConfigDict,
         optim_cfg: ConfigDict,
         noise_cfg: ConfigDict,
-        device: torch.device,
     ):
         DDPGLearner.__init__(
             self,
@@ -51,7 +50,6 @@ class BCDDPGLearner(DDPGLearner):
             head,
             optim_cfg,
             noise_cfg,
-            device,
         )
 
     def update_model(

@@ -12,6 +12,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from rl_algorithms.common.helper_functions import numpy2floattensor
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 
 class NoisyLinear(nn.Module):
     """Noisy linear module for NoisyNet.
@@ -60,11 +64,7 @@ class NoisyLinear(nn.Module):
     @staticmethod
     def scale_noise(size: int) -> torch.Tensor:
         """Set scale to make noise (factorized gaussian noise)."""
-        x = (
-            torch.from_numpy(np.random.normal(loc=0.0, scale=1.0, size=size))
-            .cpu()
-            .float()
-        )
+        x = numpy2floattensor(np.random.normal(loc=0.0, scale=1.0, size=size), device)
 
         return x.sign().mul(x.abs().sqrt())
 

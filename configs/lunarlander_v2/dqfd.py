@@ -3,7 +3,6 @@
 - Author: Kyunghwan Kim
 - Contact: kh.kim@medipixel.io
 """
-
 from rl_algorithms.common.helper_functions import identity
 
 agent = dict(

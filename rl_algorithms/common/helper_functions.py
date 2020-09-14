@@ -91,27 +91,21 @@ def get_n_step_info(
     return reward, next_state, done
 
 
-def numpy2floattensor(arrays: Tuple[np.ndarray], device_: str) -> Tuple[torch.Tensor]:
+def numpy2floattensor(
+    arrays: Tuple[np.ndarray], device_: torch.device
+) -> Tuple[torch.Tensor]:
+    """Convert numpy type to torch FloatTensor.
+        - Convert numpy array to torch float tensor.
+        - Convert numpy array with Tuple type to torch FloatTensor with Tuple.
     """
-       Convert numpy numpy array with Tuple type to torch float tensor within Tuple.
-       Convert numpy array to torch float tensor.
-    """
-    device_ = str(device_)
+
     if isinstance(arrays, tuple):  # check Tuple or not
         tensors = []
         for array in arrays:
-            tensor = (
-                torch.from_numpy(array).cpu().float()
-                if device_ == "cpu"
-                else torch.from_numpy(array).cuda(non_blocking=True).float()
-            )
+            tensor = torch.from_numpy(array).to(device_, non_blocking=True).float()
             tensors.append(tensor)
         return tuple(tensors)
-    tensor = (
-        torch.from_numpy(arrays).cpu().float()
-        if device_ == "cpu"
-        else torch.from_numpy(arrays).cuda(non_blocking=True).float()
-    )
+    tensor = torch.from_numpy(arrays).to(device_, non_blocking=True).float()
     return tensor
 
 
@@ -127,8 +121,8 @@ def smoothen_graph(scalars: List[float], weight: float = 0.6) -> List[float]:
     """Smoothen result graph using exponential moving average formula as TensorBoard.
 
         Reference:
-            https://docs.wandb.com/library/technical-faq#
-            what-formula-do-you-use-for-your-smoothing-algorithm
+            https://docs.wandb.com/library/technical-faq#what-formula-do-you-use-for-
+            your-smoothing-algorithm
     """
     last = scalars[0]  # First value in the plot (first timestep)
     smoothed = list()

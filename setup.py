@@ -9,8 +9,8 @@ setup(
     version="0.0.1",
     author="medipixel",
     author_email="kh.kim@medipixel.io",
-    description="Reinforcement Learning algorithms which are being \
-                    used for research activities at Medipixel.",
+    description="Reinforcement Learning algorithms which are being used for research \
+        activities at Medipixel.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/medipixel/rl_algorithms.git",

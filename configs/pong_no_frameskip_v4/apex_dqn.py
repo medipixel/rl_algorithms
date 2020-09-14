@@ -3,7 +3,6 @@
 - Author: Chris Yoon
 - Contact: chris.yoon@medipixel.io
 """
-
 from rl_algorithms.common.helper_functions import identity
 
 agent = dict(
@@ -42,7 +41,6 @@ agent = dict(
     ),
     learner_cfg=dict(
         type="DQNLearner",
-        device="cuda:0",
         backbone=dict(
             type="CNN",
             configs=dict(

@@ -63,15 +63,12 @@ class A2CAgent(Agent):
         self.learner_cfg.env_info = self.env_info
         self.learner_cfg.hyper_params = self.hyper_params
         self.learner_cfg.log_cfg = self.log_cfg
-        self.learner_cfg.device = torch.device(
-            "cuda:0" if torch.cuda.is_available() else "cpu"
-        )
 
         self.learner = build_learner(self.learner_cfg)
 
     def select_action(self, state: np.ndarray) -> torch.Tensor:
         """Select an action from the input space."""
-        state = numpy2floattensor(state, self.learner_cfg.device)
+        state = numpy2floattensor(state, self.learner.device)
 
         selected_action, dist = self.learner.actor(state)
 
