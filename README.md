@@ -266,7 +266,7 @@ You can generate trained agent's data(expert data) by iterating test episode.
 ```
 python run_env_name.py --cfg-path <distillation-config-path> --load-from <teacher-checkpoint-path> --test 
 ```
-The collected states would be stored in directory:  `data/distribution_buffer/<env_name>`.
+The collected states will be stored in directory:  `data/distribution_buffer/<env_name>`.
 
 
 ##### 2. Collect train-phase data(states during training).
@@ -277,7 +277,7 @@ This method provides a way to store the states that are generated as you train t
 python run_env_name.py --cfg-path <distillation-config-path>
 ```
 
-The collected states would be stored in directory:  `data/distribution_buffer/<env_name>`.
+The collected states will be stored in directory:  `data/distribution_buffer/<env_name>`.
 
 
 
