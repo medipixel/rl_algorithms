@@ -133,10 +133,9 @@ class BCSACLearner(SACLearner):
             actor_loss += actor_reg
 
             # train actor
-            with torch.autograd.set_detect_anomaly(True):
-                self.actor_optim.zero_grad()
-                actor_loss.backward()
-                self.actor_optim.step()
+            self.actor_optim.zero_grad()
+            actor_loss.backward()
+            self.actor_optim.step()
 
             # update target networks
             common_utils.soft_update(self.vf, self.vf_target, self.hyper_params.tau)
