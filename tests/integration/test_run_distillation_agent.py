@@ -73,7 +73,7 @@ def check_save_path(save_path: str):
 
 
 def delete_path(path: str):
-    """Remove directory."""
+    """Delete directory."""
     shutil.rmtree(path)
 
 
