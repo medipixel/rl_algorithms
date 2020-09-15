@@ -1,4 +1,4 @@
-"""Test only one step of run file for training."""
+"""Test only one step of distillation file for training."""
 
 import os
 import pickle
@@ -77,6 +77,7 @@ def delete_path(path: str):
     shutil.rmtree(path)
 
 
+# TODO: Add student training test code.
 def test_distillation():
     """Test distillation agent."""
     check_distillation_agent(
