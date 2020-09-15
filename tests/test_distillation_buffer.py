@@ -27,10 +27,10 @@ def gen_test_data():
             action[random.randint(0, len(action) - 1)] = 1
             action = action.astype(np.int)
             if "trainphase" in _dir:
-                with open(FOLDER_PATH_LIST[i] + "{0:07}.pkl".format(j), "wb") as f:
+                with open(FOLDER_PATH_LIST[i] + f"{j:07}.pkl", "wb") as f:
                     pickle.dump([state], f)
             else:
-                with open(FOLDER_PATH_LIST[i] + "{0:07}.pkl".format(j), "wb") as f:
+                with open(FOLDER_PATH_LIST[i] + f"{j:07}.pkl", "wb") as f:
                     pickle.dump([state, action], f)
 
 
@@ -51,10 +51,16 @@ def check_mixture_data_assert():
 
 def test_distillation_buffer():
     """Test DistillationBuffer."""
-    gen_test_data()
-    check_multiple_data_load()
-    check_mixture_data_assert()
-    shutil.rmtree("data/distillation_buffer/test")
+    try:
+        gen_test_data()
+        check_multiple_data_load()
+        check_mixture_data_assert()
+
+    except Exception as e:
+        raise e
+
+    finally:
+        shutil.rmtree("data/distillation_buffer/test")
 
 
 if __name__ == "__main__":
