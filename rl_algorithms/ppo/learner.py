@@ -150,20 +150,22 @@ class PPOLearner(Learner):
             w_value = self.hyper_params.w_value
             w_entropy = self.hyper_params.w_entropy
 
-            total_loss = actor_loss + w_value * critic_loss - w_entropy * entropy
+            critic_loss_ = w_value * critic_loss
+            actor_loss_ = actor_loss - w_entropy * entropy
+            total_loss = critic_loss_ + actor_loss_
 
             # train critic
             gradient_clip_ac = self.hyper_params.gradient_clip_ac
             gradient_clip_cr = self.hyper_params.gradient_clip_cr
 
             self.critic_optim.zero_grad()
-            total_loss.backward(retain_graph=True)
+            critic_loss_.backward(retain_graph=True)
             clip_grad_norm_(self.critic.parameters(), gradient_clip_ac)
             self.critic_optim.step()
 
             # train actor
             self.actor_optim.zero_grad()
-            total_loss.backward()
+            actor_loss_.backward()
             clip_grad_norm_(self.actor.parameters(), gradient_clip_cr)
             self.actor_optim.step()
 

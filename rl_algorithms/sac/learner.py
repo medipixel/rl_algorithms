@@ -177,6 +177,7 @@ class SACLearner(Learner):
         self.vf_optim.step()
 
         if self.update_step % self.hyper_params.policy_update_freq == 0:
+            q_pred = torch.min(self.qf_1(states_actions), self.qf_2(states_actions))
             # actor loss
             advantage = q_pred - v_pred.detach()
             actor_loss = (alpha * log_prob - advantage).mean()

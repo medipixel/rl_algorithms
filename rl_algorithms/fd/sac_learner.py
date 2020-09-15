@@ -111,6 +111,7 @@ class SACfDLearner(SACLearner):
         self.vf_optim.step()
 
         # actor loss
+        q_pred = torch.min(self.qf_1(states_actions), self.qf_2(states_actions))
         advantage = q_pred - v_pred.detach()
         actor_loss_element_wise = alpha * log_prob - advantage
         actor_loss = torch.mean(actor_loss_element_wise * weights)

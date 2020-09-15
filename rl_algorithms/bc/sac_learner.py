@@ -95,6 +95,7 @@ class BCSACLearner(SACLearner):
         actor_loss = torch.zeros(1)
         n_qf_mask = 0
         if self.update_step % self.hyper_params.policy_update_freq == 0:
+            q_pred = torch.min(self.qf_1(states_actions), self.qf_2(states_actions))
             # bc loss
             qf_mask = torch.gt(
                 self.qf_1(torch.cat((demo_states, demo_actions), dim=-1)),
@@ -132,9 +133,10 @@ class BCSACLearner(SACLearner):
             actor_loss += actor_reg
 
             # train actor
-            self.actor_optim.zero_grad()
-            actor_loss.backward()
-            self.actor_optim.step()
+            with torch.autograd.set_detect_anomaly(True):
+                self.actor_optim.zero_grad()
+                actor_loss.backward()
+                self.actor_optim.step()
 
             # update target networks
             common_utils.soft_update(self.vf, self.vf_target, self.hyper_params.tau)
