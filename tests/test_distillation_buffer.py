@@ -15,13 +15,13 @@ FOLDER_PATH_LIST = [
 ]
 
 
-def gen_test_data():
+def gen_test_data(num_files: int):
     """Generate dummy data."""
     for _dir in FOLDER_PATH_LIST:
         os.makedirs(_dir)
-    num_file = 21
+
     for i, _dir in enumerate(FOLDER_PATH_LIST):
-        for j in range(num_file):
+        for j in range(num_files):
             state = np.random.randint(0, 255, size=(3, 3, 2), dtype=np.uint8)
             action = np.zeros(3)
             action[random.randint(0, len(action) - 1)] = 1
@@ -34,33 +34,40 @@ def gen_test_data():
                     pickle.dump([state, action], f)
 
 
-def check_multiple_data_load():
+def check_multiple_data_load(num_files: int):
     """Check if DistillationBuffer can load data from multiple path."""
-    memory = DistillationBuffer(42, FOLDER_PATH_LIST[:-1], 20202020,)
+    batch_size = num_files * len(FOLDER_PATH_LIST[:-1])
+    memory = DistillationBuffer(batch_size, FOLDER_PATH_LIST[:-1], 20202020,)
     memory.reset_dataloader()
     state, _ = memory.sample_for_diltillation()
-    assert state.shape[0] == 42
+    assert state.shape[0] == batch_size
 
 
-def check_mixture_data_assert():
+def check_mixture_data_assert(num_files: int):
     """Check if DistillationBuffer can check whether trainphase & expert data is mixed."""
-    memory = DistillationBuffer(21, FOLDER_PATH_LIST, 20202020,)
+    memory = DistillationBuffer(num_files, FOLDER_PATH_LIST, 20202020,)
     with pytest.raises(AssertionError, match=r"mixture"):
         memory.reset_dataloader()
+
+
+def delete_path(path: str):
+    """Delete directory."""
+    shutil.rmtree(path)
 
 
 def test_distillation_buffer():
     """Test DistillationBuffer."""
     try:
-        gen_test_data()
-        check_multiple_data_load()
-        check_mixture_data_assert()
+        num_file = 7
+        gen_test_data(num_file)
+        check_multiple_data_load(num_file)
+        check_mixture_data_assert(num_file)
 
     except Exception as e:
         raise e
 
     finally:
-        shutil.rmtree("data/distillation_buffer/test")
+        delete_path("data/distillation_buffer/test")
 
 
 if __name__ == "__main__":

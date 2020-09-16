@@ -64,14 +64,6 @@ def check_distillation_agent(config: str, run_file: str):
         delete_path(n_frame_from_last_path)
 
 
-def check_save_path(save_path: str):
-    """Check checkpoint that tested run file makes and remove the checkpoint."""
-    assert os.path.exists(save_path)
-
-    # Remove checkpoint dir
-    delete_path(save_path)
-
-
 def delete_path(path: str):
     """Delete directory."""
     shutil.rmtree(path)
