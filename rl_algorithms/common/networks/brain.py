@@ -18,6 +18,7 @@ from rl_algorithms.registry import build_backbone, build_head
 from rl_algorithms.utils.config import ConfigDict
 
 
+# pylint: disable=w0223
 class Brain(nn.Module):
     """Class for holding backbone and head networks."""
 

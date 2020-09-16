@@ -27,6 +27,7 @@ def init_layer_uniform(layer: nn.Linear, init_w: float = 3e-3) -> nn.Linear:
     return layer
 
 
+# pylint: disable=w0223
 @HEADS.register_module
 class MLP(nn.Module):
     """Baseline of Multilayer perceptron.
