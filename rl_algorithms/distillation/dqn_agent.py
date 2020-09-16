@@ -89,7 +89,7 @@ class DistillationDQN(DQNAgent):
             # Teacher training's interim test.
             output = DQNAgent.step(self, action)
         else:
-            current_ep_dir = +f"{self.save_distillation_dir}/{self.save_count:07}.pkl"
+            current_ep_dir = f"{self.save_distillation_dir}/{self.save_count:07}.pkl"
             self.save_count += 1
             if self.args.test:
                 # Generating expert's test-phase data.
