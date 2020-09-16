@@ -17,7 +17,6 @@ from rl_algorithms.utils.config import ConfigDict
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-# pylint: disable=w0223
 class BasicBlock(nn.Module):
     """Basic building block for ResNet."""
 

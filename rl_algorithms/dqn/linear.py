@@ -17,7 +17,6 @@ from rl_algorithms.common.helper_functions import numpy2floattensor
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-# pylint: disable=w0223
 class NoisyLinear(nn.Module):
     """Noisy linear module for NoisyNet.
 
