@@ -96,22 +96,7 @@ class SACfDLearner(SACLearner):
         vf_loss_element_wise = (v_pred - v_target).pow(2)
         vf_loss = torch.mean(vf_loss_element_wise * weights)
 
-        # train Q functions
-        self.qf_1_optim.zero_grad()
-        qf_1_loss.backward()
-        self.qf_1_optim.step()
-
-        self.qf_2_optim.zero_grad()
-        qf_2_loss.backward()
-        self.qf_2_optim.step()
-
-        # train V function
-        self.vf_optim.zero_grad()
-        vf_loss.backward()
-        self.vf_optim.step()
-
         # actor loss
-        q_pred = torch.min(self.qf_1(states_actions), self.qf_2(states_actions))
         advantage = q_pred - v_pred.detach()
         actor_loss_element_wise = alpha * log_prob - advantage
         actor_loss = torch.mean(actor_loss_element_wise * weights)
@@ -141,6 +126,20 @@ class SACfDLearner(SACLearner):
         new_priorities += self.hyper_params.per_eps
         new_priorities = new_priorities.data.cpu().numpy().squeeze()
         new_priorities += eps_d
+
+        # train Q functions
+        self.qf_1_optim.zero_grad()
+        qf_1_loss.backward()
+        self.qf_1_optim.step()
+
+        self.qf_2_optim.zero_grad()
+        qf_2_loss.backward()
+        self.qf_2_optim.step()
+
+        # train V function
+        self.vf_optim.zero_grad()
+        vf_loss.backward()
+        self.vf_optim.step()
 
         return (
             actor_loss.item(),
