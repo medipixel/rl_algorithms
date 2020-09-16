@@ -257,55 +257,7 @@ It can be only used the agent that uses convolutional layers like **DQN for Pong
 
 #### Using policy distillation
 
-We implemented 5 featues for training policy distillation.
-
-##### 1. Collect trained agent's data(states and q values)
-
-You can generate trained agent's data(expert data) by iterating test episode.
-
-```
-python run_env_name.py --cfg-path <distillation-config-path> --load-from <teacher-checkpoint-path> --test 
-```
-The collected states will be stored in directory:  `data/distribution_buffer/<env_name>`.
-
-
-##### 2. Collect train-phase data(states during training).
-
-This method provides a way to store the states that are generated as you train the agent. This feature is provided for method 4.
-
-```
-python run_env_name.py --cfg-path <distillation-config-path>
-```
-
-The collected states will be stored in directory:  `data/distribution_buffer/<env_name>`.
-
-
-
-
-##### 3. Student training using trained agent's data(expert data)
-
-Training student using expert data is simple. Put the path of the train-phase data in the buffer_path list in the distillation config file and execute the training just as the code below:
-
-```
-python run_env_name.py --cfg-path <distillation-config-path> --student  
-```
-
-You can set `epoch` and `batch_size` of the student learning through `epochs` and `batch_size` variables in the distillation config file.
-
-##### 4. Student training using training-phase states and trained agent 
-
-This method provides the way to train the student using train-phase states(method 2). Since train-phase data doesn't contains the q value, you should load trained agent for train-phase training.
-
-```
-python run_env_name.py --cfg-path <distillation-config-path> --student --load-from <teacher-checkpoint-path>
-```
-You can put the path of the train-phase data in the buffer_path list in the distillation config file.
-
-##### 5. Test student agent
-If you only want to check the performance of the student agent, you should use the orginal agent config file instead of distillation config file. In pong environment for instance, you can use `dqn.py` config file instead of `distillation_dqn.py`. Using distillation config will also work well, but it will generate expert data while you're running test. 
-```
-python run_env_name.py --test --load-from <student-checkpoint-path> --cfg-path <config-path>
-```
+We seperate the document about using policy distillation in [rl_algorithms/distillation/README.md](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/distillation).
 
 
 #### W&B for logging
