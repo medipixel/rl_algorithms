@@ -77,25 +77,10 @@ class BCSACLearner(SACLearner):
         v_target = q_pred - alpha * log_prob
         vf_loss = F.mse_loss(v_pred, v_target.detach())
 
-        # train Q functions
-        self.qf_1_optim.zero_grad()
-        qf_1_loss.backward()
-        self.qf_1_optim.step()
-
-        self.qf_2_optim.zero_grad()
-        qf_2_loss.backward()
-        self.qf_2_optim.step()
-
-        # train V function
-        self.vf_optim.zero_grad()
-        vf_loss.backward()
-        self.vf_optim.step()
-
         # update actor
         actor_loss = torch.zeros(1)
         n_qf_mask = 0
         if self.update_step % self.hyper_params.policy_update_freq == 0:
-            q_pred = torch.min(self.qf_1(states_actions), self.qf_2(states_actions))
             # bc loss
             qf_mask = torch.gt(
                 self.qf_1(torch.cat((demo_states, demo_actions), dim=-1)),
@@ -139,6 +124,20 @@ class BCSACLearner(SACLearner):
 
             # update target networks
             common_utils.soft_update(self.vf, self.vf_target, self.hyper_params.tau)
+
+        # train Q functions
+        self.qf_1_optim.zero_grad()
+        qf_1_loss.backward()
+        self.qf_1_optim.step()
+
+        self.qf_2_optim.zero_grad()
+        qf_2_loss.backward()
+        self.qf_2_optim.step()
+
+        # train V function
+        self.vf_optim.zero_grad()
+        vf_loss.backward()
+        self.vf_optim.step()
 
         return (
             actor_loss.item(),
