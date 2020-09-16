@@ -27,10 +27,10 @@ def gen_test_data(num_files: int):
             action[random.randint(0, len(action) - 1)] = 1
             action = action.astype(np.int)
             if "trainphase" in _dir:
-                with open(FOLDER_PATH_LIST[i] + f"{j:07}.pkl", "wb") as f:
+                with open(f"{FOLDER_PATH_LIST[i]}{j:07}.pkl", "wb") as f:
                     pickle.dump([state], f)
             else:
-                with open(FOLDER_PATH_LIST[i] + f"{j:07}.pkl", "wb") as f:
+                with open(f"{FOLDER_PATH_LIST[i]}{j:07}.pkl", "wb") as f:
                     pickle.dump([state, action], f)
 
 
