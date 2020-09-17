@@ -126,7 +126,7 @@ class GRUBrain(Brain):
         hidden = torch.transpose(hidden, 0, 1)
 
         # Unroll gru
-        gru_out, hidden = self.gru(gru_input, hidden)
+        gru_out, hidden = self.gru(gru_input.float(), hidden.float())
 
         # Get q
         q = self.head(gru_out.contiguous().view(batch_len * seq_len, -1))
