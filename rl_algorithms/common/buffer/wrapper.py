@@ -93,7 +93,7 @@ class PrioritizedBufferWrapper(BufferWrapper):
     def _sample_proportional(self, batch_size: int) -> list:
         """Sample indices based on proportional."""
         indices = []
-        p_total = self.sum_tree.sum(0, len(self.buffer) - 1)
+        p_total = self.sum_tree.sum(0, len(self.buffer))
         segment = p_total / batch_size
 
         for i in range(batch_size):
