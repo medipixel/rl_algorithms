@@ -6,7 +6,7 @@ from rl_algorithms.common.buffer.wrapper import PrioritizedBufferWrapper
 
 
 def generate_randomly_prioritized_buffer(buffer_length, batch_size):
-    "Generate Prioritized Replay Buffer with random Prior."
+    """Generate Prioritized Replay Buffer with random Prior."""
     toy_buffer = ReplayBuffer(max_len=buffer_length, batch_size=batch_size)
     toy_prioritized_buffer = PrioritizedBufferWrapper(toy_buffer)
     priority = np.random.randint(1000, size=buffer_length)
@@ -17,7 +17,7 @@ def generate_randomly_prioritized_buffer(buffer_length, batch_size):
 
 
 def sample_toy(prioritized_buffer, times):
-    "Sample from prioritized buffer and Return indices."
+    """Sample from prioritized buffer and Return indices."""
     assert isinstance(prioritized_buffer, PrioritizedBufferWrapper)
 
     sampled_lst = [0] * prioritized_buffer.buffer.max_len

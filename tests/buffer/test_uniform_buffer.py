@@ -5,7 +5,7 @@ from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
 
 
 def generate_transition(idx):
-    "Make toy transition for testing buffer."
+    """Make toy transition for testing buffer."""
     obs = np.array([0])
     act = np.array([0])
     reward = idx
@@ -15,7 +15,7 @@ def generate_transition(idx):
 
 
 def generate_sample_idx(buffer_length, batch_size):
-    "Generate indices to test whether sampled uniformly or not."
+    """Generate indices to test whether sampled uniformly or not."""
     toy_buffer = ReplayBuffer(max_len=buffer_length, batch_size=batch_size)
     for i in range(buffer_length):
         toy_buffer.add(generate_transition(i))
@@ -33,13 +33,13 @@ def cal_sample_portion(buffer_length, batch_size, times):
 
 
 def check_uniform(lst):
-    "Check the distribution is Uniform Distribution."
+    """Check the distribution is Uniform Distribution."""
     res = chisquare(lst)
     return res[1] >= 0.975
 
 
 def test_uniform(buffer_length=32, batch_size=8):
-    "Test whether transitions are uniformly sampled from replay buffer."
+    """Test whether transitions are uniformly sampled from replay buffer."""
     n_repeat = 10000  # number of repetition of sample experiments
     portion_lst = cal_sample_portion(
         buffer_length, batch_size, n_repeat
