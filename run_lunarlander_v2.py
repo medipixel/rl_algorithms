@@ -103,6 +103,9 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="distillation buffer storage directory",
     )
+    parser.add_argument(
+        "--student", dest="student", action="store_true", help="train student",
+    )
 
     return parser.parse_args()
 
