@@ -89,9 +89,7 @@ class DistillationDQN(DQNAgent):
             # Teacher training's interim test.
             output = DQNAgent.step(self, action)
         else:
-            current_ep_dir = (
-                self.save_distillation_dir + "/{0:07}.pkl".format(self.save_count) + ""
-            )
+            current_ep_dir = f"{self.save_distillation_dir}/{self.save_count:07}.pkl"
             self.save_count += 1
             if self.args.test:
                 # Generating expert's test-phase data.
@@ -223,9 +221,7 @@ class DistillationDQN(DQNAgent):
             with open(self.save_distillation_dir + "/" + str(i) + ".pkl", "wb") as f:
                 pickle.dump([state, pred_q], f, protocol=pickle.HIGHEST_PROTOCOL)
         print(
-            "Data containing expert Q has been saved at {}".format(
-                self.save_distillation_dir
-            )
+            f"Data containing expert Q has been saved at {self.save_distillation_dir}"
         )
 
     def train(self):
@@ -294,3 +290,8 @@ class DistillationDQN(DQNAgent):
                         tmp = pickle.load(f)
                     with open(last_frame_dir + _dir, "wb") as f:
                         pickle.dump(tmp, f, protocol=pickle.HIGHEST_PROTOCOL)
+                print("\nsuccessfully saved")
+                print(f"All train-phase dir: {self.save_distillation_dir}/")
+                print(
+                    f"last {self.hyper_params.n_frame_from_last} frames dir: {last_frame_dir}"
+                )

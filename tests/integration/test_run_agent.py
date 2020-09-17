@@ -35,7 +35,7 @@ def check_run_env(config_root: str, run_file: str):
         )
         output, _ = p.communicate()
         print(str(output))
-        assert p.returncode == 0
+        assert p.returncode == 0, "Subprocess doesn't finished successfully."
 
         # Find saved checkpoint path
         pattern = r"./checkpoint/.+/"
