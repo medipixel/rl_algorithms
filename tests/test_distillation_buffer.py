@@ -18,6 +18,8 @@ FOLDER_PATH_LIST = [
 def gen_test_data(num_files: int):
     """Generate dummy data."""
     for _dir in FOLDER_PATH_LIST:
+        if os.path.exists(_dir):
+            delete_path(_dir)
         os.makedirs(_dir)
 
     for i, _dir in enumerate(FOLDER_PATH_LIST):

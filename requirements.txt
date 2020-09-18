@@ -1,6 +1,7 @@
 numpy==1.18.0
 torch==1.6.0
 gym
+gym-super-mario-bros
 atari-py
 box2d-py
 scipy

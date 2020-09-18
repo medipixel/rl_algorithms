@@ -232,6 +232,7 @@ class FrameStack(gym.Wrapper):
 
     # pylint: disable=method-hidden
     def step(self, action):
+        action = int(action)
         ob, reward, done, info = self.env.step(action)
         self.frames.append(ob)
         return self._get_ob(), reward, done, info
@@ -340,5 +341,12 @@ def wrap_pytorch(env):
 def atari_env_generator(env_id, max_episode_steps=None, frame_stack=True, scale=False):
     env = make_atari(env_id, max_episode_steps)
     env = wrap_deepmind(env, frame_stack=frame_stack, scale=scale)
+    env = wrap_pytorch(env)
+    return env
+
+
+def mario_wrapper(env: gym.Env, frame_stack=True, scale=False):
+    env = WarpFrame(env, grayscale=True, width=84, height=84)
+    env = FrameStack(env, 4)
     env = wrap_pytorch(env)
     return env
