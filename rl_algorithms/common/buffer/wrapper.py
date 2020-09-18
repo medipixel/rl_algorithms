@@ -194,7 +194,7 @@ class ApeXBufferWrapper(BufferWrapper):
             for idx in range(len(experience["states"])):
                 transition = (
                     experience["states"][idx],
-                    experience["actions"][idx],
+                    np.array(experience["actions"][idx]),  # make aciton to np.ndarray
                     experience["rewards"][idx],
                     experience["next_states"][idx],
                     experience["dones"][idx],
