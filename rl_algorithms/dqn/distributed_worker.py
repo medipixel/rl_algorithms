@@ -40,9 +40,10 @@ class DQNWorker(DistributedWorker):
         head: ConfigDict,
         state_dict: OrderedDict,
         device: str,
+        loss_type: ConfigDict,
     ):
         DistributedWorker.__init__(self, rank, args, env_info, hyper_params, device)
-        self.loss_fn = build_loss(self.hyper_params.loss_type)
+        self.loss_fn = build_loss(loss_type)
         self.backbone_cfg = backbone
         self.head_cfg = head
         self.head_cfg.configs.state_size = self.env_info.observation_space.shape
