@@ -13,12 +13,10 @@ def generate_prioritized_buffer(
     """Generate Prioritized Replay Buffer with random Prior."""
     buffer = ReplayBuffer(max_len=buffer_length, batch_size=batch_size)
     prioritized_buffer = PrioritizedBufferWrapper(buffer)
-    priority = np.random.randint(
-        10, size=buffer_length
-    )  # generate base-priority randomly
+    priority = np.random.randint(10, size=buffer_length)
     for i, j in enumerate(priority):
         prioritized_buffer.sum_tree[i] = j
-    if idx_lst:  # if idx_lst and prior_lst exist, then update priorty
+    if idx_lst:
         for i, j in list(zip(idx_lst, prior_lst)):
             priority[i] = j
             prioritized_buffer.sum_tree[i] = j
@@ -56,22 +54,20 @@ def test_prioritized(buffer_length=32, batch_size=4):
     """Test whether transitions are prioritized sampled from replay buffer."""
 
     n_repeat = 1000
-    idx_lst = [0, 1, 2, 3]  # index that we want to manipulate
-    prior_lst = [100, 10, 1, 1]  # prior that we want to manipulate
+    idx_lst = [0, 1, 2, 3]
+    prior_lst = [100, 10, 1, 1]
 
     # generate prioitized buffer, return buffer and its proportion
     buffer, prop = generate_prioritized_buffer(
         buffer_length, batch_size, idx_lst, prior_lst
     )
     assert isinstance(buffer, PrioritizedBufferWrapper)
-    sampled_lst = [0] * buffer.buffer.max_len  # make list to count sampled index
-    for _ in range(n_repeat):  # sampling index for the n_repeat times
-        # sample index from buffer
+    sampled_lst = [0] * buffer.buffer.max_len
+    # sample index from buffer
+    for _ in range(n_repeat):
         indices = buffer._sample_proportional(buffer.buffer.batch_size)
         for idx in indices:
-            sampled_lst[idx] += 1 / (
-                n_repeat * buffer.buffer.batch_size
-            )  # make frequence to proportion
+            sampled_lst[idx] += 1 / (n_repeat * buffer.buffer.batch_size)
 
     assert check_prioritized(prop, sampled_lst), "Two distributions are different."
 

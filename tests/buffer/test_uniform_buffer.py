@@ -33,15 +33,16 @@ def check_uniform(lst: List) -> bool:
 def test_uniform_sample(buffer_length=32, batch_size=8):
     """Test whether transitions are uniformly sampled from replay buffer."""
 
-    n_repeat = 10000  # number of repetition of sample experiments
+    n_repeat = 10000
 
     buffer = ReplayBuffer(max_len=buffer_length, batch_size=batch_size)
 
-    sampled_lst = [0] * buffer.max_len  # make list to count sampled index
-    for _ in range(n_repeat):  # sampling index for the n_repeat times
-        indices = generate_sample_idx(buffer)  # sample index from buffer
+    sampled_lst = [0] * buffer.max_len
+    # sampling index for the n_repeat times
+    for _ in range(n_repeat):
+        indices = generate_sample_idx(buffer)
         for idx in indices:
-            sampled_lst[int(idx)] += 1 / n_repeat  # make frequence to proportion
+            sampled_lst[int(idx)] += 1 / n_repeat
 
     assert check_uniform(sampled_lst), "This distribution is not uniform."
 
