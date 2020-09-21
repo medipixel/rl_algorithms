@@ -1,7 +1,7 @@
 test:
-	# black . --check
-	# isort -y --check-only --skip checkpoint --skip wandb --skip data
-	# env PYTHONPATH=. pytest --pylint --flake8 --cov=tests --ignore=checkpoint --ignore=data --ignore=wandb --ignore tests/integration
+	black . --check
+	isort -y --check-only --skip checkpoint --skip wandb --skip data
+	env PYTHONPATH=. pytest --pylint --flake8 --cov=tests --ignore=checkpoint --ignore=data --ignore=wandb --ignore tests/integration
 
 integration-test:
 	env PYTHONPATH=. pytest tests/integration --cov=tests
