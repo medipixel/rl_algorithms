@@ -51,7 +51,7 @@ class PPOLearner(Learner):
         ) = self.env_info.observation_space.shape
         self.head_cfg.actor.configs.output_size = self.env_info.action_space.shape[0]
         self.optim_cfg = optim_cfg
-        self.is_discrete = self.env_info.is_discrete
+        self.is_discrete = self.hyper_params.is_discrete
 
         self._init_network()
 

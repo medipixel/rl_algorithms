@@ -130,7 +130,6 @@ def main():
         name=env_name,
         observation_space=env.observation_space,
         action_space=env.action_space,
-        is_discrete=True,
         is_atari=True,
     )
     cfg.agent.log_cfg = dict(agent=cfg.agent.type, curr_time=curr_time)
