@@ -95,6 +95,10 @@ class ReplayBuffer(BaseBuffer):
         """Add a new experience to memory.
         If the buffer is empty, it is respectively initialized by size of arguments.
         """
+        assert len(transition) == 5, "Inappropriate transition size"
+        assert isinstance(transition[0], np.ndarray)
+        assert isinstance(transition[1], np.ndarray)
+
         self.n_step_buffer.append(transition)
 
         # single step transition is not ready
