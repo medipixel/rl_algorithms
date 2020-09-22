@@ -37,7 +37,7 @@ def check_case2(maxlen: int):
 
 
 def check_case3(maxlen: int):
-    """Test when the terminal states exist in n_step"""
+    """Test when the terminal states exist within n_step"""
     index = random.randint(1, maxlen - 1)
     n_step_buffer = generate_dummy_buffer(maxlen, index)
     reward, next_state, _ = get_n_step_info(n_step_buffer, gamma=1)
