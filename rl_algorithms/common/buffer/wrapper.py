@@ -93,7 +93,7 @@ class PrioritizedBufferWrapper(BufferWrapper):
     def _sample_proportional(self, batch_size: int) -> list:
         """Sample indices based on proportional."""
         indices = []
-        p_total = self.sum_tree.sum(0, len(self.buffer) - 1)
+        p_total = self.sum_tree.sum(0, len(self.buffer))
         segment = p_total / batch_size
 
         for i in range(batch_size):
@@ -194,7 +194,7 @@ class ApeXBufferWrapper(BufferWrapper):
             for idx in range(len(experience["states"])):
                 transition = (
                     experience["states"][idx],
-                    experience["actions"][idx],
+                    np.array(experience["actions"][idx]),  # make aciton to np.ndarray
                     experience["rewards"][idx],
                     experience["next_states"][idx],
                     experience["dones"][idx],
