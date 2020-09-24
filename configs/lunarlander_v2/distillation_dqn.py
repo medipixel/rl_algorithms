@@ -20,7 +20,6 @@ agent = dict(
         per_alpha=0.6,  # openai baselines: 0.6
         per_beta=0.4,
         per_eps=1e-6,
-        loss_type=dict(type="C51Loss"),
         # Epsilon Greedy
         max_epsilon=1.0,
         min_epsilon=0.01,  # openai baselines: 0.01
@@ -33,6 +32,7 @@ agent = dict(
     ),
     learner_cfg=dict(
         type="DQNLearner",
+        loss_type=dict(type="C51Loss"),
         backbone=dict(),
         head=dict(
             type="C51DuelingMLP",

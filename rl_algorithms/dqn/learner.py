@@ -44,6 +44,7 @@ class DQNLearner(Learner):
         backbone: ConfigDict,
         head: ConfigDict,
         optim_cfg: ConfigDict,
+        loss_type: ConfigDict,
     ):
         Learner.__init__(self, args, env_info, hyper_params, log_cfg)
         self.backbone_cfg = backbone
@@ -52,7 +53,7 @@ class DQNLearner(Learner):
         self.head_cfg.configs.output_size = self.env_info.action_space.n
         self.optim_cfg = optim_cfg
         self.use_n_step = self.hyper_params.n_step > 1
-
+        self.loss_type = loss_type
         self._init_network()
 
     # pylint: disable=attribute-defined-outside-init
@@ -60,7 +61,7 @@ class DQNLearner(Learner):
         """Initialize networks and optimizers."""
         self.dqn = Brain(self.backbone_cfg, self.head_cfg).to(self.device)
         self.dqn_target = Brain(self.backbone_cfg, self.head_cfg).to(self.device)
-        self.loss_fn = build_loss(self.hyper_params.loss_type)
+        self.loss_fn = build_loss(self.loss_type)
 
         self.dqn_target.load_state_dict(self.dqn.state_dict())
 
