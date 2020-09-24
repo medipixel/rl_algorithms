@@ -39,9 +39,18 @@ class DQfDLearner(DQNLearner):
         backbone: ConfigDict,
         head: ConfigDict,
         optim_cfg: ConfigDict,
+        loss_type: ConfigDict,
     ):
         DQNLearner.__init__(
-            self, args, env_info, hyper_params, log_cfg, backbone, head, optim_cfg,
+            self,
+            args,
+            env_info,
+            hyper_params,
+            log_cfg,
+            backbone,
+            head,
+            optim_cfg,
+            loss_type,
         )
 
     def update_model(
