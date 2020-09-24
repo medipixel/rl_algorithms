@@ -96,6 +96,7 @@ class ApeX(Architecture):
         self.worker_cfg.hyper_params = self.hyper_params
         self.worker_cfg.backbone = self.learner_cfg.backbone
         self.worker_cfg.head = self.learner_cfg.head
+        self.worker_cfg.loss_type = self.learner_cfg.loss_type
 
         # organize logger configs
         self.logger_cfg.args = self.args

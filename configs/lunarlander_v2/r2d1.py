@@ -25,7 +25,6 @@ agent = dict(
         # R2D1
         sequence_size=32,
         overlap_size=16,
-        loss_type=dict(type="R2D1C51Loss"),
         # Epsilon Greedy
         max_epsilon=1.0,
         min_epsilon=0.01,  # openai baselines: 0.01
@@ -33,6 +32,7 @@ agent = dict(
     ),
     learner_cfg=dict(
         type="R2D1Learner",
+        loss_type=dict(type="R2D1C51Loss"),
         backbone=dict(),
         gru=dict(rnn_hidden_size=64, burn_in_step=16,),
         head=dict(
