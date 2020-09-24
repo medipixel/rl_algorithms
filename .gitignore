@@ -14,4 +14,4 @@ dist
 
 # data
 data/distillation_buffer
-rl_algorithms/pixel_grad/
+data/saliency_map/

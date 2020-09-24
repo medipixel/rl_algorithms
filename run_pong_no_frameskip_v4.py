@@ -100,9 +100,9 @@ def parse_args() -> argparse.Namespace:
         "--student", dest="student", action="store_true", help="train student",
     )
     parser.add_argument(
-        "--save-pixel-gradient",
-        dest="save_pixel_gradient",
-        action="store_false",
+        "--save-saliency-map",
+        dest="save_saliency_map",
+        action="store_true",
         help="turn off framestack",
     )
     return parser.parse_args()
