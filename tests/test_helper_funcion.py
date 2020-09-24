@@ -8,7 +8,7 @@ from rl_algorithms.common.helper_functions import get_n_step_info
 
 
 def generate_dummy_buffer(maxlen: int, index: int) -> Deque:
-    """Generate dummy n_step buffer"""
+    """Generate dummy n_step buffer."""
     assert index <= maxlen
     n_step_buffer = deque(maxlen=maxlen)
     for i in range(maxlen):
@@ -19,7 +19,7 @@ def generate_dummy_buffer(maxlen: int, index: int) -> Deque:
 
 
 def check_case1(maxlen: int):
-    """Test when the transition is terminal state"""
+    """Test when the transition is terminal state."""
     done_index = 0
     n_step_buffer = generate_dummy_buffer(maxlen, done_index)
     reward, next_state, _ = get_n_step_info(n_step_buffer, gamma=1)
@@ -28,7 +28,7 @@ def check_case1(maxlen: int):
 
 
 def check_case2(maxlen: int):
-    """Test when there are no terminal within n_step """
+    """Test when there are no terminal within n_step."""
     done_index = maxlen
     n_step_buffer = generate_dummy_buffer(maxlen, done_index)
     reward, next_state, _ = get_n_step_info(n_step_buffer, gamma=1)
@@ -37,7 +37,7 @@ def check_case2(maxlen: int):
 
 
 def check_case3(maxlen: int):
-    """Test when the terminal states exist within n_step"""
+    """Test when the terminal states exist within n_step."""
     done_index = random.randint(1, maxlen - 1)
     n_step_buffer = generate_dummy_buffer(maxlen, done_index)
     reward, next_state, _ = get_n_step_info(n_step_buffer, gamma=1)
