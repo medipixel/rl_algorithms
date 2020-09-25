@@ -23,6 +23,7 @@ agent = dict(
         n_workers=12,
         use_clipped_value_loss=True,
         standardize_advantage=True,
+        is_discrete=False,
     ),
     learner_cfg=dict(
         type="PPOLearner",

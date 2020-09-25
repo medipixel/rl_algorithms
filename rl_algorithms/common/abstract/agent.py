@@ -13,7 +13,6 @@ from typing import Tuple, Union
 
 import cv2
 import gym
-from gym.spaces import Discrete
 import numpy as np
 import torch
 import wandb
@@ -31,7 +30,6 @@ class Agent(ABC):
         log_cfg (ConfigDict): configuration for saving log
         state_dim (int): dimension of states
         action_dim (int): dimension of actions
-        is_discrete (bool): shows whether the action is discrete
 
     """
 
@@ -51,11 +49,6 @@ class Agent(ABC):
 
         self.total_step = 0
         self.learner = None
-
-        if isinstance(env.action_space, Discrete):
-            self.is_discrete = True
-        else:
-            self.is_discrete = False
 
     @abstractmethod
     def select_action(self, state: np.ndarray) -> Union[torch.Tensor, np.ndarray]:
