@@ -18,6 +18,7 @@ import torch
 import wandb
 
 from rl_algorithms.common.grad_cam import GradCAM
+from rl_algorithms.common.saliency_map import make_saliency_dir, save_saliency_maps
 from rl_algorithms.utils.config import ConfigDict
 
 
@@ -115,6 +116,12 @@ class Agent(ABC):
         else:
             test_num = self.args.episode_num
 
+        if self.args.save_saliency_map:
+            saliency_map_dir = make_saliency_dir()
+            print(f"Save saliency map in directory : {saliency_map_dir}")
+            print(f"Saving saliency maps...")
+            i = 0
+
         score_list = []
         for i_episode in range(test_num):
             state = self.env.reset()
@@ -127,6 +134,18 @@ class Agent(ABC):
                     self.env.render()
 
                 action = self.select_action(state)
+                if self.args.save_saliency_map:
+                    for param in self.learner.dqn.parameters():
+                        param.requires_grad = False
+                    save_saliency_maps(
+                        i,
+                        state,
+                        action,
+                        self.learner.dqn,
+                        self.learner.device,
+                        saliency_map_dir,
+                    )
+                    i += 1
                 next_state, reward, done, _ = self.step(action)
 
                 state = next_state
