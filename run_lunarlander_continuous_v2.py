@@ -79,7 +79,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--save-saliency-map",
         dest="save_saliency_map",
-        action="store_false",
+        action="store_true",
         help="turn off framestack",
     )
 
