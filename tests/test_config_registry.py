@@ -44,7 +44,6 @@ def test_config_registry():
         env_name="LunarLanderContinuous-v2",
         observation_space=env.observation_space,
         action_space=env.action_space,
-        is_discrete=False,
     )
     cfg.agent.log_cfg = dict(agent=cfg.agent.type, curr_time=curr_time)
     default_args = dict(args=args, env=env)
