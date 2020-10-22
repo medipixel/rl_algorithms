@@ -33,7 +33,7 @@ agent = dict(
             "backbone.cnn.cnn_2.cnn",
         ],
         # Distillation
-        distillation_dataset_path=[
+        dataset_path=[
             "data/distillation_buffer/PongNoFrameskip-v4/20200821134905",
             "data/distillation_buffer/PongNoFrameskip-v4/20200821142921",
             "data/distillation_buffer/PongNoFrameskip-v4/20200821145228",
