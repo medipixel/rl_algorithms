@@ -58,10 +58,10 @@ class DistillationDQN(DQNAgent):
 
     def make_distillation_dir(self):
         """Make directory for saving distillation data."""
-        if self.hyper_params.distillation_path_dir[-1] != "/":
-            self.hyper_params.distillation_path_dir += "/"
+        if self.hyper_params.save_dir[-1] != "/":
+            self.hyper_params.save_dir += "/"
         self.save_distillation_dir = (
-            self.hyper_params.distillation_path_dir
+            self.hyper_params.save_dir
             + "distillation_buffer/"
             + self.env_info.name
             + time.strftime("/%Y%m%d%H%M%S")

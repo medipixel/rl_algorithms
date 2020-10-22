@@ -38,7 +38,7 @@ agent = dict(
             "data/distillation_buffer/PongNoFrameskip-v4/20200821142921",
             "data/distillation_buffer/PongNoFrameskip-v4/20200821145228",
         ],
-        distillation_path_dir="./data",
+        save_dir="data/",
         epochs=20,  # epoch of student training
         n_frame_from_last=int(5e4),  # number of frames to save from the end of training
     ),
