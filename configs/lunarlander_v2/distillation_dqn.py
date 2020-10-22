@@ -10,6 +10,8 @@ agent = dict(
     hyper_params=dict(
         gamma=0.99,
         tau=5e-3,
+        buffer_size=int(1e5),
+        batch_size=64,
         update_starts_from=int(1e4),  # openai baselines: int(1e4)
         multiple_update=1,  # multiple learning updates
         train_freq=1,  # in openai baselines, train_freq = 4
@@ -25,9 +27,9 @@ agent = dict(
         min_epsilon=0.01,  # openai baselines: 0.01
         epsilon_decay=1e-5,  # openai baselines: 1e-7 / 1e-1
         # Distillation
+        dataset_path=[],
+        save_dir="data/",
         epochs=20,  # epoch of student training
-        buffer_size=int(50000),  # distillation buffer size
-        batch_size=64,  # distillation batch size
         n_frame_from_last=int(5e4),  # number of frames to save from the end of training
     ),
     learner_cfg=dict(

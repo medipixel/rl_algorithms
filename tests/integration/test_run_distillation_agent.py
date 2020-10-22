@@ -27,7 +27,7 @@ def check_distillation_agent(config: str, run_file: str):
 
     # Find saved checkpoint path and data path.
     pattern = r"./checkpoint/.+/"
-    data_pattern = r"./data/.+/"
+    data_pattern = r"data/.+/"
     checkpoint_path = re.findall(pattern, str(output))[0]
     full_data_path, n_frame_from_last_path = re.findall(data_pattern, str(output))
 
