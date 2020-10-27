@@ -162,4 +162,5 @@ def set_cfg_for_intergration_test(cfg: ConfigDict) -> ConfigDict:
         cfg.agent.hyper_params.pretrain_step = 1
     if "Distillation" in cfg.agent.type:
         cfg.agent.hyper_params.n_frame_from_last = 3
+        cfg.agent.hyper_params.save_dir = "data/"
     return cfg
