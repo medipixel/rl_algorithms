@@ -46,20 +46,21 @@ class DistillationDQN(DQNAgent):
 
             self.softmax_tau = 0.01
             self.learner = build_learner(self.learner_cfg)
-            self.buffer_path = self.hyper_params.buffer_path
+            self.dataset_path = self.hyper_params.dataset_path
 
             self.memory = DistillationBuffer(
-                self.hyper_params.batch_size, self.buffer_path, self.log_cfg.curr_time,
+                self.hyper_params.batch_size, self.dataset_path, self.log_cfg.curr_time,
             )
             if self.args.test:
                 self.make_distillation_dir()
 
     def make_distillation_dir(self):
         """Make directory for saving distillation data."""
-        self.save_distillation_dir = (
-            "./data/distillation_buffer/"
+        self.save_distillation_dir = os.path.join(
+            self.hyper_params.save_dir,
+            "distillation_buffer/"
             + self.env_info.name
-            + time.strftime("/%Y%m%d%H%M%S")
+            + time.strftime("/%Y%m%d%H%M%S"),
         )
         os.makedirs(self.save_distillation_dir)
         self.save_count = 0
@@ -207,7 +208,7 @@ class DistillationDQN(DQNAgent):
         self.make_distillation_dir()
         file_name_list = []
 
-        for _dir in self.hyper_params.buffer_path:
+        for _dir in self.hyper_params.dataset_path:
             data = os.listdir(_dir)
             file_name_list += ["./" + _dir + "/" + x for x in data]
 
@@ -234,7 +235,7 @@ class DistillationDQN(DQNAgent):
                     self.args.load_from is not None
                 ), "Train-phase training requires expert agent. Please use load-from argument."
                 self.add_expert_q()
-                self.hyper_params.buffer_path = [self.save_distillation_dir]
+                self.hyper_params.dataset_path = [self.save_distillation_dir]
                 self.args.load_from = None
                 self._initialize()
                 self.memory.reset_dataloader()

@@ -13,13 +13,13 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 class DistillationBuffer:
     """Class for managing reading and writing of distillation data.
-       Distillation data is stored in the buffer_path location on the actual hard disk.
+       Distillation data is stored in the dataset_path location on the actual hard disk.
        The data collected by the teacher is stored as individual pickle files.
        It is also read as batch through the pytorch DataLoader class.
 
     Attributes:
         batch_size (int): size of batch size from distillation buffer for training
-        buffer_path (list): list of distillation buffer path
+        dataset_path (list): list of distillation buffer path
         curr_time (str): program's start time to distinguish between teacher agents
         idx (int): index of data
         buffer_size (int): distillation buffer size
@@ -28,18 +28,18 @@ class DistillationBuffer:
     """
 
     def __init__(
-        self, batch_size: int, buffer_path: str, curr_time: str,
+        self, batch_size: int, dataset_path: str, curr_time: str,
     ):
         """Initialize a DistillationBuffer object.
 
         Args:
             batch_size (int): size of a batched sampled from distillation buffer for training
-            buffer_path (list): list of distillation buffer path
+            dataset_path (list): list of distillation buffer path
             curr_time (str): program's start time to distinguish between teacher agents
 
         """
         self.batch_size = batch_size
-        self.buffer_path = buffer_path
+        self.dataset_path = dataset_path
         self.idx = 0
         self.buffer_size = 0
         self.curr_time = curr_time
@@ -50,7 +50,7 @@ class DistillationBuffer:
         """Initialize and reset DataLoader class.
            DataLoader class must be reset for every epoch.
         """
-        dataset = DistillationDataset(self.buffer_path)
+        dataset = DistillationDataset(self.dataset_path)
         self.is_contain_q = dataset.is_contain_q
         self.buffer_size = len(dataset)
         self.dataloader = iter(
@@ -70,30 +70,30 @@ class DistillationDataset(Dataset):
     """Pytorch Dataset class for random batch data sampling.
 
     Attributes:
-        buffer_path (str): distillation buffer path
+        dataset_path (str): distillation buffer path
 
     """
 
-    def __init__(self, buffer_path: List[str]):
+    def __init__(self, dataset_path: List[str]):
         """Initialize a DistillationBuffer object.
 
         Args:
-            buffer_path (str): distillation buffer path
+            dataset_path (str): distillation buffer path
             file_name_list (list): transition's file name list in distillation buffer path
 
         """
-        self.buffer_path = buffer_path
+        self.dataset_path = dataset_path
         self.file_name_list = []
 
         sum_data_len = 0
-        for _dir in self.buffer_path:
+        for _dir in self.dataset_path:
             tmp = os.listdir(_dir)
             self.file_name_list += [_dir + "/" + x for x in tmp]
             with open(self.file_name_list[-1], "rb") as f:
                 data = pickle.load(f)
             sum_data_len += int(len(data) == 2)
 
-        if sum_data_len == len(self.buffer_path):
+        if sum_data_len == len(self.dataset_path):
             self.is_contain_q = True
         elif sum_data_len == 0:
             self.is_contain_q = False
