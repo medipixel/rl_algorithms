@@ -226,7 +226,7 @@ class DistillationDQN(DQNAgent):
         """Execute appropriate learning code according to the running type."""
         if self.args.student:
             self.memory.reset_dataloader()
-            if not self.memory.contain_q:
+            if not self.memory.is_contain_q:
                 print("train-phase student training. Generating expert agent Q..")
                 assert (
                     self.args.load_from is not None
