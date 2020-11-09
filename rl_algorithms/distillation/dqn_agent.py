@@ -57,7 +57,7 @@ class DistillationDQN(DQNAgent):
         """Make directory for saving distillation data."""
         self.save_distillation_dir = os.path.join(
             self.hyper_params.save_dir,
-            "distillation_buffer/" + self.env_info.name + self.log_cfg.curr_time,
+            "distillation_buffer/" + self.env_info.name + "/" + self.log_cfg.curr_time,
         )
         os.makedirs(self.save_distillation_dir)
         self.save_count = 0
