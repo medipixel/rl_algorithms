@@ -1,12 +1,16 @@
 from setuptools import find_packages, setup
 
+from rl_algorithms import __version__
+
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
+with open("./requirements.txt", "r") as f:
+    required = f.read().splitlines()
 # pylint: disable=line-too-long
 setup(
     name="rl_algorithms",
-    version="0.0.1",
+    version=__version__,
     author="medipixel",
     author_email="kh.kim@medipixel.io",
     description="Reinforcement Learning algorithms which are being used for research \
@@ -24,5 +28,6 @@ setup(
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
     ],
     python_requires=">=3.6",
+    install_requires=required,
     zip_safe=False,
 )

@@ -18,7 +18,7 @@ FOLDER_PATH_LIST = [
 def gen_test_data(num_files: int):
     """Generate dummy data."""
     for _dir in FOLDER_PATH_LIST:
-        os.makedirs(_dir)
+        os.makedirs(_dir, exist_ok=True)
 
     for i, _dir in enumerate(FOLDER_PATH_LIST):
         for j in range(num_files):
@@ -37,7 +37,7 @@ def gen_test_data(num_files: int):
 def check_multiple_data_load(num_files: int):
     """Check if DistillationBuffer can load data from multiple path."""
     batch_size = num_files * len(FOLDER_PATH_LIST[:-1])
-    memory = DistillationBuffer(batch_size, FOLDER_PATH_LIST[:-1], 20202020,)
+    memory = DistillationBuffer(batch_size, FOLDER_PATH_LIST[:-1])
     memory.reset_dataloader()
     state, _ = memory.sample_for_diltillation()
     assert state.shape[0] == batch_size
@@ -45,7 +45,7 @@ def check_multiple_data_load(num_files: int):
 
 def check_mixture_data_assert(num_files: int):
     """Check if DistillationBuffer can check whether trainphase & expert data is mixed."""
-    memory = DistillationBuffer(num_files, FOLDER_PATH_LIST, 20202020,)
+    memory = DistillationBuffer(num_files, FOLDER_PATH_LIST)
     with pytest.raises(AssertionError, match=r"mixture"):
         memory.reset_dataloader()
 
@@ -58,12 +58,12 @@ def delete_path(path: str):
 def test_distillation_buffer():
     """Test DistillationBuffer."""
     try:
-        num_file = 7
+        num_file = 2
         gen_test_data(num_file)
         check_multiple_data_load(num_file)
         check_mixture_data_assert(num_file)
 
-    except Exception as e:
+    except AssertionError as e:
         raise e
 
     finally:

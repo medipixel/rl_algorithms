@@ -31,6 +31,7 @@ from .sac.agent import SACAgent
 from .sac.learner import SACLearner
 from .td3.agent import TD3Agent
 from .td3.learner import TD3Learner
+from .version import __version__
 
 __all__ = [
     "A2CAgent",
@@ -73,4 +74,5 @@ __all__ = [
     "DQNWorker",
     "DQNLogger",
     "DistillationDQN",
+    "__version__",
 ]

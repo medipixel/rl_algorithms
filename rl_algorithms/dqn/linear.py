@@ -17,6 +17,8 @@ from rl_algorithms.common.helper_functions import numpy2floattensor
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
+# TODO: Remove it when upgrade torch>=1.7
+# pylint: disable=abstract-method
 class NoisyLinear(nn.Module):
     """Noisy linear module for NoisyNet.
 

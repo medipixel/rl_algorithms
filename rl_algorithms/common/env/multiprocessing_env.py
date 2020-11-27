@@ -4,7 +4,10 @@ https://github.com/openai/baselines/tree/master/baselines/common/vec_env
 
 from abc import ABC, abstractmethod
 from multiprocessing import Pipe, Process
+import pickle
 
+import cloudpickle
+from gym.envs.classic_control import rendering
 import numpy as np
 
 
@@ -163,8 +166,6 @@ class VecEnv(ABC):
 
     def get_viewer(self):
         if self.viewer is None:
-            from gym.envs.classic_control import rendering
-
             self.viewer = rendering.SimpleImageViewer()
         return self.viewer
 
@@ -215,13 +216,9 @@ class CloudpickleWrapper:
         self.x = x
 
     def __getstate__(self):
-        import cloudpickle
-
         return cloudpickle.dumps(self.x)
 
     def __setstate__(self, ob):
-        import pickle
-
         self.x = pickle.loads(ob)
 
 

@@ -19,6 +19,8 @@ from rl_algorithms.utils.config import ConfigDict
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
+# TODO: Remove it when upgrade torch>=1.7
+# pylint: disable=abstract-method
 class CNNLayer(nn.Module):
     def __init__(
         self,
@@ -54,6 +56,8 @@ class CNNLayer(nn.Module):
         return x
 
 
+# TODO: Remove it when upgrade torch>=1.7
+# pylint: disable=abstract-method
 @BACKBONES.register_module
 class CNN(nn.Module):
     """Baseline of Convolution neural network."""

@@ -27,6 +27,8 @@ def init_layer_uniform(layer: nn.Linear, init_w: float = 3e-3) -> nn.Linear:
     return layer
 
 
+# TODO: Remove it when upgrade torch>=1.7
+# pylint: disable=abstract-method
 @HEADS.register_module
 class MLP(nn.Module):
     """Baseline of Multilayer perceptron.
@@ -90,6 +92,8 @@ class MLP(nn.Module):
         return x
 
 
+# TODO: Remove it when upgrade torch>=1.7
+# pylint: disable=abstract-method
 @HEADS.register_module
 class GaussianDist(MLP):
     """Multilayer perceptron with Gaussian distribution output.
@@ -158,6 +162,8 @@ class GaussianDist(MLP):
         return action, dist
 
 
+# TODO: Remove it when upgrade torch>=1.7
+# pylint: disable=abstract-method
 @HEADS.register_module
 class TanhGaussianDistParams(GaussianDist):
     """Multilayer perceptron with Gaussian distribution output."""

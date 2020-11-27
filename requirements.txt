@@ -6,7 +6,7 @@ box2d-py
 scipy
 typing
 cloudpickle
-opencv-python==4.3.0.36
+opencv-python==4.4.0.44
 addict
 tqdm
 
