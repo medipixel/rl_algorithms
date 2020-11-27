@@ -18,12 +18,8 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: Prerequisite
-      run: |
-          pip3 install --upgrade pip setuptools
-
-    - name: Udpdate version
-      run: python tools/update_version.py
+    - name: Update version
+      run: python3 tools/update_version.py
       
     - name: Commit & Push
       run: |
