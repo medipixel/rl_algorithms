@@ -9,7 +9,6 @@
 
 import os
 import pickle
-import time
 from typing import Tuple
 
 import numpy as np
@@ -58,9 +57,7 @@ class DistillationDQN(DQNAgent):
         """Make directory for saving distillation data."""
         self.save_distillation_dir = os.path.join(
             self.hyper_params.save_dir,
-            "distillation_buffer/"
-            + self.env_info.name
-            + time.strftime("/%Y%m%d%H%M%S"),
+            "distillation_buffer/" + self.env_info.name + "/" + self.log_cfg.curr_time,
         )
         os.makedirs(self.save_distillation_dir)
         self.save_count = 0
@@ -229,7 +226,7 @@ class DistillationDQN(DQNAgent):
         """Execute appropriate learning code according to the running type."""
         if self.args.student:
             self.memory.reset_dataloader()
-            if not self.memory.contain_q:
+            if not self.memory.is_contain_q:
                 print("train-phase student training. Generating expert agent Q..")
                 assert (
                     self.args.load_from is not None
