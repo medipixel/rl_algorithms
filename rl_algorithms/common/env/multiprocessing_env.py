@@ -7,7 +7,6 @@ from multiprocessing import Pipe, Process
 import pickle
 
 import cloudpickle
-from gym.envs.classic_control import rendering
 import numpy as np
 
 
@@ -164,8 +163,11 @@ class VecEnv(ABC):
         else:
             return self
 
+    # pylint: disable=import-outside-toplevel
     def get_viewer(self):
         if self.viewer is None:
+            from gym.envs.classic_control import rendering
+
             self.viewer = rendering.SimpleImageViewer()
         return self.viewer
 

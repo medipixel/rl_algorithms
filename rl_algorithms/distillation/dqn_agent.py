@@ -48,7 +48,7 @@ class DistillationDQN(DQNAgent):
             self.dataset_path = self.hyper_params.dataset_path
 
             self.memory = DistillationBuffer(
-                self.hyper_params.batch_size, self.dataset_path, self.log_cfg.curr_time,
+                self.hyper_params.batch_size, self.dataset_path
             )
             if self.args.test:
                 self.make_distillation_dir()

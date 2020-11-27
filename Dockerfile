@@ -2,7 +2,7 @@ FROM nvidia/cuda:10.2-cudnn7-devel-ubuntu18.04
 
 RUN apt-get update
 RUN apt-get install -y software-properties-common vim
-RUN apt-get install -y libsm6 libxext6 libxrender-dev libusb-1.0-0-dev && apt-get update
+RUN apt-get install -y libsm6 libxext6 libxrender-dev libusb-1.0-0-dev libgl1-mesa-glx && apt-get update
 RUN apt-get install -y git
 RUN apt-get install -y python3-pip python3-dev \
     && cd /usr/local/bin \
