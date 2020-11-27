@@ -3,14 +3,10 @@ name: Update version
 on:
   pull_request:
     branches:
-      - feature/*
-      - hotfix/*
-    types: [closed]
+      - master
 
 jobs:
-
   update-version:
-    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     strategy:
         matrix:
