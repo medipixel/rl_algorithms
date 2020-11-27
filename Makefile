@@ -23,3 +23,7 @@ dev:
 dep:
 	pip install -U -r requirements.txt
 	python setup.py install
+
+jenkins-dev:
+	pip install -U -r requirements-dev.txt
+	python setup.py develop

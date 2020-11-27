@@ -17,6 +17,8 @@ from rl_algorithms.utils.config import ConfigDict
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
+# TODO: Remove it when upgrade torch>=1.7
+# pylint: disable=abstract-method
 class BasicBlock(nn.Module):
     """Basic building block for ResNet."""
 
@@ -61,6 +63,8 @@ class BasicBlock(nn.Module):
         return out
 
 
+# TODO: Remove it when upgrade torch>=1.7
+# pylint: disable=abstract-method
 class Bottleneck(nn.Module):
     """Bottleneck building block."""
 
@@ -103,6 +107,8 @@ class Bottleneck(nn.Module):
         return out
 
 
+# TODO: Remove it when upgrade torch>=1.7
+# pylint: disable=abstract-method
 @BACKBONES.register_module
 class ResNet(nn.Module):
     """Baseline of ResNet(https://arxiv.org/pdf/1512.03385.pdf)."""

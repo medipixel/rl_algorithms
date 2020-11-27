@@ -4,7 +4,9 @@ https://github.com/openai/baselines/tree/master/baselines/common/vec_env
 
 from abc import ABC, abstractmethod
 from multiprocessing import Pipe, Process
+import pickle
 
+import cloudpickle
 import numpy as np
 
 
@@ -161,6 +163,7 @@ class VecEnv(ABC):
         else:
             return self
 
+    # pylint: disable=import-outside-toplevel
     def get_viewer(self):
         if self.viewer is None:
             from gym.envs.classic_control import rendering
@@ -215,13 +218,9 @@ class CloudpickleWrapper:
         self.x = x
 
     def __getstate__(self):
-        import cloudpickle
-
         return cloudpickle.dumps(self.x)
 
     def __setstate__(self, ob):
-        import pickle
-
         self.x = pickle.loads(ob)
 
 

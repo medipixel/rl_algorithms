@@ -18,6 +18,8 @@ from rl_algorithms.registry import build_backbone, build_head
 from rl_algorithms.utils.config import ConfigDict
 
 
+# TODO: Remove it when upgrade torch>=1.7
+# pylint: disable=abstract-method
 class Brain(nn.Module):
     """Class for holding backbone and head networks."""
 
@@ -59,6 +61,8 @@ class Brain(nn.Module):
         return output.shape[0]
 
 
+# TODO: Remove it when upgrade torch>=1.7
+# pylint: disable=abstract-method
 class GRUBrain(Brain):
     """Class for holding backbone, GRU, and head networks."""
 

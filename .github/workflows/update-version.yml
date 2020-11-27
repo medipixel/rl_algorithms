@@ -1,0 +1,28 @@
+name: Update version
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+
+  update-version:
+    runs-on: ubuntu-latest
+    strategy:
+        matrix:
+            python-version:
+                - 3.x
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Update version
+      run: python3 tools/update_version.py
+      
+    - name: Commit & Push
+      run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"                                    
+          git add -A && git diff-index --cached --quiet HEAD || git commit -m 'Update version of package'
+          git push

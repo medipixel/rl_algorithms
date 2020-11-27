@@ -8,7 +8,6 @@ RUN apt-get install -y python3-pip python3-dev \
     && cd /usr/local/bin \
     && ln -s /usr/bin/python3 python \
     && pip3 install --upgrade pip
-RUN apt-get update
 
 # set workspace
 RUN mkdir /workspace/
@@ -23,3 +22,5 @@ ENV CUDA_HOME /usr/local/cuda
 ENV PATH "/usr/local/cuda/bin:$PATH"
 ENV LD_LIBRARY_PATH "$LD_LIBRARY_PATH:/usr/local/cuda/lib64"
 ENV LIBRARY_PATH "$LIBRARY_PATH:/usr/local/cuda/lib64"
+
+RUN apt-get update && apt-get install -y libgl1-mesa-glx

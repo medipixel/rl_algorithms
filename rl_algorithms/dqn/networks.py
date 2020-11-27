@@ -22,6 +22,8 @@ from rl_algorithms.utils.config import ConfigDict
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
+# TODO: Remove it when upgrade torch>=1.7
+# pylint: disable=abstract-method
 @HEADS.register_module
 class DuelingMLP(MLP, NoisyMLPHandler):
     """Multilayer perceptron with dueling construction."""
@@ -74,6 +76,8 @@ class DuelingMLP(MLP, NoisyMLPHandler):
         return x
 
 
+# TODO: Remove it when upgrade torch>=1.7
+# pylint: disable=abstract-method
 @HEADS.register_module
 class C51DuelingMLP(MLP, NoisyMLPHandler):
     """Multilayered perceptron for C51 with dueling construction."""
@@ -137,6 +141,8 @@ class C51DuelingMLP(MLP, NoisyMLPHandler):
         return q
 
 
+# TODO: Remove it when upgrade torch>=1.7
+# pylint: disable=abstract-method
 @HEADS.register_module
 class IQNMLP(MLP, NoisyMLPHandler):
     """Multilayered perceptron for IQN with dueling construction.

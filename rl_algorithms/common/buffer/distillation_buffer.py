@@ -28,7 +28,7 @@ class DistillationBuffer:
     """
 
     def __init__(
-        self, batch_size: int, dataset_path: str, curr_time: str,
+        self, batch_size: int, dataset_path: List[str],
     ):
         """Initialize a DistillationBuffer object.
 
@@ -42,7 +42,6 @@ class DistillationBuffer:
         self.dataset_path = dataset_path
         self.idx = 0
         self.buffer_size = 0
-        self.curr_time = curr_time
         self.dataloader = None
         self.is_contain_q = False
 
@@ -88,7 +87,7 @@ class DistillationDataset(Dataset):
         sum_data_len = 0
         for _dir in self.dataset_path:
             tmp = os.listdir(_dir)
-            self.file_name_list += [_dir + "/" + x for x in tmp]
+            self.file_name_list += [os.path.join(_dir, x) for x in tmp]
             with open(self.file_name_list[-1], "rb") as f:
                 data = pickle.load(f)
             sum_data_len += int(len(data) == 2)
