@@ -9,7 +9,7 @@ pipeline {
     stage('Test') {
       steps {
         echo 'Testing...'
-        sh 'make dev'
+        sh 'make jenkins-dev'
         sh 'make test'
         sh 'make integration-test'
       }
