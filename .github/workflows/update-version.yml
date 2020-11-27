@@ -17,10 +17,15 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: version update
+
+    - name: Prerequisite
+      run: |
+          pip3 install --upgrade pip setuptools
+
+    - name: Udpdate version
       run: python tools/update_version.py
       
-    - name: commit & push
+    - name: Commit & Push
       run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"                                    
