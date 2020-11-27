@@ -1,14 +1,13 @@
-name: Update version action
+name: Update version
 
 on:
   push:
     branches:
-      - feature/*
+      - master
 
 jobs:
 
-  build:
-
+  update-version:
     runs-on: ubuntu-latest
     strategy:
         matrix:

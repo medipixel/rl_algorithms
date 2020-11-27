@@ -28,9 +28,9 @@ if __name__ == "__main__":
             except ValueError:
                 print(f"{old_version} hasn't the expected format: YY.MM.<minor>")
                 sys.exit(1)
-        # If there was no minor version, add 0
-        else:
-            version += ".0"
+    # If there was no version, add 0
+    else:
+        version += ".0"
 
     # Write new version
     with open(version_tempfile_path, "w", encoding="utf-8") as f:
@@ -39,4 +39,4 @@ if __name__ == "__main__":
         os.fsync(f.fileno())
 
     os.rename(version_tempfile_path, version_file_path)
-    print(f"Update version {version}")
+    print(f"Update version {old_version} -> {version}")
