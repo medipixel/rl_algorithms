@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - feature
+      - hotfix
 
 jobs:
   update-version:
