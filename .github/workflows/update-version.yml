@@ -15,7 +15,9 @@ jobs:
                 - 3.x
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@master
+      with:
+        ref: ${{ github.ref }}
 
     - name: Update version
       run: python3 tools/update_version.py
@@ -25,5 +27,4 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"                                    
           git add -A && git diff-index --cached --quiet HEAD || git commit -m 'Update version of package'
-          git branch
           git push origin HEAD
