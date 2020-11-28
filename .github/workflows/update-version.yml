@@ -5,7 +5,7 @@ on:
     branches:
       - feature/*
       - hotfix/*
-    # types: [opened]
+    types: [opened]
 
 jobs:
   update-version:
