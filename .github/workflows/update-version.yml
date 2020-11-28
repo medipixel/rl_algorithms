@@ -3,7 +3,9 @@ name: Update version
 on:
   pull_request:
     branches:
-      - master
+      - feature/*
+      - hotfix/*
+    types: [opened]
 
 jobs:
   update-version:
@@ -15,6 +17,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+        ref: ${{ github.head_ref }}
 
     - name: Update version
       run: python3 tools/update_version.py
