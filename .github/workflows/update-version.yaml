@@ -3,8 +3,7 @@ name: Update version
 on:
   pull_request:
     branches:
-      - feature/*
-      - hotfix/*
+      - master
     types: [opened]
 
 jobs:
