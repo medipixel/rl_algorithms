@@ -5,6 +5,7 @@ on:
     branches:
       - feature/*
       - hotfix/*
+    # types: [opened]
 
 jobs:
   update-version:
@@ -18,7 +19,7 @@ jobs:
     - uses: actions/checkout@v2
       with:
         fetch-depth: 0
-        ref: ${{ github.BRANCH }}
+        ref: ${{ github.head_ref }}
 
     - name: Update version
       run: python3 tools/update_version.py
@@ -28,5 +29,4 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"                                    
           git add -A && git diff-index --cached --quiet HEAD || git commit -m 'Update version of package'
-          git branch
-          git push
+          git push origin HEAD
