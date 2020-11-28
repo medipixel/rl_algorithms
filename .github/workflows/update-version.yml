@@ -3,8 +3,8 @@ name: Update version
 on:
   pull_request:
     branches:
-      - feature
-      - hotfix
+      - feature/*
+      - hotfix/*
 
 jobs:
   update-version:
