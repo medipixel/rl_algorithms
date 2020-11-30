@@ -27,5 +27,5 @@ jobs:
       run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"                                    
-          git add -A && git diff-index --cached --quiet HEAD || git commit -m 'Update version of package'
+          git add -A && git diff-index --cached --quiet HEAD || git commit -m 'docs: Update minor version of package'
           git push origin HEAD
