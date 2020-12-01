@@ -15,6 +15,7 @@ pyzmq == 20.0.0
 pyarrow == 2.0.0
 
 # for log
+six >= 1.13.0
 wandb == 0.10.11
 matplotlib == 3.3.3
 plotly == 4.13.0
