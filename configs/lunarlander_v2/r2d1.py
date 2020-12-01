@@ -3,7 +3,6 @@
 - Author: Euijin Jeong
 - Contact: euijin.jeong@medipixel.io
 """
-from rl_algorithms.common.helper_functions import identity
 
 agent = dict(
     type="R2D1Agent",
@@ -42,7 +41,7 @@ agent = dict(
                 v_min=-300,
                 v_max=300,
                 atom_size=51,
-                output_activation=identity,
+                output_activation="identity",
                 # NoisyNet
                 use_noisy_net=False,
             ),

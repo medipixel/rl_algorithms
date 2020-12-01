@@ -3,7 +3,6 @@
 - Author: Kyunghwan Kim
 - Contact: kh.kim@medipixel.io
 """
-from rl_algorithms.common.helper_functions import identity
 
 agent = dict(
     type="SACfDAgent",
@@ -37,18 +36,22 @@ agent = dict(
         head=dict(
             actor=dict(
                 type="TanhGaussianDistParams",
-                configs=dict(hidden_sizes=[256, 256], output_activation=identity,),
+                configs=dict(hidden_sizes=[256, 256], output_activation="identity",),
             ),
             critic_vf=dict(
                 type="MLP",
                 configs=dict(
-                    hidden_sizes=[256, 256], output_activation=identity, output_size=1,
+                    hidden_sizes=[256, 256],
+                    output_activation="identity",
+                    output_size=1,
                 ),
             ),
             critic_qf=dict(
                 type="MLP",
                 configs=dict(
-                    hidden_sizes=[256, 256], output_activation=identity, output_size=1,
+                    hidden_sizes=[256, 256],
+                    output_activation="identity",
+                    output_size=1,
                 ),
             ),
         ),

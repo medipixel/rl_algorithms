@@ -3,7 +3,6 @@
 - Author: Kyunghwan Kim
 - Contact: kh.kim@medipixel.io
 """
-from rl_algorithms.common.helper_functions import identity
 
 agent = dict(
     type="DQfDAgent",
@@ -46,7 +45,7 @@ agent = dict(
                 v_min=-300,
                 v_max=300,
                 atom_size=1530,
-                output_activation=identity,
+                output_activation="identity",
             ),
         ),
         optim_cfg=dict(lr_dqn=1e-4, weight_decay=1e-5, adam_eps=1e-8),
