@@ -2,7 +2,7 @@ pre-commit
 
 # formatting
 black == 19.10b0
-isort == 4.3.21
+isort == 5.6.4
 
 # testing
 pylint == 2.6.0
@@ -16,6 +16,3 @@ pytest-pylint == 0.18.0
 pytest-flake8 == 1.0.6
 pytest-mypy == 0.4.2
 pytest-cov == 2.10.1
-
-# generating requirements
-pipreqs
