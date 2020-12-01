@@ -12,8 +12,8 @@ from torch.distributions import Normal
 import torch.nn as nn
 import torch.nn.functional as F
 
-from rl_algorithms.common.helper_functions import identity
 import rl_algorithms.common.helper_functions as helper_functions
+from rl_algorithms.common.helper_functions import identity
 from rl_algorithms.registry import HEADS
 from rl_algorithms.utils.config import ConfigDict
 
