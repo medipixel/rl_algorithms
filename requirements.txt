@@ -10,7 +10,6 @@ tqdm
 
 # for distributed learning
 ray == 1.0.1.post1
-ray[debug]
 pyzmq == 20.0.0
 pyarrow == 2.0.0
 

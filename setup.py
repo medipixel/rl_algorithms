@@ -7,7 +7,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 with open("./requirements.txt", "r") as f:
     required = f.read().splitlines()
-# pylint: disable=line-too-long
+
 setup(
     name="rl_algorithms",
     version=__version__,
