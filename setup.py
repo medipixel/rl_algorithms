@@ -1,16 +1,22 @@
 from setuptools import find_packages, setup
 
-from rl_algorithms.version import __version__
-
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 with open("./requirements.txt", "r") as f:
     required = f.read().splitlines()
 
+version_file = "rl_algorithms/version.py"
+
+
+def get_version():
+    version = open(version_file, "r", encoding="utf-8").read().strip().split('"')[1]
+    return version
+
+
 setup(
     name="rl_algorithms",
-    version=__version__,
+    version=get_version(),
     author="medipixel",
     author_email="kh.kim@medipixel.io",
     description="Reinforcement Learning algorithms which are being used for research \
