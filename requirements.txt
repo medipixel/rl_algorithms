@@ -1,27 +1,21 @@
-numpy==1.18.0
-torch==1.6.0
-gym
-atari-py
-box2d-py
-scipy
-typing
-cloudpickle
-opencv-python==4.4.0.44
-addict
+numpy == 1.18.0
+torch == 1.6.0
+gym == 0.17.3
+atari-py == 0.2.6
+box2d-py == 2.3.8
+scipy == 1.5.4
+opencv-python == 4.4.0.46
+addict == 2.4.0
 tqdm
 
-# mujoco
-
 # for distributed learning
-ray
+ray == 1.0.1.post1
 ray[debug]
-pyzmq
-pyarrow
+pyzmq == 20.0.0
+pyarrow == 2.0.0
 
 # for log
-wandb
-six==1.13 # wandb requires six>=1.13.0
-matplotlib
-plotly
-setuptools
-wheel
+six >= 1.13.0
+wandb == 0.10.11
+matplotlib == 3.3.3
+plotly == 4.13.0
