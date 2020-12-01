@@ -3,7 +3,6 @@
 - Author: Kyunghwan Kim
 - Contact: kh.kim@medipixel.io
 """
-from rl_algorithms.common.helper_functions import identity
 
 agent = dict(
     type="DQNAgent",
@@ -55,7 +54,7 @@ agent = dict(
                 n_quantile_samples=32,
                 quantile_embedding_dim=64,
                 kappa=1.0,
-                output_activation=identity,
+                output_activation="identity",
                 # NoisyNet
                 use_noisy_net=True,
                 std_init=0.5,

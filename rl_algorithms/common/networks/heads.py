@@ -13,6 +13,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from rl_algorithms.common.helper_functions import identity
+import rl_algorithms.common.helper_functions as helper_functions
 from rl_algorithms.registry import HEADS
 from rl_algorithms.utils.config import ConfigDict
 
@@ -61,7 +62,7 @@ class MLP(nn.Module):
         self.input_size = configs.input_size
         self.output_size = configs.output_size
         self.hidden_activation = hidden_activation
-        self.output_activation = configs.output_activation
+        self.output_activation = getattr(helper_functions, configs.output_activation)
         self.linear_layer = linear_layer
         self.use_output_layer = use_output_layer
         self.n_category = n_category

@@ -3,7 +3,6 @@
 - Author: Euijin Jeong
 - Contact: euijin.jeong@medipixel.io
 """
-from rl_algorithms.common.helper_functions import identity
 
 agent = dict(
     type="R2D1Agent",
@@ -53,7 +52,7 @@ agent = dict(
         head=dict(
             type="DuelingMLP",
             configs=dict(
-                hidden_sizes=[512], use_noisy_net=False, output_activation=identity,
+                hidden_sizes=[512], use_noisy_net=False, output_activation="identity",
             ),
         ),
         optim_cfg=dict(

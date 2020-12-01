@@ -18,6 +18,11 @@ from rl_algorithms.utils.config import ConfigDict
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
+def tanh(x: torch.Tensor) -> torch.Tensor:
+    """Return torch.tanh(x)"""
+    return torch.tanh(x)
+
+
 def identity(x: torch.Tensor) -> torch.Tensor:
     """Return input without any change."""
     return x

@@ -3,7 +3,6 @@
 - Author: Chris Yoon
 - Contact: chris.yoon@medipixel.io
 """
-from rl_algorithms.common.helper_functions import identity
 
 agent = dict(
     type="ApeX",
@@ -54,7 +53,7 @@ agent = dict(
         head=dict(
             type="DuelingMLP",
             configs=dict(
-                use_noisy_net=False, hidden_sizes=[512], output_activation=identity
+                use_noisy_net=False, hidden_sizes=[512], output_activation="identity"
             ),
         ),
         optim_cfg=dict(

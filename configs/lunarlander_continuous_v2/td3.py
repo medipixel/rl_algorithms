@@ -3,9 +3,6 @@
 - Author: Kyunghwan Kim
 - Contact: kh.kim@medipixel.io
 """
-import torch
-
-from rl_algorithms.common.helper_functions import identity
 
 agent = dict(
     type="TD3Agent",
@@ -23,12 +20,14 @@ agent = dict(
         head=dict(
             actor=dict(
                 type="MLP",
-                configs=dict(hidden_sizes=[400, 300], output_activation=torch.tanh,),
+                configs=dict(hidden_sizes=[400, 300], output_activation="tanh",),
             ),
             critic=dict(
                 type="MLP",
                 configs=dict(
-                    hidden_sizes=[400, 300], output_size=1, output_activation=identity,
+                    hidden_sizes=[400, 300],
+                    output_size=1,
+                    output_activation="identity",
                 ),
             ),
         ),
