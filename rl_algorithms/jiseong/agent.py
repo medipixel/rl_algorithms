@@ -94,7 +94,7 @@ class JAgent(DQNAgent):
         else:
             with torch.no_grad():
                 state = self._preprocess_state(state)
-                selected_action = self.learner.dqn(state, self.state_info).argmax()
+                selected_action = self.learner.dqn(state).argmax()
             selected_action = selected_action.detach().cpu().numpy()
         return selected_action
 
