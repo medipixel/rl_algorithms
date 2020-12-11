@@ -35,9 +35,10 @@ class Brain(nn.Module):
             self.backbone = build_backbone(backbone_cfg)
             if backbone_cfg.type == "ImpalaModel":
                 head_cfg.configs.input_size = 256
-            head_cfg.configs.input_size = self.calculate_fc_input_size(
-                head_cfg.configs.state_size
-            )
+            else:
+                head_cfg.configs.input_size = self.calculate_fc_input_size(
+                    head_cfg.configs.state_size
+                )
         self.head = build_head(head_cfg)
 
     def forward(self, x: torch.Tensor) -> Union[torch.Tensor, Tuple[torch.Tensor, ...]]:

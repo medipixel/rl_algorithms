@@ -59,6 +59,7 @@ class JBuffer(BaseBuffer):
         self.n_step = n_step
         self.gamma = gamma
 
+        self.demo_size = 0
         self.max_len = max_len
         self.batch_size = batch_size
         self.length = 0
