@@ -105,7 +105,7 @@ class JBuffer(BaseBuffer):
         self.length = min(self.length + 1, self.max_len)
 
         # return a single step transition to insert to replay buffer
-        return self.n_step_buffer[0]
+        return transition
 
     def extend(
         self, transitions: List[Tuple[np.ndarray, np.ndarray, float, np.ndarray, bool]]

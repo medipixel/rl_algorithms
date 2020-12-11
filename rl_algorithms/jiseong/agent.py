@@ -119,8 +119,7 @@ class JAgent(DQNAgent):
         """Add 1 step and n step transitions to memory."""
         # add a single step transition
         # if transition is not an empty tuple
-        if transition:
-            self.memory.add(transition)
+        self.memory.add(transition)
 
     def write_log(self, log_value: tuple):
         """Write log about loss and score"""
