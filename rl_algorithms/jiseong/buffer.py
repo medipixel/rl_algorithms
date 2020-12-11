@@ -75,10 +75,6 @@ class JBuffer(BaseBuffer):
         assert isinstance(transition[0], np.ndarray)
         assert isinstance(transition[1], np.ndarray)
 
-        # single step transition is not ready
-        if len(self.n_step_buffer) < self.n_step:
-            return ()
-
         if self.length == 0:
             state, state_info, action = transition[:3]
             self._initialize_buffers(state, state_info, action)
