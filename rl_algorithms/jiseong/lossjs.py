@@ -20,7 +20,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 @LOSSJS.register_module
-class IQNLoss:
+class IQNLossjs:
     def __call__(
         self,
         model: Brain,
@@ -158,7 +158,7 @@ class IQNLoss:
 
 
 @LOSSJS.register_module
-class C51Loss:
+class C51Lossjs:
     def __call__(
         self,
         model: Brain,
@@ -233,7 +233,7 @@ class C51Loss:
 
 
 @LOSSJS.register_module
-class DQNLoss:
+class DQNLossjs:
     def __call__(
         self,
         model: Brain,

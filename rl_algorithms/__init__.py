@@ -21,6 +21,9 @@ from .fd.dqn_agent import DQfDAgent
 from .fd.dqn_learner import DQfDLearner
 from .fd.sac_agent import SACfDAgent
 from .fd.sac_learner import SACfDLearner
+from .jiseong.agent import JAgent
+from .jiseong.learner import JSLearner
+from .jiseong.lossjs import C51Lossjs, DQNLossjs, IQNLossjs
 from .ppo.agent import PPOAgent
 from .ppo.learner import PPOLearner
 from .recurrent.dqn_agent import R2D1Agent
@@ -33,6 +36,11 @@ from .td3.agent import TD3Agent
 from .td3.learner import TD3Learner
 
 __all__ = [
+    "JAgent",
+    "JSLearner",
+    "C51Lossjs",
+    "DQNLossjs",
+    "IQNLossjs",
     "A2CAgent",
     "BCDDPGAgent",
     "BCSACAgent",
