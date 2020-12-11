@@ -33,6 +33,8 @@ class Brain(nn.Module):
             head_cfg.configs.input_size = head_cfg.configs.state_size[0]
         else:
             self.backbone = build_backbone(backbone_cfg)
+            if backbone_cfg.type == "ImpalaModel":
+                head_cfg.configs.input_size = 256
             head_cfg.configs.input_size = self.calculate_fc_input_size(
                 head_cfg.configs.state_size
             )
