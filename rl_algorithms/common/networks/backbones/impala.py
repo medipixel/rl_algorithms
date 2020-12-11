@@ -1,4 +1,5 @@
 import math
+from typing import Tuple
 
 import torch
 import torch.nn as nn
@@ -81,7 +82,8 @@ class ImpalaModel(nn.Module):
             nn.Linear(512, 256), nn.ReLU(), nn.Linear(256, 256), nn.ReLU(),
         )
 
-    def forward(self, state_info: torch.tensor, observations: torch.tensor):
+    def forward(self, states_: Tuple[torch.tensor, torch.tensor]):
+        observations, state_info = states_
         if len(observations.size()) == 3:
             observations = observations.unsqueeze(0)
         if len(state_info.size()) == 2:

@@ -6,6 +6,7 @@ LEARNERS = Registry("learners")
 BACKBONES = Registry("backbones")
 HEADS = Registry("heads")
 LOSSES = Registry("losses")
+LOSSJS = Registry("lossjs")
 HERS = Registry("hers")
 WORKERS = Registry("workers")
 LOGGERS = Registry("loggers")
@@ -34,6 +35,11 @@ def build_head(cfg: ConfigDict, build_args: dict = None):
 def build_loss(cfg: ConfigDict, build_args: dict = None):
     """Build loss using config and additional arguments."""
     return build_from_cfg(cfg, LOSSES, build_args)
+
+
+def build_loss_js(cfg: ConfigDict, build_args: dict = None):
+    """Build loss using config and additional arguments."""
+    return build_from_cfg(cfg, LOSSJS, build_args)
 
 
 def build_her(cfg: ConfigDict, build_args: dict = None):
