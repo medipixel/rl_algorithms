@@ -93,6 +93,34 @@ class MLP(nn.Module):
         return x
 
 
+@HEADS.register_module
+class SoftmaxHead(MLP):
+    def __init__(
+        self,
+        configs: ConfigDict,
+        hidden_activation: Callable = F.relu,
+        linear_layer: nn.Module = nn.Linear,
+        use_output_layer: bool = True,
+        n_category: int = -1,
+        init_fn: Callable = init_layer_uniform,
+    ):
+        MLP.__init__(
+            self,
+            configs,
+            hidden_activation,
+            linear_layer,
+            use_output_layer,
+            n_category,
+            init_fn,
+        )
+
+    def forward(self, x, softmax_dim):
+        for hidden_layer in self.hidden_layers:
+            x = self.hidden_activation(hidden_layer(x))
+        x = F.softmax(self.output_layer(x), softmax_dim)
+        return x
+
+
 # TODO: Remove it when upgrade torch>=1.7
 # pylint: disable=abstract-method
 @HEADS.register_module
