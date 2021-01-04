@@ -1,3 +1,7 @@
+import argparse
+from typing import Tuple
+
+import gym
 import numpy as np
 import torch
 from torch.distributions import Categorical
@@ -7,11 +11,38 @@ from rl_algorithms.acer.buffer import ReplayMemory
 from rl_algorithms.common.abstract.agent import Agent
 from rl_algorithms.common.helper_functions import numpy2floattensor
 from rl_algorithms.registry import AGENTS, build_learner
+from rl_algorithms.utils.config import ConfigDict
 
 
 @AGENTS.register_module
 class ACERAgent(Agent):
-    def __init__(self, env, env_info, args, hyper_params, learner_cfg, log_cfg):
+    """Discrete Actor Critic with Experience Replay interacting with environment.
+
+    Attributes:
+        env (gym.Env): openAI Gym environment
+        args (argparse.Namespace): arguments including hyperparameters and training settings
+        hyper_params (ConfigDict): hyper-parameters
+        network_cfg (ConfigDict): config of network for training agent
+        optim_cfg (ConfigDict): config of optimizer
+        state_dim (int): state size of env
+        action_dim (int): action size of env
+        model (nn.Module): policy and value network
+        optim (Optimizer): optimizer for model
+        episode_step (int): step number of the current episode
+        i_episode (int): current episode number
+        transition (list): recent transition information
+
+    """
+
+    def __init__(
+        self,
+        env: gym.Env,
+        env_info: ConfigDict,
+        args: argparse.Namespace,
+        hyper_params: ConfigDict,
+        learner_cfg: ConfigDict,
+        log_cfg: ConfigDict,
+    ):
         Agent.__init__(self, env, env_info, args, log_cfg)
 
         self.episode_step = 0
@@ -27,19 +58,21 @@ class ACERAgent(Agent):
         self.learner = build_learner(self.learner_cfg)
         self.memory = ReplayMemory(self.hyper_params.buffer_size)
 
-    def select_action(self, state):
+    def select_action(self, state: np.ndarray) -> Tuple[int, torch.Tensor]:
+        """Select action from input space."""
         state = numpy2floattensor(state, self.learner.device)
         with torch.no_grad():
             prob = self.learner.model.pi(state, 0)
         selected_action = Categorical(prob).sample().item()
         return selected_action, prob.squeeze().detach().cpu().numpy()
 
-    def step(self, action):
+    def step(self, action: int) -> Tuple[np.ndarray, np.float64, bool, dict]:
+        """Take an action and return the reponse of the env"""
         next_state, reward, done, info = self.env.step(action)
 
         return next_state, reward, done, info
 
-    def write_log(self, log_value):
+    def write_log(self, log_value: tuple):
         i, score, loss = log_value
 
         print(
@@ -51,6 +84,7 @@ class ACERAgent(Agent):
             wandb.log({"loss": loss, "score": score})
 
     def train(self):
+        """Train the agent."""
         if self.args.log:
             self.set_wandb()
 
