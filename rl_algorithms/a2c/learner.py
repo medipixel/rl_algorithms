@@ -47,7 +47,7 @@ class A2CLearner(Learner):
         self.head_cfg.actor.configs.state_size = (
             self.head_cfg.critic.configs.state_size
         ) = self.env_info.observation_space.shape
-        self.head_cfg.actor.configs.output_size = 4
+        self.head_cfg.actor.configs.output_size = self.env_info.action_space.shape[0]
         self.optim_cfg = optim_cfg
 
         self._init_network()
