@@ -94,31 +94,24 @@ class MLP(nn.Module):
 
 
 @HEADS.register_module
-class SoftmaxHead(MLP):
-    def __init__(
-        self,
-        configs: ConfigDict,
-        hidden_activation: Callable = F.relu,
-        linear_layer: nn.Module = nn.Linear,
-        use_output_layer: bool = True,
-        n_category: int = -1,
-        init_fn: Callable = init_layer_uniform,
-    ):
-        MLP.__init__(
-            self,
-            configs,
-            hidden_activation,
-            linear_layer,
-            use_output_layer,
-            n_category,
-            init_fn,
-        )
+class ACERHead(nn.Module):
+    def __init__(self, configs: ConfigDict, hidden_activation=F.relu):
+        super(ACERHead, self).__init__()
+        self.hidden_layer = nn.Linear(configs.input_size, configs.hidden_sizes)
+        self.mu = nn.Linear(configs.hidden_sizes, configs.output_size)
+        self.v = nn.Linear(configs.hidden_sizes, configs.output_size)
+        self.hidden_activation = hidden_activation
 
-    def forward(self, x, softmax_dim):
-        for hidden_layer in self.hidden_layers:
-            x = self.hidden_activation(hidden_layer(x))
-        x = F.softmax(self.output_layer(x), softmax_dim)
-        return x
+    def pi(self, x, softmax_dim):
+        x = self.hidden_activation(self.hidden_layer(x))
+        x = self.mu(x)
+        pi = F.softmax(x, softmax_dim)
+        return pi
+
+    def q(self, x):
+        x = self.hidden_activation(self.hidden_layer(x))
+        v = self.v(x)
+        return v
 
 
 # TODO: Remove it when upgrade torch>=1.7

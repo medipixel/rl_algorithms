@@ -208,13 +208,18 @@ class GRUBrain(Brain):
         return output.shape[0]
 
 
-class SoftmaxBrain(Brain):
+class ACERBrain(Brain):
     def __init__(
         self, backbone_cfg: ConfigDict, head_cfg: ConfigDict,
     ):
         Brain.__init__(self, backbone_cfg, head_cfg)
 
-    def forward(self, x, softmax_dim):
+    def pi(self, x, softmax_dim):
         x = self.backbone(x)
-        x = self.head(x, softmax_dim)
+        x = self.head.pi(x, softmax_dim)
+        return x
+
+    def q(self, x):
+        x = self.backbone(x)
+        x = self.head.q(x)
         return x
