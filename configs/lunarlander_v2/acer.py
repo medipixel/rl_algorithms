@@ -1,9 +1,3 @@
-"""Config for A2C on LunarLanderContinuous-v2.
-
-- Author: Kyunghwan Kim
-- Contact: kh.kim@medipixel.io
-"""
-
 agent = dict(
     type="ACERAgent",
     hyper_params=dict(
