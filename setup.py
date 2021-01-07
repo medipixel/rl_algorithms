@@ -6,11 +6,11 @@ with open("README.md", "r", encoding="utf-8") as fh:
 with open("./requirements.txt", "r") as f:
     required = f.read().splitlines()
 
-version_file = "rl_algorithms/version.py"
+version_file = "rl_algorithms/version"
 
 
 def get_version():
-    version = open(version_file, "r", encoding="utf-8").read().strip().split('"')[1]
+    version = open(version_file, "r", encoding="utf-8").read().strip()
     return version
 
 
@@ -35,5 +35,6 @@ setup(
     ],
     python_requires=">=3.6",
     install_requires=required,
+    include_package_data=True,
     zip_safe=False,
 )
