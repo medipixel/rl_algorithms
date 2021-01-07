@@ -18,4 +18,4 @@ pytest-mypy == 0.4.2
 pytest-cov == 2.10.1
 
 # for jenkins
-setuptools
+setuptools==40.3.0
