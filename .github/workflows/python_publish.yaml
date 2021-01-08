@@ -4,8 +4,9 @@
 name: Upload package to local pypi server
 
 on:
-  release:
-    types: [created]
+  push:
+    tags:
+      - "v*"
 
 jobs:
   deploy:
