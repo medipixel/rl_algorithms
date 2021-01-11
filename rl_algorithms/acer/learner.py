@@ -49,8 +49,8 @@ class ACERLearner(Learner):
 
     def _init_network(self):
         """Initialize network and optimizer."""
-        self.actor = Brain(self.backbone_cfg, self.head_cfg.actor).to(self.device)
-        self.critic = Brain(self.backbone_cfg, self.head_cfg.critic).to(self.device)
+        self.actor = Brain(self.backbone_cfg.actor, self.head_cfg.actor).to(self.device)
+        self.critic = Brain(self.backbone_cfg.critic, self.head_cfg.critic).to(self.device)
         # create optimizer
         self.actor_optim = optim.RMSprop(self.actor.parameters(), lr=self.optim_cfg.lr,)
         self.critic_optim = optim.RMSprop(
