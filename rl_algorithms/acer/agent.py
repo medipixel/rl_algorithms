@@ -57,7 +57,9 @@ class ACERAgent(Agent):
         self.learner_cfg.log_cfg = self.log_cfg
 
         self.learner = build_learner(self.learner_cfg)
-        self.memory = ReplayMemory(self.hyper_params.buffer_size)
+        self.memory = ReplayMemory(
+            self.hyper_params.buffer_size, self.hyper_params.n_rollout
+        )
 
     def select_action(self, state: np.ndarray) -> Tuple[int, torch.Tensor]:
         """Select action from input space."""

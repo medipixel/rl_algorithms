@@ -1,49 +1,101 @@
 # TODO : Move to common buffer
-
-from collections import deque
 import random
+from typing import Tuple
 
+import numpy as np
 import torch
 
 from rl_algorithms.common.abstract.buffer import BaseBuffer
 
 
 class ReplayMemory(BaseBuffer):
-    """Replay Memory for ACER
-    (https://github.com/seungeunrho/minimalRL/blob/master/acer.py)
+    """ReplayMemory for ACER.
+
+    Attributes:
+        obs_buf (np.ndarray): observations
+        acts_buf (np.ndarray): actions
+        rews_buf (np.ndarray): rewards
+        probs_buf (np.ndarray): probability of actions
+        done_buf (np.ndarray): dones
+        max_len (int): size of buffers
+        n_rollout (int): number of rollout
+        num_in_buffer (int): amount of memory filled
+        idx (int): memory index to add the next incoming transition
     """
 
-    def __init__(self, buffer_size: int):
-        self.memory = deque(maxlen=buffer_size)
+    def __init__(self, buffer_size: int, n_rollout: int):
+        """Initialize a ReplayBuffer object."""
+        self.obs_buf = None
+        self.acts_buf = None
+        self.rews_buf = None
+        self.probs_buf = None
+        self.done_buf = None
+        self.buffer_size = buffer_size
+        self.idx = 0
+        self.num_in_buffer = 0
+        self.n_rollout = n_rollout
 
-    def add(self, transition: tuple):
-        self.memory.append(transition)
+    def add(self, seq_data: list):
+        """Add a new experience to memory.
+        If the buffer is empty, it is respectively initialized by size of arguments.
+        """
+        if self.num_in_buffer == 0:
+            state, action, reward, prob, done_mask = seq_data[0]
+            self._initialize_buffers(state, prob)
 
-    def sample(self, on_policy=False):
-        if on_policy:
-            mini_batch = [self.memory[-1]]
-        else:
-            mini_batch = random.sample(self.memory, 1)
+        self.idx = (self.idx + 1) % self.buffer_size
 
-        s_lst, a_lst, r_lst, prob_lst, done_lst = [], [], [], [], []
-        for seq in mini_batch:
-            for transition in seq:
-                state, action, reward, prob, done_mask = transition
+        for i, transition in enumerate(seq_data):
+            state, action, reward, prob, done_mask = transition
+            self.obs_buf[self.idx][i] = state
+            self.acts_buf[self.idx][i] = action
+            self.rews_buf[self.idx][i] = reward
+            self.probs_buf[self.idx][i] = prob
+            self.done_buf[self.idx][i] = done_mask
 
-                s_lst.append(state)
-                a_lst.append([action])
-                r_lst.append(reward)
-                prob_lst.append(prob)
-                done_lst.append(done_mask)
+        self.num_in_buffer += 1
+        self.num_in_buffer = min(self.buffer_size, self.num_in_buffer)
 
-        state, action, reward, prob, done_mask = (
-            torch.FloatTensor(s_lst),
-            torch.LongTensor(a_lst),
-            r_lst,
-            torch.FloatTensor(prob_lst),
-            done_lst,
+    def _initialize_buffers(self, state: np.ndarray, probs: np.ndarray):
+        """Initialze buffers for state, action, reward, prob, done."""
+        self.obs_buf = np.zeros(
+            [self.buffer_size, self.n_rollout] + list(state.shape), dtype=state.dtype
         )
-        return state, action, reward, prob, done_mask
+        self.acts_buf = np.zeros([self.buffer_size, self.n_rollout, 1], dtype=np.uint8)
+        self.rews_buf = np.zeros(
+            [self.buffer_size, self.n_rollout, 1], dtype=np.float64
+        )
+        self.probs_buf = np.zeros(
+            [self.buffer_size, self.n_rollout] + list(probs.shape), dtype=probs.dtype
+        )
+        self.done_buf = np.zeros([self.buffer_size, self.n_rollout, 1])
 
-    def __len__(self):
-        return len(self.memory)
+    def sample(self, on_policy=False) -> Tuple[torch.Tensor, ...]:
+        """Randomly sample a batch of experiences from memory.
+        If on_policy, using last experience."""
+        if on_policy:
+            state = self.obs_buf[self.idx - 1]
+            action = self.acts_buf[self.idx - 1]
+            reward = self.rews_buf[self.idx - 1]
+            prob = self.probs_buf[self.idx - 1]
+            done = self.done_buf[self.idx - 1]
+
+        else:
+            idx = random.randint(1, self.num_in_buffer)
+            state = self.obs_buf[idx - 1]
+            action = self.acts_buf[idx - 1]
+            reward = self.rews_buf[idx - 1]
+            prob = self.probs_buf[idx - 1]
+            done = self.done_buf[idx - 1]
+
+        state = torch.FloatTensor(state)
+        action = torch.LongTensor(action)
+        reward = torch.FloatTensor(reward)
+        prob = torch.FloatTensor(prob)
+        done = torch.FloatTensor(done)
+
+        return state, action, reward, prob, done
+
+    def __len__(self) -> int:
+        """Return the current size of internal memory."""
+        return self.num_in_buffer

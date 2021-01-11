@@ -64,8 +64,10 @@ class ACERLearner(Learner):
 
         state, action, reward, prob, done = experience
         state = state.to(self.device)
+        reward = reward.to(self.device)
         action = action.to(self.device)
         prob = prob.to(self.device)
+        done = done.to(self.device)
 
         pi = F.softmax(self.actor(state), 1)
         q = self.critic(state)
@@ -98,13 +100,18 @@ class ACERLearner(Learner):
         self.critic_optim.zero_grad()
         loss.backward()
 
-        # nn.utils.clip_grad_norm_(self.model.parameters(), 10)
-
-        # for name, param in self.model.named_parameters():
-        #     if not torch.isfinite(param.grad).all():
-        #         print(name, torch.isfinite(param.grad).all())
-        #         print("Warning : Gradient is infinite. Do not update gradient.")
-        #         return loss
+        nn.utils.clip_grad_norm_(self.actor.parameters(), 10)
+        nn.utils.clip_grad_norm_(self.critic.parameters(), 10)
+        for name, param in self.actor.named_parameters():
+            if not torch.isfinite(param.grad).all():
+                print(name, torch.isfinite(param.grad).all())
+                print("Warning : Gradient is infinite. Do not update gradient.")
+                return loss
+        for name, param in self.critic.named_parameters():
+            if not torch.isfinite(param.grad).all():
+                print(name, torch.isfinite(param.grad).all())
+                print("Warning : Gradient is infinite. Do not update gradient.")
+                return loss
         self.actor_optim.step()
         self.critic_optim.step()
 
@@ -112,8 +119,8 @@ class ACERLearner(Learner):
 
     @staticmethod
     def q_retrace(
-        reward: list,
-        done: list,
+        reward: torch.Tensor,
+        done: torch.Tensor,
         q_a: torch.Tensor,
         v: torch.Tensor,
         rho_bar: torch.Tensor,
@@ -133,19 +140,22 @@ class ACERLearner(Learner):
         return q_ret
 
     def save_params(self, n_episode: int):
-        pass
-        # params = {
-        #     "model_state_dict": self.model.state_dict(),
-        #     "model_optim_state_dict": self.optim.state_dict(),
-        # }
-        # Learner._save_params(self, params, n_episode)
+        params = {
+            "actor_state_dict": self.actor.state_dict(),
+            "actor_optim_state_dict": self.actor_optim.state_dict(),
+            "critic_state_dict": self.critic.state_dict(),
+            "critic_optim_state_dict": self.critic_optim.state_dict(),
+        }
+        Learner._save_params(self, params, n_episode)
 
     def load_params(self, path: str):
         Learner.load_params(self, path)
 
         params = torch.load(path)
-        self.model.load_state_dict(params["model_state_dict"])
-        self.optim.load_state_dict(params["model_optim_state_dict"])
+        self.actor.load_state_dict(params["actor_state_dict"])
+        self.critic.load_state_dict(params["critic_state_dict"])
+        self.actor_optim.load_state_dict(params["actor_optim_state_dict"])
+        self.critic_optim.load_state_dict(params["critic_optim_state_dict"])
         print("[INFO] Loaded the model and optimizer from", path)
 
     def get_state_dict(self) -> Tuple[OrderedDict]:
