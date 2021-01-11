@@ -3,10 +3,13 @@ agent = dict(
     hyper_params=dict(
         gamma=0.98,
         c=1,
-        buffer_size=5000,
         n_rollout=10,
+        buffer_size=5000,
+        sequence_size=10,
+        overlap_size=5,
         replay_ratio=16,
         start_from=1000,
+        n_step=1,
     ),
     learner_cfg=dict(
         type="ACERLearner",

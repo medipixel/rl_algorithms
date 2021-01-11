@@ -7,8 +7,8 @@ import torch
 from torch.distributions import Categorical
 import wandb
 
-from rl_algorithms.acer.buffer import ReplayMemory
 from rl_algorithms.common.abstract.agent import Agent
+from rl_algorithms.common.buffer.replay_buffer import AcerReplayBuffer
 from rl_algorithms.common.helper_functions import numpy2floattensor
 from rl_algorithms.registry import AGENTS, build_learner
 from rl_algorithms.utils.config import ConfigDict
@@ -54,9 +54,18 @@ class ACERAgent(Agent):
         self.learner_cfg.env_info = self.env_info
         self.learner_cfg.hyper_params = self.hyper_params
         self.learner_cfg.log_cfg = self.log_cfg
+        self.use_n_step = hyper_params.n_step > 1
 
         self.learner = build_learner(self.learner_cfg)
-        self.memory = ReplayMemory(self.hyper_params.buffer_size)
+        # self.memory = ReplayMemory(self.hyper_params.buffer_size)
+        self.memory = AcerReplayBuffer(
+            self.hyper_params.buffer_size,
+            1,  # batch_size
+            self.hyper_params.sequence_size,
+            self.hyper_params.overlap_size,
+            n_step=self.hyper_params.n_step,
+            gamma=self.hyper_params.gamma,
+        )
 
     def select_action(self, state: np.ndarray) -> Tuple[int, torch.Tensor]:
         """Select action from input space."""
@@ -83,6 +92,11 @@ class ACERAgent(Agent):
         if self.args.log:
             wandb.log({"loss": loss, "score": score})
 
+    def sample_experience(self) -> Tuple[torch.Tensor, ...]:
+        experiences_1 = self.memory.sample()
+        experiences_1 = numpy2floattensor(experiences_1, self.learner.device)
+        return experiences_1
+
     def train(self):
         """Train the agent."""
         if self.args.log:
@@ -96,30 +110,34 @@ class ACERAgent(Agent):
 
             self.episode_step = 0
             while not done:
-                seq_data = []
-                for _ in range(self.hyper_params.n_rollout):
-                    if self.args.render and self.i_episode >= self.args.render_after:
-                        self.env.render()
+                if self.args.render and self.i_episode >= self.args.render_after:
+                    self.env.render()
 
-                    action, prob = self.select_action(state)
-                    next_state, reward, done, _ = self.step(action)
-                    done_mask = 0.0 if done else 1.0
-                    self.episode_step += 1
-                    transition = (state, action, reward / 100.0, prob, done_mask)
-                    seq_data.append(transition)
-                    state = next_state
-                    score += reward
-                    if done:
-                        break
+                action, prob = self.select_action(state)
+                next_state, reward, done, _ = self.step(action)
+                done_mask = 0.0 if done else 1.0
+                self.episode_step += 1
+                transition = (
+                    state,
+                    np.array(action),
+                    prob,
+                    reward / 100.0,
+                    next_state,
+                    done_mask,
+                )
+                state = next_state
+                score += reward
+                if done:
+                    break
 
-                self.memory.add(seq_data)
+                self.memory.add(transition)
 
                 if len(self.memory) > self.hyper_params.start_from:
-                    experience = self.memory.sample(on_policy=True)
+                    experience = self.sample_experience()
                     self.learner.update_model(experience)
                     n = np.random.poisson(self.hyper_params.replay_ratio)
                     for _ in range(n):
-                        experience = self.memory.sample(on_policy=False)
+                        experience = self.sample_experience()
                         loss = self.learner.update_model(experience)
                         loss_episode.append(loss.detach().cpu().numpy())
 

@@ -42,6 +42,7 @@ class ACERLearner(Learner):
         self.head_cfg.configs.state_size = self.env_info.observation_space.shape
         self.head_cfg.configs.output_size = self.env_info.action_space.n
         self.optim_cfg = optim_cfg
+        self.use_n_step = False
         self._init_network()
 
     def _init_network(self):
@@ -57,9 +58,11 @@ class ACERLearner(Learner):
     def update_model(self, experience: Tuple) -> torch.Tensor:
 
         state, action, reward, prob, done = experience
-        state = state.to(self.device)
-        action = action.to(self.device)
-        prob = prob.to(self.device)
+        state = state.to(self.device).squeeze()
+        action = action.to(self.device).type(torch.int64).transpose(0, 1)
+        prob = prob.to(self.device).squeeze()
+        reward = reward.squeeze()
+        done = done.squeeze()
 
         q = self.model.q(state)
         q_i = q.gather(1, action)
@@ -68,10 +71,10 @@ class ACERLearner(Learner):
         pi_i = pi.gather(1, action)
 
         with torch.no_grad():
-            v = (q * pi).sum(1).unsqueeze(1)
+            v = (q * pi).sum(1)
             rho = pi / (prob + 1e-8)
 
-        rho_i = rho.gather(1, action)
+        rho_i = rho.gather(0, action)
         rho_bar = rho_i.clamp(max=self.hyper_params.c)
 
         q_ret = self.q_retrace(
@@ -83,7 +86,7 @@ class ACERLearner(Learner):
             -(1 - (self.hyper_params.c / rho)).clamp(min=0)
             * pi.detach()
             * torch.log(pi + 1e-8)
-            * (q.detach() - v)
+            * (q.detach() - v.unsqueeze(-1))
         )
 
         value_loss = torch.sqrt((q_i - q_ret).pow(2)).mean() * 0.5
