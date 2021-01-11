@@ -10,7 +10,7 @@ agent = dict(
     ),
     learner_cfg=dict(
         type="ACERLearner",
-        backbone=dict(),
+        backbone=dict(actor=dict(), critic=dict()),
         head=dict(
             actor=dict(
                 type="MLP",

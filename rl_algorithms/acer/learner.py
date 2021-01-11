@@ -66,7 +66,7 @@ class ACERLearner(Learner):
         state = state.to(self.device)
         reward = reward.to(self.device)
         action = action.to(self.device)
-        prob = prob.to(self.device)
+        prob = prob.to(self.device).squeeze()
         done = done.to(self.device)
 
         pi = F.softmax(self.actor(state), 1)
