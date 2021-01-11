@@ -12,8 +12,14 @@ agent = dict(
         type="ACERLearner",
         backbone=dict(),
         head=dict(
-            type="ACERHead",
-            configs=dict(hidden_sizes=256, output_activation="identity",),
+            actor=dict(
+                type="MLP",
+                configs=dict(hidden_sizes=[256], output_activation="identity",),
+            ),
+            critic=dict(
+                type="MLP",
+                configs=dict(hidden_sizes=[256], output_activation="identity"),
+            ),
         ),
         optim_cfg=dict(lr=0.0002, weight_decay=0.0),
     ),

@@ -4,10 +4,11 @@ from typing import Tuple
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 
 from rl_algorithms.common.abstract.learner import Learner
-from rl_algorithms.common.networks.brain import ACERBrain
+from rl_algorithms.common.networks.brain import Brain
 from rl_algorithms.registry import LEARNERS
 from rl_algorithms.utils.config import ConfigDict
 
@@ -39,17 +40,22 @@ class ACERLearner(Learner):
 
         self.backbone_cfg = backbone
         self.head_cfg = head
-        self.head_cfg.configs.state_size = self.env_info.observation_space.shape
-        self.head_cfg.configs.output_size = self.env_info.action_space.n
+        self.head_cfg.actor.configs.state_size = self.env_info.observation_space.shape
+        self.head_cfg.critic.configs.state_size = self.env_info.observation_space.shape
+        self.head_cfg.actor.configs.output_size = self.env_info.action_space.n
+        self.head_cfg.critic.configs.output_size = self.env_info.action_space.n
         self.optim_cfg = optim_cfg
         self._init_network()
 
     def _init_network(self):
         """Initialize network and optimizer."""
-        self.model = ACERBrain(self.backbone_cfg, self.head_cfg).to(self.device)
-
+        self.actor = Brain(self.backbone_cfg, self.head_cfg.actor).to(self.device)
+        self.critic = Brain(self.backbone_cfg, self.head_cfg.critic).to(self.device)
         # create optimizer
-        self.optim = optim.RMSprop(self.model.parameters(), lr=self.optim_cfg.lr,)
+        self.actor_optim = optim.RMSprop(self.actor.parameters(), lr=self.optim_cfg.lr,)
+        self.critic_optim = optim.RMSprop(
+            self.critic.parameters(), lr=self.optim_cfg.lr,
+        )
 
         if self.args.load_from is not None:
             self.load_params(self.args.load_from)
@@ -61,16 +67,14 @@ class ACERLearner(Learner):
         action = action.to(self.device)
         prob = prob.to(self.device)
 
-        q = self.model.q(state)
+        pi = F.softmax(self.actor(state), 1)
+        q = self.critic(state)
         q_i = q.gather(1, action)
-
-        pi = self.model.pi(state, 1)
         pi_i = pi.gather(1, action)
 
         with torch.no_grad():
             v = (q * pi).sum(1).unsqueeze(1)
             rho = pi / (prob + 1e-8)
-
         rho_i = rho.gather(1, action)
         rho_bar = rho_i.clamp(max=self.hyper_params.c)
 
@@ -90,17 +94,19 @@ class ACERLearner(Learner):
 
         loss = loss_f.mean() + loss_bc.sum(1).mean() + value_loss
 
-        self.optim.zero_grad()
+        self.actor_optim.zero_grad()
+        self.critic_optim.zero_grad()
         loss.backward()
 
-        nn.utils.clip_grad_norm_(self.model.parameters(), 10)
+        # nn.utils.clip_grad_norm_(self.model.parameters(), 10)
 
-        for name, param in self.model.named_parameters():
-            if not torch.isfinite(param.grad).all():
-                print(name, torch.isfinite(param.grad).all())
-                print("Warning : Gradient is infinite. Do not update gradient.")
-                return loss
-        self.optim.step()
+        # for name, param in self.model.named_parameters():
+        #     if not torch.isfinite(param.grad).all():
+        #         print(name, torch.isfinite(param.grad).all())
+        #         print("Warning : Gradient is infinite. Do not update gradient.")
+        #         return loss
+        self.actor_optim.step()
+        self.critic_optim.step()
 
         return loss
 
@@ -127,11 +133,12 @@ class ACERLearner(Learner):
         return q_ret
 
     def save_params(self, n_episode: int):
-        params = {
-            "model_state_dict": self.model.state_dict(),
-            "model_optim_state_dict": self.optim.state_dict(),
-        }
-        Learner._save_params(self, params, n_episode)
+        pass
+        # params = {
+        #     "model_state_dict": self.model.state_dict(),
+        #     "model_optim_state_dict": self.optim.state_dict(),
+        # }
+        # Learner._save_params(self, params, n_episode)
 
     def load_params(self, path: str):
         Learner.load_params(self, path)
@@ -147,4 +154,4 @@ class ACERLearner(Learner):
 
     def get_policy(self) -> nn.Module:
         """Return model (policy) used for action selection."""
-        return self.model.pi
+        return self.actor

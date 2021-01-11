@@ -5,6 +5,7 @@ import gym
 import numpy as np
 import torch
 from torch.distributions import Categorical
+import torch.nn.functional as F
 import wandb
 
 from rl_algorithms.acer.buffer import ReplayMemory
@@ -62,9 +63,10 @@ class ACERAgent(Agent):
         """Select action from input space."""
         state = numpy2floattensor(state, self.learner.device)
         with torch.no_grad():
-            prob = self.learner.model.pi(state, 0)
-        selected_action = Categorical(prob).sample().item()
-        return selected_action, prob.squeeze().detach().cpu().numpy()
+            prob = F.softmax(self.learner.actor(state), 0)
+        action_dist = Categorical(prob)
+        selected_action = action_dist.sample().item()
+        return selected_action, action_dist.probs.detach().cpu().numpy()
 
     def step(self, action: int) -> Tuple[np.ndarray, np.float64, bool, dict]:
         """Take an action and return the reponse of the env"""
