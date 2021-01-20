@@ -21,6 +21,6 @@ agent = dict(
                 configs=dict(hidden_sizes=[256], output_activation="identity"),
             ),
         ),
-        optim_cfg=dict(lr=0.0002, weight_decay=0.0),
+        optim_cfg=dict(lr=0.0002, weight_decay=0.0, adam_eps=1e-8),
     ),
 )

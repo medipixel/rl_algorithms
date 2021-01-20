@@ -119,8 +119,8 @@ class ACERAgent(Agent):
                 self.memory.add(seq_data)
 
                 if len(self.memory) > self.hyper_params.start_from:
-                    experience = self.memory.sample(on_policy=True)
-                    self.learner.update_model(experience)
+                    # experience = self.memory.sample(on_policy=True)
+                    # self.learner.update_model(experience)
                     n = np.random.poisson(self.hyper_params.replay_ratio)
                     for _ in range(n):
                         experience = self.memory.sample(on_policy=False)
