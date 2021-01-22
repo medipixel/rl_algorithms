@@ -19,6 +19,7 @@ agent = dict(
         n_step=1,
         pretrain_step=int(5e3),
         lambda1=1.0,  # N-step return weight
+        demo_path="data/lunarlander_continuous_demo.pkl",
         # lambda2 = weight_decay
         lambda3=1.0,  # actor loss contribution of prior weight
         per_alpha=0.3,

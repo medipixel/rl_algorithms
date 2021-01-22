@@ -42,7 +42,7 @@ class SACfDAgent(SACAgent):
 
         if not self.args.test:
             # load demo replay memory
-            with open(self.args.demo_path, "rb") as f:
+            with open(self.hyper_params.demo_path, "rb") as f:
                 demos = pickle.load(f)
 
             if self.use_n_step:

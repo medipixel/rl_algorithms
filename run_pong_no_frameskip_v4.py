@@ -96,9 +96,6 @@ def parse_args() -> argparse.Namespace:
         action="store_false",
         help="turn off framestack",
     )
-    parser.add_argument(
-        "--student", dest="student", action="store_true", help="train student",
-    )
 
     return parser.parse_args()
 

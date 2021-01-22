@@ -22,6 +22,7 @@ agent = dict(
         # BC
         demo_batch_size=64,
         lambda1=1e-3,
+        demo_path="data/lunarlander_continuous_demo.pkl",
         # HER
         use_her=False,
         her=dict(type="LunarLanderContinuousHER",),

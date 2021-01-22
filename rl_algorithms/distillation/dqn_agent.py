@@ -34,15 +34,15 @@ class DistillationDQN(DQNAgent):
     def _initialize(self):
         """Initialize non-common things."""
         self.save_distillation_dir = None
-        if not self.args.student:
+        if not self.hyper_params.is_student:
             # Since raining teacher do not require DistillationBuffer,
             # it overloads DQNAgent._initialize.
-
+            print("[INFO] Teacher mode.")
             DQNAgent._initialize(self)
             self.make_distillation_dir()
         else:
             # Training student or generating distillation data(test).
-
+            print("[INFO] Student mode.")
             self.softmax_tau = 0.01
             self.learner = build_learner(self.learner_cfg)
             self.dataset_path = self.hyper_params.dataset_path
@@ -224,7 +224,7 @@ class DistillationDQN(DQNAgent):
 
     def train(self):
         """Execute appropriate learning code according to the running type."""
-        if self.args.student:
+        if self.hyper_params.is_student:
             self.memory.reset_dataloader()
             if not self.memory.is_contain_q:
                 print("train-phase student training. Generating expert agent Q..")

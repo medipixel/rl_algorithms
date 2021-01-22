@@ -25,6 +25,7 @@ agent = dict(
         per_eps_demo=1.0,
         lambda1=1.0,  # N-step return weight
         lambda2=1.0,  # Supervised loss weight
+        demo_path="data/lunarlander_discrete_demo.pkl",
         # lambda3 = weight_decay (l2 regularization weight)
         margin=0.8,
         pretrain_step=int(1e2),

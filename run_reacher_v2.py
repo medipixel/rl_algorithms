@@ -66,12 +66,6 @@ def parse_args() -> argparse.Namespace:
         help="number of test during training",
     )
     parser.add_argument(
-        "--demo-path",
-        type=str,
-        default="data/reacher_demo.pkl",
-        help="demonstration path for learning from demo",
-    )
-    parser.add_argument(
         "--integration-test",
         dest="integration_test",
         action="store_true",

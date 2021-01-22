@@ -40,7 +40,7 @@ class BCSACAgent(SACAgent):
     def _initialize(self):
         """Initialize non-common things."""
         # load demo replay memory
-        with open(self.args.demo_path, "rb") as f:
+        with open(self.hyper_params.demo_path, "rb") as f:
             demo = list(pickle.load(f))
 
         # HER

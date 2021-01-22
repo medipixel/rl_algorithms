@@ -64,7 +64,7 @@ class DQfDAgent(DQNAgent):
     def _load_demos(self) -> list:
         """Load expert's demonstrations."""
         # load demo replay memory
-        with open(self.args.demo_path, "rb") as f:
+        with open(self.hyper_params.demo_path, "rb") as f:
             demos = pickle.load(f)
 
         return demos
