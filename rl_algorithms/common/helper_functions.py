@@ -6,7 +6,7 @@
 """
 from collections import OrderedDict, deque
 import random
-from typing import Deque, Dict, List, Tuple
+from typing import Deque, Dict, List, Tuple, Union
 
 import gym
 import numpy as np
@@ -97,7 +97,7 @@ def get_n_step_info(
 
 
 def numpy2floattensor(
-    arrays: Tuple[np.ndarray], device_: torch.device
+    arrays: Union[np.ndarray, Tuple[np.ndarray]], device_: torch.device
 ) -> Tuple[torch.Tensor]:
     """Convert numpy type to torch FloatTensor.
         - Convert numpy array to torch float tensor.
@@ -107,10 +107,12 @@ def numpy2floattensor(
     if isinstance(arrays, tuple):  # check Tuple or not
         tensors = []
         for array in arrays:
-            tensor = torch.from_numpy(array).to(device_, non_blocking=True).float()
+            tensor = (
+                torch.from_numpy(array.copy()).to(device_, non_blocking=True).float()
+            )
             tensors.append(tensor)
         return tuple(tensors)
-    tensor = torch.from_numpy(arrays).to(device_, non_blocking=True).float()
+    tensor = torch.from_numpy(arrays.copy()).to(device_, non_blocking=True).float()
     return tensor
 
 

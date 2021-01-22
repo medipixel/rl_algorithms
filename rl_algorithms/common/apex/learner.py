@@ -37,7 +37,7 @@ class ApeXLearnerWrapper(DistributedLearnerWrapper):
         """Initialize."""
         DistributedLearnerWrapper.__init__(self, learner, comm_cfg)
         self.update_step = 0
-        self.max_update_step = self.learner.args.max_update_step
+        self.max_update_step = self.learner.hyper_params.max_update_step
         self.worker_update_interval = self.learner.hyper_params.worker_update_interval
         self.logger_interval = self.learner.hyper_params.logger_interval
 

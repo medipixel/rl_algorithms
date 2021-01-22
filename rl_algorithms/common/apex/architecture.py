@@ -100,6 +100,7 @@ class ApeX(Architecture):
 
         # organize logger configs
         self.logger_cfg.args = self.args
+        self.logger_cfg.max_update_step = self.hyper_params.max_update_step
         self.logger_cfg.env_info = self.env_info
         self.logger_cfg.log_cfg = self.log_cfg
         self.logger_cfg.comm_cfg = self.comm_cfg

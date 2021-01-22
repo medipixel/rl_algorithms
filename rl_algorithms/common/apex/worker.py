@@ -98,7 +98,7 @@ class ApeXWorkerWrapper(DistributedWorkerWrapper):
             score = 0
             num_steps = 0
             while not done:
-                if self.args.worker_render:
+                if self.hyper_params.is_worker_render:
                     self.worker.env.render()
                 num_steps += 1
                 action = self.select_action(state)
@@ -121,7 +121,7 @@ class ApeXWorkerWrapper(DistributedWorkerWrapper):
 
             self.scores[self.update_step].append(score)
 
-            if self.args.worker_verbose:
+            if self.hyper_params.is_worker_log:
                 print(
                     f"[TRAIN] [Worker {self.worker.rank}] "
                     + f"Update step: {self.update_step}, Score: {score}, "
@@ -136,7 +136,7 @@ class ApeXWorkerWrapper(DistributedWorkerWrapper):
     def run(self) -> Dict[int, float]:
         """Run main worker loop."""
         self.scores[self.update_step] = []
-        while self.update_step < self.args.max_update_step:
+        while self.update_step < self.hyper_params.max_update_step:
             experience = self.collect_data()
             priority_values = self.compute_priorities(experience)
             worker_data = [experience, priority_values]

@@ -47,6 +47,7 @@ class DistributedLogger(ABC):
     def __init__(
         self,
         args: argparse.Namespace,
+        max_update_step: int,
         env_info: ConfigDict,
         log_cfg: ConfigDict,
         comm_cfg: ConfigDict,
@@ -54,6 +55,7 @@ class DistributedLogger(ABC):
         head: ConfigDict,
     ):
         self.args = args
+        self.max_update_step = max_update_step
         self.env_info = env_info
         self.log_cfg = log_cfg
         self.comm_cfg = comm_cfg
@@ -130,7 +132,7 @@ class DistributedLogger(ABC):
         if self.args.log:
             self.set_wandb()
 
-        while self.update_step < self.args.max_update_step:
+        while self.update_step < self.max_update_step:
             self.recv_log_info()
             if self.log_info_queue:  # if non-empty
                 log_info_id = self.log_info_queue.pop()
@@ -167,7 +169,7 @@ class DistributedLogger(ABC):
 
             # Plot mean scores
             logged_update_steps = list(
-                range(0, self.args.max_update_step + 1, worker_update_interval)
+                range(0, self.max_update_step + 1, worker_update_interval)
             )
 
             mean_scores = []
@@ -215,7 +217,7 @@ class DistributedLogger(ABC):
             step = 0
 
             while not done:
-                if self.args.logger_render:
+                if self.args.render:
                     self.env.render()
 
                 action = self.select_action(state)

@@ -22,6 +22,7 @@ class DQNLogger(DistributedLogger):
     def __init__(
         self,
         args: argparse.Namespace,
+        max_update_step: int,
         env_info: ConfigDict,
         log_cfg: ConfigDict,
         comm_cfg: ConfigDict,
@@ -29,7 +30,7 @@ class DQNLogger(DistributedLogger):
         head: ConfigDict,
     ):
         DistributedLogger.__init__(
-            self, args, env_info, log_cfg, comm_cfg, backbone, head
+            self, args, max_update_step, env_info, log_cfg, comm_cfg, backbone, head
         )
 
     def load_params(self, path: str):
