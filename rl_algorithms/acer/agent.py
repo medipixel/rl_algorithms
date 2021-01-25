@@ -65,10 +65,10 @@ class ACERAgent(Agent):
         """Select action from input space."""
         state = numpy2floattensor(state, self.learner.device)
         with torch.no_grad():
-            prob = F.softmax(self.learner.actor(state), 0)
+            prob = F.softmax(self.learner.actor(state).squeeze(), 0) + 1e-8
         action_dist = Categorical(prob)
         selected_action = action_dist.sample().item()
-        return selected_action, action_dist.probs.detach().cpu().numpy()
+        return selected_action, prob.cpu().numpy()
 
     def step(self, action: int) -> Tuple[np.ndarray, np.float64, bool, dict]:
         """Take an action and return the reponse of the env"""
@@ -115,18 +115,18 @@ class ACERAgent(Agent):
                     score += reward
                     if done:
                         break
-
+            
                 self.memory.add(seq_data)
+                experience = self.memory.sample(on_policy=True)
+                self.learner.update_model(experience)
 
                 if len(self.memory) > self.hyper_params.start_from:
-                    # experience = self.memory.sample(on_policy=True)
-                    # self.learner.update_model(experience)
                     n = np.random.poisson(self.hyper_params.replay_ratio)
                     for _ in range(n):
                         experience = self.memory.sample(on_policy=False)
                         loss = self.learner.update_model(experience)
                         loss_episode.append(loss.detach().cpu().numpy())
-
+            print(f"Last action : {action} Last prob : {prob}" )
             loss = np.array(loss_episode).mean()
             log_value = self.i_episode, score, loss
             self.write_log(log_value)

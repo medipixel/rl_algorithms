@@ -54,10 +54,10 @@ class ACERLearner(Learner):
             self.device
         )
         # create optimizer
-        self.actor_optim = optim.RMSprop(
+        self.actor_optim = optim.Adam(
             self.actor.parameters(), lr=self.optim_cfg.lr, eps=self.optim_cfg.adam_eps
         )
-        self.critic_optim = optim.RMSprop(
+        self.critic_optim = optim.Adam(
             self.critic.parameters(), lr=self.optim_cfg.lr, eps=self.optim_cfg.adam_eps
         )
 
@@ -131,7 +131,7 @@ class ACERLearner(Learner):
         gamma: float,
     ):
         """Calculate Q retrace."""
-        q_ret = v[-1] * done[-1]
+        q_ret = v[-1]
         q_ret_lst = []
 
         for i in reversed(range(len(reward))):

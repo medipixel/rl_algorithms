@@ -43,7 +43,7 @@ class ReplayMemory(BaseBuffer):
             state, action, reward, prob, done_mask = seq_data[0]
             self._initialize_buffers(state, prob)
 
-        self.idx = (self.idx + 1) % self.buffer_size
+        self.idx = (self.idx + 1) % (self.buffer_size - 1)
 
         for i, transition in enumerate(seq_data):
             state, action, reward, prob, done_mask = transition
@@ -73,20 +73,21 @@ class ReplayMemory(BaseBuffer):
     def sample(self, on_policy=False) -> Tuple[torch.Tensor, ...]:
         """Randomly sample a batch of experiences from memory.
         If on_policy, using last experience."""
+
         if on_policy:
-            state = self.obs_buf[self.idx - 1]
-            action = self.acts_buf[self.idx - 1]
-            reward = self.rews_buf[self.idx - 1]
-            prob = self.probs_buf[self.idx - 1]
-            done = self.done_buf[self.idx - 1]
+            state = self.obs_buf[self.idx]
+            action = self.acts_buf[self.idx]
+            reward = self.rews_buf[self.idx]
+            prob = self.probs_buf[self.idx]
+            done = self.done_buf[self.idx]
 
         else:
             idx = random.randint(1, self.num_in_buffer)
-            state = self.obs_buf[idx - 1]
-            action = self.acts_buf[idx - 1]
-            reward = self.rews_buf[idx - 1]
-            prob = self.probs_buf[idx - 1]
-            done = self.done_buf[idx - 1]
+            state = self.obs_buf[idx]
+            action = self.acts_buf[idx]
+            reward = self.rews_buf[idx]
+            prob = self.probs_buf[idx]
+            done = self.done_buf[idx]
 
         state = torch.FloatTensor(state)
         action = torch.LongTensor(action)
