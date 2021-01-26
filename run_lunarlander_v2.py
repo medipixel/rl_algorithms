@@ -29,6 +29,12 @@ def parse_args() -> argparse.Namespace:
         help="config path",
     )
     parser.add_argument(
+        "--integration-test",
+        dest="integration_test",
+        action="store_true",
+        help="for integration test",
+    )
+    parser.add_argument(
         "--test", dest="test", action="store_true", help="test mode (no training)"
     )
     parser.add_argument(
@@ -53,7 +59,7 @@ def parse_args() -> argparse.Namespace:
         "--save-period", type=int, default=100, help="save model period"
     )
     parser.add_argument(
-        "--episode-num", type=int, default=5000, help="total episode num"
+        "--episode-num", type=int, default=1500, help="total episode num"
     )
     parser.add_argument(
         "--max-episode-steps", type=int, default=300, help="max episode step"
@@ -63,12 +69,6 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=10,
         help="number of test during training",
-    )
-    parser.add_argument(
-        "--integration-test",
-        dest="integration_test",
-        action="store_true",
-        help="indicate integration test",
     )
 
     return parser.parse_args()
@@ -102,6 +102,8 @@ def main():
         action_space=env.action_space,
         is_atari=False,
     )
+    print(vars(args))
+    input()
     cfg.agent.log_cfg = dict(agent=cfg.agent.type, curr_time=curr_time)
     build_args = dict(args=args, env=env)
     agent = build_agent(cfg.agent, build_args)

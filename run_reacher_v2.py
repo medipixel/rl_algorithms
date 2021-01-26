@@ -30,6 +30,12 @@ def parse_args() -> argparse.Namespace:
         help="config path",
     )
     parser.add_argument(
+        "--integration-test",
+        dest="integration_test",
+        action="store_true",
+        help="for integration test",
+    )
+    parser.add_argument(
         "--test", dest="test", action="store_true", help="test mode (no training)"
     )
     parser.add_argument(
@@ -64,12 +70,6 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=10,
         help="number of test during training",
-    )
-    parser.add_argument(
-        "--integration-test",
-        dest="integration_test",
-        action="store_true",
-        help="indicate integration test",
     )
 
     return parser.parse_args()

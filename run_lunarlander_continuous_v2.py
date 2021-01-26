@@ -29,6 +29,12 @@ def parse_args() -> argparse.Namespace:
         help="config path",
     )
     parser.add_argument(
+        "--integration-test",
+        dest="integration_test",
+        action="store_true",
+        help="for integration test",
+    )
+    parser.add_argument(
         "--test", dest="test", action="store_true", help="test mode (no training)"
     )
     parser.add_argument(
@@ -64,12 +70,6 @@ def parse_args() -> argparse.Namespace:
         default=10,
         help="number of test during training",
     )
-    parser.add_argument(
-        "--integration-test",
-        dest="integration_test",
-        action="store_true",
-        help="indicate integration test",
-    )
 
     return parser.parse_args()
 
@@ -102,7 +102,7 @@ def main():
         action_space=env.action_space,
     )
     cfg.agent.log_cfg = dict(agent=cfg.agent.type, curr_time=curr_time)
-    build_args = dict(args=args, env=env)
+    build_args = dict(env=env)
     agent = build_agent(cfg.agent, build_args)
 
     if not args.test:

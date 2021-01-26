@@ -27,13 +27,19 @@ def parse_args() -> argparse.Namespace:
         help="config path",
     )
     parser.add_argument(
-        "--test", dest="test", action="store_true", help="test mode (no training)"
+        "--integration-test",
+        dest="integration_test",
+        action="store_true",
+        help="for integration test",
     )
     parser.add_argument(
         "--grad-cam",
         dest="grad_cam",
         action="store_true",
         help="test mode with viewing Grad-CAM",
+    )
+    parser.add_argument(
+        "--test", dest="test", action="store_true", help="test mode (no training)"
     )
     parser.add_argument(
         "--load-from",
@@ -62,12 +68,6 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--interim-test-num", type=int, default=5, help="interim test number"
-    )
-    parser.add_argument(
-        "--integration-test",
-        dest="integration_test",
-        action="store_true",
-        help="indicate integration test",
     )
     parser.add_argument(
         "--off-framestack",
