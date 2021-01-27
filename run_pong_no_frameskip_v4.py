@@ -106,7 +106,7 @@ def main():
         name=env.spec.id,
         observation_space=env.observation_space,
         action_space=env.action_space,
-        is_atari=False,
+        is_atari=True,
     )
     log_cfg = dict(agent=cfg.agent.type, curr_time=curr_time, cfg_path=args.cfg_path)
     build_args = dict(

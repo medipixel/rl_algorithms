@@ -142,7 +142,7 @@ class DistributedLearnerWrapper(LearnerWrapper):
 
     Attributes:
         learner (Learner): learner
-        comm_config (ConfigDict): configs for communication
+        comm_cfg (ConfigDict): configs for communication
 
     """
 

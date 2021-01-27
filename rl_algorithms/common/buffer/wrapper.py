@@ -9,7 +9,6 @@
          https://arxiv.org/pdf/1707.08817.pdf
 """
 
-import argparse
 import random
 from typing import Any, Tuple
 
@@ -149,7 +148,6 @@ class ApeXBufferWrapper(BufferWrapper):
 
     Attributes:
         per_buffer (ReplayBuffer): replay buffer wrappped in PER wrapper
-        args (arpgarse.Namespace): args from run script
         hyper_params (ConfigDict): algorithm hyperparameters
         comm_config (ConfigDict): configs for communication
 
@@ -158,12 +156,10 @@ class ApeXBufferWrapper(BufferWrapper):
     def __init__(
         self,
         per_buffer: PrioritizedBufferWrapper,
-        args: argparse.Namespace,
         hyper_params: ConfigDict,
         comm_cfg: ConfigDict,
     ):
         BufferWrapper.__init__(self, per_buffer)
-        self.args = args
         self.hyper_params = hyper_params
         self.comm_cfg = comm_cfg
         self.per_beta = hyper_params.per_beta

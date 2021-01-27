@@ -40,7 +40,7 @@ class DDPGfDAgent(DDPGAgent):
 
         self.use_n_step = self.hyper_params.n_step > 1
 
-        if not self.args.test:
+        if not self.is_test:
             # load demo replay memory
             with open(self.hyper_params.demo_path, "rb") as f:
                 demos = pickle.load(f)
@@ -69,8 +69,17 @@ class DDPGfDAgent(DDPGAgent):
                 epsilon_d=self.hyper_params.per_eps_demo,
             )
 
-        self.learner_cfg.type = "DDPGfDLearner"
-        self.learner = build_learner(self.learner_cfg)
+        build_args = dict(
+            hyper_params=self.hyper_params,
+            log_cfg=self.log_cfg,
+            noise_cfg=self.noise_cfg,
+            env_name=self.env_info.name,
+            state_size=self.env_info.observation_space.shape,
+            output_size=self.env_info.action_space.shape[0],
+            is_test=self.is_test,
+            load_from=self.load_from,
+        )
+        self.learner = build_learner(self.learner_cfg, build_args)
 
     def _add_transition_to_memory(self, transition: Tuple[np.ndarray, ...]):
         """Add 1 step and n step transitions to memory."""
@@ -123,14 +132,14 @@ class DDPGfDAgent(DDPGAgent):
     def train(self):
         """Train the agent."""
         # logger
-        if self.args.log:
+        if self.is_log:
             self.set_wandb()
             # wandb.watch([self.actor, self.critic], log="parameters")
 
         # pre-training if needed
         self.pretrain()
 
-        for self.i_episode in range(1, self.args.episode_num + 1):
+        for self.i_episode in range(1, self.episode_num + 1):
             state = self.env.reset()
             done = False
             score = 0
@@ -140,7 +149,7 @@ class DDPGfDAgent(DDPGAgent):
             t_begin = time.time()
 
             while not done:
-                if self.args.render and self.i_episode >= self.args.render_after:
+                if self.is_render and self.i_episode >= self.render_after:
                     self.env.render()
 
                 action = self.select_action(state)
@@ -158,7 +167,7 @@ class DDPGfDAgent(DDPGAgent):
                         self.memory.update_priorities(indices, new_priorities)
 
                 # increase priority beta
-                fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)
+                fraction = min(float(self.i_episode) / self.episode_num, 1.0)
                 self.per_beta = self.per_beta + fraction * (1.0 - self.per_beta)
 
                 state = next_state
@@ -174,7 +183,7 @@ class DDPGfDAgent(DDPGAgent):
                 self.write_log(log_value)
                 losses.clear()
 
-            if self.i_episode % self.args.save_period == 0:
+            if self.i_episode % self.save_period == 0:
                 self.learner.save_params(self.i_episode)
                 self.interim_test()
 

@@ -32,10 +32,8 @@ class ApeXWorkerWrapper(DistributedWorkerWrapper):
 
     """
 
-    def __init__(
-        self, worker: DistributedWorker, args: argparse.Namespace, comm_cfg: ConfigDict
-    ):
-        DistributedWorkerWrapper.__init__(self, worker, args, comm_cfg)
+    def __init__(self, worker: DistributedWorker, comm_cfg: ConfigDict):
+        DistributedWorkerWrapper.__init__(self, worker, comm_cfg)
         self.update_step = 0
         self.hyper_params = self.worker.hyper_params
         self.use_n_step = self.hyper_params.n_step > 1

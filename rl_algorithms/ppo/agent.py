@@ -65,7 +65,7 @@ class PPOAgent(Agent):
             args (argparse.Namespace): arguments including hyperparameters and training settings
 
         """
-        env_gen = env_generator(env.spec.id, args)
+        env_gen = env_generator(env.spec.id, max_episode_steps)
         env_multi = make_envs(env_gen, n_envs=hyper_params.n_workers)
 
         Agent.__init__(self, env, env_info, args, log_cfg)
