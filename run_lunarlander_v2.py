@@ -23,16 +23,16 @@ def parse_args() -> argparse.Namespace:
         "--seed", type=int, default=777, help="random seed for reproducibility"
     )
     parser.add_argument(
-        "--cfg-path",
-        type=str,
-        default="./configs/lunarlander_v2/dqn.py",
-        help="config path",
-    )
-    parser.add_argument(
         "--integration-test",
         dest="integration_test",
         action="store_true",
         help="for integration test",
+    )
+    parser.add_argument(
+        "--cfg-path",
+        type=str,
+        default="./configs/lunarlander_v2/dqn.py",
+        help="config path",
     )
     parser.add_argument(
         "--test", dest="test", action="store_true", help="test mode (no training)"
@@ -96,16 +96,27 @@ def main():
     if args.integration_test:
         cfg = common_utils.set_cfg_for_intergration_test(cfg)
 
-    cfg.agent.env_info = dict(
-        name=env_name,
+    env_info = dict(
+        name=env.spec.id,
         observation_space=env.observation_space,
         action_space=env.action_space,
         is_atari=False,
     )
-    print(vars(args))
-    input()
-    cfg.agent.log_cfg = dict(agent=cfg.agent.type, curr_time=curr_time)
-    build_args = dict(args=args, env=env)
+    log_cfg = dict(agent=cfg.agent.type, curr_time=curr_time, cfg_path=args.cfg_path)
+    build_args = dict(
+        env=env,
+        env_info=env_info,
+        log_cfg=log_cfg,
+        is_test=args.test,
+        load_from=args.load_from,
+        is_render=args.render,
+        render_after=args.render_after,
+        is_log=args.log,
+        save_period=args.save_period,
+        episode_num=args.episode_num,
+        max_episode_steps=args.max_episode_steps,
+        interim_test_num=args.interim_test_num,
+    )
     agent = build_agent(cfg.agent, build_args)
 
     if not args.test:

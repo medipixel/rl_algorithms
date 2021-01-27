@@ -25,9 +25,12 @@ from rl_algorithms.registry import AGENTS, build_learner
 
 @AGENTS.register_module
 class DistillationDQN(DQNAgent):
-    """DQN for policy distillation.
-       Use _test function to collect teacher's distillation data.
-       Use train_distillation function to train student model.
+    """
+    DQN for policy distillation.
+
+    - Use train function to train teacher and collect train phase data
+    - Use _test function to collect teacher's distillation data.
+    - Use update_distillation function to train student model.
     """
 
     # pylint: disable=attribute-defined-outside-init
@@ -50,7 +53,7 @@ class DistillationDQN(DQNAgent):
             self.memory = DistillationBuffer(
                 self.hyper_params.batch_size, self.dataset_path
             )
-            if self.args.test:
+            if self.is_test:
                 self.make_distillation_dir()
 
     def make_distillation_dir(self):
@@ -80,7 +83,7 @@ class DistillationDQN(DQNAgent):
 
         output = None
         if (
-            self.args.test
+            self.is_test
             and hasattr(self, "memory")
             and not isinstance(self.memory, DistillationBuffer)
         ):
@@ -89,7 +92,7 @@ class DistillationDQN(DQNAgent):
         else:
             current_ep_dir = f"{self.save_distillation_dir}/{self.save_count:07}.pkl"
             self.save_count += 1
-            if self.args.test:
+            if self.is_test:
                 # Generating expert's test-phase data.
                 next_state, reward, done, info = self.env.step(action)
                 with open(current_ep_dir, "wb") as f:
@@ -110,7 +113,7 @@ class DistillationDQN(DQNAgent):
     def _test(self, interim_test: bool = False):
         """Test teacher and collect distillation data."""
 
-        test_num = self.args.interim_test_num if interim_test else self.args.episode_num
+        test_num = self.interim_test_num if interim_test else self.episode_num
         if hasattr(self, "memory"):
             # Teacher training interim test.
             score_list = []
@@ -121,7 +124,7 @@ class DistillationDQN(DQNAgent):
                 step = 0
 
                 while not done:
-                    if self.args.render:
+                    if self.is_render:
                         self.env.render()
 
                     action = self.select_action(state)
@@ -137,7 +140,7 @@ class DistillationDQN(DQNAgent):
                 )
                 score_list.append(score)
 
-            if self.args.log:
+            if self.is_log:
                 wandb.log(
                     {
                         "avg test score": round(sum(score_list) / len(score_list), 2),
@@ -153,7 +156,7 @@ class DistillationDQN(DQNAgent):
                 step = 0
 
                 while not done:
-                    if self.args.render:
+                    if self.is_render:
                         self.env.render()
 
                     action, q_value = self.get_action_and_q(state)
@@ -168,7 +171,7 @@ class DistillationDQN(DQNAgent):
                     % (i_episode, step, score, self.save_count)
                 )
 
-                if self.args.log:
+                if self.is_log:
                     wandb.log({"test score": score})
 
                 if self.save_count >= self.hyper_params.n_frame_from_last:
@@ -229,18 +232,18 @@ class DistillationDQN(DQNAgent):
             if not self.memory.is_contain_q:
                 print("train-phase student training. Generating expert agent Q..")
                 assert (
-                    self.args.load_from is not None
+                    self.load_from is not None
                 ), "Train-phase training requires expert agent. Please use load-from argument."
                 self.add_expert_q()
                 self.hyper_params.dataset_path = [self.save_distillation_dir]
-                self.args.load_from = None
+                self.load_from = None
                 self._initialize()
                 self.memory.reset_dataloader()
                 print("start student training..")
 
             # train student
             assert self.memory.buffer_size >= self.hyper_params.batch_size
-            if self.args.log:
+            if self.is_log:
                 self.set_wandb()
 
             iter_1 = self.memory.buffer_size // self.hyper_params.batch_size
@@ -252,7 +255,7 @@ class DistillationDQN(DQNAgent):
             for steps in range(train_steps):
                 loss = self.update_distillation()
 
-                if self.args.log:
+                if self.is_log:
                     wandb.log({"dqn loss": loss[0], "avg q values": loss[1]})
 
                 if steps % iter_1 == 0:

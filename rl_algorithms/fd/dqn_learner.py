@@ -1,4 +1,9 @@
-import argparse
+"""Learner for DQfD Agent.
+
+- Author: Kyunghwan Kim
+- Contact: kh.kim@medipixel.io
+"""
+
 from typing import Tuple, Union
 
 import numpy as np
@@ -9,49 +14,11 @@ from rl_algorithms.common.abstract.learner import TensorTuple
 import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.dqn.learner import DQNLearner
 from rl_algorithms.registry import LEARNERS
-from rl_algorithms.utils.config import ConfigDict
 
 
 @LEARNERS.register_module
 class DQfDLearner(DQNLearner):
-    """Learner for DDPGfD Agent.
-
-    Attributes:
-        args (argparse.Namespace): arguments including hyperparameters and training settings
-        hyper_params (ConfigDict): hyper-parameters
-        optim_cfg (ConfigDict): config of optimizer
-        log_cfg (ConfigDict): configuration for saving log and checkpoint
-        actor (nn.Module): actor model to select actions
-        actor_target (nn.Module): target actor model to select actions
-        critic (nn.Module): critic model to predict state values
-        critic_target (nn.Module): target critic model to predict state values
-        actor_optim (Optimizer): optimizer for training actor
-        critic_optim (Optimizer): optimizer for training critic
-
-    """
-
-    def __init__(
-        self,
-        args: argparse.Namespace,
-        env_info: ConfigDict,
-        hyper_params: ConfigDict,
-        log_cfg: ConfigDict,
-        backbone: ConfigDict,
-        head: ConfigDict,
-        optim_cfg: ConfigDict,
-        loss_type: ConfigDict,
-    ):
-        DQNLearner.__init__(
-            self,
-            args,
-            env_info,
-            hyper_params,
-            log_cfg,
-            backbone,
-            head,
-            optim_cfg,
-            loss_type,
-        )
+    """Learner for DDPGfD Agent."""
 
     def update_model(
         self, experience: Union[TensorTuple, Tuple[TensorTuple]]
