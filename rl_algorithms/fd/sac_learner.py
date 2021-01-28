@@ -1,4 +1,3 @@
-import argparse
 from typing import Tuple
 
 import torch
@@ -7,38 +6,18 @@ from rl_algorithms.common.abstract.learner import TensorTuple
 import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.registry import LEARNERS
 from rl_algorithms.sac.learner import SACLearner
-from rl_algorithms.utils.config import ConfigDict
 
 
 @LEARNERS.register_module
 class SACfDLearner(SACLearner):
-    """Learner for BCSAC Agent.
-
-    Attributes:
-        args (argparse.Namespace): arguments including hyperparameters and training settings
-        hyper_params (ConfigDict): hyper-parameters
-        log_cfg (ConfigDict): configuration for saving log and checkpoint
-    """
-
-    def __init__(
-        self,
-        args: argparse.Namespace,
-        env_info: ConfigDict,
-        hyper_params: ConfigDict,
-        log_cfg: ConfigDict,
-        backbone: ConfigDict,
-        head: ConfigDict,
-        optim_cfg: ConfigDict,
-    ):
-        SACLearner.__init__(
-            self, args, env_info, hyper_params, log_cfg, backbone, head, optim_cfg,
-        )
-
-        self.use_n_step = self.hyper_params.n_step > 1
+    """Learner for BCSAC Agent."""
 
     # pylint: disable=too-many-statements
     def update_model(self, experience: Tuple[TensorTuple, ...]) -> TensorTuple:
-        if self.use_n_step:
+        """Train the model after each episode."""
+        use_n_step = self.hyper_params.n_step > 1
+
+        if use_n_step:
             experience_1, experience_n = experience
         else:
             experience_1 = experience
@@ -73,7 +52,7 @@ class SACfDLearner(SACLearner):
         qf_1_loss = torch.mean((q_1_pred - q_target.detach()).pow(2) * weights)
         qf_2_loss = torch.mean((q_2_pred - q_target.detach()).pow(2) * weights)
 
-        if self.use_n_step:
+        if use_n_step:
             _, _, rewards, next_states, dones = experience_n
 
             gamma = gamma ** self.hyper_params.n_step

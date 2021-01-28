@@ -3,7 +3,6 @@
 - Author: Chris Yoon
 - Contact: chris.yoon@medipixel.io
 """
-import argparse
 from collections import deque
 from typing import Dict
 

@@ -155,6 +155,7 @@ def set_cfg_for_intergration_test(cfg: ConfigDict) -> ConfigDict:
         cfg.agent.hyper_params.worker_update_interval = 1
         cfg.agent.hyper_params.logger_interval = 1
         cfg.agent.hyper_params.buffer_size = 50
+        cfg.agent.hyper_params.max_update_step = 1
         initial_port = random.randint(6000, 8000)
         cfg.agent.comm_cfg.learner_buffer_port = initial_port
         cfg.agent.comm_cfg.learner_worker_port = initial_port + 1

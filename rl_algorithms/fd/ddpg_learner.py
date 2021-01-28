@@ -1,4 +1,3 @@
-import argparse
 from typing import Tuple, Union
 
 import torch
@@ -8,7 +7,6 @@ from rl_algorithms.common.abstract.learner import TensorTuple
 import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.ddpg.learner import DDPGLearner
 from rl_algorithms.registry import LEARNERS
-from rl_algorithms.utils.config import ConfigDict
 
 
 @LEARNERS.register_module
@@ -53,8 +51,8 @@ class DDPGfDLearner(DDPGLearner):
         self, experience: Union[TensorTuple, Tuple[TensorTuple]]
     ) -> TensorTuple:  # type: ignore
         """Train the model after each episode."""
-
         use_n_step = self.hyper_params.n_step > 1
+
         if use_n_step:
             experience_1, experience_n = experience
         else:
@@ -71,7 +69,6 @@ class DDPGfDLearner(DDPGLearner):
         critic_loss_element_wise = self._get_critic_loss(experience_1, gamma)
         critic_loss = torch.mean(critic_loss_element_wise * weights)
 
-        use_n_step = self.hyper_params.n_step > 1
         if use_n_step:
             gamma = gamma ** self.hyper_params.n_step
 

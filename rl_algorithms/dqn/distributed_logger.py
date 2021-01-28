@@ -10,7 +10,6 @@ import wandb
 
 from rl_algorithms.common.abstract.distributed_logger import DistributedLogger
 from rl_algorithms.registry import LOGGERS
-from rl_algorithms.utils.config import ConfigDict
 
 
 @LOGGERS.register_module

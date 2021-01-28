@@ -6,7 +6,6 @@
 - Paper: https://arxiv.org/pdf/1509.02971.pdf
 """
 
-import argparse
 import time
 from typing import Tuple
 

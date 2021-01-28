@@ -6,7 +6,6 @@
 - Paper: https://arxiv.org/abs/1707.06347
 """
 
-import argparse
 from typing import Tuple
 
 import gym
@@ -27,7 +26,6 @@ class PPOAgent(Agent):
 
     Attributes:
         env (gym.Env): openAI Gym environment
-        args (argparse.Namespace): arguments including hyperparameters and training settings
         hyper_params (ConfigDict): hyper-parameters
         network_cfg (ConfigDict): config of network for training agent
         optim_cfg (ConfigDict): config of optimizer
@@ -53,22 +51,37 @@ class PPOAgent(Agent):
         self,
         env: gym.Env,
         env_info: ConfigDict,
-        args: argparse.Namespace,
         hyper_params: ConfigDict,
         learner_cfg: ConfigDict,
         log_cfg: ConfigDict,
+        is_test: bool,
+        load_from: str,
+        is_render: bool,
+        render_after: int,
+        is_log: bool,
+        save_period: int,
+        episode_num: int,
+        max_episode_steps: int,
+        interim_test_num: int,
     ):
-        """Initialize.
-
-        Args:
-            env (gym.Env): openAI Gym environment
-            args (argparse.Namespace): arguments including hyperparameters and training settings
-
-        """
         env_gen = env_generator(env.spec.id, max_episode_steps)
         env_multi = make_envs(env_gen, n_envs=hyper_params.n_workers)
 
-        Agent.__init__(self, env, env_info, args, log_cfg)
+        Agent.__init__(
+            self,
+            env,
+            env_info,
+            log_cfg,
+            is_test,
+            load_from,
+            is_render,
+            render_after,
+            is_log,
+            save_period,
+            episode_num,
+            max_episode_steps,
+            interim_test_num,
+        )
 
         self.episode_steps = np.zeros(hyper_params.n_workers, dtype=np.int)
         self.states: list = []
@@ -82,27 +95,32 @@ class PPOAgent(Agent):
 
         self.hyper_params = hyper_params
         self.learner_cfg = learner_cfg
-        self.learner_cfg.args = self.args
-        self.learner_cfg.env_info = self.env_info
-        self.learner_cfg.hyper_params = self.hyper_params
-        self.learner_cfg.log_cfg = self.log_cfg
 
-        if not self.args.test:
+        if not self.is_test:
             self.env = env_multi
 
         self.epsilon = hyper_params.max_epsilon
 
-        self.learner = build_learner(self.learner_cfg)
+        build_args = dict(
+            hyper_params=self.hyper_params,
+            log_cfg=self.log_cfg,
+            env_name=self.env_info.name,
+            state_size=self.env_info.observation_space.shape,
+            output_size=self.env_info.action_space.shape[0],
+            is_test=self.is_test,
+            load_from=self.load_from,
+        )
+        self.learner = build_learner(self.learner_cfg, build_args)
 
     def select_action(self, state: np.ndarray) -> torch.Tensor:
         """Select an action from the input space."""
         state = numpy2floattensor(state, self.learner.device)
         selected_action, dist = self.learner.actor(state)
 
-        if self.args.test and not self.is_discrete:
+        if self.is_test and not self.is_discrete:
             selected_action = dist.mean
 
-        if not self.args.test:
+        if not self.is_test:
             value = self.learner.critic(state)
             self.states.append(state)
             self.actions.append(selected_action)
@@ -114,12 +132,10 @@ class PPOAgent(Agent):
     def step(self, action: torch.Tensor) -> Tuple[np.ndarray, np.float64, bool, dict]:
         next_state, reward, done, info = self.env.step(action.detach().cpu().numpy())
 
-        if not self.args.test:
+        if not self.is_test:
             # if the last state is not a terminal state, store done as false
             done_bool = done.copy()
-            done_bool[
-                np.where(self.episode_steps == self.args.max_episode_steps)
-            ] = False
+            done_bool[np.where(self.episode_steps == self.max_episode_steps)] = False
 
             self.rewards.append(
                 numpy2floattensor(reward, self.learner.device).unsqueeze(1)
@@ -150,7 +166,7 @@ class PPOAgent(Agent):
             % (i_episode, n_step, score, total_loss, actor_loss, critic_loss)
         )
 
-        if self.args.log:
+        if self.is_log:
             wandb.log(
                 {
                     "total loss": total_loss,
@@ -163,7 +179,7 @@ class PPOAgent(Agent):
     def train(self):
         """Train the agent."""
         # logger
-        if self.args.log:
+        if self.is_log:
             self.set_wandb()
             # wandb.watch([self.actor, self.critic], log="parameters")
 
@@ -172,9 +188,9 @@ class PPOAgent(Agent):
         loss = [0.0, 0.0, 0.0]
         state = self.env.reset()
 
-        while self.i_episode <= self.args.episode_num:
+        while self.i_episode <= self.episode_num:
             for _ in range(self.hyper_params.rollout_len):
-                if self.args.render and self.i_episode >= self.args.render_after:
+                if self.is_render and self.i_episode >= self.render_after:
                     self.env.render()
 
                 action = self.select_action(state)
@@ -186,8 +202,8 @@ class PPOAgent(Agent):
                 i_episode_prev = self.i_episode
                 self.i_episode += done.sum()
 
-                if (self.i_episode // self.args.save_period) != (
-                    i_episode_prev // self.args.save_period
+                if (self.i_episode // self.save_period) != (
+                    i_episode_prev // self.save_period
                 ):
                     self.learner.save_params(self.i_episode)
 

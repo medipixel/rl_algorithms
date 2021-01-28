@@ -5,7 +5,6 @@
 - Contact: curt.park@medipixel.io
 """
 
-import argparse
 from typing import Tuple
 
 import gym
@@ -25,7 +24,6 @@ class A2CAgent(Agent):
 
     Attributes:
         env (gym.Env): openAI Gym environment
-        args (argparse.Namespace): arguments including hyperparameters and training settings
         hyper_params (ConfigDict): hyper-parameters
         network_cfg (ConfigDict): config of network for training agent
         optim_cfg (ConfigDict): config of optimizer
@@ -45,13 +43,35 @@ class A2CAgent(Agent):
         self,
         env: gym.Env,
         env_info: ConfigDict,
-        args: argparse.Namespace,
         hyper_params: ConfigDict,
         learner_cfg: ConfigDict,
         log_cfg: ConfigDict,
+        is_test: bool,
+        load_from: str,
+        is_render: bool,
+        render_after: int,
+        is_log: bool,
+        save_period: int,
+        episode_num: int,
+        max_episode_steps: int,
+        interim_test_num: int,
     ):
         """Initialize."""
-        Agent.__init__(self, env, env_info, args, log_cfg)
+        Agent.__init__(
+            self,
+            env,
+            env_info,
+            log_cfg,
+            is_test,
+            load_from,
+            is_render,
+            render_after,
+            is_log,
+            save_period,
+            episode_num,
+            max_episode_steps,
+            interim_test_num,
+        )
 
         self.transition: list = list()
         self.episode_step = 0
@@ -59,12 +79,17 @@ class A2CAgent(Agent):
 
         self.hyper_params = hyper_params
         self.learner_cfg = learner_cfg
-        self.learner_cfg.args = self.args
-        self.learner_cfg.env_info = self.env_info
-        self.learner_cfg.hyper_params = self.hyper_params
-        self.learner_cfg.log_cfg = self.log_cfg
 
-        self.learner = build_learner(self.learner_cfg)
+        build_args = dict(
+            hyper_params=self.hyper_params,
+            log_cfg=self.log_cfg,
+            env_name=self.env_info.name,
+            state_size=self.env_info.observation_space.shape,
+            output_size=self.env_info.action_space.shape[0],
+            is_test=self.is_test,
+            load_from=self.load_from,
+        )
+        self.learner = build_learner(self.learner_cfg, build_args)
 
     def select_action(self, state: np.ndarray) -> torch.Tensor:
         """Select an action from the input space."""
@@ -72,7 +97,7 @@ class A2CAgent(Agent):
 
         selected_action, dist = self.learner.actor(state)
 
-        if self.args.test:
+        if self.is_test:
             selected_action = dist.mean
         else:
             predicted_value = self.learner.critic(state)
@@ -88,9 +113,9 @@ class A2CAgent(Agent):
         action = action.detach().cpu().numpy()
         next_state, reward, done, info = self.env.step(action)
 
-        if not self.args.test:
+        if not self.is_test:
             done_bool = done
-            if self.episode_step == self.args.max_episode_steps:
+            if self.episode_step == self.max_episode_steps:
                 done_bool = False
             self.transition.extend([next_state, reward, done_bool])
 
@@ -106,7 +131,7 @@ class A2CAgent(Agent):
             % (i, self.episode_step, score, total_loss, policy_loss, value_loss)
         )
 
-        if self.args.log:
+        if self.is_log:
             wandb.log(
                 {
                     "total loss": total_loss,
@@ -119,11 +144,11 @@ class A2CAgent(Agent):
     def train(self):
         """Train the agent."""
         # logger
-        if self.args.log:
+        if self.is_log:
             self.set_wandb()
             # wandb.watch([self.actor, self.critic], log="parameters")
 
-        for self.i_episode in range(1, self.args.episode_num + 1):
+        for self.i_episode in range(1, self.episode_num + 1):
             state = self.env.reset()
             done = False
             score = 0
@@ -132,7 +157,7 @@ class A2CAgent(Agent):
             self.episode_step = 0
 
             while not done:
-                if self.args.render and self.i_episode >= self.args.render_after:
+                if self.is_render and self.i_episode >= self.render_after:
                     self.env.render()
 
                 action = self.select_action(state)
@@ -153,7 +178,7 @@ class A2CAgent(Agent):
             log_value = (self.i_episode, score, policy_loss, value_loss)
             self.write_log(log_value)
 
-            if self.i_episode % self.args.save_period == 0:
+            if self.i_episode % self.save_period == 0:
                 self.learner.save_params(self.i_episode)
                 self.interim_test()
 

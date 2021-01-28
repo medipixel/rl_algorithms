@@ -1,5 +1,3 @@
-import argparse
-
 import torch
 import torch.nn.functional as F
 
@@ -7,7 +5,6 @@ from rl_algorithms.common.abstract.learner import TensorTuple
 import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.registry import LEARNERS
 from rl_algorithms.sac.learner import SACLearner
-from rl_algorithms.utils.config import ConfigDict
 
 
 @LEARNERS.register_module
@@ -15,24 +12,9 @@ class BCSACLearner(SACLearner):
     """Learner for BCSAC Agent.
 
     Attributes:
-        args (argparse.Namespace): arguments including hyperparameters and training settings
         hyper_params (ConfigDict): hyper-parameters
         log_cfg (ConfigDict): configuration for saving log and checkpoint
     """
-
-    def __init__(
-        self,
-        args: argparse.Namespace,
-        env_info: ConfigDict,
-        hyper_params: ConfigDict,
-        log_cfg: ConfigDict,
-        backbone: ConfigDict,
-        head: ConfigDict,
-        optim_cfg: ConfigDict,
-    ):
-        SACLearner.__init__(
-            self, args, env_info, hyper_params, log_cfg, backbone, head, optim_cfg,
-        )
 
     def update_model(
         self, experience: TensorTuple, demos: TensorTuple

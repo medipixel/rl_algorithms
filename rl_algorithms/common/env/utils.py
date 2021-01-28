@@ -5,7 +5,6 @@
 - Contact: curt.park@medipixel.io
 """
 
-import argparse
 from typing import Callable, List
 
 import gym

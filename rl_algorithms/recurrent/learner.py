@@ -1,4 +1,3 @@
-import argparse
 from collections import OrderedDict
 from typing import Tuple, Union
 
@@ -20,7 +19,6 @@ class R2D1Learner(Learner):
     """Learner for R2D1 Agent.
 
     Attributes:
-        args (argparse.Namespace): arguments including hyperparameters and training settings
         hyper_params (ConfigDict): hyper-parameters
         log_cfg (ConfigDict): configuration for saving log and checkpoint
         dqn (nn.Module): dqn model to predict state Q values
@@ -31,27 +29,30 @@ class R2D1Learner(Learner):
 
     def __init__(
         self,
-        args: argparse.Namespace,
-        env_info: ConfigDict,
+        loss_type: ConfigDict,
+        backbone: ConfigDict,
+        head: ConfigDict,
+        gru: ConfigDict,
+        optim_cfg: ConfigDict,
         hyper_params: ConfigDict,
         log_cfg: ConfigDict,
-        backbone: ConfigDict,
-        gru: ConfigDict,
-        head: ConfigDict,
-        optim_cfg: ConfigDict,
-        loss_type: ConfigDict,
+        env_name: str,
+        state_size: tuple,
+        output_size: int,
+        is_test: bool,
+        load_from: str,
     ):
-        Learner.__init__(
-            self, args, env_info, hyper_params, log_cfg,
-        )
+        Learner.__init__(self, hyper_params, log_cfg, env_name, is_test)
         self.backbone_cfg = backbone
         self.gru_cfg = gru
         self.head_cfg = head
-        self.head_cfg.configs.state_size = self.env_info.observation_space.shape
-        self.head_cfg.configs.output_size = self.env_info.action_space.n
+        self.head_cfg.configs.state_size = state_size
+        self.head_cfg.configs.output_size = output_size
         self.optim_cfg = optim_cfg
         self.use_n_step = self.hyper_params.n_step > 1
         self.loss_type = loss_type
+
+        self.load_from = load_from
 
         self._init_network()
 
@@ -77,8 +78,8 @@ class R2D1Learner(Learner):
         )
 
         # load the optimizer and model parameters
-        if self.args.load_from is not None:
-            self.load_params(self.args.load_from)
+        if self.load_from is not None:
+            self.load_params(self.load_from)
 
     def update_model(
         self, experience: Union[TensorTuple, Tuple[TensorTuple]]
