@@ -37,7 +37,6 @@ class DDPGfDAgent(DDPGAgent):
     def _initialize(self):
         """Initialize non-common things."""
         self.per_beta = self.hyper_params.per_beta
-
         self.use_n_step = self.hyper_params.n_step > 1
 
         if not self.is_test:

@@ -123,11 +123,10 @@ class DistributedLogger(ABC):
             name=f"{self.log_cfg.agent}/{self.log_cfg.curr_time}",
         )
         added_log = dict(
-            save_period=self.save_period,
             episode_num=self.episode_num,
             max_episode_steps=self.max_episode_steps,
         )
-        wandb.config.update(vars(added_log))
+        wandb.config.update(added_log)
         shutil.copy(self.log_cfg.cfg_path, os.path.join(wandb.run.dir, "config.py"))
 
     def recv_log_info(self):

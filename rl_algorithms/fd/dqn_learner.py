@@ -24,7 +24,6 @@ class DQfDLearner(DQNLearner):
         self, experience: Union[TensorTuple, Tuple[TensorTuple]]
     ) -> TensorTuple:  # type: ignore
         """Train the model after each episode."""
-
         if self.use_n_step:
             experience_1, experience_n = experience
         else:

@@ -52,7 +52,6 @@ class DDPGfDLearner(DDPGLearner):
     ) -> TensorTuple:  # type: ignore
         """Train the model after each episode."""
         use_n_step = self.hyper_params.n_step > 1
-
         if use_n_step:
             experience_1, experience_n = experience
         else:
