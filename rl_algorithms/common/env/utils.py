@@ -41,7 +41,7 @@ def env_generator(
     def _thunk(rank: int):
         env = gym.make(env_name)
         env.seed(777 + rank + 1)
-        env = set_env(env, max_episode_steps, env_wrappers)
+        env, _ = set_env(env, max_episode_steps, env_wrappers)
         return env
 
     return _thunk
