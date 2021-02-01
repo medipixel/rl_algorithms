@@ -95,12 +95,19 @@ class PrioritizedBufferWrapper(BufferWrapper):
         p_total = self.sum_tree.sum(0, len(self.buffer))
         segment = p_total / batch_size
 
-        for i in range(batch_size):
+        i = 0
+        while len(indices) < batch_size:
             a = segment * i
             b = segment * (i + 1)
             upperbound = random.uniform(a, b)
             idx = self.sum_tree.retrieve(upperbound)
+            if idx > len(self.buffer):
+                print(
+                    f"[WARNING] Index for sampling is out of range: {len(self.buffer)} < {idx}"
+                )
+                continue
             indices.append(idx)
+            i += 1
         return indices
 
     def sample(self, beta: float = 0.4) -> Tuple[torch.Tensor, ...]:
