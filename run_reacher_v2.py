@@ -82,7 +82,7 @@ def main():
     # env initialization
     env_name = "Reacher-v2"
     env = gym.make(env_name)
-    env = env_utils.set_env(env, args.max_episode_steps)
+    env, max_episode_steps = env_utils.set_env(env, args.max_episode_steps)
 
     # set a random seed
     common_utils.set_random_seed(args.seed, env)
@@ -115,7 +115,7 @@ def main():
         is_log=args.log,
         save_period=args.save_period,
         episode_num=args.episode_num,
-        max_episode_steps=args.max_episode_steps,
+        max_episode_steps=max_episode_steps,
         interim_test_num=args.interim_test_num,
     )
     agent = build_agent(cfg.agent, build_args)

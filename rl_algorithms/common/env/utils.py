@@ -5,7 +5,7 @@
 - Contact: curt.park@medipixel.io
 """
 
-from typing import Callable, List
+from typing import Callable, List, Tuple
 
 import gym
 from gym.spaces import Discrete
@@ -16,7 +16,7 @@ from rl_algorithms.common.env.normalizers import ActionNormalizer
 
 def set_env(
     env: gym.Env, max_episode_steps: int, env_wrappers: List[gym.Wrapper] = None
-) -> gym.Env:
+) -> Tuple[gym.Env, int]:
     """Set environment according to user's config."""
     if max_episode_steps > 0:
         env._max_episode_steps = max_episode_steps
@@ -30,7 +30,7 @@ def set_env(
         for env_wrapper in env_wrappers:
             env = env_wrapper(env)
 
-    return env
+    return env, max_episode_steps
 
 
 def env_generator(

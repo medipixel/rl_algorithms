@@ -86,7 +86,9 @@ class DistributedLogger(ABC):
             self.env = atari_env_generator(self.env_name, self.max_episode_steps)
         else:
             self.env = gym.make(self.env_name)
-            env_utils.set_env(self.env, self.max_episode_steps)
+            self.env, self.max_episode_steps = env_utils.set_env(
+                self.env, self.max_episode_steps
+            )
 
     @abstractmethod
     def load_params(self, path: str):
