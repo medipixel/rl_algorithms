@@ -47,7 +47,17 @@ class DistillationDQN(DQNAgent):
             # Training student or generating distillation data(test).
             print("[INFO] Student mode.")
             self.softmax_tau = 0.01
-            self.learner = build_learner(self.learner_cfg)
+
+            build_args = dict(
+                hyper_params=self.hyper_params,
+                log_cfg=self.log_cfg,
+                env_name=self.env_info.name,
+                state_size=self.env_info.observation_space.shape,
+                output_size=self.env_info.action_space.n,
+                is_test=self.is_test,
+                load_from=self.load_from,
+            )
+            self.learner = build_learner(self.learner_cfg, build_args)
             self.dataset_path = self.hyper_params.dataset_path
 
             self.memory = DistillationBuffer(
@@ -185,8 +195,8 @@ class DistillationDQN(DQNAgent):
         """Make relaxed softmax target and KL-Div loss and updates student model's params."""
         states, q_values = self.memory.sample_for_diltillation()
 
-        states = states.float().to(self.device)
-        q_values = q_values.float().to(self.device)
+        states = states.float().to(self.learner.device)
+        q_values = q_values.float().to(self.learner.device)
 
         if torch.cuda.is_available():
             states = states.cuda(non_blocking=True)
@@ -216,7 +226,7 @@ class DistillationDQN(DQNAgent):
             with open(file_name_list[i], "rb") as f:
                 state = pickle.load(f)[0]
 
-            torch_state = numpy2floattensor(state, self.device)
+            torch_state = numpy2floattensor(state, self.learner.device)
             pred_q = self.learner.dqn(torch_state).squeeze().detach().cpu().numpy()
 
             with open(self.save_distillation_dir + "/" + str(i) + ".pkl", "wb") as f:
