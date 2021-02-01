@@ -163,48 +163,50 @@ class DistributedLogger(ABC):
         """Log the mean scores of each episode per update step to wandb."""
         # NOTE: Worker plots are passed onto wandb.log as matplotlib.pyplot
         #       since wandb doesn't support logging multiple lines to single plot
-        if self.is_log:
-            self.set_wandb()
-            # Plot individual workers
-            fig = go.Figure()
-            worker_id = 0
-            for worker_log in worker_logs:
-                fig.add_trace(
-                    go.Scatter(
-                        x=list(worker_log.keys()),
-                        y=smoothen_graph(list(worker_log.values())),
-                        mode="lines",
-                        name=f"Worker {worker_id}",
-                        line=dict(width=2),
-                    )
+        self.set_wandb()
+        # Plot individual workers
+        fig = go.Figure()
+        worker_id = 0
+        for worker_log in worker_logs:
+            fig.add_trace(
+                go.Scatter(
+                    x=list(worker_log.keys()),
+                    y=smoothen_graph(list(worker_log.values())),
+                    mode="lines",
+                    name=f"Worker {worker_id}",
+                    line=dict(width=2),
                 )
-                worker_id = worker_id + 1
-
-            # Plot mean scores
-            logged_update_steps = list(
-                range(0, self.max_update_step + 1, worker_update_interval)
             )
+            worker_id = worker_id + 1
 
-            mean_scores = []
+        # Plot mean scores
+        logged_update_steps = list(
+            range(0, self.max_update_step + 1, worker_update_interval)
+        )
+
+        mean_scores = []
+        try:
             for step in logged_update_steps:
                 scores_for_step = []
                 for worker_log in worker_logs:
                     if step in list(worker_log):
                         scores_for_step.append(worker_log[step])
                 mean_scores.append(np.mean(scores_for_step))
+        except Exception as e:
+            print(f"[Error] {e}")
 
-            fig.add_trace(
-                go.Scatter(
-                    x=logged_update_steps,
-                    y=mean_scores,
-                    mode="lines+markers",
-                    name="Mean scores",
-                    line=dict(width=5),
-                )
+        fig.add_trace(
+            go.Scatter(
+                x=logged_update_steps,
+                y=mean_scores,
+                mode="lines+markers",
+                name="Mean scores",
+                line=dict(width=5),
             )
+        )
 
-            # Write to wandb
-            wandb.log({"Worker scores": fig})
+        # Write to wandb
+        wandb.log({"Worker scores": fig})
 
     def test(self, update_step: int, interim_test: bool = True):
         """Test the agent."""
