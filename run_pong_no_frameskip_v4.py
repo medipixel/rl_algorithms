@@ -120,7 +120,7 @@ def main():
         is_log=args.log,
         save_period=args.save_period,
         episode_num=args.episode_num,
-        max_episode_steps=args.max_episode_steps,
+        max_episode_steps=env.spec.max_episode_steps,
         interim_test_num=args.interim_test_num,
     )
     agent = build_agent(cfg.agent, build_args)
