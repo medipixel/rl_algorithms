@@ -1,1 +1,0 @@
-python run_pong_no_frameskip_v4.py --cfg-path configs/pong_no_frameskip_v4/apex_dqn.py --off-worker-render --off-logger-render --log --worker-verbose

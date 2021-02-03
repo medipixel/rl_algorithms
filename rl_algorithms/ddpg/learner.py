@@ -1,4 +1,3 @@
-import argparse
 from collections import OrderedDict
 from typing import Tuple
 
@@ -20,7 +19,6 @@ class DDPGLearner(Learner):
     """Learner for DDPG Agent.
 
     Attributes:
-        args (argparse.Namespace): arguments including hyperparameters and training settings
         hyper_params (ConfigDict): hyper-parameters
         optim_cfg (ConfigDict): config of optimizer
         log_cfg (ConfigDict): configuration for saving log and checkpoint
@@ -35,29 +33,28 @@ class DDPGLearner(Learner):
 
     def __init__(
         self,
-        args: argparse.Namespace,
-        env_info: ConfigDict,
         hyper_params: ConfigDict,
         log_cfg: ConfigDict,
         backbone: ConfigDict,
         head: ConfigDict,
         optim_cfg: ConfigDict,
         noise_cfg: ConfigDict,
+        env_name: str,
+        state_size: tuple,
+        output_size: int,
+        is_test: bool,
+        load_from: str,
     ):
-        Learner.__init__(
-            self, args, env_info, hyper_params, log_cfg,
-        )
+        Learner.__init__(self, hyper_params, log_cfg, env_name, is_test)
 
         self.backbone_cfg = backbone
         self.head_cfg = head
-        self.head_cfg.critic.configs.state_size = (
-            self.env_info.observation_space.shape[0]
-            + self.env_info.action_space.shape[0],
-        )
-        self.head_cfg.actor.configs.state_size = self.env_info.observation_space.shape
-        self.head_cfg.actor.configs.output_size = self.env_info.action_space.shape[0]
+        self.head_cfg.critic.configs.state_size = (state_size[0] + output_size,)
+        self.head_cfg.actor.configs.state_size = state_size
+        self.head_cfg.actor.configs.output_size = output_size
         self.optim_cfg = optim_cfg
         self.noise_cfg = noise_cfg
+        self.load_from = load_from
 
         self._init_network()
 
@@ -93,8 +90,8 @@ class DDPGLearner(Learner):
         )
 
         # load the optimizer and model parameters
-        if self.args.load_from is not None:
-            self.load_params(self.args.load_from)
+        if self.load_from is not None:
+            self.load_params(self.load_from)
 
     def update_model(
         self, experience: Tuple[torch.Tensor, ...]

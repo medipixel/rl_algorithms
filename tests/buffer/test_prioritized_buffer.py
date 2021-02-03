@@ -22,6 +22,7 @@ def generate_prioritized_buffer(
             prioritized_buffer.sum_tree[i] = j
 
     prop_lst = [i / sum(priority) for i in priority]
+    prioritized_buffer.buffer.length = buffer_length
 
     return prioritized_buffer, prop_lst
 

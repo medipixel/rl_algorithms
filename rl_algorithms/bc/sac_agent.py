@@ -40,7 +40,7 @@ class BCSACAgent(SACAgent):
     def _initialize(self):
         """Initialize non-common things."""
         # load demo replay memory
-        with open(self.args.demo_path, "rb") as f:
+        with open(self.hyper_params.demo_path, "rb") as f:
             demo = list(pickle.load(f))
 
         # HER
@@ -60,7 +60,7 @@ class BCSACAgent(SACAgent):
         else:
             self.her = None
 
-        if not self.args.test:
+        if not self.is_test:
             # Replay buffers
             demo_batch_size = self.hyper_params.demo_batch_size
             self.demo_memory = ReplayBuffer(len(demo), demo_batch_size)
@@ -71,10 +71,16 @@ class BCSACAgent(SACAgent):
             # set hyper parameters
             self.hyper_params["lambda2"] = 1.0 / demo_batch_size
 
-        self.learner_cfg.type = "BCSACLearner"
-        self.learner_cfg.hyper_params = self.hyper_params
-
-        self.learner = build_learner(self.learner_cfg)
+        build_args = dict(
+            hyper_params=self.hyper_params,
+            log_cfg=self.log_cfg,
+            env_name=self.env_info.name,
+            state_size=self.env_info.observation_space.shape,
+            output_size=self.env_info.action_space.shape[0],
+            is_test=self.is_test,
+            load_from=self.load_from,
+        )
+        self.learner = build_learner(self.learner_cfg, build_args)
 
     def _preprocess_state(self, state: np.ndarray) -> torch.Tensor:
         """Preprocess state so that actor selects an action."""
@@ -88,7 +94,7 @@ class BCSACAgent(SACAgent):
         """Add 1 step and n step transitions to memory."""
         if self.hyper_params.use_her:
             self.transitions_epi.append(transition)
-            done = transition[-1] or self.episode_step == self.args.max_episode_steps
+            done = transition[-1] or self.episode_step == self.max_episode_steps
             if done:
                 # insert generated transitions if the episode is done
                 transitions = self.her.generate_transitions(
@@ -126,7 +132,7 @@ class BCSACAgent(SACAgent):
             )
         )
 
-        if self.args.log:
+        if self.is_log:
             wandb.log(
                 {
                     "score": score,
@@ -143,14 +149,14 @@ class BCSACAgent(SACAgent):
     def train(self):
         """Train the agent."""
         # logger
-        if self.args.log:
+        if self.is_log:
             self.set_wandb()
             # wandb.watch([self.actor, self.vf, self.qf_1, self.qf_2], log="parameters")
 
         # pre-training if needed
         self.pretrain()
 
-        for self.i_episode in range(1, self.args.episode_num + 1):
+        for self.i_episode in range(1, self.episode_num + 1):
             state = self.env.reset()
             done = False
             score = 0
@@ -160,7 +166,7 @@ class BCSACAgent(SACAgent):
             t_begin = time.time()
 
             while not done:
-                if self.args.render and self.i_episode >= self.args.render_after:
+                if self.is_render and self.i_episode >= self.render_after:
                     self.env.render()
 
                 action = self.select_action(state)
@@ -198,7 +204,7 @@ class BCSACAgent(SACAgent):
                 )
                 self.write_log(log_value)
 
-            if self.i_episode % self.args.save_period == 0:
+            if self.i_episode % self.save_period == 0:
                 self.learner.save_params(self.i_episode)
                 self.interim_test()
 

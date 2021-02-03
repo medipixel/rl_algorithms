@@ -3,7 +3,7 @@
 
 We implemented 3 featues for training policy distillation.
 
-## 1. Student training using trained agent's data(expert data)
+## 1. Student training using trained agent's data (expert data)
 
 You can generate trained agent's data(expert data) by iterating the test episode.
 
@@ -13,10 +13,10 @@ python run_env_name.py --cfg-path <distillation-config-path> --load-from <teache
 The collected states will be stored in directory:  `data/distribution_buffer/<env_name>`.
 
 
-If the expert data is generated, Put the path of the train-phase data in the dataset_path list in the distillation config file and execute the training just as the code below:
+If the expert data is generated, Put the path of the train-phase data in the dataset_path list in the distillation config file. Also change `is_student` to `True` in config file. And then execute the training just as the code below:
 
 ```
-python run_env_name.py --cfg-path <distillation-config-path> --student  
+python run_env_name.py --cfg-path <distillation-config-path>  
 ```
 
 You can set `epoch` and `batch_size` of the student learning through `epochs` and `batch_size` variables in the distillation config file.
@@ -33,9 +33,9 @@ python run_env_name.py --cfg-path <distillation-config-path>
 The generated data will be stored in directory:  `data/distribution_buffer/<env_name>`.
 
 
-Since train-phase data doesn't contains the q value, you should load trained agent to generate q values for train-phase data. After putting the path of the train-phase data in the dataset_path list in the distillation config file, You can execute the training as the code below:
+Since train-phase data doesn't contains the q value, you should load trained agent to generate q values for train-phase data. After putting the path of the train-phase data and changing `is_student` to `True` in the dataset_path list in the distillation config file, You can execute the training as the code below:
 ```
-python run_env_name.py --cfg-path <distillation-config-path> --student --load-from <teacher-checkpoint-path>
+python run_env_name.py --cfg-path <distillation-config-path> --load-from <teacher-checkpoint-path>
 ```
 
 ## 3. Test student agent

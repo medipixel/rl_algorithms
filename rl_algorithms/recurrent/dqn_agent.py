@@ -32,7 +32,7 @@ class R2D1Agent(DQNAgent):
     # pylint: disable=attribute-defined-outside-init
     def _initialize(self):
         """Initialize non-common things."""
-        if not self.args.test:
+        if not self.is_test:
 
             self.memory = RecurrentReplayBuffer(
                 self.hyper_params.buffer_size,
@@ -57,7 +57,16 @@ class R2D1Agent(DQNAgent):
                     gamma=self.hyper_params.gamma,
                 )
 
-        self.learner = build_learner(self.learner_cfg)
+        build_args = dict(
+            hyper_params=self.hyper_params,
+            log_cfg=self.log_cfg,
+            env_name=self.env_info.name,
+            state_size=self.env_info.observation_space.shape,
+            output_size=self.env_info.action_space.n,
+            is_test=self.is_test,
+            load_from=self.load_from,
+        )
+        self.learner = build_learner(self.learner_cfg, build_args)
 
     def select_action(
         self,
@@ -77,7 +86,7 @@ class R2D1Agent(DQNAgent):
             )
         selected_action = selected_action.detach().argmax().cpu().numpy()
 
-        if not self.args.test and self.epsilon > np.random.random():
+        if not self.is_test and self.epsilon > np.random.random():
             selected_action = np.array(self.env.action_space.sample())
         return selected_action, hidden_state
 
@@ -97,11 +106,9 @@ class R2D1Agent(DQNAgent):
     ) -> Tuple[np.ndarray, np.float64, bool, dict]:
         """Take an action and return the response of the env."""
         next_state, reward, done, info = self.env.step(action)
-        if not self.args.test:
+        if not self.is_test:
             # if the last state is not a terminal state, store done as false
-            done_bool = (
-                False if self.episode_step == self.args.max_episode_steps else done
-            )
+            done_bool = False if self.episode_step == self.max_episode_steps else done
 
             transition = (
                 self.curr_state,
@@ -138,14 +145,14 @@ class R2D1Agent(DQNAgent):
     def train(self):
         """Train the agent."""
         # Logger
-        if self.args.log:
+        if self.is_log:
             self.set_wandb()
             # wandb.watch([self.dqn], log="parameters")
 
         # Pre-training if needed
         self.pretrain()
 
-        for self.i_episode in range(1, self.args.episode_num + 1):
+        for self.i_episode in range(1, self.episode_num + 1):
             state = self.env.reset()
             hidden_in = torch.zeros(
                 [1, 1, self.learner.gru_cfg.rnn_hidden_size], dtype=torch.float
@@ -163,7 +170,7 @@ class R2D1Agent(DQNAgent):
             t_begin = time.time()
 
             while not done:
-                if self.args.render and self.i_episode >= self.args.render_after:
+                if self.is_render and self.i_episode >= self.render_after:
                     self.env.render()
 
                 action, hidden_out = self.select_action(
@@ -195,7 +202,7 @@ class R2D1Agent(DQNAgent):
                     )
 
                     # Increase priority beta
-                    fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)
+                    fraction = min(float(self.i_episode) / self.episode_num, 1.0)
                     self.per_beta = self.per_beta + fraction * (1.0 - self.per_beta)
 
                 hidden_in = hidden_out
@@ -214,7 +221,7 @@ class R2D1Agent(DQNAgent):
                 log_value = (self.i_episode, avg_loss, score, avg_time_cost)
                 self.write_log(log_value)
 
-                if self.i_episode % self.args.save_period == 0:
+                if self.i_episode % self.save_period == 0:
                     self.learner.save_params(self.i_episode)
                     self.interim_test()
 
@@ -227,9 +234,9 @@ class R2D1Agent(DQNAgent):
         """Common test routine."""
 
         if interim_test:
-            test_num = self.args.interim_test_num
+            test_num = self.interim_test_num
         else:
-            test_num = self.args.episode_num
+            test_num = self.episode_num
         score_list = []
         for i_episode in range(test_num):
             hidden_in = torch.zeros(
@@ -245,7 +252,7 @@ class R2D1Agent(DQNAgent):
             step = 0
 
             while not done:
-                if self.args.render:
+                if self.is_render:
                     self.env.render()
 
                 action, hidden_out = self.select_action(
@@ -267,7 +274,7 @@ class R2D1Agent(DQNAgent):
             )
             score_list.append(score)
 
-        if self.args.log:
+        if self.is_log:
             wandb.log(
                 {
                     "avg test score": round(sum(score_list) / len(score_list), 2),

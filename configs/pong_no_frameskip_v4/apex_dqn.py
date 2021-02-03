@@ -36,6 +36,10 @@ agent = dict(
         local_buffer_max_size=1000,
         worker_update_interval=50,
         logger_interval=1000,
+        max_update_step=100000,
+        # ApeX render
+        is_worker_log=True,
+        is_worker_render=False,
     ),
     learner_cfg=dict(
         type="DQNLearner",

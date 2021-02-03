@@ -30,6 +30,12 @@ def parse_args() -> argparse.Namespace:
         help="config path",
     )
     parser.add_argument(
+        "--integration-test",
+        dest="integration_test",
+        action="store_true",
+        help="for integration test",
+    )
+    parser.add_argument(
         "--test", dest="test", action="store_true", help="test mode (no training)"
     )
     parser.add_argument(
@@ -65,18 +71,6 @@ def parse_args() -> argparse.Namespace:
         default=10,
         help="number of test during training",
     )
-    parser.add_argument(
-        "--demo-path",
-        type=str,
-        default="data/reacher_demo.pkl",
-        help="demonstration path for learning from demo",
-    )
-    parser.add_argument(
-        "--integration-test",
-        dest="integration_test",
-        action="store_true",
-        help="indicate integration test",
-    )
 
     return parser.parse_args()
 
@@ -88,7 +82,7 @@ def main():
     # env initialization
     env_name = "Reacher-v2"
     env = gym.make(env_name)
-    env = env_utils.set_env(env, args)
+    env, max_episode_steps = env_utils.set_env(env, args.max_episode_steps)
 
     # set a random seed
     common_utils.set_random_seed(args.seed, env)
@@ -103,14 +97,27 @@ def main():
     if args.integration_test:
         cfg = common_utils.set_cfg_for_intergration_test(cfg)
 
-    cfg.agent.env_info = dict(
-        name=env_name,
+    env_info = dict(
+        name=env.spec.id,
         observation_space=env.observation_space,
         action_space=env.action_space,
-        is_discrete=False,
+        is_atari=False,
     )
-    cfg.agent.log_cfg = dict(agent=cfg.agent.type, curr_time=curr_time)
-    build_args = dict(args=args, env=env)
+    log_cfg = dict(agent=cfg.agent.type, curr_time=curr_time, cfg_path=args.cfg_path)
+    build_args = dict(
+        env=env,
+        env_info=env_info,
+        log_cfg=log_cfg,
+        is_test=args.test,
+        load_from=args.load_from,
+        is_render=args.render,
+        render_after=args.render_after,
+        is_log=args.log,
+        save_period=args.save_period,
+        episode_num=args.episode_num,
+        max_episode_steps=max_episode_steps,
+        interim_test_num=args.interim_test_num,
+    )
     agent = build_agent(cfg.agent, build_args)
 
     if not args.test:

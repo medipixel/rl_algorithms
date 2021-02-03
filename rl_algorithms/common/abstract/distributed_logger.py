@@ -5,7 +5,6 @@
 """
 
 from abc import ABC, abstractmethod
-import argparse
 from collections import deque
 import os
 import shutil
@@ -30,8 +29,6 @@ class DistributedLogger(ABC):
     """Base class for loggers use in distributed training.
 
     Attributes:
-        args (argparse.Namespace): arguments including hyperparameters and training settings
-        env_info (ConfigDict): information about environment
         log_cfg (ConfigDict): configuration for saving log and checkpoint
         comm_config (ConfigDict): configs for communication
         backbone (ConfigDict): backbone configs for building network
@@ -46,19 +43,36 @@ class DistributedLogger(ABC):
 
     def __init__(
         self,
-        args: argparse.Namespace,
-        env_info: ConfigDict,
         log_cfg: ConfigDict,
         comm_cfg: ConfigDict,
         backbone: ConfigDict,
         head: ConfigDict,
+        env_name: str,
+        is_atari: bool,
+        state_size: int,
+        output_size: int,
+        max_update_step: int,
+        episode_num: int,
+        max_episode_steps: int,
+        interim_test_num: int,
+        is_log: bool,
+        is_render: bool,
     ):
-        self.args = args
-        self.env_info = env_info
         self.log_cfg = log_cfg
         self.comm_cfg = comm_cfg
         self.device = torch.device("cpu")  # Logger only runs on cpu
+        head.configs.state_size = state_size
+        head.configs.output_size = output_size
         self.brain = Brain(backbone, head).to(self.device)
+
+        self.env_name = env_name
+        self.is_atari = is_atari
+        self.max_update_step = max_update_step
+        self.episode_num = episode_num
+        self.max_episode_steps = max_episode_steps
+        self.interim_test_num = interim_test_num
+        self.is_log = is_log
+        self.is_render = is_render
 
         self.update_step = 0
         self.log_info_queue = deque(maxlen=100)
@@ -68,13 +82,13 @@ class DistributedLogger(ABC):
     # pylint: disable=attribute-defined-outside-init
     def _init_env(self):
         """Initialize gym environment."""
-        if self.env_info.is_atari:
-            self.env = atari_env_generator(
-                self.env_info.name, self.args.max_episode_steps
-            )
+        if self.is_atari:
+            self.env = atari_env_generator(self.env_name, self.max_episode_steps)
         else:
-            self.env = gym.make(self.env_info.name)
-            env_utils.set_env(self.env, self.args)
+            self.env = gym.make(self.env_name)
+            self.env, self.max_episode_steps = env_utils.set_env(
+                self.env, self.max_episode_steps
+            )
 
     @abstractmethod
     def load_params(self, path: str):
@@ -107,11 +121,14 @@ class DistributedLogger(ABC):
     def set_wandb(self):
         """Set configuration for wandb logging."""
         wandb.init(
-            project=self.env_info.name,
+            project=self.env_name,
             name=f"{self.log_cfg.agent}/{self.log_cfg.curr_time}",
         )
-        wandb.config.update(vars(self.args))
-        shutil.copy(self.args.cfg_path, os.path.join(wandb.run.dir, "config.py"))
+        additional_log = dict(
+            episode_num=self.episode_num, max_episode_steps=self.max_episode_steps,
+        )
+        wandb.config.update(additional_log)
+        shutil.copy(self.log_cfg.cfg_path, os.path.join(wandb.run.dir, "config.py"))
 
     def recv_log_info(self):
         """Receive info from learner."""
@@ -127,10 +144,10 @@ class DistributedLogger(ABC):
 
     def run(self):
         """Run main logging loop; continuously receive data and log."""
-        if self.args.log:
+        if self.is_log:
             self.set_wandb()
 
-        while self.update_step < self.args.max_update_step:
+        while self.update_step < self.max_update_step:
             self.recv_log_info()
             if self.log_info_queue:  # if non-empty
                 log_info_id = self.log_info_queue.pop()
@@ -148,48 +165,50 @@ class DistributedLogger(ABC):
         """Log the mean scores of each episode per update step to wandb."""
         # NOTE: Worker plots are passed onto wandb.log as matplotlib.pyplot
         #       since wandb doesn't support logging multiple lines to single plot
-        if self.args.log:
-            self.set_wandb()
-            # Plot individual workers
-            fig = go.Figure()
-            worker_id = 0
-            for worker_log in worker_logs:
-                fig.add_trace(
-                    go.Scatter(
-                        x=list(worker_log.keys()),
-                        y=smoothen_graph(list(worker_log.values())),
-                        mode="lines",
-                        name=f"Worker {worker_id}",
-                        line=dict(width=2),
-                    )
+        self.set_wandb()
+        # Plot individual workers
+        fig = go.Figure()
+        worker_id = 0
+        for worker_log in worker_logs:
+            fig.add_trace(
+                go.Scatter(
+                    x=list(worker_log.keys()),
+                    y=smoothen_graph(list(worker_log.values())),
+                    mode="lines",
+                    name=f"Worker {worker_id}",
+                    line=dict(width=2),
                 )
-                worker_id = worker_id + 1
-
-            # Plot mean scores
-            logged_update_steps = list(
-                range(0, self.args.max_update_step + 1, worker_update_interval)
             )
+            worker_id = worker_id + 1
 
-            mean_scores = []
+        # Plot mean scores
+        logged_update_steps = list(
+            range(0, self.max_update_step + 1, worker_update_interval)
+        )
+
+        mean_scores = []
+        try:
             for step in logged_update_steps:
                 scores_for_step = []
                 for worker_log in worker_logs:
                     if step in list(worker_log):
                         scores_for_step.append(worker_log[step])
                 mean_scores.append(np.mean(scores_for_step))
+        except Exception as e:
+            print(f"[Error] {e}")
 
-            fig.add_trace(
-                go.Scatter(
-                    x=logged_update_steps,
-                    y=mean_scores,
-                    mode="lines+markers",
-                    name="Mean scores",
-                    line=dict(width=5),
-                )
+        fig.add_trace(
+            go.Scatter(
+                x=logged_update_steps,
+                y=mean_scores,
+                mode="lines+markers",
+                name="Mean scores",
+                line=dict(width=5),
             )
+        )
 
-            # Write to wandb
-            wandb.log({"Worker scores": fig})
+        # Write to wandb
+        wandb.log({"Worker scores": fig})
 
     def test(self, update_step: int, interim_test: bool = True):
         """Test the agent."""
@@ -202,9 +221,9 @@ class DistributedLogger(ABC):
     def _test(self, update_step: int, interim_test: bool) -> float:
         """Common test routine."""
         if interim_test:
-            test_num = self.args.interim_test_num
+            test_num = self.interim_test_num
         else:
-            test_num = self.args.episode_num
+            test_num = self.episode_num
 
         self.brain.eval()
         scores = []
@@ -215,7 +234,7 @@ class DistributedLogger(ABC):
             step = 0
 
             while not done:
-                if self.args.logger_render:
+                if self.is_render:
                     self.env.render()
 
                 action = self.select_action(state)

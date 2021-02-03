@@ -1,4 +1,3 @@
-import argparse
 from typing import Tuple, Union
 
 import torch
@@ -8,7 +7,6 @@ from rl_algorithms.common.abstract.learner import TensorTuple
 import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.ddpg.learner import DDPGLearner
 from rl_algorithms.registry import LEARNERS
-from rl_algorithms.utils.config import ConfigDict
 
 
 @LEARNERS.register_module
@@ -16,7 +14,6 @@ class DDPGfDLearner(DDPGLearner):
     """Learner for DDPGfD Agent.
 
     Attributes:
-        args (argparse.Namespace): arguments including hyperparameters and training settings
         hyper_params (ConfigDict): hyper-parameters
         optim_cfg (ConfigDict): config of optimizer
         log_cfg (ConfigDict): configuration for saving log and checkpoint
@@ -28,31 +25,6 @@ class DDPGfDLearner(DDPGLearner):
         critic_optim (Optimizer): optimizer for training critic
 
     """
-
-    def __init__(
-        self,
-        args: argparse.Namespace,
-        env_info: ConfigDict,
-        hyper_params: ConfigDict,
-        log_cfg: ConfigDict,
-        backbone: ConfigDict,
-        head: ConfigDict,
-        optim_cfg: ConfigDict,
-        noise_cfg: ConfigDict,
-    ):
-        DDPGLearner.__init__(
-            self,
-            args,
-            env_info,
-            hyper_params,
-            log_cfg,
-            backbone,
-            head,
-            optim_cfg,
-            noise_cfg,
-        )
-
-        self.use_n_step = self.hyper_params.n_step > 1
 
     def _get_critic_loss(
         self, experiences: Tuple[TensorTuple, ...], gamma: float
@@ -79,8 +51,8 @@ class DDPGfDLearner(DDPGLearner):
         self, experience: Union[TensorTuple, Tuple[TensorTuple]]
     ) -> TensorTuple:  # type: ignore
         """Train the model after each episode."""
-
-        if self.use_n_step:
+        use_n_step = self.hyper_params.n_step > 1
+        if use_n_step:
             experience_1, experience_n = experience
         else:
             experience_1 = experience
@@ -96,7 +68,7 @@ class DDPGfDLearner(DDPGLearner):
         critic_loss_element_wise = self._get_critic_loss(experience_1, gamma)
         critic_loss = torch.mean(critic_loss_element_wise * weights)
 
-        if self.use_n_step:
+        if use_n_step:
             gamma = gamma ** self.hyper_params.n_step
 
             critic_loss_n_element_wise = self._get_critic_loss(experience_n, gamma)

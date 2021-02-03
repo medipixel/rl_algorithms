@@ -23,6 +23,7 @@ agent = dict(
         demo_batch_size=64,
         lambda1=1e-3,
         lambda2=1.0,
+        demo_path="data/reacher_demo.pkl",
         # HER
         use_her=True,
         her=dict(type="ReacherHER",),

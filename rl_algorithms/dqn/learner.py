@@ -3,7 +3,6 @@
 - Author: Chris Yoon
 - Contact: chris.yoon@medipixel.io
 """
-import argparse
 from collections import OrderedDict
 from copy import deepcopy
 from typing import Tuple, Union
@@ -23,10 +22,10 @@ from rl_algorithms.utils.config import ConfigDict
 
 @LEARNERS.register_module
 class DQNLearner(Learner):
-    """Learner for DQN Agent.
+    """
+    Learner for DQN Agent.
 
     Attributes:
-        args (argparse.Namespace): arguments including hyperparameters and training settings
         hyper_params (ConfigDict): hyper-parameters
         log_cfg (ConfigDict): configuration for saving log and checkpoint
         dqn (nn.Module): dqn model to predict state Q values
@@ -37,23 +36,29 @@ class DQNLearner(Learner):
 
     def __init__(
         self,
-        args: argparse.Namespace,
-        env_info: ConfigDict,
-        hyper_params: ConfigDict,
-        log_cfg: ConfigDict,
+        loss_type: ConfigDict,
         backbone: ConfigDict,
         head: ConfigDict,
         optim_cfg: ConfigDict,
-        loss_type: ConfigDict,
+        hyper_params: ConfigDict,
+        log_cfg: ConfigDict,
+        env_name: str,
+        state_size: tuple,
+        output_size: int,
+        is_test: bool,
+        load_from: str,
     ):
-        Learner.__init__(self, args, env_info, hyper_params, log_cfg)
+        Learner.__init__(self, hyper_params, log_cfg, env_name, is_test)
         self.backbone_cfg = backbone
         self.head_cfg = head
-        self.head_cfg.configs.state_size = self.env_info.observation_space.shape
-        self.head_cfg.configs.output_size = self.env_info.action_space.n
+        self.head_cfg.configs.state_size = state_size
+        self.head_cfg.configs.output_size = output_size
         self.optim_cfg = optim_cfg
         self.use_n_step = self.hyper_params.n_step > 1
         self.loss_type = loss_type
+
+        self.load_from = load_from
+
         self._init_network()
 
     # pylint: disable=attribute-defined-outside-init
@@ -74,8 +79,8 @@ class DQNLearner(Learner):
         )
 
         # load the optimizer and model parameters
-        if self.args.load_from is not None:
-            self.load_params(self.args.load_from)
+        if self.load_from is not None:
+            self.load_params(self.load_from)
 
     def update_model(
         self, experience: Union[TensorTuple, Tuple[TensorTuple]]

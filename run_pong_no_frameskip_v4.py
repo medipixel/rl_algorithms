@@ -27,13 +27,19 @@ def parse_args() -> argparse.Namespace:
         help="config path",
     )
     parser.add_argument(
-        "--test", dest="test", action="store_true", help="test mode (no training)"
+        "--integration-test",
+        dest="integration_test",
+        action="store_true",
+        help="for integration test",
     )
     parser.add_argument(
         "--grad-cam",
         dest="grad_cam",
         action="store_true",
         help="test mode with viewing Grad-CAM",
+    )
+    parser.add_argument(
+        "--test", dest="test", action="store_true", help="test mode (no training)"
     )
     parser.add_argument(
         "--load-from",
@@ -45,28 +51,10 @@ def parse_args() -> argparse.Namespace:
         "--off-render", dest="render", action="store_false", help="turn off rendering"
     )
     parser.add_argument(
-        "--off-worker-render",
-        dest="worker_render",
-        action="store_false",
-        help="turn off worker rendering",
-    )
-    parser.add_argument(
-        "--off-logger-render",
-        dest="logger_render",
-        action="store_false",
-        help="turn off logger rendering",
-    )
-    parser.add_argument(
         "--render-after",
         type=int,
         default=0,
         help="start rendering after the input number of episode",
-    )
-    parser.add_argument(
-        "--worker-verbose",
-        dest="worker_verbose",
-        action="store_true",
-        help="turn on worker print statements",
     )
     parser.add_argument(
         "--log", dest="log", action="store_true", help="turn on logging"
@@ -76,28 +64,16 @@ def parse_args() -> argparse.Namespace:
         "--episode-num", type=int, default=500, help="total episode num"
     )
     parser.add_argument(
-        "--max-update-step", type=int, default=100000, help="max update step"
-    )
-    parser.add_argument(
         "--max-episode-steps", type=int, default=None, help="max episode step"
     )
     parser.add_argument(
         "--interim-test-num", type=int, default=5, help="interim test number"
     )
     parser.add_argument(
-        "--integration-test",
-        dest="integration_test",
-        action="store_true",
-        help="indicate integration test",
-    )
-    parser.add_argument(
         "--off-framestack",
         dest="framestack",
         action="store_false",
         help="turn off framestack",
-    )
-    parser.add_argument(
-        "--student", dest="student", action="store_true", help="train student",
     )
 
     return parser.parse_args()
@@ -126,15 +102,27 @@ def main():
     if args.integration_test:
         cfg = common_utils.set_cfg_for_intergration_test(cfg)
 
-    cfg.agent.env_info = dict(
-        name=env_name,
+    env_info = dict(
+        name=env.spec.id,
         observation_space=env.observation_space,
         action_space=env.action_space,
         is_atari=True,
     )
-    cfg.agent.log_cfg = dict(agent=cfg.agent.type, curr_time=curr_time)
-    build_args = dict(args=args, env=env)
-
+    log_cfg = dict(agent=cfg.agent.type, curr_time=curr_time, cfg_path=args.cfg_path)
+    build_args = dict(
+        env=env,
+        env_info=env_info,
+        log_cfg=log_cfg,
+        is_test=args.test,
+        load_from=args.load_from,
+        is_render=args.render,
+        render_after=args.render_after,
+        is_log=args.log,
+        save_period=args.save_period,
+        episode_num=args.episode_num,
+        max_episode_steps=env.spec.max_episode_steps,
+        interim_test_num=args.interim_test_num,
+    )
     agent = build_agent(cfg.agent, build_args)
 
     if not args.test:

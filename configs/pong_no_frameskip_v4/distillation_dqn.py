@@ -40,6 +40,7 @@ agent = dict(
         save_dir="data/",
         epochs=20,  # epoch of student training
         n_frame_from_last=int(5e4),  # number of frames to save from the end of training
+        is_student=False,
     ),
     learner_cfg=dict(
         type="DQNLearner",

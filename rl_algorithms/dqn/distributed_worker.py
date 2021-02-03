@@ -4,7 +4,6 @@
 - Contact: chris.yoon@medipixel.io
 """
 
-import argparse
 from collections import OrderedDict
 from typing import Dict, Tuple
 
@@ -33,21 +32,27 @@ class DQNWorker(DistributedWorker):
     def __init__(
         self,
         rank: int,
-        args: argparse.Namespace,
-        env_info: ConfigDict,
+        device: str,
         hyper_params: ConfigDict,
+        env_name: str,
+        is_atari: bool,
+        max_episode_steps: int,
+        loss_type: ConfigDict,
+        state_dict: OrderedDict,
         backbone: ConfigDict,
         head: ConfigDict,
-        state_dict: OrderedDict,
-        device: str,
-        loss_type: ConfigDict,
+        state_size: int,
+        output_size: int,
     ):
-        DistributedWorker.__init__(self, rank, args, env_info, hyper_params, device)
+        DistributedWorker.__init__(
+            self, rank, device, hyper_params, env_name, is_atari, max_episode_steps
+        )
+
         self.loss_fn = build_loss(loss_type)
         self.backbone_cfg = backbone
         self.head_cfg = head
-        self.head_cfg.configs.state_size = self.env_info.observation_space.shape
-        self.head_cfg.configs.output_size = self.env_info.action_space.n
+        self.head_cfg.configs.state_size = state_size
+        self.head_cfg.configs.output_size = output_size
 
         self.use_n_step = self.hyper_params.n_step > 1
 

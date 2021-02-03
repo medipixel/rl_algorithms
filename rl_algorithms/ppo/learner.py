@@ -1,4 +1,3 @@
-import argparse
 from collections import OrderedDict
 from typing import Tuple
 
@@ -20,7 +19,6 @@ class PPOLearner(Learner):
     """Learner for PPO Agent.
 
     Attributes:
-        args (argparse.Namespace): arguments including hyperparameters and training settings
         hyper_params (ConfigDict): hyper-parameters
         log_cfg (ConfigDict): configuration for saving log and checkpoint
         actor (nn.Module): actor model to select actions
@@ -32,26 +30,28 @@ class PPOLearner(Learner):
 
     def __init__(
         self,
-        args: argparse.Namespace,
-        env_info: ConfigDict,
         hyper_params: ConfigDict,
         log_cfg: ConfigDict,
         backbone: ConfigDict,
         head: ConfigDict,
         optim_cfg: ConfigDict,
+        env_name: str,
+        state_size: tuple,
+        output_size: int,
+        is_test: bool,
+        load_from: str,
     ):
-        Learner.__init__(
-            self, args, env_info, hyper_params, log_cfg,
-        )
+        Learner.__init__(self, hyper_params, log_cfg, env_name, is_test)
 
         self.backbone_cfg = backbone
         self.head_cfg = head
         self.head_cfg.actor.configs.state_size = (
             self.head_cfg.critic.configs.state_size
-        ) = self.env_info.observation_space.shape
-        self.head_cfg.actor.configs.output_size = self.env_info.action_space.shape[0]
+        ) = state_size
+        self.head_cfg.actor.configs.output_size = output_size
         self.optim_cfg = optim_cfg
         self.is_discrete = self.hyper_params.is_discrete
+        self.load_from = load_from
 
         self._init_network()
 
@@ -77,8 +77,8 @@ class PPOLearner(Learner):
         )
 
         # load model parameters
-        if self.args.load_from is not None:
-            self.load_params(self.args.load_from)
+        if self.load_from is not None:
+            self.load_params(self.load_from)
 
     def update_model(self, experience: TensorTuple, epsilon: float) -> TensorTuple:
         """Update PPO actor and critic networks"""

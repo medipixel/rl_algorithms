@@ -4,33 +4,17 @@
 - Contact: chris.yoon@medipixel.io
 """
 
-import argparse
-
 import numpy as np
 import torch
 import wandb
 
 from rl_algorithms.common.abstract.distributed_logger import DistributedLogger
 from rl_algorithms.registry import LOGGERS
-from rl_algorithms.utils.config import ConfigDict
 
 
 @LOGGERS.register_module
 class DQNLogger(DistributedLogger):
     """DQN Logger for distributed training."""
-
-    def __init__(
-        self,
-        args: argparse.Namespace,
-        env_info: ConfigDict,
-        log_cfg: ConfigDict,
-        comm_cfg: ConfigDict,
-        backbone: ConfigDict,
-        head: ConfigDict,
-    ):
-        DistributedLogger.__init__(
-            self, args, env_info, log_cfg, comm_cfg, backbone, head
-        )
 
     def load_params(self, path: str):
         """Load model and optimizer parameters."""
@@ -63,7 +47,7 @@ class DQNLogger(DistributedLogger):
             )
         )
 
-        if self.args.log:
+        if self.is_log:
             wandb.log(
                 {
                     "test score": log_value["avg_score"],

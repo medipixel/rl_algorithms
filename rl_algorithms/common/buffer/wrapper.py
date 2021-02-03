@@ -9,7 +9,6 @@
          https://arxiv.org/pdf/1707.08817.pdf
 """
 
-import argparse
 import random
 from typing import Any, Tuple
 
@@ -96,12 +95,19 @@ class PrioritizedBufferWrapper(BufferWrapper):
         p_total = self.sum_tree.sum(0, len(self.buffer))
         segment = p_total / batch_size
 
-        for i in range(batch_size):
+        i = 0
+        while len(indices) < batch_size:
             a = segment * i
             b = segment * (i + 1)
             upperbound = random.uniform(a, b)
             idx = self.sum_tree.retrieve(upperbound)
+            if idx > len(self.buffer):
+                print(
+                    f"[WARNING] Index for sampling is out of range: {len(self.buffer)} < {idx}"
+                )
+                continue
             indices.append(idx)
+            i += 1
         return indices
 
     def sample(self, beta: float = 0.4) -> Tuple[torch.Tensor, ...]:
@@ -149,7 +155,6 @@ class ApeXBufferWrapper(BufferWrapper):
 
     Attributes:
         per_buffer (ReplayBuffer): replay buffer wrappped in PER wrapper
-        args (arpgarse.Namespace): args from run script
         hyper_params (ConfigDict): algorithm hyperparameters
         comm_config (ConfigDict): configs for communication
 
@@ -158,12 +163,10 @@ class ApeXBufferWrapper(BufferWrapper):
     def __init__(
         self,
         per_buffer: PrioritizedBufferWrapper,
-        args: argparse.Namespace,
         hyper_params: ConfigDict,
         comm_cfg: ConfigDict,
     ):
         BufferWrapper.__init__(self, per_buffer)
-        self.args = args
         self.hyper_params = hyper_params
         self.comm_cfg = comm_cfg
         self.per_beta = hyper_params.per_beta
@@ -217,12 +220,12 @@ class ApeXBufferWrapper(BufferWrapper):
 
     def update_priority_beta(self):
         """Update important sampling ratio for prioritized buffer."""
-        fraction = min(float(self.num_sent) / self.args.max_update_step, 1.0)
+        fraction = min(float(self.num_sent) / self.hyper_params.max_update_step, 1.0)
         self.per_beta = self.per_beta + fraction * (1.0 - self.per_beta)
 
     def run(self):
         """Run main buffer loop to communicate data."""
-        while self.num_sent < self.args.max_update_step:
+        while self.num_sent < self.hyper_params.max_update_step:
             self.recv_worker_data()
             if len(self.buffer) >= self.hyper_params.update_starts_from:
                 self.send_batch_to_learner()
