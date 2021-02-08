@@ -16,12 +16,14 @@
 import argparse
 import os
 import pickle
+import random
 import time
 from typing import Tuple
 
 import gym
 import numpy as np
 import torch
+from tqdm import tqdm
 import wandb
 
 from rl_algorithms.common.abstract.agent import Agent
@@ -33,12 +35,11 @@ from rl_algorithms.utils.config import ConfigDict
 
 
 @AGENTS.register_module
-class DQNAgent(Agent):
+class OfflineDQNAgent(Agent):
     """DQN interacting with environment.
 
     Attribute:
         env (gym.Env): openAI Gym environment
-        args (argparse.Namespace): arguments including hyperparameters and training settings
         hyper_params (ConfigDict): hyper-parameters
         log_cfg (ConfigDict): configuration for saving log and checkpoint
         network_cfg (ConfigDict): config of network for training agent
@@ -53,7 +54,6 @@ class DQNAgent(Agent):
         epsilon (float): parameter for epsilon greedy policy
         n_step_buffer (deque): n-size buffer to calculate n-step returns
         per_beta (float): beta parameter for prioritized replay buffer
-        use_n_step (bool): whether or not to use n-step returns
 
     """
 
@@ -91,41 +91,37 @@ class DQNAgent(Agent):
             self.min_epsilon = hyper_params.min_epsilon
             self.epsilon = hyper_params.max_epsilon
 
-        if self.args.save_offline_data:
-            self.make_offline_dir()
-
         self._initialize()
 
     # pylint: disable=attribute-defined-outside-init
     def _initialize(self):
         """Initialize non-common things."""
         if not self.args.test:
-            # replay memory for a single step
-            self.memory = ReplayBuffer(
-                self.hyper_params.buffer_size,
-                self.hyper_params.batch_size,
-                n_step=self.hyper_params.n_step,
-                gamma=self.hyper_params.gamma,
-            )
-            self.memory = PrioritizedBufferWrapper(
-                self.memory, alpha=self.hyper_params.per_alpha
-            )
+            self.load_offline_data()
 
         self.learner = build_learner(self.learner_cfg)
 
-    def select_action(self, state: np.ndarray) -> np.ndarray:
-        """Select an action from the input space."""
-        self.curr_state = state
-
-        # epsilon greedy policy
-        if not self.args.test and self.epsilon > np.random.random():
-            selected_action = np.array(self.env.action_space.sample())
-        else:
-            with torch.no_grad():
-                state = self._preprocess_state(state)
-                selected_action = self.learner.dqn(state).argmax()
-            selected_action = selected_action.detach().cpu().numpy()
-        return selected_action
+    def load_offline_data(self):
+        total_dataset_num = 0
+        file_name_list = []
+        for _dir in self.hyper_params.dataset_path:
+            total_dataset_num += len(os.listdir(_dir))
+        # replay memory for a single step
+        self.memory = ReplayBuffer(
+            total_dataset_num,
+            self.hyper_params.batch_size,
+            n_step=self.hyper_params.n_step,
+            gamma=self.hyper_params.gamma,
+        )
+        for _dir in self.hyper_params.dataset_path:
+            tmp = os.listdir(_dir)
+            tmp = sorted(tmp, key=lambda x: int(x.split(".")[0]))
+            total_dataset_num += len(tmp)
+            file_name_list += [os.path.join(_dir, x) for x in tmp]
+            for file_name in tqdm(file_name_list):
+                with open(file_name, "rb") as f:
+                    transition = pickle.load(f)
+                    self._add_transition_to_memory(transition)
 
     # pylint: disable=no-self-use
     def _preprocess_state(self, state: np.ndarray) -> torch.Tensor:
@@ -135,35 +131,22 @@ class DQNAgent(Agent):
 
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, np.float64, bool, dict]:
         """Take an action and return the response of the env."""
-        next_state, reward, done, info = self.env.step(action)
 
-        if not self.args.test:
-            # if the last state is not a terminal state, store done as false
-            done_bool = (
-                False if self.episode_step == self.args.max_episode_steps else done
-            )
-
-            transition = (self.curr_state, action, reward, next_state, done_bool)
-            self._add_transition_to_memory(transition)
-            if self.args.save_offline_data:
-                self._save_offline_data(transition)
-        return next_state, reward, done, info
+        return self.env.step(action)
 
     def _add_transition_to_memory(self, transition: Tuple[np.ndarray, ...]):
         """Add 1 step and n step transitions to memory."""
-        # if transition is not an empty tuple
-        if transition:
-            self.memory.add(transition)
+        # add n-step transition
+        self.memory.add(transition)
 
     def write_log(self, log_value: tuple):
         """Write log about loss and score"""
         i, loss, score, avg_time_cost = log_value
         print(
-            "[INFO] episode %d, episode step: %d, total step: %d, total score: %f\n"
+            "[INFO] episode %d, total step: %d, total score: %f\n"
             "epsilon: %f, loss: %f, avg q-value: %f (spent %.6f sec/step)\n"
             % (
                 i,
-                self.episode_step,
                 self.total_step,
                 score,
                 self.epsilon,
@@ -190,14 +173,19 @@ class DQNAgent(Agent):
         """Pretraining steps."""
         pass
 
-    def sample_experience(self) -> Tuple[torch.Tensor, ...]:
-        """Sample experience from replay buffer."""
-        experiences_1 = self.memory.sample(self.per_beta)
-        experiences_1 = (
-            numpy2floattensor(experiences_1[:6], self.learner.device)
-            + experiences_1[6:]
-        )
+    def select_action(self, state: np.ndarray) -> np.ndarray:
+        """Select an action from the input space."""
+        self.curr_state = state
+        with torch.no_grad():
+            state = self._preprocess_state(state)
+            selected_action = self.learner.dqn(state).argmax()
+        selected_action = selected_action.detach().cpu().numpy()
+        return selected_action
 
+    def sample_experience(self, idx) -> Tuple[torch.Tensor, ...]:
+        """Sample experience from replay buffer."""
+        experiences_1 = self.memory.sample(idx)
+        experiences_1 = numpy2floattensor(experiences_1, self.learner.device)
         return experiences_1
 
     def make_offline_dir(self):
@@ -211,12 +199,27 @@ class DQNAgent(Agent):
             + "/"
             + "offline/",
         )
+        self.save_distillation_dir = os.path.join(
+            self.hyper_params.save_dir,
+            "offline_data/"
+            + self.env_info.name
+            + "/"
+            + self.log_cfg.curr_time
+            + "/"
+            + "distillation/",
+        )
         os.makedirs(self.save_offline_dir)
+        os.makedirs(self.save_distillation_dir)
         self.save_count = 0
 
-    def _save_offline_data(self, transition):
+    def _save_offline_data(self, transition, q):
+        distill_current_ep_dir = (
+            f"{self.save_distillation_dir}/{self.save_count:07}.pkl"
+        )
         offline_current_ep_dir = f"{self.save_offline_dir}/{self.save_count:07}.pkl"
         self.save_count += 1
+        with open(distill_current_ep_dir, "wb") as f:
+            pickle.dump([self.curr_state, q], f, protocol=pickle.HIGHEST_PROTOCOL)
         if transition:
             with open(offline_current_ep_dir, "wb") as f:
                 pickle.dump(transition, f, protocol=pickle.HIGHEST_PROTOCOL)
@@ -226,67 +229,32 @@ class DQNAgent(Agent):
         # logger
         if self.args.log:
             self.set_wandb()
-            # wandb.watch([self.dqn], log="parameters")
-
-        # pre-training if needed
-        self.pretrain()
-
+        memory_len_range = [*range(len(self.memory))]
+        iter_num = (len(self.memory) // self.hyper_params.batch_size) + 1
         for self.i_episode in range(1, self.args.episode_num + 1):
-            state = self.env.reset()
-            self.episode_step = 0
             losses = list()
-            done = False
-            score = 0
-
             t_begin = time.time()
+            for _ in tqdm(range(iter_num)):
+                for _ in range(self.hyper_params.multiple_update):
+                    idx = random.sample(memory_len_range, self.hyper_params.batch_size)
+                    experience = self.sample_experience(idx)
 
-            while not done:
-                if self.args.render and self.i_episode >= self.args.render_after:
-                    self.env.render()
-                action = self.select_action(state)
-                next_state, reward, done, _ = self.step(action)
-                self.total_step += 1
-                self.episode_step += 1
-
-                if len(self.memory) >= self.hyper_params.update_starts_from:
-                    if self.total_step % self.hyper_params.train_freq == 0:
-                        for _ in range(self.hyper_params.multiple_update):
-                            experience = self.sample_experience()
-                            info = self.learner.update_model(experience)
-                            loss = info[0:2]
-                            indices, new_priorities = info[2:4]
-                            losses.append(loss)  # for logging
-                            self.memory.update_priorities(indices, new_priorities)
-
-                    # decrease epsilon
-                    self.epsilon = max(
-                        self.epsilon
-                        - (self.max_epsilon - self.min_epsilon)
-                        * self.hyper_params.epsilon_decay,
-                        self.min_epsilon,
+                    info = self.learner.update_model(
+                        experience, isinstance(self.memory, PrioritizedBufferWrapper)
                     )
-
-                    # increase priority beta
-                    fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)
-                    self.per_beta = self.per_beta + fraction * (1.0 - self.per_beta)
-
-                state = next_state
-                score += reward
+                    loss = info[0:2]
+                    losses.append(loss)  # for logging
 
             t_end = time.time()
-            avg_time_cost = (t_end - t_begin) / self.episode_step
+            avg_time_cost = (t_end - t_begin) / self.i_episode
 
             if losses:
                 avg_loss = np.vstack(losses).mean(axis=0)
-                log_value = (self.i_episode, avg_loss, score, avg_time_cost)
+                log_value = (self.i_episode, avg_loss, 0, avg_time_cost)
                 self.write_log(log_value)
 
-            if (
-                self.i_episode % self.args.save_period == 0
-                and self.total_step >= self.hyper_params.update_starts_from
-            ):
-                self.learner.save_params(self.i_episode)
-                self.interim_test()
+            self.learner.save_params(self.i_episode)
+            self.interim_test()
 
         # termination
         self.env.close()

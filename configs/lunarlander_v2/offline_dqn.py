@@ -5,7 +5,7 @@
 """
 
 agent = dict(
-    type="DQNAgent",
+    type="OfflineDQNAgent",
     hyper_params=dict(
         gamma=0.99,
         tau=5e-3,
@@ -25,7 +25,7 @@ agent = dict(
         max_epsilon=1.0,
         min_epsilon=0.01,  # openai baselines: 0.01
         epsilon_decay=1e-5,  # openai baselines: 1e-7 / 1e-1
-        save_dir="./data/",
+        dataset_path=["./data/offline_data/LunarLander-v2/210205_180423/offline"],
     ),
     learner_cfg=dict(
         type="DQNLearner",

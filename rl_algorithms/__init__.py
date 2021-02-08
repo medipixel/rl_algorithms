@@ -21,6 +21,7 @@ from .fd.dqn_agent import DQfDAgent
 from .fd.dqn_learner import DQfDLearner
 from .fd.sac_agent import SACfDAgent
 from .fd.sac_learner import SACfDLearner
+from .offline.dqn_agent import OfflineDQNAgent
 from .ppo.agent import PPOAgent
 from .ppo.learner import PPOLearner
 from .recurrent.dqn_agent import R2D1Agent
@@ -38,6 +39,7 @@ __all__ = [
     "BCSACAgent",
     "DDPGAgent",
     "DQNAgent",
+    "OfflineDQNAgent",
     "DDPGfDAgent",
     "DQfDAgent",
     "R2D1Agent",

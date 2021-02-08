@@ -52,7 +52,6 @@ class DQNLearner(Learner):
         self.head_cfg.configs.state_size = self.env_info.observation_space.shape
         self.head_cfg.configs.output_size = self.env_info.action_space.n
         self.optim_cfg = optim_cfg
-        self.use_n_step = self.hyper_params.n_step > 1
         self.loss_type = loss_type
         self._init_network()
 
@@ -78,37 +77,22 @@ class DQNLearner(Learner):
             self.load_params(self.args.load_from)
 
     def update_model(
-        self, experience: Union[TensorTuple, Tuple[TensorTuple]]
+        self, experience: Union[TensorTuple, Tuple[TensorTuple]], is_per: bool = True
     ) -> Tuple[torch.Tensor, torch.Tensor, list, np.ndarray]:  # type: ignore
         """Update dqn and dqn target."""
+        experience_1 = experience
+        if is_per:
+            weights, indices = experience_1[-3:-1]
 
-        if self.use_n_step:
-            experience_1, experience_n = experience
-        else:
-            experience_1 = experience
-
-        weights, indices = experience_1[-3:-1]
-
-        gamma = self.hyper_params.gamma
+        gamma = self.hyper_params.gamma ** self.hyper_params.n_step
 
         dq_loss_element_wise, q_values = self.loss_fn(
             self.dqn, self.dqn_target, experience_1, gamma, self.head_cfg
         )
-
-        dq_loss = torch.mean(dq_loss_element_wise * weights)
-
-        # n step loss
-        if self.use_n_step:
-            gamma = self.hyper_params.gamma ** self.hyper_params.n_step
-
-            dq_loss_n_element_wise, q_values_n = self.loss_fn(
-                self.dqn, self.dqn_target, experience_n, gamma, self.head_cfg
-            )
-
-            # to update loss and priorities
-            q_values = 0.5 * (q_values + q_values_n)
-            dq_loss_element_wise += dq_loss_n_element_wise * self.hyper_params.w_n_step
+        if is_per:
             dq_loss = torch.mean(dq_loss_element_wise * weights)
+        else:
+            dq_loss = torch.mean(dq_loss_element_wise)
 
         # q_value regularization
         q_regular = torch.norm(q_values, 2).mean() * self.hyper_params.w_q_reg
@@ -125,19 +109,25 @@ class DQNLearner(Learner):
         common_utils.soft_update(self.dqn, self.dqn_target, self.hyper_params.tau)
 
         # update priorities in PER
-        loss_for_prior = dq_loss_element_wise.detach().cpu().numpy()
-        new_priorities = loss_for_prior + self.hyper_params.per_eps
+        if is_per:
+            loss_for_prior = dq_loss_element_wise.detach().cpu().numpy()
+            new_priorities = loss_for_prior + self.hyper_params.per_eps
 
         if self.head_cfg.configs.use_noisy_net:
             self.dqn.head.reset_noise()
             self.dqn_target.head.reset_noise()
-
-        return (
-            loss.item(),
-            q_values.mean().item(),
-            indices,
-            new_priorities,
-        )
+        if is_per:
+            return (
+                loss.item(),
+                q_values.mean().item(),
+                indices,
+                new_priorities,
+            )
+        else:
+            return (
+                loss.item(),
+                q_values.mean().item(),
+            )
 
     def save_params(self, n_episode: int):
         """Save model and optimizer parameters."""
