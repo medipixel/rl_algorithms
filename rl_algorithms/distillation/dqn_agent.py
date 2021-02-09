@@ -34,6 +34,7 @@ class DistillationDQN(DQNAgent):
     def _initialize(self):
         """Initialize non-common things."""
         self.save_distillation_dir = None
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         if not self.args.student:
             # Since raining teacher do not require DistillationBuffer,
             # it overloads DQNAgent._initialize.
@@ -211,7 +212,8 @@ class DistillationDQN(DQNAgent):
 
         for i in tqdm(range(len(file_name_list))):
             with open(file_name_list[i], "rb") as f:
-                state = pickle.load(f)[0]
+                transition = pickle.load(f)
+                state = transition[0]
 
             torch_state = numpy2floattensor(state, self.device)
             pred_q = self.learner.dqn(torch_state).squeeze().detach().cpu().numpy()
@@ -249,21 +251,26 @@ class DistillationDQN(DQNAgent):
                 f"[INFO] Total epochs: {self.hyper_params.epochs}\t Train steps: {train_steps}"
             )
             n_epoch = 0
+            losses = []
             for steps in range(train_steps):
                 loss = self.update_distillation()
-
-                if self.args.log:
-                    wandb.log({"dqn loss": loss[0], "avg q values": loss[1]})
+                losses.append(loss)
 
                 if steps % iter_1 == 0:
                     print(
-                        f"Training {n_epoch} epochs, {steps} steps.. "
+                        f"Training {n_epoch} epochs, {steps // iter_1} steps.. "
                         + f"loss: {loss[0]}, avg_q_value: {loss[1]}"
                     )
-                    self.learner.save_params(steps)
+                    if self.args.log:
+                        avg_loss = np.vstack(losses).mean(axis=0)
+                        wandb.log(
+                            {"dqn loss": avg_loss[0], "avg q values": avg_loss[1]}
+                        )
+                        losses = []
+                    self.learner.save_params(steps // iter_1)
                     n_epoch += 1
                     self.memory.reset_dataloader()
-
+                    self.interim_test()
             self.learner.save_params(steps)
 
         else:
@@ -293,3 +300,52 @@ class DistillationDQN(DQNAgent):
                 print(
                     f"last {self.hyper_params.n_frame_from_last} frames dir: {last_frame_dir}"
                 )
+
+    def interim_test(self):
+        """Test in the middle of training."""
+        self.args.test = True
+
+        print()
+        print("===========")
+        print("Start Test!")
+        print("===========")
+
+        test_num = self.args.interim_test_num
+
+        score_list = []
+        for i_episode in range(test_num):
+            state = self.env.reset()
+            done = False
+            score = 0
+            step = 0
+
+            while not done:
+                if self.args.render:
+                    self.env.render()
+
+                action = self.select_action(state)
+                next_state, reward, done, _ = self.env.step(action)
+
+                state = next_state
+                score += reward
+                step += 1
+
+            print(
+                "[INFO] test %d\tstep: %d\ttotal score: %d" % (i_episode, step, score)
+            )
+            score_list.append(score)
+
+        if self.args.log:
+            wandb.log(
+                {
+                    "avg test score": round(sum(score_list) / len(score_list), 2),
+                    "test total step": self.total_step,
+                }
+            )
+
+        print("===========")
+        print("Test done!")
+        print("===========")
+        print()
+
+        self.args.test = False
