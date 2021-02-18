@@ -287,6 +287,18 @@ Class diagram at [#135](https://github.com/medipixel/rl_algorithms/pull/135).
 
 ![RL_Algorithms_ClassDiagram](https://user-images.githubusercontent.com/16010242/55934443-812d5a80-5c6b-11e9-9b31-fa8214965a55.png)
 
+## Citing the Project
+To cite this repository in publications:
+```
+@misc{rl_algorithms,
+  author = {Kim, Kyunghwan and Lee, Chaehyuk and Jeong, Euijin and Han, Jiseong and Kim, Minseop and Yoon, Chris and Kim, Mincheol and Park, Jinwoo},
+  title = {Medipixel RL algorithms},
+  year = {2020},
+  publisher = {Github},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/medipixel/rl_algorithms}},
+}
+```
 ## References
 0. [T. P. Lillicrap et al., "Continuous control with deep reinforcement learning." arXiv preprint arXiv:1509.02971, 2015.](https://arxiv.org/pdf/1509.02971.pdf)
 1. [J. Schulman et al., "Proximal Policy Optimization Algorithms." arXiv preprint arXiv:1707.06347, 2017.](https://arxiv.org/abs/1707.06347.pdf)
