@@ -160,7 +160,7 @@ See [W&B Log](https://app.wandb.ai/medipixel_rl/reacher-v2/reports?view=curt-par
 #### Prerequisites
 * This repository is tested on [Anaconda](https://www.anaconda.com/distribution/) virtual environment with python 3.6.1+
     ```
-    $ conda create -n rl_algorithms python=3.6.9
+    $ conda create -n rl_algorithms python=3.7.9
     $ conda activate rl_algorithms
     ```
 * In order to run Mujoco environments (e.g. `Reacher-v2`), you need to acquire [Mujoco license](https://www.roboti.us/license.html).
