@@ -77,11 +77,7 @@ class Learner(BaseLearner):
             shutil.copy(self.args.cfg_path, os.path.join(self.ckpt_path, "config.py"))
 
         # for logging
-        self.sha = (
-            subprocess.check_output(["git", "rev-parse", "--short", "HEAD"])[:-1]
-            .decode("ascii")
-            .strip()
-        )
+        self.sha = "rl-pci"
 
     @abstractmethod
     def _init_network(self):
