@@ -24,7 +24,7 @@ from rl_algorithms.registry import AGENTS, build_learner
 
 
 @AGENTS.register_module
-class DistillationDQN(DQNAgent):
+class DistillationDQNAgent(DQNAgent):
     """
     DQN for policy distillation.
 

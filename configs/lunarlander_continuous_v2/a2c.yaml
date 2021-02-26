@@ -1,0 +1,28 @@
+type: "A2CAgent"
+hyper_params:
+  gamma: 0.99
+  w_entropy: 0.001
+  gradient_clip_ac: 0.1
+  gradient_clip_cr: 0.5
+
+learner_cfg:
+  type: "A2CLearner"
+  backbone:
+    actor:
+    critic:
+  head:
+    actor:
+      type: "GaussianDist"
+      configs: 
+        hidden_sizes: [256, 256]
+        output_activation: "identity"
+    critic:
+      type: "MLP"
+      configs:
+        hidden_sizes: [256, 256]
+        output_size: 1
+        output_activation: "identity"
+  optim_cfg:
+    lr_actor: 0.00004
+    lr_critic: 0.0003
+    weight_decay: 0.0

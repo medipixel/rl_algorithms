@@ -5,6 +5,7 @@ import os.path as osp
 import sys
 
 from addict import Dict
+import yaml
 
 
 class ConfigDict(Dict):
@@ -161,3 +162,27 @@ class Config:
 
     def __iter__(self):
         return iter(self._cfg_dict)
+
+
+class YamlConfig:
+    """Manager of ConfigDict from yaml."""
+
+    def __init__(self, config_paths: dict):
+        """Make ConfigDict from yaml path."""
+        self.cfg = ConfigDict()
+        for key, path in config_paths.items():
+            self.cfg[key] = self._yaml_to_config_dict(path)
+
+    @staticmethod
+    def _yaml_to_config_dict(path: str) -> ConfigDict:
+        """Return ConfigDict from yaml."""
+        try:
+            with open(path) as f:
+                data = yaml.load(f, Loader=yaml.FullLoader)
+        except FileNotFoundError:
+            with open(osp.expanduser(path)) as f:
+                data = yaml.load(f, Loader=yaml.FullLoader)
+        return ConfigDict(data)
+
+    def __call__(self):
+        return self.cfg
