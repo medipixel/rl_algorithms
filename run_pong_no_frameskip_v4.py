@@ -11,7 +11,7 @@ import datetime
 from rl_algorithms import build_agent
 from rl_algorithms.common.env.atari_wrappers import atari_env_generator
 import rl_algorithms.common.helper_functions as common_utils
-from rl_algorithms.utils import Config
+from rl_algorithms.utils import YamlConfig
 
 
 def parse_args() -> argparse.Namespace:
@@ -23,7 +23,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--cfg-path",
         type=str,
-        default="./configs/pong_no_frameskip_v4/dqn.py",
+        default="./configs/pong_no_frameskip_v4/dqn.yaml",
         help="config path",
     )
     parser.add_argument(
@@ -99,7 +99,7 @@ def main():
     NOWTIMES = datetime.datetime.now()
     curr_time = NOWTIMES.strftime("%y%m%d_%H%M%S")
 
-    cfg = Config.fromfile(args.cfg_path)
+    cfg = YamlConfig(dict(agent=args.cfg_path))()
 
     # If running integration test, simplify experiment
     if args.integration_test:
