@@ -1,0 +1,35 @@
+type: "TD3Agent"
+hyper_params:
+  gamma: 0.95
+  tau: 0.005
+  buffer_size: 100000
+  batch_size: 100
+  initial_random_action: 10000
+  policy_update_freq: 2
+
+learner_cfg:
+  type: "TD3Learner"
+  backbone:
+    actor:
+    critic:
+  head:
+    actor:
+      type: "MLP"
+      configs: 
+        hidden_sizes: [400, 300]
+        output_activation: "tanh"
+    critic:
+      type: "MLP"
+      configs:
+        hidden_sizes: [400, 300]
+        output_size: 1
+        output_activation: "identity"
+  optim_cfg:
+    lr_actor: 0.001
+    lr_critic: 0.001
+    weight_decay: 0.0
+
+noise_cfg:
+  exploration_noise: 0.1
+  target_policy_noise: 0.2
+  target_policy_noise_clip: 0.5

@@ -22,23 +22,23 @@ hyper_params:
   overlap_size: 16
 
 learner_cfg:
-    type: "R2D1Learner"
-    loss_type:
-      type: "R2D1C51Loss"
-    backbone:
-    gru:
-      rnn_hidden_size: 64
-      burn_in_step: 16
-    head:
-      type: "C51DuelingMLP"
-      configs: 
-        hidden_sizes: [128, 64]
-        v_min: -300
-        v_max: 300
-        atom_size: 51
-        output_activation: "identity"
-        use_noisy_net: False
-    optim_cfg:
-      lr_dqn: 0.0001
-      weight_decay: 0.0000001
-      adam_eps: 0.00000001
+  type: "R2D1Learner"
+  loss_type:
+    type: "R2D1C51Loss"
+  backbone:
+  gru:
+    rnn_hidden_size: 64
+    burn_in_step: 16
+  head:
+    type: "C51DuelingMLP"
+    configs: 
+      hidden_sizes: [128, 64]
+      v_min: -300
+      v_max: 300
+      atom_size: 51
+      output_activation: "identity"
+      use_noisy_net: False
+  optim_cfg:
+    lr_dqn: 0.0001
+    weight_decay: 0.0000001
+    adam_eps: 0.00000001

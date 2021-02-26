@@ -13,7 +13,7 @@ import gym
 from rl_algorithms import build_agent
 import rl_algorithms.common.env.utils as env_utils
 import rl_algorithms.common.helper_functions as common_utils
-from rl_algorithms.utils import Config
+from rl_algorithms.utils import YamlConfig
 
 
 def parse_args() -> argparse.Namespace:
@@ -26,7 +26,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--cfg-path",
         type=str,
-        default="./configs/reacher_v2/ddpg.py",
+        default="./configs/reacher_v2/ddpg.yaml",
         help="config path",
     )
     parser.add_argument(
@@ -91,7 +91,7 @@ def main():
     NOWTIMES = datetime.datetime.now()
     curr_time = NOWTIMES.strftime("%y%m%d_%H%M%S")
 
-    cfg = Config.fromfile(args.cfg_path)
+    cfg = YamlConfig(dict(agent=args.cfg_path))()
 
     # If running integration test, simplify experiment
     if args.integration_test:
