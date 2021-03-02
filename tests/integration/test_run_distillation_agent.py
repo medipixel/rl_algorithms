@@ -73,11 +73,11 @@ def delete_path(path: str):
 def test_distillation():
     """Test distillation agent."""
     check_distillation_agent(
-        "configs/pong_no_frameskip_v4/distillation_dqn.py",
+        "configs/pong_no_frameskip_v4/distillation_dqn.yaml",
         "run_pong_no_frameskip_v4.py",
     )
     check_distillation_agent(
-        "configs/lunarlander_v2/distillation_dqn.py", "run_lunarlander_v2.py"
+        "configs/lunarlander_v2/distillation_dqn.yaml", "run_lunarlander_v2.py"
     )
 
 

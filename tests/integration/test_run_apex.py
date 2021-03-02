@@ -1,15 +1,10 @@
 """Test only one step of run file for training."""
 
-import json
 import os
 import os.path as osp
 import re
 import shutil
 import subprocess
-
-import ray
-
-from rl_algorithms.utils.config import Config
 
 
 def check_run_apex(config_root: str, run_file: str):

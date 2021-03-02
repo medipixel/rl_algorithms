@@ -90,7 +90,7 @@ def main():
     NOWTIMES = datetime.datetime.now()
     curr_time = NOWTIMES.strftime("%y%m%d_%H%M%S")
 
-    cfg = YamlConfig(dict(agent=args.cfg_path))()
+    cfg = YamlConfig(dict(agent=args.cfg_path)).get_config_dict()
 
     # If running integration test, simplify experiment
     if args.integration_test:
