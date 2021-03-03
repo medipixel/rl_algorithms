@@ -10,7 +10,7 @@ tqdm
 
 # for distributed learning
 redis==3.5.3  # for ray
-ray==1.1.0
+ray==1.2.0
 pyzmq==20.0.0
 pyarrow==2.0.0
 

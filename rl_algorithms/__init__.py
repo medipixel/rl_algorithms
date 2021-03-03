@@ -9,7 +9,7 @@ from .common.apex.architecture import ApeX
 from .common.networks.backbones import CNN, ResNet
 from .ddpg.agent import DDPGAgent
 from .ddpg.learner import DDPGLearner
-from .distillation.dqn_agent import DistillationDQN
+from .distillation.dqn_agent import DistillationDQNAgent
 from .dqn.agent import DQNAgent
 from .dqn.distributed_logger import DQNLogger
 from .dqn.distributed_worker import DQNWorker
@@ -72,5 +72,5 @@ __all__ = [
     "ApeX",
     "DQNWorker",
     "DQNLogger",
-    "DistillationDQN",
+    "DistillationDQNAgent",
 ]

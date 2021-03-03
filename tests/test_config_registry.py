@@ -5,7 +5,7 @@ import gym
 
 from rl_algorithms import build_agent
 from rl_algorithms.common.abstract.agent import Agent
-from rl_algorithms.utils import Config
+from rl_algorithms.utils import YamlConfig
 
 
 def parse_args(args: list):
@@ -13,7 +13,7 @@ def parse_args(args: list):
     parser.add_argument(
         "--cfg-path",
         type=str,
-        default="./configs/lunarlander_continuous_v2/ddpg.py",
+        default="./configs/lunarlander_continuous_v2/ddpg.yaml",
         help="config path",
     )
     parser.add_argument(
@@ -66,7 +66,7 @@ def test_config_registry():
     NOWTIMES = datetime.datetime.now()
     curr_time = NOWTIMES.strftime("%y%m%d_%H%M%S")
 
-    cfg = Config.fromfile(args.cfg_path)
+    cfg = YamlConfig(dict(agent=args.cfg_path)).get_config_dict()
     env_info = dict(
         name=env.spec.id,
         observation_space=env.observation_space,

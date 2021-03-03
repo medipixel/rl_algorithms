@@ -1,0 +1,59 @@
+type: "DQNAgent"
+hyper_params:
+  gamma: 0.99
+  tau: 0.005
+  buffer_size: 10000  # openai baselines: 10000
+  batch_size: 16  # openai baselines: 32
+  update_starts_from: 10000  # openai baselines: 10000
+  multiple_update: 1  # multiple learning updates
+  train_freq: 4  # in openai baselines, train_freq = 4
+  gradient_clip: 10.0  # dueling: 10.0
+  n_step: 3
+  w_n_step: 1.0
+  w_q_reg: 0.0
+  per_alpha: 0.6  # openai baselines: 0.6
+  per_beta: 0.4
+  per_eps: 0.000001
+  max_epsilon: 0.0
+  min_epsilon: 0.0  # openai baselines: 0.01
+  epsilon_decay: 0.000001  # openai baselines: 1e-7 / 1e-1
+  # Grad_cam
+  grad_cam_layer_list:
+    - "backbone.layer1.0.conv2"
+    - "backbone.layer2.0.shortcut.0"
+    - "backbone.layer3.0.shortcut.0"
+    - "backbone.layer4.0.shortcut.0"
+    - "backbone.conv_out"
+
+learner_cfg:
+  type: "DQNLearner"
+  loss_type:
+    type: "IQNLoss"
+  backbone:
+    type: "ResNet"
+    configs:
+      use_bottleneck: False
+      num_blocks: [1, 1, 1, 1]
+      block_output_sizes: [32, 32, 64, 64]
+      block_strides: [1, 2, 2, 2]
+      first_input_size: 4
+      first_output_size: 32
+      expansion: 1
+      channel_compression: 4  # compression ratio
+  head:
+    type: "IQNMLP"
+    configs: 
+      hidden_sizes: [512]
+      n_tau_samples: 64
+      n_tau_prime_samples: 64
+      n_quantile_samples: 32
+      quantile_embedding_dim: 64
+      kappa: 1.0
+      output_activation: "identity"
+      # NoisyNet
+      use_noisy_net: True
+      std_init: 0.5
+  optim_cfg:
+    lr_dqn: 0.0001
+    weight_decay: 0.0
+    adam_eps: 0.00000001

@@ -1,0 +1,56 @@
+type: "BCSACAgent"
+hyper_params:
+  gamma: 0.99
+  tau: 0.005
+  buffer_size: 1000000
+  batch_size: 512
+  initial_random_action: 10000
+  multiple_update: 1  # multiple learning updates
+  policy_update_freq: 2
+  w_entropy: 0.001
+  w_mean_reg: 0.001
+  w_std_reg: 0.001
+  w_pre_activation_reg: 0.0
+  auto_entropy_tuning: True
+  # BC
+  demo_batch_size: 64
+  lambda1: 0.001
+  demo_path: "data/lunarlander_continuous_demo.pkl"
+  # HER
+  use_her: False
+  her:
+    type: LunarLanderContinuousHER
+  success_score: 250.0
+  desired_states_from_demo: True
+
+learner_cfg:
+  type: "BCSACLearner"
+  backbone:
+    actor:
+    critic_vf:
+    critic_qf:
+  head:
+    actor:
+      type: "TanhGaussianDistParams"
+      configs: 
+        hidden_sizes: [256, 256]
+        output_activation: "identity"
+    critic_vf:
+      type: "MLP"
+      configs:
+        hidden_sizes: [256, 256]
+        output_size: 1
+        output_activation: "identity"
+    critic_qf:
+      type: "MLP"
+      configs:
+        hidden_sizes: [256, 256]
+        output_size: 1
+        output_activation: "identity"
+  optim_cfg:
+    lr_actor: 0.0003
+    lr_vf: 0.0003
+    lr_qf1: 0.0003
+    lr_qf2: 0.0003
+    lr_entropy: 0.0003
+    weight_decay: 0.0
