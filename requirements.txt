@@ -1,5 +1,5 @@
-numpy==1.18.0
-torch==1.6.0
+numpy>=1.18.0
+torch>=1.6.0
 gym==0.17.3
 atari-py==0.2.6
 box2d-py==2.3.8
@@ -12,7 +12,7 @@ tqdm
 redis==3.5.3  # for ray
 ray==1.2.0
 pyzmq==20.0.0
-pyarrow==2.0.0
+pyarrow==3.0.0
 
 # for log
 six>=1.13.0
