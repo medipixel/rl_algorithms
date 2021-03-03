@@ -132,7 +132,7 @@ class GradCAM(CAMBaseWrapper):
         B, C, H, W = gcam.shape
         gcam = gcam.view(B, -1)
         gcam -= gcam.min(dim=1, keepdim=True)[0]
-        gcam /= gcam.max(dim=1, keepdim=True)[0]
+        gcam /= gcam.max(dim=1, keepdim=True)[0] + 1e-7
         gcam = gcam.view(B, C, H, W)
 
         return gcam
