@@ -12,7 +12,7 @@ tqdm
 redis==3.5.3  # for ray
 ray==1.2.0
 pyzmq==20.0.0
-pyarrow==2.0.0
+pyarrow==3.0.0
 
 # for log
 six>=1.13.0

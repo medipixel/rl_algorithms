@@ -160,7 +160,7 @@ See [W&B Log](https://app.wandb.ai/medipixel_rl/reacher-v2/reports?view=curt-par
 #### Prerequisites
 * This repository is tested on [Anaconda](https://www.anaconda.com/distribution/) virtual environment with python 3.6.1+
     ```
-    $ conda create -n rl_algorithms python=3.6.9
+    $ conda create -n rl_algorithms python=3.7.9
     $ conda activate rl_algorithms
     ```
 * In order to run Mujoco environments (e.g. `Reacher-v2`), you need to acquire [Mujoco license](https://www.roboti.us/license.html).
@@ -192,17 +192,17 @@ make test  # for linting
 ```
 
 #### Usages
-You can train or test `algorithm` on `env_name` if `configs/env_name/algorithm.py` exists. (`configs/env_name/algorithm.py` contains hyper-parameters)
+You can train or test `algorithm` on `env_name` if `configs/env_name/algorithm.yaml` exists. (`configs/env_name/algorithm.yaml` contains hyper-parameters)
 ```
 python run_env_name.py --cfg-path <config-path>
 ``` 
 
 e.g. running soft actor-critic on LunarLanderContinuous-v2.
 ```
-python run_lunarlander_continuous_v2.py --cfg-path ./configs/lunarlander_continuous_v2/sac.py <other-options>
+python run_lunarlander_continuous_v2.py --cfg-path ./configs/lunarlander_continuous_v2/sac.yaml <other-options>
 ```
 
-e.g. running a custom agent, **if you have written your own configs**: `configs/env_name/ddpg-custom.py`.
+e.g. running a custom agent, **if you have written your own configs**: `configs/env_name/ddpg-custom.yaml`.
 ```
 python run_env_name.py --cfg-path ./configs/lunarlander_continuous_v2/ddpg-custom.py
 ```
@@ -232,17 +232,6 @@ python <run-file> -h
     - Start rendering after the number of episodes.
 - `--load-from <save-file-path>`
     - Load the saved models and optimizers at the beginning.
-
-#### Arguments for distributed training in run-files
-- `--max-episode-steps <int>`
-    - Set maximum update step for learner as a stopping criterion for training loop. If the number is less than or equal to 0, it uses the default maximum step number of the environment.
-- `--off-worker-render`
-    - Turn off rendering of individual workers.
-- `--off-logger-render`
-    - Turn off rendering of logger tests.
-- `--worker-verbose`
-    - Turn on printing episode run info for individual workers 
-    
 
 #### Show feature map with Grad-CAM and Saliency-map
 You can show a feature map that the trained agent extract using **[Grad-CAM(Gradient-weighted Class Activation Mapping)](https://arxiv.org/pdf/1610.02391.pdf)** and **[Saliency map](https://arxiv.org/pdf/1312.6034.pdf)**. 

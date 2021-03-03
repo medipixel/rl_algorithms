@@ -81,6 +81,7 @@ class DistillationDataset(Dataset):
             file_name_list (list): transition's file name list in distillation buffer path
 
         """
+        super().__init__()
         self.dataset_path = dataset_path
         self.file_name_list = []
 

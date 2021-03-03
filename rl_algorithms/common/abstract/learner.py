@@ -8,7 +8,6 @@ from abc import ABC, abstractmethod
 from collections import OrderedDict
 import os
 import shutil
-import subprocess
 from typing import Tuple, Union
 
 import torch
@@ -66,19 +65,12 @@ class Learner(BaseLearner):
 
         if not is_test:
             self.ckpt_path = (
-                f"./checkpoint/{env_name}/{log_cfg.agent}/{log_cfg.curr_time}/"
+                f"./checkpoint/{env_name}/{log_cfg.agent}/{log_cfg.curr_time}"
             )
             os.makedirs(self.ckpt_path, exist_ok=True)
 
             # save configuration
             shutil.copy(log_cfg.cfg_path, os.path.join(self.ckpt_path, "config.py"))
-
-        # for logging
-        self.sha = (
-            subprocess.check_output(["git", "rev-parse", "--short", "HEAD"])[:-1]
-            .decode("ascii")
-            .strip()
-        )
 
     @abstractmethod
     def _init_network(self):
@@ -96,7 +88,7 @@ class Learner(BaseLearner):
         """Save parameters of networks."""
         os.makedirs(self.ckpt_path, exist_ok=True)
 
-        path = os.path.join(self.ckpt_path + self.sha + "_ep_" + str(n_episode) + ".pt")
+        path = os.path.join(self.ckpt_path, f"ep_{str(n_episode)}.pt")
         torch.save(params, path)
 
         print(f"[INFO] Saved the model and optimizer to {path} \n")
