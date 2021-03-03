@@ -8,7 +8,6 @@ from abc import ABC, abstractmethod
 from collections import OrderedDict
 import os
 import shutil
-import subprocess
 from typing import Tuple, Union
 
 import torch
