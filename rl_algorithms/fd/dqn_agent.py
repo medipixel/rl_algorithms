@@ -14,7 +14,6 @@ import wandb
 
 from rl_algorithms.common.buffer.replay_buffer import ReplayBuffer
 from rl_algorithms.common.buffer.wrapper import PrioritizedBufferWrapper
-import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.dqn.agent import DQNAgent
 from rl_algorithms.registry import AGENTS, build_learner
 
@@ -35,22 +34,13 @@ class DQfDAgent(DQNAgent):
             # load demo replay memory
             demos = self._load_demos()
 
-            if self.use_n_step:
-                demos, demos_n_step = common_utils.get_n_step_info_from_demo(
-                    demos, self.hyper_params.n_step, self.hyper_params.gamma
-                )
-
-                self.memory_n = ReplayBuffer(
-                    max_len=self.hyper_params.buffer_size,
-                    batch_size=self.hyper_params.batch_size,
-                    n_step=self.hyper_params.n_step,
-                    gamma=self.hyper_params.gamma,
-                    demo=demos_n_step,
-                )
-
             # replay memory
             self.memory = ReplayBuffer(
-                self.hyper_params.buffer_size, self.hyper_params.batch_size, demo=demos,
+                max_len=self.hyper_params.buffer_size,
+                batch_size=self.hyper_params.batch_size,
+                n_step=self.hyper_params.n_step,
+                gamma=self.hyper_params.gamma,
+                demo=demos,
             )
             self.memory = PrioritizedBufferWrapper(
                 self.memory,
