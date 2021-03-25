@@ -58,10 +58,7 @@ class DQfDLearner(DQNLearner):
     ) -> TensorTuple:  # type: ignore
         """Train the model after each episode."""
 
-        if self.use_n_step:
-            experience_1, experience_n = experience
-        else:
-            experience_1 = experience
+        experience_1 = experience
 
         weights, indices, eps_d = experience_1[-3:]
         actions = experience_1[1]
@@ -72,18 +69,6 @@ class DQfDLearner(DQNLearner):
             self.dqn, self.dqn_target, experience_1, gamma, self.head_cfg
         )
         dq_loss = torch.mean(dq_loss_element_wise * weights)
-
-        # n step loss
-        if self.use_n_step:
-            gamma = self.hyper_params.gamma ** self.hyper_params.n_step
-            dq_loss_n_element_wise, q_values_n = self.loss_fn(
-                self.dqn, self.dqn_target, experience_n, gamma, self.head_cfg
-            )
-
-            # to update loss and priorities
-            q_values = 0.5 * (q_values + q_values_n)
-            dq_loss_element_wise += dq_loss_n_element_wise * self.hyper_params.lambda1
-            dq_loss = torch.mean(dq_loss_element_wise * weights)
 
         # supervised loss using demo for only demo transitions
         demo_idxs = np.where(eps_d != 0.0)
