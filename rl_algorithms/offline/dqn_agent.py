@@ -118,10 +118,10 @@ class OfflineDQNAgent(Agent):
             tmp = sorted(tmp, key=lambda x: int(x.split(".")[0]))
             total_dataset_num += len(tmp)
             file_name_list += [os.path.join(_dir, x) for x in tmp]
-            for file_name in tqdm(file_name_list):
-                with open(file_name, "rb") as f:
-                    transition = pickle.load(f)
-                    self._add_transition_to_memory(transition)
+        for file_name in tqdm(file_name_list):
+            with open(file_name, "rb") as f:
+                transition = pickle.load(f)
+                self._add_transition_to_memory(transition)
 
     # pylint: disable=no-self-use
     def _preprocess_state(self, state: np.ndarray) -> torch.Tensor:
