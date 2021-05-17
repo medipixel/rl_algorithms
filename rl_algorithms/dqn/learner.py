@@ -50,7 +50,7 @@ class DQNLearner(Learner):
         self.backbone_cfg = backbone
         self.head_cfg = head
         self.head_cfg.configs.state_size = self.env_info.observation_space.shape
-        self.head_cfg.configs.output_size = self.env_info.action_space.n
+        self.head_cfg.configs.output_size = 3
         self.optim_cfg = optim_cfg
         self.loss_type = loss_type
         self._init_network()

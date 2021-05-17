@@ -270,7 +270,7 @@ class DistillationDQN(DQNAgent):
                     self.learner.save_params(steps // iter_1)
                     n_epoch += 1
                     self.memory.reset_dataloader()
-                    self.interim_test()
+                    # self.interim_test()
             self.learner.save_params(steps)
 
         else:

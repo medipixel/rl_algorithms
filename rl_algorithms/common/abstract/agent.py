@@ -124,8 +124,8 @@ class Agent(ABC):
 
             while not done:
                 if self.args.render:
-                    self.env.render()
-
+                    # self.env.render()
+                    pass
                 action = self.select_action(state)
                 next_state, reward, done, _ = self.step(action)
 

@@ -254,9 +254,9 @@ class OfflineDQNAgent(Agent):
                 self.write_log(log_value)
 
             self.learner.save_params(self.i_episode)
-            self.interim_test()
+            # self.interim_test()
 
         # termination
         self.env.close()
         self.learner.save_params(self.i_episode)
-        self.interim_test()
+        # self.interim_test()
