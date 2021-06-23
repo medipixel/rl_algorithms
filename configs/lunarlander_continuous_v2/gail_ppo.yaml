@@ -11,13 +11,12 @@ hyper_params:
   gradient_clip_ac: 1.0
   gradient_clip_cr: 0.5
   epoch: 10
-  rollout_len: 2048
+  rollout_len: 1024
   n_workers: 4
   use_clipped_value_loss: False
-  standardize_advantage: False
+  standardize_advantage: True
   is_discrete: False
-  # gail
-  gail_reward_weight: 0.0
+  gail_reward_weight: 1.0
   demo_path: "data/lunarlander_continuous_demo.pkl"
 
 learner_cfg:
@@ -32,6 +31,7 @@ learner_cfg:
       configs: 
         hidden_sizes: [256, 256]
         output_activation: "tanh"
+        fixed_logstd: True
     critic:
       type: "MLP"
       configs:
@@ -49,3 +49,4 @@ learner_cfg:
     lr_critic: 0.001
     lr_discriminator: 0.0003
     weight_decay: 0.0
+    discriminator_acc_threshold : 0.8

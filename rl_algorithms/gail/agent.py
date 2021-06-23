@@ -99,16 +99,18 @@ class GAILPPOAgent(PPOAgent):
             i_episode,
             n_step,
             score,
-            task_reward,
             gail_reward,
             actor_loss,
             critic_loss,
             total_loss,
             discriminator_loss,
+            discriminator_exp_acc,
+            discriminator_demo_acc,
         ) = log_value
         print(
-            "[INFO] episode %d\tepisode steps: %d\ttotal score: %d\t gail score: %f\n"
+            "[INFO] episode %d\tepisode steps: %d\ttask score: %f\t gail score: %f\n"
             "total loss: %f\tActor loss: %f\tCritic loss: %f\t Discriminator loss: %f\n"
+            "discriminator_exp_acc: %f\t discriminator_demo_acc: %f"
             % (
                 i_episode,
                 n_step,
@@ -118,6 +120,8 @@ class GAILPPOAgent(PPOAgent):
                 actor_loss,
                 critic_loss,
                 discriminator_loss,
+                discriminator_exp_acc,
+                discriminator_demo_acc,
             )
         )
 
@@ -128,9 +132,10 @@ class GAILPPOAgent(PPOAgent):
                     "actor loss": actor_loss,
                     "critic loss": critic_loss,
                     "discriminator_loss": discriminator_loss,
-                    "task reward": task_reward,
                     "gail reward": gail_reward,
                     "score": score,
+                    "discriminator_exp_acc": discriminator_exp_acc,
+                    "discriminator_demo_acc": discriminator_demo_acc,
                 }
             )
 
@@ -144,6 +149,7 @@ class GAILPPOAgent(PPOAgent):
         score = 0
         i_episode_prev = 0
         loss = [0.0, 0.0, 0.0, 0.0]
+        discriminator_acc = [0.0, 0.0]
         state = self.env.reset()
 
         while self.i_episode <= self.episode_num:
@@ -184,7 +190,7 @@ class GAILPPOAgent(PPOAgent):
                 self.episode_steps += 1
 
                 state = next_state
-                score += reward[0]
+                score += task_reward[0]
                 i_episode_prev = self.i_episode
                 self.i_episode += done.sum()
 
@@ -199,20 +205,20 @@ class GAILPPOAgent(PPOAgent):
                         self.i_episode,
                         n_step,
                         score,
-                        task_reward,
                         gail_reward,
                         loss[0],
                         loss[1],
                         loss[2],
                         loss[3],
+                        discriminator_acc[0],
+                        discriminator_acc[1],
                     )
                     self.write_log(log_value)
                     score = 0
 
                 self.episode_steps[np.where(done)] = 0
             self.next_state = next_state
-            print(len(self.states))
-            loss = self.learner.update_model(
+            loss, discriminator_acc = self.learner.update_model(
                 (
                     self.states,
                     self.actions,

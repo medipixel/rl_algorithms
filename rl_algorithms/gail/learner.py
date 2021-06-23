@@ -174,20 +174,25 @@ class GAILPPOLearner(PPOLearner):
 
             # discriminator loss
             demo_state, demo_action = self.demo_memory.sample(len(state))
-            exp_score = self.discriminator(concat_state_action_tensor(state, action))
-            demo_score = self.discriminator(
-                concat_state_action_tensor(demo_state, demo_action)
+            exp_score = torch.sigmoid(
+                self.discriminator(concat_state_action_tensor(state, action))
             )
-            discriminator_loss = F.binary_cross_entropy_with_logits(
-                exp_score, torch.zeros_like(exp_score)
-            ) + F.binary_cross_entropy_with_logits(
-                demo_score, torch.zeros_like(demo_score)
+            demo_score = torch.sigmoid(
+                self.discriminator(concat_state_action_tensor(demo_state, demo_action))
             )
-
+            discriminator_exp_acc = (exp_score > 0.5).float().mean().item()
+            discriminator_demo_acc = (demo_score <= 0.5).float().mean().item()
+            discriminator_loss = F.binary_cross_entropy(
+                exp_score, torch.ones_like(exp_score)
+            ) + F.binary_cross_entropy(demo_score, torch.zeros_like(demo_score))
             # train discriminator
-            self.discriminator_optim.zero_grad()
-            discriminator_loss.backward()
-            self.discriminator_optim.step()
+            if (
+                discriminator_exp_acc < self.optim_cfg.discriminator_acc_threshold
+                or discriminator_demo_acc < self.optim_cfg.discriminator_acc_threshold
+            ):
+                self.discriminator_optim.zero_grad()
+                discriminator_loss.backward()
+                self.discriminator_optim.step()
 
             # train critic
             gradient_clip_ac = self.hyper_params.gradient_clip_ac
@@ -214,7 +219,10 @@ class GAILPPOLearner(PPOLearner):
         total_loss = sum(total_losses) / len(total_losses)
         discriminator_loss = sum(discriminator_losses) / len(discriminator_losses)
 
-        return actor_loss, critic_loss, total_loss, discriminator_loss
+        return (
+            (actor_loss, critic_loss, total_loss, discriminator_loss),
+            (discriminator_exp_acc, discriminator_demo_acc),
+        )
 
     def save_params(self, n_episode: int):
         """Save model and optimizer parameters."""
