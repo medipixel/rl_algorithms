@@ -25,6 +25,7 @@ learner_cfg:
       configs: 
         hidden_sizes: [256, 256]
         output_activation: "identity"
+        fixed_logstd: False
     critic_vf:
       type: "MLP"
       configs:

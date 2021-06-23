@@ -127,10 +127,15 @@ class GaussianDist(MLP):
         self.log_std_min = log_std_min
         self.log_std_max = log_std_max
         in_size = configs.hidden_sizes[-1]
+        self.fixed_logstd = configs.fixed_logstd
 
-        # set log_std layer
-        self.log_std_layer = nn.Linear(in_size, configs.output_size)
-        self.log_std_layer = init_fn(self.log_std_layer)
+        # set log_std
+        if self.fixed_logstd:
+            log_std = -0.5 * torch.ones(self.output_size, dtype=torch.float32)
+            self.log_std = torch.nn.Parameter(log_std)
+        else:
+            self.log_std_layer = nn.Linear(in_size, configs.output_size)
+            self.log_std_layer = init_fn(self.log_std_layer)
 
         # set mean layer
         self.mu_layer = nn.Linear(in_size, configs.output_size)
@@ -144,10 +149,13 @@ class GaussianDist(MLP):
         mu = self.mu_activation(self.mu_layer(hidden))
 
         # get std
-        log_std = torch.tanh(self.log_std_layer(hidden))
-        log_std = self.log_std_min + 0.5 * (self.log_std_max - self.log_std_min) * (
-            log_std + 1
-        )
+        if self.fixed_logstd:
+            log_std = self.log_std
+        else:
+            log_std = torch.tanh(self.log_std_layer(hidden))
+            log_std = self.log_std_min + 0.5 * (self.log_std_max - self.log_std_min) * (
+                log_std + 1
+            )
         std = torch.exp(log_std)
 
         return mu, log_std, std
