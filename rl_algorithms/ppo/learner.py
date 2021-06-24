@@ -50,7 +50,6 @@ class PPOLearner(Learner):
         ) = state_size
         self.head_cfg.actor.configs.output_size = output_size
         self.optim_cfg = optim_cfg
-        self.is_discrete = self.hyper_params.is_discrete
         self.load_from = load_from
 
         self._init_network()
@@ -101,10 +100,6 @@ class PPOLearner(Learner):
         values = torch.cat(values).detach()
         log_probs = torch.cat(log_probs).detach()
         advantages = returns - values
-
-        if self.is_discrete:
-            actions = actions.unsqueeze(1)
-            log_probs = log_probs.unsqueeze(1)
 
         if self.hyper_params.standardize_advantage:
             advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-7)

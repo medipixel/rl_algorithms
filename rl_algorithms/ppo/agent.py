@@ -101,12 +101,20 @@ class PPOAgent(Agent):
 
         self.epsilon = hyper_params.max_epsilon
 
+        self.is_discrete = isinstance(self.env_info.action_space, gym.spaces.Discrete)
+
+        output_size = (
+            self.env_info.action_space.n
+            if self.is_discrete
+            else self.env_info.action_space.shape[0]
+        )
+
         build_args = dict(
             hyper_params=self.hyper_params,
             log_cfg=self.log_cfg,
             env_name=self.env_info.name,
             state_size=self.env_info.observation_space.shape,
-            output_size=self.env_info.action_space.shape[0],
+            output_size=output_size,
             is_test=self.is_test,
             load_from=self.load_from,
         )
@@ -116,16 +124,21 @@ class PPOAgent(Agent):
         """Select an action from the input space."""
         state = numpy2floattensor(state, self.learner.device)
         selected_action, dist = self.learner.actor(state)
+        log_prob = dist.log_prob(selected_action)
 
-        if self.is_test and not self.is_discrete:
+        if self.is_test:
             selected_action = dist.mean
 
-        if not self.is_test:
+        else:
+            _selected_action = (
+                selected_action.unsqueeze(1) if self.is_discrete else selected_action
+            )
+            _log_prob = log_prob.unsqueeze(1) if self.is_discrete else log_prob
             value = self.learner.critic(state)
             self.states.append(state)
-            self.actions.append(selected_action)
+            self.actions.append(_selected_action)
             self.values.append(value)
-            self.log_probs.append(dist.log_prob(selected_action))
+            self.log_probs.append(_log_prob)
 
         return selected_action
 
