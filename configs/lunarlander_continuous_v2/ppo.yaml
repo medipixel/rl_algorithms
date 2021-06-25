@@ -2,7 +2,7 @@ type: "PPOAgent"
 hyper_params:
   gamma: 0.99
   tau: 0.95
-  batch_size: 128
+  batch_size: 32
   max_epsilon: 0.2
   min_epsilon: 0.2
   epsilon_decay_period: 1500
@@ -11,7 +11,7 @@ hyper_params:
   gradient_clip_ac: 1.0
   gradient_clip_cr: 0.5
   epoch: 16
-  rollout_len: 1024
+  rollout_len: 256
   n_workers: 12
   use_clipped_value_loss: False
   standardize_advantage: True
@@ -21,6 +21,7 @@ learner_cfg:
   backbone:
     actor:
     critic:
+    shared_actor_critic:
   head:
     actor:
       type: "GaussianDist"

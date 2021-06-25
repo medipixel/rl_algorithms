@@ -12,6 +12,7 @@ learner_cfg:
   backbone:
     actor:
     critic:
+    shared_actor_critic:
   head:
     actor:
       type: "MLP"

@@ -10,7 +10,7 @@ from rl_algorithms.common.abstract.learner import Learner, TensorTuple
 from rl_algorithms.common.helper_functions import numpy2floattensor
 from rl_algorithms.common.networks.brain import Brain
 import rl_algorithms.ppo.utils as ppo_utils
-from rl_algorithms.registry import LEARNERS
+from rl_algorithms.registry import LEARNERS, build_backbone
 from rl_algorithms.utils.config import ConfigDict
 
 
@@ -57,10 +57,27 @@ class PPOLearner(Learner):
     def _init_network(self):
         """Initialize networks and optimizers."""
         # create actor
-        self.actor = Brain(self.backbone_cfg.actor, self.head_cfg.actor).to(self.device)
-        self.critic = Brain(self.backbone_cfg.critic, self.head_cfg.critic).to(
-            self.device
-        )
+        if self.backbone_cfg.shared_actor_critic:
+            shared_backbone = build_backbone(self.backbone_cfg.shared_actor_critic)
+            self.actor = Brain(
+                self.backbone_cfg.shared_actor_critic,
+                self.head_cfg.actor,
+                shared_backbone,
+            )
+            self.critic = Brain(
+                self.backbone_cfg.shared_actor_critic,
+                self.head_cfg.critic,
+                shared_backbone,
+            )
+            self.actor = self.actor.to(self.device)
+            self.critic = self.critic.to(self.device)
+        else:
+            self.actor = Brain(self.backbone_cfg.actor, self.head_cfg.actor).to(
+                self.device
+            )
+            self.critic = Brain(self.backbone_cfg.critic, self.head_cfg.critic).to(
+                self.device
+            )
 
         # create optimizer
         self.actor_optim = optim.Adam(

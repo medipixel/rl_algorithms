@@ -64,8 +64,6 @@ class PPOAgent(Agent):
         max_episode_steps: int,
         interim_test_num: int,
     ):
-        env_gen = env_generator(env.spec.id, max_episode_steps)
-        env_multi = make_envs(env_gen, n_envs=hyper_params.n_workers)
 
         Agent.__init__(
             self,
@@ -82,6 +80,8 @@ class PPOAgent(Agent):
             max_episode_steps,
             interim_test_num,
         )
+
+        env_multi = self.make_parallel_env(max_episode_steps, hyper_params.n_workers)
 
         self.episode_steps = np.zeros(hyper_params.n_workers, dtype=np.int)
         self.states: list = []
@@ -119,6 +119,11 @@ class PPOAgent(Agent):
             load_from=self.load_from,
         )
         self.learner = build_learner(self.learner_cfg, build_args)
+
+    def make_parallel_env(self, max_episode_steps, n_workers):
+        env_gen = env_generator(self.env.spec.id, max_episode_steps)
+        env_multi = make_envs(env_gen, n_envs=n_workers)
+        return env_multi
 
     def select_action(self, state: np.ndarray) -> torch.Tensor:
         """Select an action from the input space."""
@@ -169,9 +174,7 @@ class PPOAgent(Agent):
             1.0, t / (epsilon_decay_period + 1e-7)
         )
 
-    def write_log(
-        self, log_value: tuple,
-    ):
+    def write_log(self, log_value: tuple):
         i_episode, n_step, score, actor_loss, critic_loss, total_loss = log_value
         print(
             "[INFO] episode %d\tepisode steps: %d\ttotal score: %d\n"
