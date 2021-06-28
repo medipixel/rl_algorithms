@@ -8,14 +8,13 @@ hyper_params:
   epsilon_decay_period: 1500
   w_value: 1.0
   w_entropy: 0.001
-  gradient_clip_ac: 1.0
-  gradient_clip_cr: 0.5
+  gradient_clip_ac: 0.5
+  gradient_clip_cr: 1.0
   epoch: 10
   rollout_len: 1024
   n_workers: 4
   use_clipped_value_loss: False
   standardize_advantage: True
-  is_discrete: False
   gail_reward_weight: 1.0
   demo_path: "data/lunarlander_continuous_demo.pkl"
 
@@ -25,12 +24,13 @@ learner_cfg:
     actor:
     critic:
     discriminator: 
+    shared_actor_critic:
   head:
     actor:
       type: "GaussianDist"
       configs: 
         hidden_sizes: [256, 256]
-        output_activation: "tanh"
+        output_activation: "identity"
         fixed_logstd: True
     critic:
       type: "MLP"

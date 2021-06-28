@@ -44,6 +44,8 @@ class Brain(nn.Module):
             head_cfg.configs.input_size = self.calculate_fc_input_size(
                 head_cfg.configs.state_size
             )
+        if "additional_input_size" in head_cfg.configs.keys():
+            head_cfg.configs.input_size += head_cfg.configs.additional_input_size
         self.head = build_head(head_cfg)
 
     def forward(self, x: torch.Tensor) -> Union[torch.Tensor, Tuple[torch.Tensor, ...]]:

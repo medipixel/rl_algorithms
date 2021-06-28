@@ -12,7 +12,7 @@ from rl_algorithms.common.networks.brain import Brain
 from rl_algorithms.gail.utils import concat_state_action_tensor
 from rl_algorithms.ppo.learner import PPOLearner
 import rl_algorithms.ppo.utils as ppo_utils
-from rl_algorithms.registry import LEARNERS
+from rl_algorithms.registry import LEARNERS, build_backbone
 from rl_algorithms.utils.config import ConfigDict
 
 
@@ -45,7 +45,8 @@ class GAILPPOLearner(PPOLearner):
         is_test: bool,
         load_from: str,
     ):
-        head.discriminator.configs.state_size = (state_size[0] + output_size,)
+        head.discriminator.configs.state_size = state_size
+        head.discriminator.configs.additional_input_size = output_size
 
         super().__init__(
             hyper_params,
@@ -65,12 +66,27 @@ class GAILPPOLearner(PPOLearner):
     def _init_network(self):
         """Initialize networks and optimizers."""
         # create actor
-
-        print(self.head_cfg.actor, self.head_cfg.discriminator)
-        self.actor = Brain(self.backbone_cfg.actor, self.head_cfg.actor).to(self.device)
-        self.critic = Brain(self.backbone_cfg.critic, self.head_cfg.critic).to(
-            self.device
-        )
+        if self.backbone_cfg.shared_actor_critic:
+            shared_backbone = build_backbone(self.backbone_cfg.shared_actor_critic)
+            self.actor = Brain(
+                self.backbone_cfg.shared_actor_critic,
+                self.head_cfg.actor,
+                shared_backbone,
+            )
+            self.critic = Brain(
+                self.backbone_cfg.shared_actor_critic,
+                self.head_cfg.critic,
+                shared_backbone,
+            )
+            self.actor = self.actor.to(self.device)
+            self.critic = self.critic.to(self.device)
+        else:
+            self.actor = Brain(self.backbone_cfg.actor, self.head_cfg.actor).to(
+                self.device
+            )
+            self.critic = Brain(self.backbone_cfg.critic, self.head_cfg.critic).to(
+                self.device
+            )
         self.discriminator = Brain(
             self.backbone_cfg.discriminator, self.head_cfg.discriminator
         ).to(self.device)
@@ -119,10 +135,6 @@ class GAILPPOLearner(PPOLearner):
         values = torch.cat(values).detach()
         log_probs = torch.cat(log_probs).detach()
         advantages = returns - values
-
-        if self.is_discrete:
-            actions = actions.unsqueeze(1)
-            log_probs = log_probs.unsqueeze(1)
 
         if self.hyper_params.standardize_advantage:
             advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-7)
