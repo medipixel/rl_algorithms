@@ -172,13 +172,13 @@ class PPOLearner(Learner):
 
             self.critic_optim.zero_grad()
             critic_loss_.backward(retain_graph=True)
-            clip_grad_norm_(self.critic.parameters(), gradient_clip_ac)
+            clip_grad_norm_(self.critic.parameters(), gradient_clip_cr)
             self.critic_optim.step()
 
             # train actor
             self.actor_optim.zero_grad()
             actor_loss_.backward()
-            clip_grad_norm_(self.actor.parameters(), gradient_clip_cr)
+            clip_grad_norm_(self.actor.parameters(), gradient_clip_ac)
             self.actor_optim.step()
 
             actor_losses.append(actor_loss.item())
