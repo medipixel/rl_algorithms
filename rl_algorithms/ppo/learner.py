@@ -10,7 +10,7 @@ from rl_algorithms.common.abstract.learner import Learner, TensorTuple
 from rl_algorithms.common.helper_functions import numpy2floattensor
 from rl_algorithms.common.networks.brain import Brain
 import rl_algorithms.ppo.utils as ppo_utils
-from rl_algorithms.registry import LEARNERS
+from rl_algorithms.registry import LEARNERS, build_backbone
 from rl_algorithms.utils.config import ConfigDict
 
 
@@ -50,7 +50,6 @@ class PPOLearner(Learner):
         ) = state_size
         self.head_cfg.actor.configs.output_size = output_size
         self.optim_cfg = optim_cfg
-        self.is_discrete = self.hyper_params.is_discrete
         self.load_from = load_from
 
         self._init_network()
@@ -58,10 +57,27 @@ class PPOLearner(Learner):
     def _init_network(self):
         """Initialize networks and optimizers."""
         # create actor
-        self.actor = Brain(self.backbone_cfg.actor, self.head_cfg.actor).to(self.device)
-        self.critic = Brain(self.backbone_cfg.critic, self.head_cfg.critic).to(
-            self.device
-        )
+        if self.backbone_cfg.shared_actor_critic:
+            shared_backbone = build_backbone(self.backbone_cfg.shared_actor_critic)
+            self.actor = Brain(
+                self.backbone_cfg.shared_actor_critic,
+                self.head_cfg.actor,
+                shared_backbone,
+            )
+            self.critic = Brain(
+                self.backbone_cfg.shared_actor_critic,
+                self.head_cfg.critic,
+                shared_backbone,
+            )
+            self.actor = self.actor.to(self.device)
+            self.critic = self.critic.to(self.device)
+        else:
+            self.actor = Brain(self.backbone_cfg.actor, self.head_cfg.actor).to(
+                self.device
+            )
+            self.critic = Brain(self.backbone_cfg.critic, self.head_cfg.critic).to(
+                self.device
+            )
 
         # create optimizer
         self.actor_optim = optim.Adam(
@@ -101,10 +117,6 @@ class PPOLearner(Learner):
         values = torch.cat(values).detach()
         log_probs = torch.cat(log_probs).detach()
         advantages = returns - values
-
-        if self.is_discrete:
-            actions = actions.unsqueeze(1)
-            log_probs = log_probs.unsqueeze(1)
 
         if self.hyper_params.standardize_advantage:
             advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-7)
@@ -160,13 +172,13 @@ class PPOLearner(Learner):
 
             self.critic_optim.zero_grad()
             critic_loss_.backward(retain_graph=True)
-            clip_grad_norm_(self.critic.parameters(), gradient_clip_ac)
+            clip_grad_norm_(self.critic.parameters(), gradient_clip_cr)
             self.critic_optim.step()
 
             # train actor
             self.actor_optim.zero_grad()
             actor_loss_.backward()
-            clip_grad_norm_(self.actor.parameters(), gradient_clip_cr)
+            clip_grad_norm_(self.actor.parameters(), gradient_clip_ac)
             self.actor_optim.step()
 
             actor_losses.append(actor_loss.item())

@@ -8,7 +8,7 @@
 from typing import Callable, Tuple
 
 import torch
-from torch.distributions import Normal
+from torch.distributions import Categorical, Normal
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -198,3 +198,29 @@ class TanhGaussianDistParams(GaussianDist):
         log_prob = log_prob.sum(-1, keepdim=True)
 
         return action, log_prob, z, mu, std
+
+
+# TODO: Remove it when upgrade torch>=1.7
+# pylint: disable=abstract-method
+@HEADS.register_module
+class CategoricalDist(MLP):
+    """Multilayer perceptron with Categorical distribution output."""
+
+    def __init__(
+        self, configs: ConfigDict, hidden_activation: Callable = F.relu,
+    ):
+        """Initialize."""
+        super().__init__(
+            configs=configs, hidden_activation=hidden_activation, use_output_layer=True,
+        )
+
+    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, ...]:
+        """Forward method implementation."""
+        ac_logits = super().forward(x)
+        # ac_probs = F.softmax(ac_logits, dim=-1)
+
+        # get categorical distribution and action
+        dist = Categorical(logits=ac_logits)
+        action = dist.sample()
+
+        return action, dist

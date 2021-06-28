@@ -19,6 +19,7 @@ learner_cfg:
     actor:
     critic_vf:
     critic_qf:
+    shared_actor_critic:
   head:
     actor:
       type: "TanhGaussianDistParams"
