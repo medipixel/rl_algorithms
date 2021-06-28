@@ -6,7 +6,7 @@
 - Paper: https://arxiv.org/abs/1707.06347
 """
 
-from typing import Tuple
+from typing import Tuple, Union
 
 import gym
 import numpy as np
@@ -81,7 +81,11 @@ class PPOAgent(Agent):
             interim_test_num,
         )
 
-        env_multi = self.make_parallel_env(max_episode_steps, hyper_params.n_workers)
+        env_multi = (
+            env
+            if is_test
+            else self.make_parallel_env(max_episode_steps, hyper_params.n_workers)
+        )
 
         self.episode_steps = np.zeros(hyper_params.n_workers, dtype=np.int)
         self.states: list = []
@@ -150,8 +154,12 @@ class PPOAgent(Agent):
 
         return selected_action
 
-    def step(self, action: torch.Tensor) -> Tuple[np.ndarray, np.float64, bool, dict]:
-        next_state, reward, done, info = self.env.step(action.detach().cpu().numpy())
+    def step(
+        self, action: Union[np.ndarray, torch.Tensor]
+    ) -> Tuple[np.ndarray, np.float64, bool, dict]:
+        if isinstance(action, torch.Tensor):
+            action = action.detach().cpu().numpy()
+        next_state, reward, done, info = self.env.step(action)
 
         if not self.is_test:
             # if the last state is not a terminal state, store done as false
