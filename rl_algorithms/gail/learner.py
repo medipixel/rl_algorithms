@@ -212,8 +212,8 @@ class GAILPPOLearner(PPOLearner):
                     concat_state_action_tensor(demo_state_feature, demo_action)
                 )
             )
-            discriminator_exp_acc = (exp_score > 0.7).float().mean().item()
-            discriminator_demo_acc = (demo_score <= 0.3).float().mean().item()
+            discriminator_exp_acc = (exp_score > 0.5).float().mean().item()
+            discriminator_demo_acc = (demo_score <= 0.5).float().mean().item()
             discriminator_loss = F.binary_cross_entropy(
                 exp_score, torch.ones_like(exp_score)
             ) + F.binary_cross_entropy(demo_score, torch.zeros_like(demo_score))
