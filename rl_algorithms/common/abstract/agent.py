@@ -66,6 +66,8 @@ class Agent(ABC):
         self.total_step = 0
         self.learner = None
 
+        self.is_discrete = isinstance(self.env_info.action_space, gym.spaces.Discrete)
+
     @abstractmethod
     def select_action(self, state: np.ndarray) -> Union[torch.Tensor, np.ndarray]:
         pass

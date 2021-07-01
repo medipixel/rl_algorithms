@@ -105,8 +105,6 @@ class PPOAgent(Agent):
 
         self.epsilon = hyper_params.max_epsilon
 
-        self.is_discrete = isinstance(self.env_info.action_space, gym.spaces.Discrete)
-
         output_size = (
             self.env_info.action_space.n
             if self.is_discrete
