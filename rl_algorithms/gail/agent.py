@@ -6,7 +6,7 @@
 - Paper: https://arxiv.org/abs/1707.06347
 """
 
-from typing import Tuple
+from typing import Tuple, Union
 
 import gym
 import numpy as np
@@ -87,8 +87,12 @@ class GAILPPOAgent(PPOAgent):
         self.demo_memory = GAILBuffer(self.hyper_params.demo_path)
         self.learner.set_demo_memory(self.demo_memory)
 
-    def step(self, action: torch.Tensor) -> Tuple[np.ndarray, np.float64, bool, dict]:
-        next_state, reward, done, info = self.env.step(action.detach().cpu().numpy())
+    def step(
+        self, action: Union[np.ndarray, torch.Tensor]
+    ) -> Tuple[np.ndarray, np.float64, bool, dict]:
+        if isinstance(action, torch.Tensor):
+            action = action.detach().cpu().numpy()
+        next_state, reward, done, info = self.env.step(action)
 
         return next_state, reward, done, info
 

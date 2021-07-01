@@ -55,6 +55,16 @@ class Brain(nn.Module):
 
         return x
 
+    def forward_backbone(
+        self, x: torch.Tensor
+    ) -> Union[torch.Tensor, Tuple[torch.Tensor, ...]]:
+        return self.backbone(x)
+
+    def forward_head(
+        self, x: torch.Tensor
+    ) -> Union[torch.Tensor, Tuple[torch.Tensor, ...]]:
+        return self.head(x)
+
     def forward_(self, x: torch.Tensor, n_tau_samples: int = None):
         """Get output value for calculating loss."""
         x = self.backbone(x)

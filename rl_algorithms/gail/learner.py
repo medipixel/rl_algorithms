@@ -151,15 +151,9 @@ class GAILPPOLearner(PPOLearner):
             returns,
             advantages,
         ):
-            # calculate ratios
-            _, dist = self.actor(state)
-            log_prob = dist.log_prob(action)
-            ratio = (log_prob - old_log_prob).exp()
-
-            # actor_loss
-            surr_loss = ratio * adv
-            clipped_surr_loss = torch.clamp(ratio, 1.0 - epsilon, 1.0 + epsilon) * adv
-            actor_loss = -torch.min(surr_loss, clipped_surr_loss).mean()
+            gradient_clip_ac = self.hyper_params.gradient_clip_ac
+            gradient_clip_cr = self.hyper_params.gradient_clip_cr
+            w_value = self.hyper_params.w_value
 
             # critic_loss
             value = self.critic(state)
@@ -172,31 +166,58 @@ class GAILPPOLearner(PPOLearner):
                 critic_loss = 0.5 * torch.max(value_loss, value_loss_clipped).mean()
             else:
                 critic_loss = 0.5 * (return_ - value).pow(2).mean()
+            critic_loss_ = w_value * critic_loss
+
+            # train critic
+            self.critic_optim.zero_grad()
+            critic_loss_.backward(retain_graph=True)
+            clip_grad_norm_(self.critic.parameters(), gradient_clip_cr)
+            self.critic_optim.step()
+
+            # calculate ratios
+            _, dist = self.actor(state)
+            log_prob = dist.log_prob(action)
+            ratio = (log_prob - old_log_prob).exp()
+
+            # actor_loss
+            surr_loss = ratio * adv
+            clipped_surr_loss = torch.clamp(ratio, 1.0 - epsilon, 1.0 + epsilon) * adv
+            actor_loss = -torch.min(surr_loss, clipped_surr_loss).mean()
 
             # entropy
             entropy = dist.entropy().mean()
+            w_entropy = self.hyper_params.w_entropy
+            actor_loss_ = actor_loss - w_entropy * entropy
+
+            # train actor
+            self.actor_optim.zero_grad()
+            actor_loss_.backward()
+            clip_grad_norm_(self.actor.parameters(), gradient_clip_ac)
+            self.actor_optim.step()
 
             # total_loss
-            w_value = self.hyper_params.w_value
-            w_entropy = self.hyper_params.w_entropy
-
-            critic_loss_ = w_value * critic_loss
-            actor_loss_ = actor_loss - w_entropy * entropy
             total_loss = critic_loss_ + actor_loss_
 
             # discriminator loss
             demo_state, demo_action = self.demo_memory.sample(len(state))
+            state_feature = self.discriminator.forward_backbone(state)
             exp_score = torch.sigmoid(
-                self.discriminator(concat_state_action_tensor(state, action))
+                self.discriminator.forward_head(
+                    (concat_state_action_tensor(state_feature, action))
+                )
             )
+            demo_state_feature = self.discriminator.forward_backbone(demo_state)
             demo_score = torch.sigmoid(
-                self.discriminator(concat_state_action_tensor(demo_state, demo_action))
+                self.discriminator.forward_head(
+                    concat_state_action_tensor(demo_state_feature, demo_action)
+                )
             )
-            discriminator_exp_acc = (exp_score > 0.5).float().mean().item()
-            discriminator_demo_acc = (demo_score <= 0.5).float().mean().item()
+            discriminator_exp_acc = (exp_score > 0.7).float().mean().item()
+            discriminator_demo_acc = (demo_score <= 0.3).float().mean().item()
             discriminator_loss = F.binary_cross_entropy(
                 exp_score, torch.ones_like(exp_score)
             ) + F.binary_cross_entropy(demo_score, torch.zeros_like(demo_score))
+
             # train discriminator
             if (
                 discriminator_exp_acc < self.optim_cfg.discriminator_acc_threshold
@@ -205,21 +226,6 @@ class GAILPPOLearner(PPOLearner):
                 self.discriminator_optim.zero_grad()
                 discriminator_loss.backward()
                 self.discriminator_optim.step()
-
-            # train critic
-            gradient_clip_ac = self.hyper_params.gradient_clip_ac
-            gradient_clip_cr = self.hyper_params.gradient_clip_cr
-
-            self.critic_optim.zero_grad()
-            critic_loss_.backward(retain_graph=True)
-            clip_grad_norm_(self.critic.parameters(), gradient_clip_ac)
-            self.critic_optim.step()
-
-            # train actor
-            self.actor_optim.zero_grad()
-            actor_loss_.backward()
-            clip_grad_norm_(self.actor.parameters(), gradient_clip_cr)
-            self.actor_optim.step()
 
             actor_losses.append(actor_loss.item())
             critic_losses.append(critic_loss.item())
