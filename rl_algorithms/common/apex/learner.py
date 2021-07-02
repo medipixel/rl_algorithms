@@ -80,7 +80,9 @@ class ApeXLearnerWrapper(DistributedLearnerWrapper):
         self.pub_socket.send(new_params_id)
 
     def send_info_to_logger(
-        self, np_state_dict: List[np.ndarray], step_info: list,
+        self,
+        np_state_dict: List[np.ndarray],
+        step_info: list,
     ):
         """Send new params and log info to logger."""
         log_value = dict(update_step=self.update_step, step_info=step_info)

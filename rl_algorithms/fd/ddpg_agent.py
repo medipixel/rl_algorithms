@@ -60,7 +60,9 @@ class DDPGfDAgent(DDPGAgent):
 
             # replay memory for a single step
             self.memory = ReplayBuffer(
-                self.hyper_params.buffer_size, self.hyper_params.batch_size, demo=demos,
+                self.hyper_params.buffer_size,
+                self.hyper_params.batch_size,
+                demo=demos,
             )
             self.memory = PrioritizedBufferWrapper(
                 self.memory,

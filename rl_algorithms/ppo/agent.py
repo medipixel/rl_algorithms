@@ -157,7 +157,8 @@ class PPOAgent(Agent):
         )
 
     def write_log(
-        self, log_value: tuple,
+        self,
+        log_value: tuple,
     ):
         i_episode, n_step, score, actor_loss, critic_loss, total_loss = log_value
         print(
