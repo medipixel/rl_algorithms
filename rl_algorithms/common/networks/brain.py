@@ -24,7 +24,9 @@ class Brain(nn.Module):
     """Class for holding backbone and head networks."""
 
     def __init__(
-        self, backbone_cfg: ConfigDict, head_cfg: ConfigDict,
+        self,
+        backbone_cfg: ConfigDict,
+        head_cfg: ConfigDict,
     ):
         """Initialize."""
         nn.Module.__init__(self)
@@ -67,12 +69,18 @@ class GRUBrain(Brain):
     """Class for holding backbone, GRU, and head networks."""
 
     def __init__(
-        self, backbone_cfg: ConfigDict, head_cfg: ConfigDict, gru_cfg: ConfigDict,
+        self,
+        backbone_cfg: ConfigDict,
+        head_cfg: ConfigDict,
+        gru_cfg: ConfigDict,
     ):
         self.action_size = head_cfg.configs.output_size
         """Initialize. Generate different structure whether it has CNN module or not."""
         Brain.__init__(self, backbone_cfg, head_cfg)
-        self.fc = nn.Linear(head_cfg.configs.input_size, gru_cfg.rnn_hidden_size,)
+        self.fc = nn.Linear(
+            head_cfg.configs.input_size,
+            gru_cfg.rnn_hidden_size,
+        )
         self.gru = nn.GRU(
             gru_cfg.rnn_hidden_size + self.action_size + 1,  # 1 is for prev_reward
             gru_cfg.rnn_hidden_size,

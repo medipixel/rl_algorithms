@@ -125,7 +125,8 @@ class DistributedLogger(ABC):
             name=f"{self.log_cfg.agent}/{self.log_cfg.curr_time}",
         )
         additional_log = dict(
-            episode_num=self.episode_num, max_episode_steps=self.max_episode_steps,
+            episode_num=self.episode_num,
+            max_episode_steps=self.max_episode_steps,
         )
         wandb.config.update(additional_log)
         shutil.copy(self.log_cfg.cfg_path, os.path.join(wandb.run.dir, "config.py"))

@@ -76,7 +76,9 @@ def parse_args() -> argparse.Namespace:
         help="turn off framestack",
     )
     parser.add_argument(
-        "--saliency-map", action="store_true", help="save saliency map",
+        "--saliency-map",
+        action="store_true",
+        help="save saliency map",
     )
 
     return parser.parse_args()

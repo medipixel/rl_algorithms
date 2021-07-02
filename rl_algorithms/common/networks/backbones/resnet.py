@@ -29,7 +29,12 @@ class BasicBlock(nn.Module):
 
         self.expansion = expansion
         self.conv1 = nn.Conv2d(
-            in_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False,
+            in_planes,
+            planes,
+            kernel_size=3,
+            stride=stride,
+            padding=1,
+            bias=False,
         )
         self.bn1 = nn.BatchNorm2d(planes)
         self.conv2 = nn.Conv2d(
@@ -74,14 +79,27 @@ class Bottleneck(nn.Module):
         super(Bottleneck, self).__init__()
 
         self.expansion = expansion
-        self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=1, bias=False,)
+        self.conv1 = nn.Conv2d(
+            in_planes,
+            planes,
+            kernel_size=1,
+            bias=False,
+        )
         self.bn1 = nn.BatchNorm2d(planes)
         self.conv2 = nn.Conv2d(
-            planes, planes, kernel_size=3, stride=stride, padding=1, bias=False,
+            planes,
+            planes,
+            kernel_size=3,
+            stride=stride,
+            padding=1,
+            bias=False,
         )
         self.bn2 = nn.BatchNorm2d(planes)
         self.conv3 = nn.Conv2d(
-            planes, self.expansion * planes, kernel_size=1, bias=False,
+            planes,
+            self.expansion * planes,
+            kernel_size=1,
+            bias=False,
         )
         self.bn3 = nn.BatchNorm2d(self.expansion * planes)
 
@@ -114,7 +132,8 @@ class ResNet(nn.Module):
     """Baseline of ResNet(https://arxiv.org/pdf/1512.03385.pdf)."""
 
     def __init__(
-        self, configs: ConfigDict,
+        self,
+        configs: ConfigDict,
     ):
         super(ResNet, self).__init__()
         block = Bottleneck if configs.use_bottleneck else BasicBlock
