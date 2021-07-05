@@ -44,8 +44,8 @@ def sample_dummy(prioritized_buffer: PrioritizedBufferWrapper, times: int) -> Li
 def check_prioritized(prop_lst: List, sampled_lst: List) -> bool:
     """Check two input lists have same distribution by kstest.
 
-        Reference:
-        https://en.wikipedia.org/wiki/Kolmogorov%E2%80%93Smirnov_test
+    Reference:
+    https://en.wikipedia.org/wiki/Kolmogorov%E2%80%93Smirnov_test
     """
     res = ks_2samp(prop_lst, sampled_lst)
     return res[1] >= 0.05

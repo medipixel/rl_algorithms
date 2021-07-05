@@ -51,7 +51,9 @@ class DQfDAgent(DQNAgent):
 
             # replay memory
             self.memory = ReplayBuffer(
-                self.hyper_params.buffer_size, self.hyper_params.batch_size, demo=demos,
+                self.hyper_params.buffer_size,
+                self.hyper_params.batch_size,
+                demo=demos,
             )
             self.memory = PrioritizedBufferWrapper(
                 self.memory,
