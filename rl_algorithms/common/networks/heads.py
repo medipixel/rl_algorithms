@@ -207,11 +207,15 @@ class CategoricalDist(MLP):
     """Multilayer perceptron with Categorical distribution output."""
 
     def __init__(
-        self, configs: ConfigDict, hidden_activation: Callable = F.relu,
+        self,
+        configs: ConfigDict,
+        hidden_activation: Callable = F.relu,
     ):
         """Initialize."""
         super().__init__(
-            configs=configs, hidden_activation=hidden_activation, use_output_layer=True,
+            configs=configs,
+            hidden_activation=hidden_activation,
+            use_output_layer=True,
         )
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, ...]:

@@ -105,8 +105,6 @@ class PPOAgent(Agent):
 
         self.epsilon = hyper_params.max_epsilon
 
-        self.is_discrete = isinstance(self.env_info.action_space, gym.spaces.Discrete)
-
         output_size = (
             self.env_info.action_space.n
             if self.is_discrete
@@ -185,7 +183,10 @@ class PPOAgent(Agent):
             1.0, t / (epsilon_decay_period + 1e-7)
         )
 
-    def write_log(self, log_value: tuple):
+    def write_log(
+        self,
+        log_value: tuple,
+    ):
         i_episode, n_step, score, actor_loss, critic_loss, total_loss = log_value
         print(
             "[INFO] episode %d\tepisode steps: %d\ttotal score: %d\n"

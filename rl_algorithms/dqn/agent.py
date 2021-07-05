@@ -114,7 +114,8 @@ class DQNAgent(Agent):
         if not self.is_test:
             # replay memory for a single step
             self.memory = ReplayBuffer(
-                self.hyper_params.buffer_size, self.hyper_params.batch_size,
+                self.hyper_params.buffer_size,
+                self.hyper_params.batch_size,
             )
             self.memory = PrioritizedBufferWrapper(
                 self.memory, alpha=self.hyper_params.per_alpha

@@ -76,7 +76,9 @@ def valid_from_done(done: torch.Tensor) -> torch.Tensor:
 
 
 def slice_r2d1_arguments(
-    experiences: Tuple[Any, ...], burn_in_step: int, output_size: int,
+    experiences: Tuple[Any, ...],
+    burn_in_step: int,
+    output_size: int,
 ) -> tuple:
     """Get mini-batch sequence-size transitions and slice
     in accordance with R2D1 agent loss calculating process.
@@ -92,11 +94,20 @@ def slice_r2d1_arguments(
     agent_states = states[:, burn_in_step:-1]
     target_states = states[:, burn_in_step + 1 :]
 
-    burnin_prev_actions = make_one_hot(actions[:, : burn_in_step - 1], output_size,)
+    burnin_prev_actions = make_one_hot(
+        actions[:, : burn_in_step - 1],
+        output_size,
+    )
     target_burnin_prev_actions = make_one_hot(actions[:, :burn_in_step], output_size)
     agent_actions = actions[:, burn_in_step:-1].long().unsqueeze(-1)
-    prev_actions = make_one_hot(actions[:, burn_in_step - 1 : -2], output_size,)
-    target_prev_actions = make_one_hot(actions[:, burn_in_step:-1].long(), output_size,)
+    prev_actions = make_one_hot(
+        actions[:, burn_in_step - 1 : -2],
+        output_size,
+    )
+    target_prev_actions = make_one_hot(
+        actions[:, burn_in_step:-1].long(),
+        output_size,
+    )
 
     burnin_prev_rewards = rewards[:, : burn_in_step - 1].unsqueeze(-1)
     target_burnin_prev_rewards = rewards[:, :burn_in_step].unsqueeze(-1)

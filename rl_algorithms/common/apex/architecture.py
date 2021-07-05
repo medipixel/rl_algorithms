@@ -99,7 +99,8 @@ class ApeX(Architecture):
     def _spawn(self):
         """Intialize distributed worker, learner and centralized replay buffer."""
         replay_buffer = ReplayBuffer(
-            self.hyper_params.buffer_size, self.hyper_params.batch_size,
+            self.hyper_params.buffer_size,
+            self.hyper_params.batch_size,
         )
         per_buffer = PrioritizedBufferWrapper(
             replay_buffer, alpha=self.hyper_params.per_alpha
