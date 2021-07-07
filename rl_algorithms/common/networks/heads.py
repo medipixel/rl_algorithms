@@ -221,7 +221,6 @@ class CategoricalDist(MLP):
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, ...]:
         """Forward method implementation."""
         ac_logits = super().forward(x)
-        # ac_probs = F.softmax(ac_logits, dim=-1)
 
         # get categorical distribution and action
         dist = Categorical(logits=ac_logits)

@@ -123,7 +123,10 @@ class PPOAgent(Agent):
         self.learner = build_learner(self.learner_cfg, build_args)
 
     def make_parallel_env(self, max_episode_steps, n_workers):
-        env_gen = env_generator(self.env.spec.id, max_episode_steps)
+        if "env_generator" in self.env_info.keys():
+            env_gen = self.env_info.env_generator
+        else:
+            env_gen = env_generator(self.env.spec.id, max_episode_steps)
         env_multi = make_envs(env_gen, n_envs=n_workers)
         return env_multi
 
@@ -135,7 +138,9 @@ class PPOAgent(Agent):
             log_prob = dist.log_prob(selected_action)
 
             if self.is_test:
-                selected_action = dist.mean
+                selected_action = (
+                    dist.logits.argmax() if self.is_discrete else dist.mean
+                )
 
             else:
                 _selected_action = (
