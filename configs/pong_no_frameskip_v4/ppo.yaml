@@ -1,0 +1,47 @@
+type: "PPOAgent"
+hyper_params:
+  gamma: 0.99
+  tau: 0.95
+  batch_size: 32
+  max_epsilon: 0.2
+  min_epsilon: 0.2
+  epsilon_decay_period: 1500
+  w_value: 1.0
+  w_entropy: 0.001
+  gradient_clip_ac: 0.5
+  gradient_clip_cr: 1.0
+  epoch: 16
+  rollout_len: 256
+  n_workers: 4
+  use_clipped_value_loss: False
+  standardize_advantage: True
+
+learner_cfg:
+  type: "PPOLearner"
+  backbone:
+    actor:
+    critic:
+    shared_actor_critic:
+      type: "CNN"
+      configs:
+        input_sizes: [4, 32, 64]
+        output_sizes: [32, 64, 64]
+        kernel_sizes: [8, 4, 3]
+        strides: [4, 2, 1]
+        paddings: [1, 0, 0]
+  head:
+    actor:
+      type: "CategoricalDist"
+      configs: 
+        hidden_sizes: [512]
+        output_activation: "identity"
+    critic:
+      type: "MLP"
+      configs:
+        hidden_sizes: [512]
+        output_size: 1
+        output_activation: "identity"
+  optim_cfg:
+    lr_actor: 0.0003
+    lr_critic: 0.001
+    weight_decay: 0.0

@@ -84,15 +84,25 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def env_generator(env_name, max_episode_steps, frame_stack):
+    def _thunk(rank: int):
+        env = atari_env_generator(env_name, max_episode_steps, frame_stack=frame_stack)
+        env.seed(777 + rank + 1)
+        return env
+
+    return _thunk
+
+
 def main():
     """Main."""
     args = parse_args()
 
     # env initialization
     env_name = "PongNoFrameskip-v4"
-    env = atari_env_generator(
+    env_gen = env_generator(
         env_name, args.max_episode_steps, frame_stack=args.framestack
     )
+    env = env_gen(0)
 
     # set a random seed
     common_utils.set_random_seed(args.seed, env)
@@ -112,6 +122,7 @@ def main():
         observation_space=env.observation_space,
         action_space=env.action_space,
         is_atari=True,
+        env_generator=env_gen,
     )
     log_cfg = dict(agent=cfg.agent.type, curr_time=curr_time, cfg_path=args.cfg_path)
     build_args = dict(
