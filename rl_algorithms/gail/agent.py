@@ -97,7 +97,8 @@ class GAILPPOAgent(PPOAgent):
         return next_state, reward, done, info
 
     def write_log(
-        self, log_value: tuple,
+        self,
+        log_value: tuple,
     ):
         (
             i_episode,

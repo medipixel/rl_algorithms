@@ -118,7 +118,8 @@ class GAILPPOLearner(PPOLearner):
         """Update PPO actor and critic networks."""
         states, actions, rewards, values, log_probs, next_state, masks = experience
         next_state = numpy2floattensor(next_state, self.device)
-        next_value = self.critic(next_state)
+        with torch.no_grad():
+            next_value = self.critic(next_state)
 
         returns = ppo_utils.compute_gae(
             next_value,
@@ -134,7 +135,7 @@ class GAILPPOLearner(PPOLearner):
         returns = torch.cat(returns).detach()
         values = torch.cat(values).detach()
         log_probs = torch.cat(log_probs).detach()
-        advantages = returns - values
+        advantages = (returns - values).detach()
 
         if self.hyper_params.standardize_advantage:
             advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-7)
@@ -170,7 +171,7 @@ class GAILPPOLearner(PPOLearner):
 
             # train critic
             self.critic_optim.zero_grad()
-            critic_loss_.backward(retain_graph=True)
+            critic_loss_.backward()
             clip_grad_norm_(self.critic.parameters(), gradient_clip_cr)
             self.critic_optim.step()
 
