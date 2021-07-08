@@ -136,6 +136,7 @@ class PPOAgent(Agent):
             state = numpy2floattensor(state, self.learner.device)
             selected_action, dist = self.learner.actor(state)
             log_prob = dist.log_prob(selected_action)
+            value = self.learner.critic(state)
 
             if self.is_test:
                 selected_action = (
@@ -149,7 +150,6 @@ class PPOAgent(Agent):
                     else selected_action
                 )
                 _log_prob = log_prob.unsqueeze(1) if self.is_discrete else log_prob
-                value = self.learner.critic(state)
                 self.states.append(state)
                 self.actions.append(_selected_action)
                 self.values.append(value)
