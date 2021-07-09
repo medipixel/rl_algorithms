@@ -4,7 +4,7 @@
 [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/medipixel/rl_algorithms.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/medipixel/rl_algorithms/context:python)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-9-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-10-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 </p>
@@ -47,6 +47,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
   <tr>
     <td align="center"><a href="https://jiseonghan.github.io/"><img src="https://avatars2.githubusercontent.com/u/48741026?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Jiseong Han</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=jiseongHAN" title="Code">💻</a></td>
     <td align="center"><a href="https://github.com/sehyun-hwang"><img src="https://avatars3.githubusercontent.com/u/23437715?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Sehyun Hwang</b></sub></a><br /><a href="#maintenance-sehyun-hwang" title="Maintenance">🚧</a></td>
+    <td align="center"><a href="https://github.com/isk03276"><img src="https://avatars.githubusercontent.com/u/23740495?v=4?s=100" width="100px;" alt=""/><br /><sub><b>eunjin</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=isk03276" title="Code">💻</a></td>
   </tr>
 </table>
 
