@@ -24,11 +24,10 @@ learner_cfg:
     shared_actor_critic:
   head:
     actor:
-      type: "GaussianDist"
+      type: "CategoricalDist"
       configs: 
         hidden_sizes: [256, 256]
         output_activation: "identity"
-        fixed_logstd: True
     critic:
       type: "MLP"
       configs:

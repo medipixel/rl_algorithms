@@ -29,12 +29,14 @@ learner_cfg:
     actor:
     critic_vf:
     critic_qf:
+    shared_actor_critic:
   head:
     actor:
       type: "TanhGaussianDistParams"
       configs: 
         hidden_sizes: [256, 256]
         output_activation: "identity"
+        fixed_logstd: False
     critic_vf:
       type: "MLP"
       configs:

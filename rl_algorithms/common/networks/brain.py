@@ -27,10 +27,16 @@ class Brain(nn.Module):
         self,
         backbone_cfg: ConfigDict,
         head_cfg: ConfigDict,
+        shared_backbone: nn.Module = None,
     ):
         """Initialize."""
         nn.Module.__init__(self)
-        if not backbone_cfg:
+        if shared_backbone is not None:
+            self.backbone = shared_backbone
+            head_cfg.configs.input_size = self.calculate_fc_input_size(
+                head_cfg.configs.state_size
+            )
+        elif not backbone_cfg:
             self.backbone = identity
             head_cfg.configs.input_size = head_cfg.configs.state_size[0]
         else:

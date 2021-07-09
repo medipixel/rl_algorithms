@@ -10,12 +10,14 @@ learner_cfg:
   backbone:
     actor:
     critic:
+    shared_actor_critic:
   head:
     actor:
       type: "GaussianDist"
       configs: 
         hidden_sizes: [256, 256]
         output_activation: "identity"
+        fixed_logstd: True
     critic:
       type: "MLP"
       configs:

@@ -6,7 +6,7 @@
 - Paper: https://arxiv.org/abs/1707.06347
 """
 
-from typing import Tuple
+from typing import Tuple, Union
 
 import gym
 import numpy as np
@@ -64,8 +64,6 @@ class PPOAgent(Agent):
         max_episode_steps: int,
         interim_test_num: int,
     ):
-        env_gen = env_generator(env.spec.id, max_episode_steps)
-        env_multi = make_envs(env_gen, n_envs=hyper_params.n_workers)
 
         Agent.__init__(
             self,
@@ -81,6 +79,12 @@ class PPOAgent(Agent):
             episode_num,
             max_episode_steps,
             interim_test_num,
+        )
+
+        env_multi = (
+            env
+            if is_test
+            else self.make_parallel_env(max_episode_steps, hyper_params.n_workers)
         )
 
         self.episode_steps = np.zeros(hyper_params.n_workers, dtype=np.int)
@@ -101,36 +105,64 @@ class PPOAgent(Agent):
 
         self.epsilon = hyper_params.max_epsilon
 
+        output_size = (
+            self.env_info.action_space.n
+            if self.is_discrete
+            else self.env_info.action_space.shape[0]
+        )
+
         build_args = dict(
             hyper_params=self.hyper_params,
             log_cfg=self.log_cfg,
             env_name=self.env_info.name,
             state_size=self.env_info.observation_space.shape,
-            output_size=self.env_info.action_space.shape[0],
+            output_size=output_size,
             is_test=self.is_test,
             load_from=self.load_from,
         )
         self.learner = build_learner(self.learner_cfg, build_args)
 
+    def make_parallel_env(self, max_episode_steps, n_workers):
+        if "env_generator" in self.env_info.keys():
+            env_gen = self.env_info.env_generator
+        else:
+            env_gen = env_generator(self.env.spec.id, max_episode_steps)
+        env_multi = make_envs(env_gen, n_envs=n_workers)
+        return env_multi
+
     def select_action(self, state: np.ndarray) -> torch.Tensor:
         """Select an action from the input space."""
-        state = numpy2floattensor(state, self.learner.device)
-        selected_action, dist = self.learner.actor(state)
-
-        if self.is_test and not self.is_discrete:
-            selected_action = dist.mean
-
-        if not self.is_test:
+        with torch.no_grad():
+            state = numpy2floattensor(state, self.learner.device)
+            selected_action, dist = self.learner.actor(state)
+            log_prob = dist.log_prob(selected_action)
             value = self.learner.critic(state)
-            self.states.append(state)
-            self.actions.append(selected_action)
-            self.values.append(value)
-            self.log_probs.append(dist.log_prob(selected_action))
+
+            if self.is_test:
+                selected_action = (
+                    dist.logits.argmax() if self.is_discrete else dist.mean
+                )
+
+            else:
+                _selected_action = (
+                    selected_action.unsqueeze(1)
+                    if self.is_discrete
+                    else selected_action
+                )
+                _log_prob = log_prob.unsqueeze(1) if self.is_discrete else log_prob
+                self.states.append(state)
+                self.actions.append(_selected_action)
+                self.values.append(value)
+                self.log_probs.append(_log_prob)
 
         return selected_action
 
-    def step(self, action: torch.Tensor) -> Tuple[np.ndarray, np.float64, bool, dict]:
-        next_state, reward, done, info = self.env.step(action.detach().cpu().numpy())
+    def step(
+        self, action: Union[np.ndarray, torch.Tensor]
+    ) -> Tuple[np.ndarray, np.float64, bool, dict]:
+        if isinstance(action, torch.Tensor):
+            action = action.detach().cpu().numpy()
+        next_state, reward, done, info = self.env.step(action)
 
         if not self.is_test:
             # if the last state is not a terminal state, store done as false
