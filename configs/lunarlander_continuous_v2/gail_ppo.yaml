@@ -44,6 +44,13 @@ learner_cfg:
         hidden_sizes: [256, 256]
         output_size: 1
         output_activation: "identity"
+    aciton_embedder:
+      type: "MLP"
+      configs:
+        hidden_sizes: []
+        output_size: 64
+        output_activation: "relu"
+        
   optim_cfg:
     lr_actor: 0.0003
     lr_critic: 0.001

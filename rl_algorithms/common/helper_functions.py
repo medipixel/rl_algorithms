@@ -28,6 +28,11 @@ def identity(x: torch.Tensor) -> torch.Tensor:
     return x
 
 
+def relu(x: torch.Tensor) -> torch.Tensor:
+    """Return torch.relu(x)"""
+    return torch.relu(x)
+
+
 def soft_update(local: nn.Module, target: nn.Module, tau: float):
     """Soft-update: target = tau*local + (1-tau)*target."""
     for t_param, l_param in zip(target.parameters(), local.parameters()):

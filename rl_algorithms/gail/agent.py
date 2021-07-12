@@ -15,7 +15,7 @@ import wandb
 
 from rl_algorithms.common.buffer.gail_buffer import GAILBuffer
 from rl_algorithms.common.helper_functions import numpy2floattensor
-from rl_algorithms.gail.utils import compute_gail_reward, concat_state_action_tensor
+from rl_algorithms.gail.utils import compute_gail_reward
 from rl_algorithms.ppo.agent import PPOAgent
 from rl_algorithms.registry import AGENTS
 from rl_algorithms.utils.config import ConfigDict
@@ -164,11 +164,10 @@ class GAILPPOAgent(PPOAgent):
 
                 action = self.select_action(state)
                 next_state, task_reward, done, _ = self.step(action)
-                discriminator_input = concat_state_action_tensor(
-                    numpy2floattensor(state, self.learner.device), action
-                )
                 gail_reward = compute_gail_reward(
-                    self.learner.discriminator(discriminator_input)
+                    self.learner.discriminator(
+                        (numpy2floattensor(state, self.learner.device), action)
+                    )
                 )
 
                 reward = (

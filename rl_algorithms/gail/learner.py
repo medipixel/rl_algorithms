@@ -9,7 +9,7 @@ import torch.optim as optim
 from rl_algorithms.common.abstract.learner import TensorTuple
 from rl_algorithms.common.helper_functions import numpy2floattensor
 from rl_algorithms.common.networks.brain import Brain
-from rl_algorithms.gail.utils import concat_state_action_tensor
+from rl_algorithms.gail.networks import Discriminator
 from rl_algorithms.ppo.learner import PPOLearner
 import rl_algorithms.ppo.utils as ppo_utils
 from rl_algorithms.registry import LEARNERS, build_backbone
@@ -46,7 +46,7 @@ class GAILPPOLearner(PPOLearner):
         load_from: str,
     ):
         head.discriminator.configs.state_size = state_size
-        head.discriminator.configs.additional_input_size = output_size
+        head.discriminator.configs.action_size = output_size
 
         super().__init__(
             hyper_params,
@@ -87,8 +87,10 @@ class GAILPPOLearner(PPOLearner):
             self.critic = Brain(self.backbone_cfg.critic, self.head_cfg.critic).to(
                 self.device
             )
-        self.discriminator = Brain(
-            self.backbone_cfg.discriminator, self.head_cfg.discriminator
+        self.discriminator = Discriminator(
+            self.backbone_cfg.discriminator,
+            self.head_cfg.discriminator,
+            self.head_cfg.aciton_embedder,
         ).to(self.device)
 
         # create optimizer
@@ -142,7 +144,15 @@ class GAILPPOLearner(PPOLearner):
 
         actor_losses, critic_losses, total_losses, discriminator_losses = [], [], [], []
 
-        for state, action, old_value, old_log_prob, return_, adv in ppo_utils.ppo_iter(
+        for (
+            state,
+            action,
+            old_value,
+            old_log_prob,
+            return_,
+            adv,
+            epoch,
+        ) in ppo_utils.ppo_iter(
             self.hyper_params.epoch,
             self.hyper_params.batch_size,
             states,
@@ -201,17 +211,9 @@ class GAILPPOLearner(PPOLearner):
 
             # discriminator loss
             demo_state, demo_action = self.demo_memory.sample(len(state))
-            state_feature = self.discriminator.forward_backbone(state)
-            exp_score = torch.sigmoid(
-                self.discriminator.forward_head(
-                    (concat_state_action_tensor(state_feature, action))
-                )
-            )
-            demo_state_feature = self.discriminator.forward_backbone(demo_state)
+            exp_score = torch.sigmoid(self.discriminator.forward((state, action)))
             demo_score = torch.sigmoid(
-                self.discriminator.forward_head(
-                    concat_state_action_tensor(demo_state_feature, demo_action)
-                )
+                self.discriminator.forward((demo_state, demo_action))
             )
             discriminator_exp_acc = (exp_score > 0.5).float().mean().item()
             discriminator_demo_acc = (demo_score <= 0.5).float().mean().item()
@@ -223,6 +225,7 @@ class GAILPPOLearner(PPOLearner):
             if (
                 discriminator_exp_acc < self.optim_cfg.discriminator_acc_threshold
                 or discriminator_demo_acc < self.optim_cfg.discriminator_acc_threshold
+                and epoch == 0
             ):
                 self.discriminator_optim.zero_grad()
                 discriminator_loss.backward()
