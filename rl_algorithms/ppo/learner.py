@@ -124,7 +124,15 @@ class PPOLearner(Learner):
 
         actor_losses, critic_losses, total_losses = [], [], []
 
-        for state, action, old_value, old_log_prob, return_, adv in ppo_utils.ppo_iter(
+        for (
+            state,
+            action,
+            old_value,
+            old_log_prob,
+            return_,
+            adv,
+            _,
+        ) in ppo_utils.ppo_iter(
             self.hyper_params.epoch,
             self.hyper_params.batch_size,
             states,

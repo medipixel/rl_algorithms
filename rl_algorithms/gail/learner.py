@@ -162,9 +162,6 @@ class GAILPPOLearner(PPOLearner):
             returns,
             advantages,
         ):
-            gradient_clip_ac = self.hyper_params.gradient_clip_ac
-            gradient_clip_cr = self.hyper_params.gradient_clip_cr
-            w_value = self.hyper_params.w_value
 
             # critic_loss
             value = self.critic(state)
@@ -177,12 +174,14 @@ class GAILPPOLearner(PPOLearner):
                 critic_loss = 0.5 * torch.max(value_loss, value_loss_clipped).mean()
             else:
                 critic_loss = 0.5 * (return_ - value).pow(2).mean()
-            critic_loss_ = w_value * critic_loss
+            critic_loss_ = self.hyper_params.w_value * critic_loss
 
             # train critic
             self.critic_optim.zero_grad()
             critic_loss_.backward()
-            clip_grad_norm_(self.critic.parameters(), gradient_clip_cr)
+            clip_grad_norm_(
+                self.critic.parameters(), self.hyper_params.gradient_clip_cr
+            )
             self.critic_optim.step()
 
             # calculate ratios
@@ -197,13 +196,12 @@ class GAILPPOLearner(PPOLearner):
 
             # entropy
             entropy = dist.entropy().mean()
-            w_entropy = self.hyper_params.w_entropy
-            actor_loss_ = actor_loss - w_entropy * entropy
+            actor_loss_ = actor_loss - self.hyper_params.w_entropy * entropy
 
             # train actor
             self.actor_optim.zero_grad()
             actor_loss_.backward()
-            clip_grad_norm_(self.actor.parameters(), gradient_clip_ac)
+            clip_grad_norm_(self.actor.parameters(), self.hyper_params.gradient_clip_ac)
             self.actor_optim.step()
 
             # total_loss
