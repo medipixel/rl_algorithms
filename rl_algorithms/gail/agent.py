@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-"""PPO agent for episodic tasks in OpenAI Gym.
+"""GAIL agent for episodic tasks in OpenAI Gym.
 
 - Author: Curt Park
 - Contact: eunjin.jung@medipixel.io
-- Paper: https://arxiv.org/abs/1707.06347
+- Paper: https://arxiv.org/abs/1606.03476
 """
 
 from typing import Tuple, Union
@@ -23,7 +23,7 @@ from rl_algorithms.utils.config import ConfigDict
 
 @AGENTS.register_module
 class GAILPPOAgent(PPOAgent):
-    """PPO Agent.
+    """PPO-based GAIL Agent.
 
     Attributes:
         env (gym.Env): openAI Gym environment
@@ -164,12 +164,16 @@ class GAILPPOAgent(PPOAgent):
 
                 action = self.select_action(state)
                 next_state, task_reward, done, _ = self.step(action)
+
+                # gail reward (imitation reward)
                 gail_reward = compute_gail_reward(
                     self.learner.discriminator(
                         (numpy2floattensor(state, self.learner.device), action)
                     )
                 )
 
+                # hybrid reward
+                # Reference: https://arxiv.org/abs/1802.09564
                 reward = (
                     self.hyper_params.gail_reward_weight * gail_reward
                     + (1.0 - self.hyper_params.gail_reward_weight) * task_reward

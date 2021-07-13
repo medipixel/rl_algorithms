@@ -18,7 +18,7 @@ from rl_algorithms.utils.config import ConfigDict
 
 @LEARNERS.register_module
 class GAILPPOLearner(PPOLearner):
-    """PPO-based GAILLearner for GAILPPO Agent.
+    """PPO-based GAILLearner for GAIL Agent.
 
     Attributes:
         hyper_params (ConfigDict): hyper-parameters
@@ -117,7 +117,7 @@ class GAILPPOLearner(PPOLearner):
             self.load_params(self.load_from)
 
     def update_model(self, experience: TensorTuple, epsilon: float) -> TensorTuple:
-        """Update PPO actor and critic networks."""
+        """Update generator(actor), critic and discriminator networks."""
         states, actions, rewards, values, log_probs, next_state, masks = experience
         next_state = numpy2floattensor(next_state, self.device)
         with torch.no_grad():
