@@ -48,8 +48,8 @@ learner_cfg:
       type: "MLP"
       configs:
         hidden_sizes: []
-        output_size: 64
-        output_activation: "relu"
+        output_size: 16
+        output_activation: "identity"
         
   optim_cfg:
     lr_actor: 0.0003
