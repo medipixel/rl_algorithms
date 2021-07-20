@@ -168,7 +168,10 @@ class GAILPPOAgent(PPOAgent):
                 # gail reward (imitation reward)
                 gail_reward = compute_gail_reward(
                     self.learner.discriminator(
-                        (numpy2floattensor(state, self.learner.device), action)
+                        (
+                            numpy2floattensor(state, self.learner.device),
+                            numpy2floattensor(action, self.learner.device),
+                        )
                     )
                 )
 

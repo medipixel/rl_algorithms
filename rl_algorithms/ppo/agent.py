@@ -135,6 +135,7 @@ class PPOAgent(Agent):
         with torch.no_grad():
             state = numpy2floattensor(state, self.learner.device)
             selected_action, dist = self.learner.actor(state)
+            selected_action = selected_action.detach()
             log_prob = dist.log_prob(selected_action)
             value = self.learner.critic(state)
 
@@ -155,7 +156,7 @@ class PPOAgent(Agent):
                 self.values.append(value)
                 self.log_probs.append(_log_prob)
 
-        return selected_action
+        return selected_action.detach().cpu().numpy()
 
     def step(
         self, action: Union[np.ndarray, torch.Tensor]
