@@ -61,7 +61,11 @@ class MLP(nn.Module):
         self.hidden_sizes = configs.hidden_sizes
         self.input_size = configs.input_size
         self.output_size = configs.output_size
-        self.hidden_activation = hidden_activation
+        self.hidden_activation = (
+            getattr(helper_functions, configs.hidden_activation)
+            if "hidden_activation" in configs.keys()
+            else hidden_activation
+        )
         self.output_activation = getattr(helper_functions, configs.output_activation)
         self.linear_layer = linear_layer
         self.use_output_layer = use_output_layer

@@ -27,6 +27,7 @@ learner_cfg:
       type: "GaussianDist"
       configs: 
         hidden_sizes: [256, 256]
+        hidden_activation: "tanh"
         output_activation: "identity"
         fixed_logstd: True
     critic:
