@@ -7,6 +7,7 @@
 
 from abc import ABC, abstractmethod
 import os
+import pickle
 import shutil
 from typing import Tuple, Union
 
@@ -316,3 +317,32 @@ class Agent(ABC):
             )
             if key == 27 & 0xFF:  # ESC key
                 break
+
+    def save_demo(self, file_path, episode_num):
+        transitions = []
+        for i_episode in range(episode_num):
+            state = self.env.reset()
+            done = False
+            score = 0
+            step = 0
+
+            while not done:
+                if self.is_render:
+                    self.env.render()
+
+                action = self.select_action(state)
+                next_state, reward, done, _ = self.step(action)
+
+                transition = (state, action, reward, next_state, done)
+                transitions.append(transition)
+
+                state = next_state
+                score += reward
+                step += 1
+
+            print(
+                "[INFO] test %d\tstep: %d\ttotal score: %d" % (i_episode, step, score)
+            )
+
+        with open(file_path, "wb") as f:
+            pickle.dump(transitions, f, protocol=pickle.HIGHEST_PROTOCOL)
