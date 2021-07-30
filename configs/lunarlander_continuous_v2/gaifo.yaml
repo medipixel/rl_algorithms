@@ -1,0 +1,54 @@
+type: "GAIfOAgent"
+hyper_params:
+  gamma: 0.99
+  tau: 0.95
+  batch_size: 128
+  max_epsilon: 0.2
+  min_epsilon: 0.2
+  epsilon_decay_period: 1500
+  w_value: 1.0
+  w_entropy: 0.001
+  gradient_clip_ac: 0.5
+  gradient_clip_cr: 1.0
+  epoch: 10
+  rollout_len: 1024
+  n_workers: 4
+  use_clipped_value_loss: False
+  standardize_advantage: True
+  gail_reward_weight: 1.0
+  demo_path: "data/lunarlander_continuous_v2_demo.pkl"
+
+learner_cfg:
+  type: "GAIfOLearner"
+  backbone:
+    actor:
+    critic:
+    discriminator: 
+    shared_actor_critic:
+  head:
+    actor:
+      type: "GaussianDist"
+      configs: 
+        hidden_sizes: [256, 256]
+        output_activation: "identity"
+        fixed_logstd: True
+    critic:
+      type: "MLP"
+      configs:
+        hidden_sizes: [256, 256]
+        output_size: 1
+        output_activation: "identity"
+    discriminator:
+      type: "MLP"
+      configs:
+        hidden_sizes: [256, 256]
+        output_size: 1
+        output_activation: "identity"
+    aciton_embedder:
+        
+  optim_cfg:
+    lr_actor: 0.0003
+    lr_critic: 0.001
+    lr_discriminator: 0.0003
+    weight_decay: 0.0
+    discriminator_acc_threshold : 0.8

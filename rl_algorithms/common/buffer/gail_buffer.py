@@ -16,8 +16,8 @@ class GAILBuffer(BaseBuffer):
     """Buffer to store expert states and actions.
 
     Attributes:
-        obs_buf (np.ndarray): observations
-        acts_buf (np.ndarray): actions
+        input_buf (np.ndarray): observations
+        label_buf (np.ndarray): actions
     """
 
     def __init__(self, dataset_path: str):
@@ -27,8 +27,8 @@ class GAILBuffer(BaseBuffer):
             dataset_path (str): path of the demo dataset
         """
 
-        self.obs_buf: np.ndarray = None
-        self.acts_buf: np.ndarray = None
+        self.input_buf: np.ndarray = None
+        self.label_buf: np.ndarray = None
 
         self.load_demo(dataset_path)
 
@@ -37,8 +37,8 @@ class GAILBuffer(BaseBuffer):
         with open(dataset_path, "rb") as f:
             demo = list(pickle.load(f))
         demo = np.array(demo)
-        self.obs_buf = np.array(list(map(np.array, demo[:, 0])))
-        self.acts_buf = np.array(list(map(np.array, demo[:, 1])))
+        self.input_buf = np.array(list(map(np.array, demo[:, 0])))  # obs
+        self.label_buf = np.array(list(map(np.array, demo[:, 1])))  # acts
 
     def add(self):
         pass
@@ -50,11 +50,28 @@ class GAILBuffer(BaseBuffer):
         if indices is None:
             indices = np.random.choice(len(self), size=batch_size)
 
-        states = self.obs_buf[indices]
-        actions = self.acts_buf[indices]
+        states = self.input_buf[indices]
+        actions = self.label_buf[indices]
 
         return torch.Tensor(states).to(device), torch.Tensor(actions).to(device)
 
     def __len__(self) -> int:
         """Return the current size of internal memory."""
-        return len(self.obs_buf)
+        return len(self.input_buf)
+
+
+class GAIfOBuffer(GAILBuffer):
+    """Buffer to store expert states and actions.
+
+    Attributes:
+        input_buf (np.ndarray): observations
+        label_buf (np.ndarray): next observations
+    """
+
+    def load_demo(self, dataset_path: str):
+        """load demo data."""
+        with open(dataset_path, "rb") as f:
+            demo = list(pickle.load(f))
+        demo = np.array(demo)
+        self.input_buf = np.array(list(map(np.array, demo[:, 0])))  # obs
+        self.label_buf = np.array(list(map(np.array, demo[:, 3])))  # nobs

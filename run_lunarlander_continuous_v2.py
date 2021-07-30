@@ -70,6 +70,13 @@ def parse_args() -> argparse.Namespace:
         default=10,
         help="number of test during training",
     )
+    parser.add_argument("--save-demo", action="store_true", help="save demo data")
+    parser.add_argument(
+        "--demo-path",
+        type=str,
+        default="data/lunarlander_continuous_v2_demo.pkl",
+        help="demo data path to save",
+    )
 
     return parser.parse_args()
 
@@ -121,6 +128,8 @@ def main():
 
     if not args.test:
         agent.train()
+    elif args.save_demo:
+        agent.save_demo(args.demo_path, args.episode_num)
     else:
         agent.test()
 

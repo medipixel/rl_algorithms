@@ -21,6 +21,8 @@ from .fd.dqn_agent import DQfDAgent
 from .fd.dqn_learner import DQfDLearner
 from .fd.sac_agent import SACfDAgent
 from .fd.sac_learner import SACfDLearner
+from .gaifo.agent import GAIfOAgent
+from .gaifo.learner import GAIfOLearner
 from .gail.agent import GAILPPOAgent
 from .gail.learner import GAILPPOLearner
 from .ppo.agent import PPOAgent
@@ -48,6 +50,7 @@ __all__ = [
     "SACAgent",
     "TD3Agent",
     "GAILPPOAgent",
+    "GAIfOAgent",
     "A2CLearner",
     "BCDDPGLearner",
     "BCSACLearner",
@@ -60,6 +63,7 @@ __all__ = [
     "SACLearner",
     "TD3Learner",
     "GAILPPOLearner",
+    "GAIfOLearner",
     "R2D1Learner",
     "LunarLanderContinuousHER",
     "ReacherHER",
