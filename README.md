@@ -144,7 +144,7 @@ See <a href="https://app.wandb.ai/medipixel_rl/LunarLanderContinuous-v2/reports/
 <p><br>
 See <a href="https://wandb.ai/chaehyeuk-lee/LunarLanderContinuous-v2?workspace=user-chaehyeuk-lee">W&B log</a> for more details. (The performance is measured on the commit <a href="https://github.com/medipixel/rl_algorithms/commit/922222b2e249f1f14bdf1a28c9f0f00752e49907">9e897ad</a>)
 
-![lunarlandercontinuous-v2_sac](https://user-images.githubusercontent.com/23740495/130399654-ef7903ad-f801-42d6-94be-7388a5b1cd2f.png)
+![lunarlandercontinuous-v2_gail](https://user-images.githubusercontent.com/23740495/130401200-0177bb8b-cb70-4792-8daa-da6b7ea64187.png)
 </p>
 </details>
 
