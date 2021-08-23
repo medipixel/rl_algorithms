@@ -72,6 +72,7 @@ This project follows the [all-contributors](https://github.com/all-contributors/
 10. [Recurrent Replay DQN (R2D1)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/recurrent)
 11. [Distributed Pioritized Experience Replay (Ape-X)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/common/apex)
 12. [Policy Distillation](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/distillation)
+13. [Generative Adversarial Imitation Learning (GAIL)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/gail)
 
 ## Performance
 
@@ -313,3 +314,4 @@ To cite this repository in publications:
 19. [Steven Kapturowski et al., "Recurrent Experience Replay in Distributed Reinforcement Learning." in International Conference on Learning Representations https://openreview.net/forum?id=r1lyTjAqYX, 2019.](https://openreview.net/forum?id=r1lyTjAqYX)
 20. [Horgan et al., "Distributed Prioritized Experience Replay." in International Conference on Learning Representations, 2018](https://arxiv.org/pdf/1803.00933.pdf)
 21. [Simonyan et al., "Deep Inside Convolutional Networks: Visualising Image Classification Models and Saliency Maps", 2013](https://arxiv.org/pdf/1312.6034.pdf)
+22. [Ho et al., "Generative adversarial imitation learning", 2016](https://arxiv.org/abs/1606.03476)
