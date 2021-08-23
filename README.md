@@ -140,6 +140,14 @@ See <a href="https://app.wandb.ai/medipixel_rl/LunarLanderContinuous-v2/reports/
 </p>
 </details>
 
+<details><summary><b>LunarLanderContinuous-v2: PPO, SAC, GAIL</b></summary>
+<p><br>
+See <a href="https://wandb.ai/chaehyeuk-lee/LunarLanderContinuous-v2?workspace=user-chaehyeuk-lee">W&B log</a> for more details. (The performance is measured on the commit <a href="https://github.com/medipixel/rl_algorithms/commit/922222b2e249f1f14bdf1a28c9f0f00752e49907">9e897ad</a>)
+
+![lunarlandercontinuous-v2_sac](https://user-images.githubusercontent.com/23740495/130399654-ef7903ad-f801-42d6-94be-7388a5b1cd2f.png)
+</p>
+</details>
+
 #### Reacher-v2
 
 We reproduced the performance of **DDPG**, **TD3**, and **SAC** on Reacher-v2 (Mujoco). They reach the score around -3.5 to -4.5.
