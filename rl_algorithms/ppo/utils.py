@@ -48,9 +48,9 @@ def ppo_iter(
 ):
     """Yield mini-batches."""
     batch_size = states.size(0)
-    for _ in range(epoch):
+    for ep in range(epoch):
         for _ in range(batch_size // mini_batch_size):
             rand_ids = np.random.choice(batch_size, mini_batch_size)
             yield states[rand_ids, :], actions[rand_ids, :], values[
                 rand_ids, :
-            ], log_probs[rand_ids, :], returns[rand_ids, :], advantages[rand_ids, :]
+            ], log_probs[rand_ids, :], returns[rand_ids, :], advantages[rand_ids, :], ep

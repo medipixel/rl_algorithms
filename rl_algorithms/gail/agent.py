@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-"""PPO agent for episodic tasks in OpenAI Gym.
+"""GAIL agent for episodic tasks in OpenAI Gym.
 
 - Author: Curt Park
-- Contact: curt.park@medipixel.io
-- Paper: https://arxiv.org/abs/1707.06347
+- Contact: eunjin.jung@medipixel.io
+- Paper: https://arxiv.org/abs/1606.03476
 """
 
 from typing import Tuple, Union
@@ -13,16 +13,17 @@ import numpy as np
 import torch
 import wandb
 
-from rl_algorithms.common.abstract.agent import Agent
-from rl_algorithms.common.env.utils import env_generator, make_envs
+from rl_algorithms.common.buffer.gail_buffer import GAILBuffer
 from rl_algorithms.common.helper_functions import numpy2floattensor
-from rl_algorithms.registry import AGENTS, build_learner
+from rl_algorithms.gail.utils import compute_gail_reward
+from rl_algorithms.ppo.agent import PPOAgent
+from rl_algorithms.registry import AGENTS
 from rl_algorithms.utils.config import ConfigDict
 
 
 @AGENTS.register_module
-class PPOAgent(Agent):
-    """PPO Agent.
+class GAILPPOAgent(PPOAgent):
+    """PPO-based GAIL Agent.
 
     Attributes:
         env (gym.Env): openAI Gym environment
@@ -65,10 +66,11 @@ class PPOAgent(Agent):
         interim_test_num: int,
     ):
 
-        Agent.__init__(
-            self,
+        super().__init__(
             env,
             env_info,
+            hyper_params,
+            learner_cfg,
             log_cfg,
             is_test,
             load_from,
@@ -81,82 +83,9 @@ class PPOAgent(Agent):
             interim_test_num,
         )
 
-        env_multi = (
-            env
-            if is_test
-            else self.make_parallel_env(max_episode_steps, hyper_params.n_workers)
-        )
-
-        self.episode_steps = np.zeros(hyper_params.n_workers, dtype=np.int)
-        self.states: list = []
-        self.actions: list = []
-        self.rewards: list = []
-        self.values: list = []
-        self.masks: list = []
-        self.log_probs: list = []
-        self.i_episode = 0
-        self.next_state = np.zeros((1,))
-
-        self.hyper_params = hyper_params
-        self.learner_cfg = learner_cfg
-
-        if not self.is_test:
-            self.env = env_multi
-
-        self.epsilon = hyper_params.max_epsilon
-
-        output_size = (
-            self.env_info.action_space.n
-            if self.is_discrete
-            else self.env_info.action_space.shape[0]
-        )
-
-        build_args = dict(
-            hyper_params=self.hyper_params,
-            log_cfg=self.log_cfg,
-            env_name=self.env_info.name,
-            state_size=self.env_info.observation_space.shape,
-            output_size=output_size,
-            is_test=self.is_test,
-            load_from=self.load_from,
-        )
-        self.learner = build_learner(self.learner_cfg, build_args)
-
-    def make_parallel_env(self, max_episode_steps, n_workers):
-        if "env_generator" in self.env_info.keys():
-            env_gen = self.env_info.env_generator
-        else:
-            env_gen = env_generator(self.env.spec.id, max_episode_steps)
-        env_multi = make_envs(env_gen, n_envs=n_workers)
-        return env_multi
-
-    def select_action(self, state: np.ndarray) -> torch.Tensor:
-        """Select an action from the input space."""
-        with torch.no_grad():
-            state = numpy2floattensor(state, self.learner.device)
-            selected_action, dist = self.learner.actor(state)
-            selected_action = selected_action.detach()
-            log_prob = dist.log_prob(selected_action)
-            value = self.learner.critic(state)
-
-            if self.is_test:
-                selected_action = (
-                    dist.logits.argmax() if self.is_discrete else dist.mean
-                )
-
-            else:
-                _selected_action = (
-                    selected_action.unsqueeze(1)
-                    if self.is_discrete
-                    else selected_action
-                )
-                _log_prob = log_prob.unsqueeze(1) if self.is_discrete else log_prob
-                self.states.append(state)
-                self.actions.append(_selected_action)
-                self.values.append(value)
-                self.log_probs.append(_log_prob)
-
-        return selected_action.detach().cpu().numpy()
+        # load demo replay memory
+        self.demo_memory = GAILBuffer(self.hyper_params.demo_path)
+        self.learner.set_demo_memory(self.demo_memory)
 
     def step(
         self, action: Union[np.ndarray, torch.Tensor]
@@ -165,39 +94,40 @@ class PPOAgent(Agent):
             action = action.detach().cpu().numpy()
         next_state, reward, done, info = self.env.step(action)
 
-        if not self.is_test:
-            # if the last state is not a terminal state, store done as false
-            done_bool = done.copy()
-            done_bool[np.where(self.episode_steps == self.max_episode_steps)] = False
-
-            self.rewards.append(
-                numpy2floattensor(reward, self.learner.device).unsqueeze(1)
-            )
-            self.masks.append(
-                numpy2floattensor((1 - done_bool), self.learner.device).unsqueeze(1)
-            )
-
         return next_state, reward, done, info
-
-    def decay_epsilon(self, t: int = 0):
-        """Decay epsilon until reaching the minimum value."""
-        max_epsilon = self.hyper_params.max_epsilon
-        min_epsilon = self.hyper_params.min_epsilon
-        epsilon_decay_period = self.hyper_params.epsilon_decay_period
-
-        self.epsilon = self.epsilon - (max_epsilon - min_epsilon) * min(
-            1.0, t / (epsilon_decay_period + 1e-7)
-        )
 
     def write_log(
         self,
         log_value: tuple,
     ):
-        i_episode, n_step, score, actor_loss, critic_loss, total_loss = log_value
+        (
+            i_episode,
+            n_step,
+            score,
+            gail_reward,
+            actor_loss,
+            critic_loss,
+            total_loss,
+            discriminator_loss,
+            discriminator_exp_acc,
+            discriminator_demo_acc,
+        ) = log_value
         print(
-            "[INFO] episode %d\tepisode steps: %d\ttotal score: %d\n"
-            "total loss: %f\tActor loss: %f\tCritic loss: %f\n"
-            % (i_episode, n_step, score, total_loss, actor_loss, critic_loss)
+            "[INFO] episode %d\tepisode steps: %d\ttask score: %f\t gail score: %f\n"
+            "total loss: %f\tActor loss: %f\tCritic loss: %f\t Discriminator loss: %f\n"
+            "discriminator_exp_acc: %f\t discriminator_demo_acc: %f"
+            % (
+                i_episode,
+                n_step,
+                score,
+                gail_reward,
+                total_loss,
+                actor_loss,
+                critic_loss,
+                discriminator_loss,
+                discriminator_exp_acc,
+                discriminator_demo_acc,
+            )
         )
 
         if self.is_log:
@@ -206,7 +136,11 @@ class PPOAgent(Agent):
                     "total loss": total_loss,
                     "actor loss": actor_loss,
                     "critic loss": critic_loss,
+                    "discriminator_loss": discriminator_loss,
+                    "gail reward": gail_reward,
                     "score": score,
+                    "discriminator_exp_acc": discriminator_exp_acc,
+                    "discriminator_demo_acc": discriminator_demo_acc,
                 }
             )
 
@@ -219,7 +153,8 @@ class PPOAgent(Agent):
 
         score = 0
         i_episode_prev = 0
-        loss = [0.0, 0.0, 0.0]
+        loss = [0.0, 0.0, 0.0, 0.0]
+        discriminator_acc = [0.0, 0.0]
         state = self.env.reset()
 
         while self.i_episode <= self.episode_num:
@@ -228,11 +163,45 @@ class PPOAgent(Agent):
                     self.env.render()
 
                 action = self.select_action(state)
-                next_state, reward, done, _ = self.step(action)
+                next_state, task_reward, done, _ = self.step(action)
+
+                # gail reward (imitation reward)
+                gail_reward = compute_gail_reward(
+                    self.learner.discriminator(
+                        (
+                            numpy2floattensor(state, self.learner.device),
+                            numpy2floattensor(action, self.learner.device),
+                        )
+                    )
+                )
+
+                # hybrid reward
+                # Reference: https://arxiv.org/abs/1802.09564
+                reward = (
+                    self.hyper_params.gail_reward_weight * gail_reward
+                    + (1.0 - self.hyper_params.gail_reward_weight) * task_reward
+                )
+
+                if not self.is_test:
+                    # if the last state is not a terminal state, store done as false
+                    done_bool = done.copy()
+                    done_bool[
+                        np.where(self.episode_steps == self.max_episode_steps)
+                    ] = False
+
+                    self.rewards.append(
+                        numpy2floattensor(reward, self.learner.device).unsqueeze(1)
+                    )
+                    self.masks.append(
+                        numpy2floattensor(
+                            (1 - done_bool), self.learner.device
+                        ).unsqueeze(1)
+                    )
+
                 self.episode_steps += 1
 
                 state = next_state
-                score += reward[0]
+                score += task_reward[0]
                 i_episode_prev = self.i_episode
                 self.i_episode += done.sum()
 
@@ -247,16 +216,20 @@ class PPOAgent(Agent):
                         self.i_episode,
                         n_step,
                         score,
+                        gail_reward,
                         loss[0],
                         loss[1],
                         loss[2],
+                        loss[3],
+                        discriminator_acc[0],
+                        discriminator_acc[1],
                     )
                     self.write_log(log_value)
                     score = 0
 
                 self.episode_steps[np.where(done)] = 0
             self.next_state = next_state
-            loss = self.learner.update_model(
+            loss, discriminator_acc = self.learner.update_model(
                 (
                     self.states,
                     self.actions,

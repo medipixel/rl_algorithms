@@ -72,6 +72,7 @@ This project follows the [all-contributors](https://github.com/all-contributors/
 10. [Recurrent Replay DQN (R2D1)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/recurrent)
 11. [Distributed Pioritized Experience Replay (Ape-X)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/common/apex)
 12. [Policy Distillation](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/distillation)
+13. [Generative Adversarial Imitation Learning (GAIL)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/gail)
 
 ## Performance
 
@@ -136,6 +137,14 @@ See <a href="https://app.wandb.ai/medipixel_rl/LunarLanderContinuous-v2/reports/
 See <a href="https://app.wandb.ai/medipixel_rl/LunarLanderContinuous-v2/reports/200626-integration-test--VmlldzoxNDg1MjU">W&B log</a> for more details. (The performance is measured on the commit <a href="https://github.com/medipixel/rl_algorithms/commit/9e897adfe93600c1db85ce1a7e064064b025c2c3">9e897ad</a>)
 
 ![lunarlandercontinuous-v2_sac](https://user-images.githubusercontent.com/17582508/85818654-1acb2400-b7ac-11ea-8641-d559839cab62.png)
+</p>
+</details>
+
+<details><summary><b>LunarLanderContinuous-v2: PPO, SAC, GAIL</b></summary>
+<p><br>
+See <a href="https://wandb.ai/chaehyeuk-lee/LunarLanderContinuous-v2?workspace=user-chaehyeuk-lee">W&B log</a> for more details. (The performance is measured on the commit <a href="https://github.com/medipixel/rl_algorithms/commit/922222b2e249f1f14bdf1a28c9f0f00752e49907">9e897ad</a>)
+
+![lunarlandercontinuous-v2_gail](https://user-images.githubusercontent.com/23740495/130401442-8b668975-8760-4a79-b757-1c1e9a9c4e47.png)
 </p>
 </details>
 
@@ -313,3 +322,4 @@ To cite this repository in publications:
 19. [Steven Kapturowski et al., "Recurrent Experience Replay in Distributed Reinforcement Learning." in International Conference on Learning Representations https://openreview.net/forum?id=r1lyTjAqYX, 2019.](https://openreview.net/forum?id=r1lyTjAqYX)
 20. [Horgan et al., "Distributed Prioritized Experience Replay." in International Conference on Learning Representations, 2018](https://arxiv.org/pdf/1803.00933.pdf)
 21. [Simonyan et al., "Deep Inside Convolutional Networks: Visualising Image Classification Models and Saliency Maps", 2013](https://arxiv.org/pdf/1312.6034.pdf)
+22. [Ho et al., "Generative adversarial imitation learning", 2016](https://arxiv.org/abs/1606.03476)
