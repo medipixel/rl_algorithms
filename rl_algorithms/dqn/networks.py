@@ -29,7 +29,9 @@ class DuelingMLP(MLP, NoisyMLPHandler):
     """Multilayer perceptron with dueling construction."""
 
     def __init__(
-        self, configs: ConfigDict, hidden_activation: Callable = F.relu,
+        self,
+        configs: ConfigDict,
+        hidden_activation: Callable = F.relu,
     ):
         """Initialize."""
         if configs.use_noisy_net:
@@ -83,7 +85,9 @@ class C51DuelingMLP(MLP, NoisyMLPHandler):
     """Multilayered perceptron for C51 with dueling construction."""
 
     def __init__(
-        self, configs: ConfigDict, hidden_activation: Callable = F.relu,
+        self,
+        configs: ConfigDict,
+        hidden_activation: Callable = F.relu,
     ):
         """Initialize."""
         if configs.use_noisy_net:
@@ -151,7 +155,9 @@ class IQNMLP(MLP, NoisyMLPHandler):
     """
 
     def __init__(
-        self, configs: ConfigDict, hidden_activation: Callable = F.relu,
+        self,
+        configs: ConfigDict,
+        hidden_activation: Callable = F.relu,
     ):
         """Initialize."""
         if configs.use_noisy_net:

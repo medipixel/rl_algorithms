@@ -1,0 +1,36 @@
+type: "DDPGAgent"
+hyper_params:
+  gamma: 0.99
+  tau: 0.001
+  buffer_size: 10000
+  batch_size: 128
+  initial_random_action: 10000
+  multiple_update: 1  # multiple learning updates
+  gradient_clip_ac: 0.5
+  gradient_clip_cr: 1.0
+
+learner_cfg:
+  type: "DDPGLearner"
+  backbone:
+    actor:
+    critic:
+  head:
+    actor:
+      type: "MLP"
+      configs: 
+        hidden_sizes: [256, 256]
+        output_activation: "tanh"
+    critic:
+      type: "MLP"
+      configs:
+        hidden_sizes: [256, 256]
+        output_size: 1
+        output_activation: "identity"
+  optim_cfg:
+    lr_actor: 0.001
+    lr_critic: 0.001
+    weight_decay: 0.000001
+
+noise_cfg:
+  ou_noise_theta: 0.0
+  ou_noise_sigma: 0.0

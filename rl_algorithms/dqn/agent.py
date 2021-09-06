@@ -13,7 +13,6 @@
          https://arxiv.org/pdf/1806.06923.pdf (IQN)
 """
 
-import argparse
 import time
 from typing import Tuple
 
@@ -36,7 +35,6 @@ class DQNAgent(Agent):
 
     Attribute:
         env (gym.Env): openAI Gym environment
-        args (argparse.Namespace): arguments including hyperparameters and training settings
         hyper_params (ConfigDict): hyper-parameters
         log_cfg (ConfigDict): configuration for saving log and checkpoint
         network_cfg (ConfigDict): config of network for training agent
@@ -59,13 +57,35 @@ class DQNAgent(Agent):
         self,
         env: gym.Env,
         env_info: ConfigDict,
-        args: argparse.Namespace,
         hyper_params: ConfigDict,
         learner_cfg: ConfigDict,
         log_cfg: ConfigDict,
+        is_test: bool,
+        load_from: str,
+        is_render: bool,
+        render_after: int,
+        is_log: bool,
+        save_period: int,
+        episode_num: int,
+        max_episode_steps: int,
+        interim_test_num: int,
     ):
         """Initialize."""
-        Agent.__init__(self, env, env_info, args, log_cfg)
+        Agent.__init__(
+            self,
+            env,
+            env_info,
+            log_cfg,
+            is_test,
+            load_from,
+            is_render,
+            render_after,
+            is_log,
+            save_period,
+            episode_num,
+            max_episode_steps,
+            interim_test_num,
+        )
 
         self.curr_state = np.zeros(1)
         self.episode_step = 0
@@ -73,10 +93,6 @@ class DQNAgent(Agent):
 
         self.hyper_params = hyper_params
         self.learner_cfg = learner_cfg
-        self.learner_cfg.args = self.args
-        self.learner_cfg.env_info = self.env_info
-        self.learner_cfg.hyper_params = self.hyper_params
-        self.learner_cfg.log_cfg = self.log_cfg
 
         self.per_beta = hyper_params.per_beta
         self.use_n_step = hyper_params.n_step > 1
@@ -95,10 +111,11 @@ class DQNAgent(Agent):
     # pylint: disable=attribute-defined-outside-init
     def _initialize(self):
         """Initialize non-common things."""
-        if not self.args.test:
+        if not self.is_test:
             # replay memory for a single step
             self.memory = ReplayBuffer(
-                self.hyper_params.buffer_size, self.hyper_params.batch_size,
+                self.hyper_params.buffer_size,
+                self.hyper_params.batch_size,
             )
             self.memory = PrioritizedBufferWrapper(
                 self.memory, alpha=self.hyper_params.per_alpha
@@ -113,14 +130,23 @@ class DQNAgent(Agent):
                     gamma=self.hyper_params.gamma,
                 )
 
-        self.learner = build_learner(self.learner_cfg)
+        build_args = dict(
+            hyper_params=self.hyper_params,
+            log_cfg=self.log_cfg,
+            env_name=self.env_info.name,
+            state_size=self.env_info.observation_space.shape,
+            output_size=self.env_info.action_space.n,
+            is_test=self.is_test,
+            load_from=self.load_from,
+        )
+        self.learner = build_learner(self.learner_cfg, build_args)
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""
         self.curr_state = state
 
         # epsilon greedy policy
-        if not self.args.test and self.epsilon > np.random.random():
+        if not self.is_test and self.epsilon > np.random.random():
             selected_action = np.array(self.env.action_space.sample())
         else:
             with torch.no_grad():
@@ -139,11 +165,9 @@ class DQNAgent(Agent):
         """Take an action and return the response of the env."""
         next_state, reward, done, info = self.env.step(action)
 
-        if not self.args.test:
+        if not self.is_test:
             # if the last state is not a terminal state, store done as false
-            done_bool = (
-                False if self.episode_step == self.args.max_episode_steps else done
-            )
+            done_bool = False if self.episode_step == self.max_episode_steps else done
 
             transition = (self.curr_state, action, reward, next_state, done_bool)
             self._add_transition_to_memory(transition)
@@ -179,7 +203,7 @@ class DQNAgent(Agent):
             )
         )
 
-        if self.args.log:
+        if self.is_log:
             wandb.log(
                 {
                     "score": score,
@@ -217,14 +241,14 @@ class DQNAgent(Agent):
     def train(self):
         """Train the agent."""
         # logger
-        if self.args.log:
+        if self.is_log:
             self.set_wandb()
             # wandb.watch([self.dqn], log="parameters")
 
         # pre-training if needed
         self.pretrain()
 
-        for self.i_episode in range(1, self.args.episode_num + 1):
+        for self.i_episode in range(1, self.episode_num + 1):
             state = self.env.reset()
             self.episode_step = 0
             losses = list()
@@ -234,7 +258,7 @@ class DQNAgent(Agent):
             t_begin = time.time()
 
             while not done:
-                if self.args.render and self.i_episode >= self.args.render_after:
+                if self.is_render and self.i_episode >= self.render_after:
                     self.env.render()
                 action = self.select_action(state)
                 next_state, reward, done, _ = self.step(action)
@@ -260,7 +284,7 @@ class DQNAgent(Agent):
                     )
 
                     # increase priority beta
-                    fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)
+                    fraction = min(float(self.i_episode) / self.episode_num, 1.0)
                     self.per_beta = self.per_beta + fraction * (1.0 - self.per_beta)
 
                 state = next_state
@@ -274,7 +298,7 @@ class DQNAgent(Agent):
                 log_value = (self.i_episode, avg_loss, score, avg_time_cost)
                 self.write_log(log_value)
 
-            if self.i_episode % self.args.save_period == 0:
+            if self.i_episode % self.save_period == 0:
                 self.learner.save_params(self.i_episode)
                 self.interim_test()
 

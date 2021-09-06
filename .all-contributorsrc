@@ -76,6 +76,24 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "sehyun-hwang",
+      "name": "Sehyun Hwang",
+      "avatar_url": "https://avatars3.githubusercontent.com/u/23437715?v=4",
+      "profile": "https://github.com/sehyun-hwang",
+      "contributions": [
+        "maintenance"
+      ]
+    },
+    {
+      "login": "isk03276",
+      "name": "eunjin",
+      "avatar_url": "https://avatars.githubusercontent.com/u/23740495?v=4",
+      "profile": "https://github.com/isk03276",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,

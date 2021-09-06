@@ -11,7 +11,7 @@ from .common.apex.architecture import ApeX
 from .common.networks.backbones import CNN, ResNet
 from .ddpg.agent import DDPGAgent
 from .ddpg.learner import DDPGLearner
-from .distillation.dqn_agent import DistillationDQN
+from .distillation.dqn_agent import DistillationDQNAgent
 from .dqn.agent import DQNAgent
 from .dqn.distributed_logger import DQNLogger
 from .dqn.distributed_worker import DQNWorker
@@ -23,6 +23,8 @@ from .fd.dqn_agent import DQfDAgent
 from .fd.dqn_learner import DQfDLearner
 from .fd.sac_agent import SACfDAgent
 from .fd.sac_learner import SACfDLearner
+from .gail.agent import GAILPPOAgent
+from .gail.learner import GAILPPOLearner
 from .ppo.agent import PPOAgent
 from .ppo.learner import PPOLearner
 from .recurrent.dqn_agent import R2D1Agent
@@ -47,6 +49,7 @@ __all__ = [
     "PPOAgent",
     "SACAgent",
     "TD3Agent",
+    "GAILPPOAgent",
     "A2CLearner",
     "BCDDPGLearner",
     "BCSACLearner",
@@ -58,6 +61,7 @@ __all__ = [
     "PPOLearner",
     "SACLearner",
     "TD3Learner",
+    "GAILPPOLearner",
     "R2D1Learner",
     "LunarLanderContinuousHER",
     "ReacherHER",
@@ -77,4 +81,5 @@ __all__ = [
     "DistillationDQN",
     "ACERLearner",
     "ACERAgent",
+    "DistillationDQNAgent",
 ]

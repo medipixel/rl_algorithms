@@ -6,7 +6,7 @@
 """
 from collections import OrderedDict, deque
 import random
-from typing import Deque, Dict, List, Tuple
+from typing import Deque, Dict, List, Tuple, Union
 
 import gym
 import numpy as np
@@ -26,6 +26,11 @@ def tanh(x: torch.Tensor) -> torch.Tensor:
 def identity(x: torch.Tensor) -> torch.Tensor:
     """Return input without any change."""
     return x
+
+
+def relu(x: torch.Tensor) -> torch.Tensor:
+    """Return torch.relu(x)"""
+    return torch.relu(x)
 
 
 def soft_update(local: nn.Module, target: nn.Module, tau: float):
@@ -97,20 +102,22 @@ def get_n_step_info(
 
 
 def numpy2floattensor(
-    arrays: Tuple[np.ndarray], device_: torch.device
+    arrays: Union[np.ndarray, Tuple[np.ndarray]], device_: torch.device
 ) -> Tuple[torch.Tensor]:
     """Convert numpy type to torch FloatTensor.
-        - Convert numpy array to torch float tensor.
-        - Convert numpy array with Tuple type to torch FloatTensor with Tuple.
+    - Convert numpy array to torch float tensor.
+    - Convert numpy array with Tuple type to torch FloatTensor with Tuple.
     """
 
     if isinstance(arrays, tuple):  # check Tuple or not
         tensors = []
         for array in arrays:
-            tensor = torch.from_numpy(array).to(device_, non_blocking=True).float()
+            tensor = (
+                torch.from_numpy(array.copy()).to(device_, non_blocking=True).float()
+            )
             tensors.append(tensor)
         return tuple(tensors)
-    tensor = torch.from_numpy(arrays).to(device_, non_blocking=True).float()
+    tensor = torch.from_numpy(arrays.copy()).to(device_, non_blocking=True).float()
     return tensor
 
 
@@ -125,9 +132,9 @@ def state_dict2numpy(state_dict) -> Dict[str, np.ndarray]:
 def smoothen_graph(scalars: List[float], weight: float = 0.6) -> List[float]:
     """Smoothen result graph using exponential moving average formula as TensorBoard.
 
-        Reference:
-            https://docs.wandb.com/library/technical-faq#what-formula-do-you-use-for-
-            your-smoothing-algorithm
+    Reference:
+        https://docs.wandb.com/library/technical-faq#what-formula-do-you-use-for-
+        your-smoothing-algorithm
     """
     last = scalars[0]  # First value in the plot (first timestep)
     smoothed = list()
@@ -153,6 +160,7 @@ def set_cfg_for_intergration_test(cfg: ConfigDict) -> ConfigDict:
         cfg.agent.hyper_params.worker_update_interval = 1
         cfg.agent.hyper_params.logger_interval = 1
         cfg.agent.hyper_params.buffer_size = 50
+        cfg.agent.hyper_params.max_update_step = 1
         initial_port = random.randint(6000, 8000)
         cfg.agent.comm_cfg.learner_buffer_port = initial_port
         cfg.agent.comm_cfg.learner_worker_port = initial_port + 1

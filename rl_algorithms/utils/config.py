@@ -1,10 +1,8 @@
-from argparse import ArgumentParser
 import collections.abc as collections_abc
-from importlib import import_module
 import os.path as osp
-import sys
 
 from addict import Dict
+import yaml
 
 
 class ConfigDict(Dict):
@@ -52,112 +50,25 @@ def add_args(parser, cfg, prefix=""):
     return parser
 
 
-class Config:
-    """A facility for config and config files.
+class YamlConfig:
+    """Manager of ConfigDict from yaml."""
 
-    It supports common file formats as configs: python/json/yaml. The interface
-    is the same as a dict object and also allows access config values as
-    attributes.
-
-    Example:
-        >>> cfg = Config(dict(a=1, b=dict(b1=[0, 1])))
-        >>> cfg.a
-        1
-        >>> cfg.b
-        {'b1': [0, 1]}
-        >>> cfg.b.b1
-        [0, 1]
-        >>> cfg = Config.fromfile('tests/data/config/a.py')
-        >>> cfg.filename
-        "/home/kchen/projects/mmcv/tests/data/config/a.py"
-        >>> cfg.item4
-        'test'
-        >>> cfg
-        "Config [path: /home/kchen/projects/mmcv/tests/data/config/a.py]: "
-        "{'item1': [1, 2], 'item2': {'a': 0}, 'item3': True, 'item4': 'test'}"
-
-    """
-
-    def __init__(self, cfg_dict=None, filename=None):
-        if cfg_dict is None:
-            cfg_dict = dict()
-        elif not isinstance(cfg_dict, dict):
-            raise TypeError(
-                "cfg_dict must be a dict, but got {}".format(type(cfg_dict))
-            )
-
-        super(Config, self).__setattr__("_cfg_dict", ConfigDict(cfg_dict))
-        super(Config, self).__setattr__("_filename", filename)
-        if filename:
-            with open(filename, "r", encoding="utf-8") as f:
-                super(Config, self).__setattr__("_text", f.read())
-        else:
-            super(Config, self).__setattr__("_text", "")
+    def __init__(self, config_paths: dict):
+        """Make ConfigDict from yaml path."""
+        self.cfg = ConfigDict()
+        for key, path in config_paths.items():
+            self.cfg[key] = self._yaml_to_config_dict(path)
 
     @staticmethod
-    def fromfile(filename):
-        filename = osp.abspath(osp.expanduser(filename))
-        if not osp.isfile(filename):
-            raise FileNotFoundError(f"file {filename} does not exist")
-        if filename.endswith(".py"):
-            module_name = osp.basename(filename)[:-3]
-            if "." in module_name:
-                raise ValueError("Dots are not allowed in config file path.")
-            config_dir = osp.dirname(filename)
-            sys.path.insert(0, config_dir)
-            mod = import_module(module_name)
-            sys.path.pop(0)
-            cfg_dict = {
-                name: value
-                for name, value in mod.__dict__.items()
-                if not name.startswith("__")
-            }
-        else:
-            raise IOError("Only py/yml/yaml/json type are supported now!")
-        return Config(cfg_dict, filename=filename)
+    def _yaml_to_config_dict(path: str) -> ConfigDict:
+        """Return ConfigDict from yaml."""
+        try:
+            with open(path) as f:
+                data = yaml.load(f, Loader=yaml.FullLoader)
+        except FileNotFoundError:
+            with open(osp.expanduser(path)) as f:
+                data = yaml.load(f, Loader=yaml.FullLoader)
+        return ConfigDict(data)
 
-    @staticmethod
-    def auto_argparser(description=None):
-        """Generate argparser from config file automatically (experimental)
-        """
-        partial_parser = ArgumentParser(description=description)
-        partial_parser.add_argument("config", help="config file path")
-        cfg_file = partial_parser.parse_known_args()[0].config
-        cfg = Config.fromfile(cfg_file)
-        parser = ArgumentParser(description=description)
-        parser.add_argument("config", help="config file path")
-        add_args(parser, cfg)
-        return parser, cfg
-
-    @property
-    def filename(self):
-        return self._filename
-
-    @property
-    def text(self):
-        return self._text
-
-    def __repr__(self):
-        return "Config (path: {}): {}".format(self.filename, self._cfg_dict.__repr__())
-
-    def __len__(self):
-        return len(self._cfg_dict)
-
-    def __getattr__(self, name):
-        return getattr(self._cfg_dict, name)
-
-    def __getitem__(self, name):
-        return self._cfg_dict.__getitem__(name)
-
-    def __setattr__(self, name, value):
-        if isinstance(value, dict):
-            value = ConfigDict(value)
-        self._cfg_dict.__setattr__(name, value)
-
-    def __setitem__(self, name, value):
-        if isinstance(value, dict):
-            value = ConfigDict(value)
-        self._cfg_dict.__setitem__(name, value)
-
-    def __iter__(self):
-        return iter(self._cfg_dict)
+    def get_config_dict(self):
+        return self.cfg

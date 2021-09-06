@@ -5,7 +5,6 @@
 """
 
 from abc import ABC, abstractmethod
-import argparse
 import os
 import random
 from typing import Deque, Dict, Tuple
@@ -54,8 +53,6 @@ class DistributedWorker(BaseDistributedWorker):
 
     Attributes:
         rank (int): rank (ID) of worker
-        args (argparse.Namespace): args from run script
-        env_info (ConfigDict): information about environment
         hyper_params (ConfigDict): algorithm hyperparameters
         device (torch.Device): device on which worker process runs
         env (gym.ENV): gym environment
@@ -64,30 +61,33 @@ class DistributedWorker(BaseDistributedWorker):
     def __init__(
         self,
         rank: int,
-        args: argparse.Namespace,
-        env_info: ConfigDict,
-        hyper_params: ConfigDict,
         device: str,
+        hyper_params: ConfigDict,
+        env_name: str,
+        is_atari: bool,
+        max_episode_steps: int,
     ):
         """Initialize."""
         self.rank = rank
-        self.args = args
-        self.env_info = env_info
-        self.hyper_params = hyper_params
         self.device = torch.device(device)
+
+        self.hyper_params = hyper_params
+        self.env_name = env_name
+        self.is_atari = is_atari
+        self.max_episode_steps = max_episode_steps
 
         self._init_env()
 
     # pylint: disable=attribute-defined-outside-init, no-self-use
     def _init_env(self):
         """Intialize worker local environment."""
-        if self.env_info.is_atari:
+        if self.is_atari:
             self.env = atari_env_generator(
-                self.env_info.name, self.args.max_episode_steps, frame_stack=True
+                self.env_name, self.max_episode_steps, frame_stack=True
             )
         else:
-            self.env = gym.make(self.env_info.name)
-            env_utils.set_env(self.env, self.args)
+            self.env = gym.make(self.env_name)
+            env_utils.set_env(self.env, self.max_episode_steps)
 
         random.seed(self.rank)
         env_seed = random.randint(0, 999)
@@ -127,11 +127,8 @@ class DistributedWorker(BaseDistributedWorker):
 class DistributedWorkerWrapper(BaseDistributedWorker):
     """Base wrapper class for distributed worker wrappers."""
 
-    def __init__(
-        self, worker: DistributedWorker, args: argparse.Namespace, comm_cfg: ConfigDict
-    ):
+    def __init__(self, worker: DistributedWorker, comm_cfg: ConfigDict):
         self.worker = worker
-        self.args = args
         self.comm_cfg = comm_cfg
 
     @abstractmethod

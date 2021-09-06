@@ -1,15 +1,10 @@
 """Test only one step of run file for training."""
 
-import json
 import os
 import os.path as osp
 import re
 import shutil
 import subprocess
-
-import ray
-
-from rl_algorithms.utils.config import Config
 
 
 def check_run_apex(config_root: str, run_file: str):
@@ -27,8 +22,7 @@ def check_run_apex(config_root: str, run_file: str):
 
         cmd = (
             f"python {run_file} --cfg-path {config_root}{cfg} --integration-test "
-            + f"--off-worker-render --off-logger-render --max-update-step 1 --seed 12345 "
-            + f"--interim-test-num 1"
+            + f"--off-render --seed 12345 --interim-test-num 1"
         )
 
         p = subprocess.Popen(

@@ -5,11 +5,9 @@
 """
 
 from abc import ABC, abstractmethod
-import argparse
 from collections import OrderedDict
 import os
 import shutil
-import subprocess
 from typing import Tuple, Union
 
 import torch
@@ -56,32 +54,23 @@ class Learner(BaseLearner):
 
     def __init__(
         self,
-        args: argparse.Namespace,
-        env_info: ConfigDict,
         hyper_params: ConfigDict,
         log_cfg: ConfigDict,
+        env_name: str,
+        is_test: bool,
     ):
         """Initialize."""
-        self.args = args
-        self.env_info = env_info
-        self.hyper_params = hyper_params
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.hyper_params = hyper_params
 
-        if not self.args.test:
+        if not is_test:
             self.ckpt_path = (
-                f"./checkpoint/{env_info.name}/{log_cfg.agent}/{log_cfg.curr_time}/"
+                f"./checkpoint/{env_name}/{log_cfg.agent}/{log_cfg.curr_time}"
             )
             os.makedirs(self.ckpt_path, exist_ok=True)
 
             # save configuration
-            shutil.copy(self.args.cfg_path, os.path.join(self.ckpt_path, "config.py"))
-
-        # for logging
-        self.sha = (
-            subprocess.check_output(["git", "rev-parse", "--short", "HEAD"])[:-1]
-            .decode("ascii")
-            .strip()
-        )
+            shutil.copy(log_cfg.cfg_path, os.path.join(self.ckpt_path, "config.py"))
 
     @abstractmethod
     def _init_network(self):
@@ -99,7 +88,7 @@ class Learner(BaseLearner):
         """Save parameters of networks."""
         os.makedirs(self.ckpt_path, exist_ok=True)
 
-        path = os.path.join(self.ckpt_path + self.sha + "_ep_" + str(n_episode) + ".pt")
+        path = os.path.join(self.ckpt_path, f"ep_{str(n_episode)}.pt")
         torch.save(params, path)
 
         print(f"[INFO] Saved the model and optimizer to {path} \n")
@@ -145,7 +134,7 @@ class DistributedLearnerWrapper(LearnerWrapper):
 
     Attributes:
         learner (Learner): learner
-        comm_config (ConfigDict): configs for communication
+        comm_cfg (ConfigDict): configs for communication
 
     """
 

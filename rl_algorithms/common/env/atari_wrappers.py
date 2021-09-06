@@ -50,7 +50,7 @@ class NoopResetEnv(gym.Wrapper):
 
     # pylint: disable=method-hidden
     def reset(self, **kwargs):
-        """ Do no-op action for a number of steps in [1, noop_max]."""
+        """Do no-op action for a number of steps in [1, noop_max]."""
         self.env.reset(**kwargs)
         if self.override_num_noops is not None:
             noops = self.override_num_noops
@@ -317,8 +317,7 @@ def make_atari(env_id, max_episode_steps=None):
 def wrap_deepmind(
     env, episode_life=True, clip_rewards=True, frame_stack=False, scale=False
 ):
-    """Configure environment for DeepMind-style Atari.
-    """
+    """Configure environment for DeepMind-style Atari."""
     if episode_life:
         env = EpisodicLifeEnv(env)
     if "FIRE" in env.unwrapped.get_action_meanings():

@@ -1,0 +1,59 @@
+type: "SACfDAgent"
+hyper_params:
+  gamma: 0.99
+  tau: 0.001
+  buffer_size: 100000
+  batch_size: 64
+  initial_random_action: 5000
+  multiple_update: 2  # multiple learning updates
+  policy_update_freq: 2
+  w_entropy: 0.001
+  w_mean_reg: 0.001
+  w_std_reg: 0.001
+  w_pre_activation_reg: 0.0
+  auto_entropy_tuning: True
+  # fD
+  per_alpha: 0.6
+  per_beta: 0.4
+  per_eps: 0.000001
+  per_eps_demo: 1.0
+  n_step: 3
+  pretrain_step: 100
+  lambda1: 1.0  # N-step return weight
+  # lambda2 = weight_decay
+  lambda3: 1.0  # actor loss contribution of prior weight
+  demo_path: "data/lunarlander_continuous_demo.pkl"
+
+learner_cfg:
+  type: "SACfDLearner"
+  backbone:
+    actor:
+    critic_vf:
+    critic_qf:
+    shared_actor_critic:
+  head:
+    actor:
+      type: "TanhGaussianDistParams"
+      configs: 
+        hidden_sizes: [256, 256]
+        output_activation: "identity"
+        fixed_logstd: False
+    critic_vf:
+      type: "MLP"
+      configs:
+        hidden_sizes: [256, 256]
+        output_size: 1
+        output_activation: "identity"
+    critic_qf:
+      type: "MLP"
+      configs:
+        hidden_sizes: [256, 256]
+        output_size: 1
+        output_activation: "identity"
+  optim_cfg:
+    lr_actor: 0.0003
+    lr_vf: 0.0003
+    lr_qf1: 0.0003
+    lr_qf2: 0.0003
+    lr_entropy: 0.0003
+    weight_decay: 0.00001

@@ -4,7 +4,7 @@
 [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/medipixel/rl_algorithms.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/medipixel/rl_algorithms/context:python)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-8-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-10-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 </p>
@@ -36,21 +36,24 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
 <!-- markdownlint-disable -->
 <table>
   <tr>
-    <td align="center"><a href="https://github.com/Curt-Park"><img src="https://avatars3.githubusercontent.com/u/14961526?v=4" width="100px;" alt=""/><br /><sub><b>Jinwoo Park (Curt)</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=Curt-Park" title="Code">💻</a></td>
-    <td align="center"><a href="https://github.com/MrSyee"><img src="https://avatars3.githubusercontent.com/u/17582508?v=4" width="100px;" alt=""/><br /><sub><b>Kyunghwan Kim</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=MrSyee" title="Code">💻</a></td>
-    <td align="center"><a href="https://github.com/darthegg"><img src="https://avatars3.githubusercontent.com/u/16010242?v=4" width="100px;" alt=""/><br /><sub><b>darthegg</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=darthegg" title="Code">💻</a></td>
-    <td align="center"><a href="https://github.com/mclearning2"><img src="https://avatars3.githubusercontent.com/u/43226417?v=4" width="100px;" alt=""/><br /><sub><b>Mincheol Kim</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=mclearning2" title="Code">💻</a></td>
-    <td align="center"><a href="https://github.com/minseop4898"><img src="https://avatars1.githubusercontent.com/u/34338299?v=4" width="100px;" alt=""/><br /><sub><b>김민섭</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=minseop4898" title="Code">💻</a></td>
-    <td align="center"><a href="https://github.com/jinPrelude"><img src="https://avatars1.githubusercontent.com/u/16518993?v=4" width="100px;" alt=""/><br /><sub><b>Leejin Jung</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=jinPrelude" title="Code">💻</a></td>
-    <td align="center"><a href="https://github.com/cyoon1729"><img src="https://avatars2.githubusercontent.com/u/33583101?v=4" width="100px;" alt=""/><br /><sub><b>Chris Yoon</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=cyoon1729" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/Curt-Park"><img src="https://avatars3.githubusercontent.com/u/14961526?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Jinwoo Park (Curt)</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=Curt-Park" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/MrSyee"><img src="https://avatars3.githubusercontent.com/u/17582508?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Kyunghwan Kim</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=MrSyee" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/darthegg"><img src="https://avatars3.githubusercontent.com/u/16010242?v=4?s=100" width="100px;" alt=""/><br /><sub><b>darthegg</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=darthegg" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/mclearning2"><img src="https://avatars3.githubusercontent.com/u/43226417?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Mincheol Kim</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=mclearning2" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/minseop4898"><img src="https://avatars1.githubusercontent.com/u/34338299?v=4?s=100" width="100px;" alt=""/><br /><sub><b>김민섭</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=minseop4898" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/jinPrelude"><img src="https://avatars1.githubusercontent.com/u/16518993?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Leejin Jung</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=jinPrelude" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/cyoon1729"><img src="https://avatars2.githubusercontent.com/u/33583101?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Chris Yoon</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=cyoon1729" title="Code">💻</a></td>
   </tr>
   <tr>
-    <td align="center"><a href="https://jiseonghan.github.io/"><img src="https://avatars2.githubusercontent.com/u/48741026?v=4" width="100px;" alt=""/><br /><sub><b>Jiseong Han</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=jiseongHAN" title="Code">💻</a></td>
+    <td align="center"><a href="https://jiseonghan.github.io/"><img src="https://avatars2.githubusercontent.com/u/48741026?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Jiseong Han</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=jiseongHAN" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/sehyun-hwang"><img src="https://avatars3.githubusercontent.com/u/23437715?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Sehyun Hwang</b></sub></a><br /><a href="#maintenance-sehyun-hwang" title="Maintenance">🚧</a></td>
+    <td align="center"><a href="https://github.com/isk03276"><img src="https://avatars.githubusercontent.com/u/23740495?v=4?s=100" width="100px;" alt=""/><br /><sub><b>eunjin</b></sub></a><br /><a href="https://github.com/medipixel/rl_algorithms/commits?author=isk03276" title="Code">💻</a></td>
   </tr>
 </table>
 
-<!-- markdownlint-enable -->
+<!-- markdownlint-restore -->
 <!-- prettier-ignore-end -->
+
 <!-- ALL-CONTRIBUTORS-LIST:END -->
 This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification.
 
@@ -69,6 +72,7 @@ This project follows the [all-contributors](https://github.com/all-contributors/
 10. [Recurrent Replay DQN (R2D1)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/recurrent)
 11. [Distributed Pioritized Experience Replay (Ape-X)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/common/apex)
 12. [Policy Distillation](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/distillation)
+13. [Generative Adversarial Imitation Learning (GAIL)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/gail)
 
 ## Performance
 
@@ -136,6 +140,14 @@ See <a href="https://app.wandb.ai/medipixel_rl/LunarLanderContinuous-v2/reports/
 </p>
 </details>
 
+<details><summary><b>LunarLanderContinuous-v2: PPO, SAC, GAIL</b></summary>
+<p><br>
+See <a href="https://wandb.ai/chaehyeuk-lee/LunarLanderContinuous-v2?workspace=user-chaehyeuk-lee">W&B log</a> for more details. (The performance is measured on the commit <a href="https://github.com/medipixel/rl_algorithms/commit/922222b2e249f1f14bdf1a28c9f0f00752e49907">9e897ad</a>)
+
+![lunarlandercontinuous-v2_gail](https://user-images.githubusercontent.com/23740495/130401442-8b668975-8760-4a79-b757-1c1e9a9c4e47.png)
+</p>
+</details>
+
 #### Reacher-v2
 
 We reproduced the performance of **DDPG**, **TD3**, and **SAC** on Reacher-v2 (Mujoco). They reach the score around -3.5 to -4.5.
@@ -158,7 +170,7 @@ See [W&B Log](https://app.wandb.ai/medipixel_rl/reacher-v2/reports?view=curt-par
 #### Prerequisites
 * This repository is tested on [Anaconda](https://www.anaconda.com/distribution/) virtual environment with python 3.6.1+
     ```
-    $ conda create -n rl_algorithms python=3.6.9
+    $ conda create -n rl_algorithms python=3.7.9
     $ conda activate rl_algorithms
     ```
 * In order to run Mujoco environments (e.g. `Reacher-v2`), you need to acquire [Mujoco license](https://www.roboti.us/license.html).
@@ -190,17 +202,17 @@ make test  # for linting
 ```
 
 #### Usages
-You can train or test `algorithm` on `env_name` if `configs/env_name/algorithm.py` exists. (`configs/env_name/algorithm.py` contains hyper-parameters)
+You can train or test `algorithm` on `env_name` if `configs/env_name/algorithm.yaml` exists. (`configs/env_name/algorithm.yaml` contains hyper-parameters)
 ```
 python run_env_name.py --cfg-path <config-path>
 ``` 
 
 e.g. running soft actor-critic on LunarLanderContinuous-v2.
 ```
-python run_lunarlander_continuous_v2.py --cfg-path ./configs/lunarlander_continuous_v2/sac.py <other-options>
+python run_lunarlander_continuous_v2.py --cfg-path ./configs/lunarlander_continuous_v2/sac.yaml <other-options>
 ```
 
-e.g. running a custom agent, **if you have written your own configs**: `configs/env_name/ddpg-custom.py`.
+e.g. running a custom agent, **if you have written your own configs**: `configs/env_name/ddpg-custom.yaml`.
 ```
 python run_env_name.py --cfg-path ./configs/lunarlander_continuous_v2/ddpg-custom.py
 ```
@@ -231,28 +243,26 @@ python <run-file> -h
 - `--load-from <save-file-path>`
     - Load the saved models and optimizers at the beginning.
 
-#### Arguments for distributed training in run-files
-- `--max-episode-steps <int>`
-    - Set maximum update step for learner as a stopping criterion for training loop. If the number is less than or equal to 0, it uses the default maximum step number of the environment.
-- `--off-worker-render`
-    - Turn off rendering of individual workers.
-- `--off-logger-render`
-    - Turn off rendering of logger tests.
-- `--worker-verbose`
-    - Turn on printing episode run info for individual workers 
-    
+#### Show feature map with Grad-CAM and Saliency-map
+You can show a feature map that the trained agent extract using **[Grad-CAM(Gradient-weighted Class Activation Mapping)](https://arxiv.org/pdf/1610.02391.pdf)** and **[Saliency map](https://arxiv.org/pdf/1312.6034.pdf)**. 
 
-#### Show feature map with Grad-CAM
-You can show a feature map that the trained agent extract using **[Grad-CAM(Gradient-weighted Class Activation Mapping)](https://arxiv.org/pdf/1610.02391.pdf)**. Grad-CAM is a way of combining feature maps using the gradient signal, and produce a coarse localization map of the important regions in the image. You can use it by adding [Grad-CAM config](https://github.com/medipixel/rl_algorithms/blob/master/configs/pong_no_frameskip_v4/dqn.py#L39) and `--grad-cam` flag when you run. For example:
+Grad-CAM is a way of combining feature maps using the gradient signal, and produce a coarse localization map of the important regions in the image. You can use it by adding [Grad-CAM config](https://github.com/medipixel/rl_algorithms/blob/master/configs/pong_no_frameskip_v4/dqn.py#L39) and `--grad-cam` flag when you run. For example:
 ```
 python run_env_name.py --cfg-path <config-path> --test --grad-cam
 ```
-
 The results will be rendered as follows:
 
 <img src="https://user-images.githubusercontent.com/17582508/79204132-02b75a00-7e77-11ea-9c78-ab543055bd4f.gif" width="400" height="400" align="center"/>
 
-It can be only used the agent that uses convolutional layers like **DQN for Pong environment**. You can see feature maps of all the configured convolution layers.
+You can also use Saliency-map in a similar way to Grad-CAM just by adding `--saliency-map` flag. Saliency-map need trained weight carried by `--load-from` flag. 
+```
+python run_env_name.py --cfg-path <config-path> --load-from <save-file-path> --test --saliency-map
+```
+Saliency map will be stored in data/saliency_map
+
+<img src="https://user-images.githubusercontent.com/16518993/106556182-56a84200-6562-11eb-8c9c-a5b19629335c.gif" width="400" height="140" align="center"/>
+
+Both Grad-CAM and Saliency-map can be only used for the agent that uses convolutional layers like **DQN for Pong environment**. You can see feature maps of all the configured convolution layers.
 
 
 #### Using policy distillation
@@ -276,6 +286,18 @@ Class diagram at [#135](https://github.com/medipixel/rl_algorithms/pull/135).
 
 ![RL_Algorithms_ClassDiagram](https://user-images.githubusercontent.com/16010242/55934443-812d5a80-5c6b-11e9-9b31-fa8214965a55.png)
 
+## Citing the Project
+To cite this repository in publications:
+```
+@misc{rl_algorithms,
+  author = {Kim, Kyunghwan and Lee, Chaehyuk and Jeong, Euijin and Han, Jiseong and Kim, Minseop and Yoon, Chris and Kim, Mincheol and Park, Jinwoo},
+  title = {Medipixel RL algorithms},
+  year = {2020},
+  publisher = {Github},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/medipixel/rl_algorithms}},
+}
+```
 ## References
 0. [T. P. Lillicrap et al., "Continuous control with deep reinforcement learning." arXiv preprint arXiv:1509.02971, 2015.](https://arxiv.org/pdf/1509.02971.pdf)
 1. [J. Schulman et al., "Proximal Policy Optimization Algorithms." arXiv preprint arXiv:1707.06347, 2017.](https://arxiv.org/abs/1707.06347.pdf)
@@ -299,3 +321,5 @@ Class diagram at [#135](https://github.com/medipixel/rl_algorithms/pull/135).
 18. [Kaiming He et al., "Deep Residual Learning for Image Recognition." arXiv preprint arXiv:1512.03385, 2015.](https://arxiv.org/pdf/1512.03385)
 19. [Steven Kapturowski et al., "Recurrent Experience Replay in Distributed Reinforcement Learning." in International Conference on Learning Representations https://openreview.net/forum?id=r1lyTjAqYX, 2019.](https://openreview.net/forum?id=r1lyTjAqYX)
 20. [Horgan et al., "Distributed Prioritized Experience Replay." in International Conference on Learning Representations, 2018](https://arxiv.org/pdf/1803.00933.pdf)
+21. [Simonyan et al., "Deep Inside Convolutional Networks: Visualising Image Classification Models and Saliency Maps", 2013](https://arxiv.org/pdf/1312.6034.pdf)
+22. [Ho et al., "Generative adversarial imitation learning", 2016](https://arxiv.org/abs/1606.03476)

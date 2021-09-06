@@ -28,7 +28,9 @@ class DistillationBuffer:
     """
 
     def __init__(
-        self, batch_size: int, dataset_path: List[str],
+        self,
+        batch_size: int,
+        dataset_path: List[str],
     ):
         """Initialize a DistillationBuffer object.
 
@@ -47,7 +49,7 @@ class DistillationBuffer:
 
     def reset_dataloader(self):
         """Initialize and reset DataLoader class.
-           DataLoader class must be reset for every epoch.
+        DataLoader class must be reset for every epoch.
         """
         dataset = DistillationDataset(self.dataset_path)
         self.is_contain_q = dataset.is_contain_q
@@ -81,6 +83,7 @@ class DistillationDataset(Dataset):
             file_name_list (list): transition's file name list in distillation buffer path
 
         """
+        super().__init__()
         self.dataset_path = dataset_path
         self.file_name_list = []
 

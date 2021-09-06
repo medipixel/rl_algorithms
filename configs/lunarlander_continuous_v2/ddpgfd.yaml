@@ -1,0 +1,48 @@
+type: "DDPGfDAgent"
+hyper_params:
+  gamma: 0.99
+  tau: 0.005
+  buffer_size: 10000
+  batch_size: 64
+  initial_random_action: 10000
+  multiple_update: 1  # multiple learning updates
+  gradient_clip_ac: 0.5
+  gradient_clip_cr: 1.0
+  # fD
+  per_alpha: 0.3
+  per_beta: 1.0
+  per_eps: 0.000006
+  per_eps_demo: 1.0
+  n_step: 1
+  pretrain_step: 5000
+  lambda1: 1.0  # N-step return weight
+  # lambda2 = weight_decay
+  lambda3: 1.0  # actor loss contribution of prior weight
+  demo_path: "data/lunarlander_continuous_demo.pkl"
+
+learner_cfg:
+  type: "DDPGfDLearner"
+  backbone:
+    actor:
+    critic:
+    shared_actor_critic:
+  head:
+    actor:
+      type: "MLP"
+      configs: 
+        hidden_sizes: [256, 256]
+        output_activation: "tanh"
+    critic:
+      type: "MLP"
+      configs:
+        hidden_sizes: [256, 256]
+        output_size: 1
+        output_activation: "identity"
+  optim_cfg:
+    lr_actor: 0.0003
+    lr_critic: 0.0003
+    weight_decay: 0.0001
+
+noise_cfg:
+  ou_noise_theta: 0.0
+  ou_noise_sigma: 0.0

@@ -1,0 +1,38 @@
+type: "DQNAgent"
+hyper_params:
+  gamma: 0.99
+  tau: 0.005
+  buffer_size: 100000  # openai baselines: 10000
+  batch_size: 64  # openai baselines: 32
+  update_starts_from: 10000  # openai baselines: 10000
+  multiple_update: 1  # multiple learning updates
+  train_freq: 1  # in openai baselines, train_freq = 4
+  gradient_clip: 10.0  # dueling: 10.0
+  n_step: 3
+  w_n_step: 1.0
+  w_q_reg: 0.0000001
+  per_alpha: 0.6  # openai baselines: 0.6
+  per_beta: 0.4
+  per_eps: 0.000001
+  max_epsilon: 1.0
+  min_epsilon: 0.01  # openai baselines: 0.01
+  epsilon_decay: 0.00001  # openai baselines: 1e-7 / 1e-1
+
+learner_cfg:
+  type: "DQNLearner"
+  loss_type:
+    type: "C51Loss"
+  backbone:
+  head:
+    type: "C51DuelingMLP"
+    configs: 
+      hidden_sizes: [128, 64]
+      v_min: -300
+      v_max: 300
+      atom_size: 1530
+      output_activation: "identity"
+      use_noisy_net: False
+  optim_cfg:
+    lr_dqn: 0.0001
+    weight_decay: 0.0000001
+    adam_eps: 0.00000001

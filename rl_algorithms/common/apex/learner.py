@@ -37,7 +37,7 @@ class ApeXLearnerWrapper(DistributedLearnerWrapper):
         """Initialize."""
         DistributedLearnerWrapper.__init__(self, learner, comm_cfg)
         self.update_step = 0
-        self.max_update_step = self.learner.args.max_update_step
+        self.max_update_step = self.learner.hyper_params.max_update_step
         self.worker_update_interval = self.learner.hyper_params.worker_update_interval
         self.logger_interval = self.learner.hyper_params.logger_interval
 
@@ -80,7 +80,9 @@ class ApeXLearnerWrapper(DistributedLearnerWrapper):
         self.pub_socket.send(new_params_id)
 
     def send_info_to_logger(
-        self, np_state_dict: List[np.ndarray], step_info: list,
+        self,
+        np_state_dict: List[np.ndarray],
+        step_info: list,
     ):
         """Send new params and log info to logger."""
         log_value = dict(update_step=self.update_step, step_info=step_info)

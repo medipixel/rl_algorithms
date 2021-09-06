@@ -21,7 +21,8 @@ from rl_algorithms.registry import AGENTS, build_learner
 
 @AGENTS.register_module
 class DQfDAgent(DQNAgent):
-    """DQN interacting with environment.
+    """
+    DQN interacting with environment.
 
     Attribute:
         memory (PrioritizedReplayBuffer): replay memory
@@ -31,7 +32,7 @@ class DQfDAgent(DQNAgent):
     # pylint: disable=attribute-defined-outside-init
     def _initialize(self):
         """Initialize non-common things."""
-        if not self.args.test:
+        if not self.is_test:
             # load demo replay memory
             demos = self._load_demos()
 
@@ -50,7 +51,9 @@ class DQfDAgent(DQNAgent):
 
             # replay memory
             self.memory = ReplayBuffer(
-                self.hyper_params.buffer_size, self.hyper_params.batch_size, demo=demos,
+                self.hyper_params.buffer_size,
+                self.hyper_params.batch_size,
+                demo=demos,
             )
             self.memory = PrioritizedBufferWrapper(
                 self.memory,
@@ -58,13 +61,22 @@ class DQfDAgent(DQNAgent):
                 epsilon_d=self.hyper_params.per_eps_demo,
             )
 
+        build_args = dict(
+            hyper_params=self.hyper_params,
+            log_cfg=self.log_cfg,
+            env_name=self.env_info.name,
+            state_size=self.env_info.observation_space.shape,
+            output_size=self.env_info.action_space.n,
+            is_test=self.is_test,
+            load_from=self.load_from,
+        )
         self.learner_cfg.type = "DQfDLearner"
-        self.learner = build_learner(self.learner_cfg)
+        self.learner = build_learner(self.learner_cfg, build_args)
 
     def _load_demos(self) -> list:
         """Load expert's demonstrations."""
         # load demo replay memory
-        with open(self.args.demo_path, "rb") as f:
+        with open(self.hyper_params.demo_path, "rb") as f:
             demos = pickle.load(f)
 
         return demos
@@ -91,7 +103,7 @@ class DQfDAgent(DQNAgent):
             )
         )
 
-        if self.args.log:
+        if self.is_log:
             wandb.log(
                 {
                     "score": score,
@@ -129,14 +141,14 @@ class DQfDAgent(DQNAgent):
     def train(self):
         """Train the agent."""
         # logger
-        if self.args.log:
+        if self.is_log:
             self.set_wandb()
             # wandb.watch([self.dqn], log="parameters")
 
         # pre-training if needed
         self.pretrain()
 
-        for self.i_episode in range(1, self.args.episode_num + 1):
+        for self.i_episode in range(1, self.episode_num + 1):
             state = self.env.reset()
             self.episode_step = 0
             losses = list()
@@ -146,7 +158,7 @@ class DQfDAgent(DQNAgent):
             t_begin = time.time()
 
             while not done:
-                if self.args.render and self.i_episode >= self.args.render_after:
+                if self.is_render and self.i_episode >= self.render_after:
                     self.env.render()
 
                 action = self.select_action(state)
@@ -173,7 +185,7 @@ class DQfDAgent(DQNAgent):
                     )
 
                     # increase priority beta
-                    fraction = min(float(self.i_episode) / self.args.episode_num, 1.0)
+                    fraction = min(float(self.i_episode) / self.episode_num, 1.0)
                     self.per_beta = self.per_beta + fraction * (1.0 - self.per_beta)
 
                 state = next_state
@@ -187,7 +199,7 @@ class DQfDAgent(DQNAgent):
                 log_value = (self.i_episode, avg_loss, score, avg_time_cost)
                 self.write_log(log_value)
 
-            if self.i_episode % self.args.save_period == 0:
+            if self.i_episode % self.save_period == 0:
                 self.learner.save_params(self.i_episode)
                 self.interim_test()
 

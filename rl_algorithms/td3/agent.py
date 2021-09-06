@@ -6,7 +6,6 @@
 - Paper: https://arxiv.org/pdf/1802.09477.pdf
 """
 
-import argparse
 import time
 from typing import Tuple
 
@@ -29,7 +28,6 @@ class TD3Agent(Agent):
 
     Attributes:
         env (gym.Env): openAI Gym environment
-        args (argparse.Namespace): arguments including hyperparameters and training settings
         hyper_params (ConfigDict): hyper-parameters
         network_cfg (ConfigDict): config of network for training agent
         optim_cfg (ConfigDict): config of optimizer
@@ -49,20 +47,36 @@ class TD3Agent(Agent):
         self,
         env: gym.Env,
         env_info: ConfigDict,
-        args: argparse.Namespace,
         hyper_params: ConfigDict,
         learner_cfg: ConfigDict,
         noise_cfg: ConfigDict,
         log_cfg: ConfigDict,
+        is_test: bool,
+        load_from: str,
+        is_render: bool,
+        render_after: int,
+        is_log: bool,
+        save_period: int,
+        episode_num: int,
+        max_episode_steps: int,
+        interim_test_num: int,
     ):
-        """Initialize.
-
-        Args:
-            env (gym.Env): openAI Gym environment
-            args (argparse.Namespace): arguments including hyperparameters and training settings
-
-        """
-        Agent.__init__(self, env, env_info, args, log_cfg)
+        """Initialize."""
+        Agent.__init__(
+            self,
+            env,
+            env_info,
+            log_cfg,
+            is_test,
+            load_from,
+            is_render,
+            render_after,
+            is_log,
+            save_period,
+            episode_num,
+            max_episode_steps,
+            interim_test_num,
+        )
 
         self.curr_state = np.zeros((1,))
         self.total_step = 0
@@ -71,11 +85,7 @@ class TD3Agent(Agent):
 
         self.hyper_params = hyper_params
         self.learner_cfg = learner_cfg
-        self.learner_cfg.args = self.args
-        self.learner_cfg.env_info = self.env_info
-        self.learner_cfg.hyper_params = self.hyper_params
-        self.learner_cfg.log_cfg = self.log_cfg
-        self.learner_cfg.noise_cfg = noise_cfg
+        self.noise_cfg = noise_cfg
 
         # noise instance to make randomness of action
         self.exploration_noise = GaussianNoise(
@@ -84,13 +94,23 @@ class TD3Agent(Agent):
             noise_cfg.exploration_noise,
         )
 
-        if not self.args.test:
+        if not self.is_test:
             # replay memory
             self.memory = ReplayBuffer(
                 self.hyper_params.buffer_size, self.hyper_params.batch_size
             )
 
-        self.learner = build_learner(self.learner_cfg)
+        build_args = dict(
+            hyper_params=self.hyper_params,
+            log_cfg=self.log_cfg,
+            noise_cfg=self.noise_cfg,
+            env_name=self.env_info.name,
+            state_size=self.env_info.observation_space.shape,
+            output_size=self.env_info.action_space.shape[0],
+            is_test=self.is_test,
+            load_from=self.load_from,
+        )
+        self.learner = build_learner(self.learner_cfg, build_args)
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""
@@ -99,7 +119,7 @@ class TD3Agent(Agent):
 
         if (
             self.total_step < self.hyper_params.initial_random_action
-            and not self.args.test
+            and not self.is_test
         ):
             return np.array(self.env_info.action_space.sample())
 
@@ -107,7 +127,7 @@ class TD3Agent(Agent):
             state = numpy2floattensor(state, self.learner.device)
             selected_action = self.learner.actor(state).detach().cpu().numpy()
 
-        if not self.args.test:
+        if not self.is_test:
             noise = self.exploration_noise.sample()
             selected_action = np.clip(selected_action + noise, -1.0, 1.0)
 
@@ -117,11 +137,9 @@ class TD3Agent(Agent):
         """Take an action and return the response of the env."""
         next_state, reward, done, info = self.env.step(action)
 
-        if not self.args.test:
+        if not self.is_test:
             # if last state is not terminal state in episode, done is false
-            done_bool = (
-                False if self.episode_step == self.args.max_episode_steps else done
-            )
+            done_bool = False if self.episode_step == self.max_episode_steps else done
             self.memory.add((self.curr_state, action, reward, next_state, done_bool))
 
         return next_state, reward, done, info
@@ -147,7 +165,7 @@ class TD3Agent(Agent):
             )
         )
 
-        if self.args.log:
+        if self.is_log:
             wandb.log(
                 {
                     "score": score,
@@ -162,11 +180,11 @@ class TD3Agent(Agent):
     def train(self):
         """Train the agent."""
         # logger
-        if self.args.log:
+        if self.is_log:
             self.set_wandb()
             # wandb.watch([self.actor, self.critic1, self.critic2], log="parameters")
 
-        for self.i_episode in range(1, self.args.episode_num + 1):
+        for self.i_episode in range(1, self.episode_num + 1):
             state = self.env.reset()
             done = False
             score = 0
@@ -176,7 +194,7 @@ class TD3Agent(Agent):
             t_begin = time.time()
 
             while not done:
-                if self.args.render and self.i_episode >= self.args.render_after:
+                if self.is_render and self.i_episode >= self.render_after:
                     self.env.render()
 
                 action = self.select_action(state)
@@ -207,7 +225,7 @@ class TD3Agent(Agent):
                     avg_time_cost,
                 )
                 self.write_log(log_value)
-            if self.i_episode % self.args.save_period == 0:
+            if self.i_episode % self.save_period == 0:
                 self.learner.save_params(self.i_episode)
                 self.interim_test()
 

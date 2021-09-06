@@ -6,7 +6,6 @@
 - Paper: https://arxiv.org/pdf/1509.02971.pdf
 """
 
-import argparse
 import time
 from typing import Tuple
 
@@ -49,14 +48,36 @@ class DDPGAgent(Agent):
         self,
         env: gym.Env,
         env_info: ConfigDict,
-        args: argparse.Namespace,
         hyper_params: ConfigDict,
         learner_cfg: ConfigDict,
         noise_cfg: ConfigDict,
         log_cfg: ConfigDict,
+        is_test: bool,
+        load_from: str,
+        is_render: bool,
+        render_after: int,
+        is_log: bool,
+        save_period: int,
+        episode_num: int,
+        max_episode_steps: int,
+        interim_test_num: int,
     ):
         """Initialize."""
-        Agent.__init__(self, env, env_info, args, log_cfg)
+        Agent.__init__(
+            self,
+            env,
+            env_info,
+            log_cfg,
+            is_test,
+            load_from,
+            is_render,
+            render_after,
+            is_log,
+            save_period,
+            episode_num,
+            max_episode_steps,
+            interim_test_num,
+        )
 
         self.curr_state = np.zeros((1,))
         self.total_step = 0
@@ -65,11 +86,7 @@ class DDPGAgent(Agent):
 
         self.hyper_params = hyper_params
         self.learner_cfg = learner_cfg
-        self.learner_cfg.args = self.args
-        self.learner_cfg.env_info = self.env_info
-        self.learner_cfg.hyper_params = self.hyper_params
-        self.learner_cfg.log_cfg = self.log_cfg
-        self.learner_cfg.noise_cfg = noise_cfg
+        self.noise_cfg = noise_cfg
 
         # set noise
         self.noise = OUNoise(
@@ -83,13 +100,23 @@ class DDPGAgent(Agent):
     # pylint: disable=attribute-defined-outside-init
     def _initialize(self):
         """Initialize non-common things."""
-        if not self.args.test:
+        if not self.is_test:
             # replay memory
             self.memory = ReplayBuffer(
                 self.hyper_params.buffer_size, self.hyper_params.batch_size
             )
 
-        self.learner = build_learner(self.learner_cfg)
+        build_args = dict(
+            hyper_params=self.hyper_params,
+            log_cfg=self.log_cfg,
+            noise_cfg=self.noise_cfg,
+            env_name=self.env_info.name,
+            state_size=self.env_info.observation_space.shape,
+            output_size=self.env_info.action_space.shape[0],
+            is_test=self.is_test,
+            load_from=self.load_from,
+        )
+        self.learner = build_learner(self.learner_cfg, build_args)
 
     def select_action(self, state: np.ndarray) -> np.ndarray:
         """Select an action from the input space."""
@@ -99,14 +126,14 @@ class DDPGAgent(Agent):
         # if initial random action should be conducted
         if (
             self.total_step < self.hyper_params.initial_random_action
-            and not self.args.test
+            and not self.is_test
         ):
             return np.array(self.env_info.action_space.sample())
 
         with torch.no_grad():
             selected_action = self.learner.actor(state).detach().cpu().numpy()
 
-        if not self.args.test:
+        if not self.is_test:
             noise = self.noise.sample()
             selected_action = np.clip(selected_action + noise, -1.0, 1.0)
 
@@ -122,11 +149,9 @@ class DDPGAgent(Agent):
         """Take an action and return the response of the env."""
         next_state, reward, done, info = self.env.step(action)
 
-        if not self.args.test:
+        if not self.is_test:
             # if the last state is not a terminal state, store done as false
-            done_bool = (
-                False if self.episode_step == self.args.max_episode_steps else done
-            )
+            done_bool = False if self.episode_step == self.max_episode_steps else done
             transition = (self.curr_state, action, reward, next_state, done_bool)
             self._add_transition_to_memory(transition)
 
@@ -156,7 +181,7 @@ class DDPGAgent(Agent):
             )  # actor loss  # critic loss
         )
 
-        if self.args.log:
+        if self.is_log:
             wandb.log(
                 {
                     "score": score,
@@ -175,14 +200,14 @@ class DDPGAgent(Agent):
     def train(self):
         """Train the agent."""
         # logger
-        if self.args.log:
+        if self.is_log:
             self.set_wandb()
             # wandb.watch([self.actor, self.critic], log="parameters")
 
         # pre-training if needed
         self.pretrain()
 
-        for self.i_episode in range(1, self.args.episode_num + 1):
+        for self.i_episode in range(1, self.episode_num + 1):
             state = self.env.reset()
             done = False
             score = 0
@@ -192,7 +217,7 @@ class DDPGAgent(Agent):
             t_begin = time.time()
 
             while not done:
-                if self.args.render and self.i_episode >= self.args.render_after:
+                if self.is_render and self.i_episode >= self.render_after:
                     self.env.render()
 
                 action = self.select_action(state)
@@ -220,7 +245,7 @@ class DDPGAgent(Agent):
                 self.write_log(log_value)
                 losses.clear()
 
-            if self.i_episode % self.args.save_period == 0:
+            if self.i_episode % self.save_period == 0:
                 self.learner.save_params(self.i_episode)
                 self.interim_test()
 

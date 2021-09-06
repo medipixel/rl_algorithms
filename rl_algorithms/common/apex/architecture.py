@@ -34,7 +34,6 @@ class ApeX(Architecture):
 
     Attributes:
         rank (int): rank (ID) of worker
-        args (argparse.Namespace): args from run script
         env_info (ConfigDict): information about environment
         hyper_params (ConfigDict): algorithm hyperparameters
         learner_cfg (ConfigDict): configs for learner class
@@ -52,7 +51,6 @@ class ApeX(Architecture):
 
     def __init__(
         self,
-        args: ConfigDict,
         env: gym.Env,
         env_info: ConfigDict,
         hyper_params: ConfigDict,
@@ -61,8 +59,17 @@ class ApeX(Architecture):
         logger_cfg: ConfigDict,
         comm_cfg: ConfigDict,
         log_cfg: ConfigDict,
+        is_test: bool,
+        load_from: str,
+        is_render: bool,
+        render_after: int,
+        is_log: bool,
+        save_period: int,
+        episode_num: int,
+        max_episode_steps: int,
+        interim_test_num: int,
     ):
-        self.args = args
+        """Initialize."""
         self.env = env
         self.env_info = env_info
         self.hyper_params = hyper_params
@@ -72,7 +79,15 @@ class ApeX(Architecture):
         self.comm_cfg = comm_cfg
         self.log_cfg = log_cfg
 
-        self._organize_configs()
+        self.is_test = is_test
+        self.load_from = load_from
+        self.is_render = is_render
+        self.render_after = render_after
+        self.is_log = is_log
+        self.save_period = save_period
+        self.episode_num = episode_num
+        self.max_episode_steps = max_episode_steps
+        self.interim_test_num = interim_test_num
 
         assert (
             torch.cuda.is_available()
@@ -81,58 +96,73 @@ class ApeX(Architecture):
         ray.init()
 
     # pylint: disable=attribute-defined-outside-init
-    def _organize_configs(self):
-        """Organize configs for initializing components from registry."""
-        # organize learner configs
-        self.learner_cfg.args = self.args
-        self.learner_cfg.env_info = self.env_info
-        self.learner_cfg.hyper_params = self.hyper_params
-        self.learner_cfg.log_cfg = self.log_cfg
-        self.learner_cfg.head.configs.state_size = self.env_info.observation_space.shape
-        self.learner_cfg.head.configs.output_size = self.env_info.action_space.n
-
-        # organize worker configs
-        self.worker_cfg.env_info = self.env_info
-        self.worker_cfg.hyper_params = self.hyper_params
-        self.worker_cfg.backbone = self.learner_cfg.backbone
-        self.worker_cfg.head = self.learner_cfg.head
-        self.worker_cfg.loss_type = self.learner_cfg.loss_type
-
-        # organize logger configs
-        self.logger_cfg.args = self.args
-        self.logger_cfg.env_info = self.env_info
-        self.logger_cfg.log_cfg = self.log_cfg
-        self.logger_cfg.comm_cfg = self.comm_cfg
-        self.logger_cfg.backbone = self.learner_cfg.backbone
-        self.logger_cfg.head = self.learner_cfg.head
-
     def _spawn(self):
         """Intialize distributed worker, learner and centralized replay buffer."""
         replay_buffer = ReplayBuffer(
-            self.hyper_params.buffer_size, self.hyper_params.batch_size,
+            self.hyper_params.buffer_size,
+            self.hyper_params.batch_size,
         )
         per_buffer = PrioritizedBufferWrapper(
             replay_buffer, alpha=self.hyper_params.per_alpha
         )
         self.global_buffer = ApeXBufferWrapper.remote(
-            per_buffer, self.args, self.hyper_params, self.comm_cfg
+            per_buffer, self.hyper_params, self.comm_cfg
         )
 
-        learner = build_learner(self.learner_cfg)
+        # Build learner
+        learner_build_args = dict(
+            hyper_params=self.hyper_params,
+            log_cfg=self.log_cfg,
+            env_name=self.env_info.name,
+            state_size=self.env_info.observation_space.shape,
+            output_size=self.env_info.action_space.n,
+            is_test=self.is_test,
+            load_from=self.load_from,
+        )
+        learner = build_learner(self.learner_cfg, learner_build_args)
         self.learner = ApeXLearnerWrapper.remote(learner, self.comm_cfg)
 
+        # Build workers
         state_dict = learner.get_state_dict()
-        worker_build_args = dict(args=self.args, state_dict=state_dict)
-
+        worker_build_args = dict(
+            hyper_params=self.hyper_params,
+            backbone=self.learner_cfg.backbone,
+            head=self.learner_cfg.head,
+            loss_type=self.learner_cfg.loss_type,
+            state_dict=state_dict,
+            env_name=self.env_info.name,
+            state_size=self.env_info.observation_space.shape,
+            output_size=self.env_info.action_space.n,
+            is_atari=self.env_info.is_atari,
+            max_episode_steps=self.max_episode_steps,
+        )
         self.workers = []
         self.num_workers = self.hyper_params.num_workers
         for rank in range(self.num_workers):
             worker_build_args["rank"] = rank
             worker = build_worker(self.worker_cfg, build_args=worker_build_args)
-            apex_worker = ApeXWorkerWrapper.remote(worker, self.args, self.comm_cfg)
+            apex_worker = ApeXWorkerWrapper.remote(worker, self.comm_cfg)
             self.workers.append(apex_worker)
 
-        self.logger = build_logger(self.logger_cfg)
+        # Build logger
+        logger_build_args = dict(
+            log_cfg=self.log_cfg,
+            comm_cfg=self.comm_cfg,
+            backbone=self.learner_cfg.backbone,
+            head=self.learner_cfg.head,
+            env_name=self.env_info.name,
+            is_atari=self.env_info.is_atari,
+            state_size=self.env_info.observation_space.shape,
+            output_size=self.env_info.action_space.n,
+            max_update_step=self.hyper_params.max_update_step,
+            episode_num=self.episode_num,
+            max_episode_steps=self.max_episode_steps,
+            is_log=self.is_log,
+            is_render=self.is_render,
+            interim_test_num=self.interim_test_num,
+        )
+
+        self.logger = build_logger(self.logger_cfg, logger_build_args)
 
         self.processes = self.workers + [self.learner, self.global_buffer, self.logger]
 
@@ -153,7 +183,7 @@ class ApeX(Architecture):
 
         # Retreive workers' data and write to wandb
         # NOTE: Logger logs the mean scores of each episode per update step
-        if self.args.log:
+        if self.is_log:
             worker_logs = [f for f in futures if f is not None]
             self.logger.write_worker_log.remote(
                 worker_logs, self.hyper_params.worker_update_interval
@@ -164,6 +194,6 @@ class ApeX(Architecture):
         """Load model from checkpoint and run logger for testing."""
         # NOTE: You could also load the Ape-X trained model on the single agent DQN
         self.logger = build_logger(self.logger_cfg)
-        self.logger.load_params.remote(self.args.load_from)
+        self.logger.load_params.remote(self.load_from)
         ray.get([self.logger.test.remote(update_step=0, interim_test=False)])
         print("Exiting testing...")
