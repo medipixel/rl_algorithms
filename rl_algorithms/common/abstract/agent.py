@@ -99,7 +99,7 @@ class Agent(ABC):
         )
         wandb.config.update(additional_log)
         wandb.config.update(self.hyper_params)
-        shutil.copy(self.log_cfg.cfg_path, os.path.join(wandb.run.dir, "config.py"))
+        shutil.copy(self.log_cfg.cfg_path, os.path.join(wandb.run.dir, "config.yaml"))
 
     def interim_test(self):
         """Test in the middle of training."""

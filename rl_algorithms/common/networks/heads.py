@@ -97,27 +97,6 @@ class MLP(nn.Module):
         return x
 
 
-@HEADS.register_module
-class ACERHead(nn.Module):
-    def __init__(self, configs: ConfigDict, hidden_activation=F.relu):
-        super(ACERHead, self).__init__()
-        self.hidden_layer = nn.Linear(configs.input_size, configs.hidden_sizes)
-        self.mu = nn.Linear(configs.hidden_sizes, configs.output_size)
-        self.v = nn.Linear(configs.hidden_sizes, configs.output_size)
-        self.hidden_activation = hidden_activation
-
-    def pi(self, x, softmax_dim):
-        x = self.hidden_activation(self.hidden_layer(x))
-        x = self.mu(x)
-        pi = F.softmax(x, softmax_dim)
-        return pi
-
-    def q(self, x):
-        x = self.hidden_activation(self.hidden_layer(x))
-        v = self.v(x)
-        return v
-
-
 # TODO: Remove it when upgrade torch>=1.7
 # pylint: disable=abstract-method
 @HEADS.register_module

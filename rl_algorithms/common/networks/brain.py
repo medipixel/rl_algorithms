@@ -220,22 +220,3 @@ class GRUBrain(Brain):
         x = torch.zeros(state_dim).unsqueeze(0)
         output = self.backbone(x).detach().view(-1)
         return output.shape[0]
-
-
-class ACERBrain(Brain):
-    def __init__(
-        self,
-        backbone_cfg: ConfigDict,
-        head_cfg: ConfigDict,
-    ):
-        Brain.__init__(self, backbone_cfg, head_cfg)
-
-    def pi(self, x, softmax_dim):
-        x = self.backbone(x)
-        x = self.head.pi(x, softmax_dim)
-        return x
-
-    def q(self, x):
-        x = self.backbone(x)
-        x = self.head.q(x)
-        return x
