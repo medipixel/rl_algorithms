@@ -54,7 +54,7 @@ class ReplayMemory(BaseBuffer):
             self.done_buf[self.idx][i] = done_mask
 
         self.num_in_buffer += 1
-        self.num_in_buffer = min(self.buffer_size, self.num_in_buffer)
+        self.num_in_buffer = min(self.buffer_size - 1, self.num_in_buffer)
 
     def _initialize_buffers(self, state: np.ndarray, probs: np.ndarray):
         """Initialze buffers for state, action, reward, prob, done."""

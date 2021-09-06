@@ -1,4 +1,3 @@
-import argparse
 from typing import Tuple
 
 import gym
@@ -39,24 +38,50 @@ class ACERAgent(Agent):
         self,
         env: gym.Env,
         env_info: ConfigDict,
-        args: argparse.Namespace,
         hyper_params: ConfigDict,
         learner_cfg: ConfigDict,
         log_cfg: ConfigDict,
+        is_test: bool,
+        load_from: str,
+        is_render: bool,
+        render_after: int,
+        is_log: bool,
+        save_period: int,
+        episode_num: int,
+        max_episode_steps: int,
+        interim_test_num: int,
     ):
-        Agent.__init__(self, env, env_info, args, log_cfg)
-
+        Agent.__init__(
+            self,
+            env,
+            env_info,
+            log_cfg,
+            is_test,
+            load_from,
+            is_render,
+            render_after,
+            is_log,
+            save_period,
+            episode_num,
+            max_episode_steps,
+            interim_test_num,
+        )
         self.episode_step = 0
         self.i_episode = 0
 
+        self.episode_num = episode_num
+
         self.hyper_params = hyper_params
         self.learner_cfg = learner_cfg
-        self.learner_cfg.args = self.args
-        self.learner_cfg.env_info = self.env_info
-        self.learner_cfg.hyper_params = self.hyper_params
-        self.learner_cfg.log_cfg = self.log_cfg
 
-        self.learner = build_learner(self.learner_cfg)
+        build_args = dict(
+            hyper_params=hyper_params,
+            log_cfg=log_cfg,
+            env_info=env_info,
+            is_test=is_test,
+            load_from=load_from,
+        )
+        self.learner = build_learner(self.learner_cfg, build_args)
         self.memory = ReplayMemory(
             self.hyper_params.buffer_size, self.hyper_params.n_rollout
         )
@@ -84,15 +109,15 @@ class ACERAgent(Agent):
             \t total score: {score:.2f}\t loss : {loss:.4f}"
         )
 
-        if self.args.log:
+        if self.is_log:
             wandb.log({"loss": loss, "score": score})
 
     def train(self):
         """Train the agent."""
-        if self.args.log:
+        if self.is_log:
             self.set_wandb()
 
-        for self.i_episode in range(1, self.args.episode_num + 1):
+        for self.i_episode in range(1, self.episode_num + 1):
             state = self.env.reset()
             done = False
             score = 0
@@ -102,7 +127,7 @@ class ACERAgent(Agent):
             while not done:
                 seq_data = []
                 for _ in range(self.hyper_params.n_rollout):
-                    if self.args.render and self.i_episode >= self.args.render_after:
+                    if self.is_render and self.i_episode >= self.render_after:
                         self.env.render()
 
                     action, prob = self.select_action(state)
@@ -115,7 +140,7 @@ class ACERAgent(Agent):
                     score += reward
                     if done:
                         break
-            
+
                 self.memory.add(seq_data)
                 experience = self.memory.sample(on_policy=True)
                 self.learner.update_model(experience)
@@ -126,12 +151,11 @@ class ACERAgent(Agent):
                         experience = self.memory.sample(on_policy=False)
                         loss = self.learner.update_model(experience)
                         loss_episode.append(loss.detach().cpu().numpy())
-            print(f"Last action : {action} Last prob : {prob}" )
             loss = np.array(loss_episode).mean()
             log_value = self.i_episode, score, loss
             self.write_log(log_value)
 
-            if self.i_episode % self.args.save_period == 0:
+            if self.i_episode % self.save_period == 0:
                 self.learner.save_params(self.i_episode)
 
         self.env.close()

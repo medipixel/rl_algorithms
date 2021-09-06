@@ -59,7 +59,7 @@ def parse_args() -> argparse.Namespace:
         "--save-period", type=int, default=100, help="save model period"
     )
     parser.add_argument(
-        "--episode-num", type=int, default=1500, help="total episode num"
+        "--episode-num", type=int, default=300, help="total episode num"
     )
     parser.add_argument(
         "--max-episode-steps", type=int, default=300, help="max episode step"

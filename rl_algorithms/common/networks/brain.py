@@ -224,7 +224,9 @@ class GRUBrain(Brain):
 
 class ACERBrain(Brain):
     def __init__(
-        self, backbone_cfg: ConfigDict, head_cfg: ConfigDict,
+        self,
+        backbone_cfg: ConfigDict,
+        head_cfg: ConfigDict,
     ):
         Brain.__init__(self, backbone_cfg, head_cfg)
 

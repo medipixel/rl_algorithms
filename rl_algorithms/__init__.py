@@ -78,7 +78,6 @@ __all__ = [
     "ApeX",
     "DQNWorker",
     "DQNLogger",
-    "DistillationDQN",
     "ACERLearner",
     "ACERAgent",
     "DistillationDQNAgent",

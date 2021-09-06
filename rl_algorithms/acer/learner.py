@@ -1,4 +1,3 @@
-import argparse
 from collections import OrderedDict
 from typing import Tuple
 
@@ -28,23 +27,27 @@ class ACERLearner(Learner):
 
     def __init__(
         self,
-        args: argparse.Namespace,
-        env_info: ConfigDict,
-        hyper_params: ConfigDict,
-        log_cfg: ConfigDict,
         backbone: ConfigDict,
         head: ConfigDict,
         optim_cfg: ConfigDict,
+        hyper_params: ConfigDict,
+        log_cfg: ConfigDict,
+        env_info: ConfigDict,
+        is_test: bool,
+        load_from: str,
     ):
-        Learner.__init__(self, args, env_info, hyper_params, log_cfg)
+        Learner.__init__(self, hyper_params, log_cfg, env_info.name, is_test)
 
         self.backbone_cfg = backbone
         self.head_cfg = head
-        self.head_cfg.actor.configs.state_size = self.env_info.observation_space.shape
-        self.head_cfg.critic.configs.state_size = self.env_info.observation_space.shape
-        self.head_cfg.actor.configs.output_size = self.env_info.action_space.n
-        self.head_cfg.critic.configs.output_size = self.env_info.action_space.n
+        self.load_from = load_from
+        self.head_cfg.actor.configs.state_size = env_info.observation_space.shape
+        self.head_cfg.critic.configs.state_size = env_info.observation_space.shape
+        self.head_cfg.actor.configs.output_size = env_info.action_space.n
+        self.head_cfg.critic.configs.output_size = env_info.action_space.n
         self.optim_cfg = optim_cfg
+        self.gradient_clip = hyper_params.gradient_clip
+
         self._init_network()
 
     def _init_network(self):
@@ -61,8 +64,8 @@ class ACERLearner(Learner):
             self.critic.parameters(), lr=self.optim_cfg.lr, eps=self.optim_cfg.adam_eps
         )
 
-        if self.args.load_from is not None:
-            self.load_params(self.args.load_from)
+        if self.load_from is not None:
+            self.load_params(self.load_from)
 
     def update_model(self, experience: Tuple) -> torch.Tensor:
 
@@ -104,8 +107,8 @@ class ACERLearner(Learner):
         self.critic_optim.zero_grad()
         loss.backward()
 
-        nn.utils.clip_grad_norm_(self.actor.parameters(), 10)
-        nn.utils.clip_grad_norm_(self.critic.parameters(), 10)
+        nn.utils.clip_grad_norm_(self.actor.parameters(), self.gradient_clip)
+        nn.utils.clip_grad_norm_(self.critic.parameters(), self.gradient_clip)
         for name, param in self.actor.named_parameters():
             if not torch.isfinite(param.grad).all():
                 print(name, torch.isfinite(param.grad).all())
