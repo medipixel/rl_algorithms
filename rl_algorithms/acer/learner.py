@@ -10,6 +10,7 @@ from rl_algorithms.common.abstract.learner import Learner
 from rl_algorithms.common.networks.brain import Brain
 from rl_algorithms.registry import LEARNERS
 from rl_algorithms.utils.config import ConfigDict
+import rl_algorithms.common.helper_functions as common_utils
 
 
 @LEARNERS.register_module
@@ -30,6 +31,7 @@ class ACERLearner(Learner):
         backbone: ConfigDict,
         head: ConfigDict,
         optim_cfg: ConfigDict,
+        trust_region: ConfigDict,
         hyper_params: ConfigDict,
         log_cfg: ConfigDict,
         env_info: ConfigDict,
@@ -47,6 +49,7 @@ class ACERLearner(Learner):
         self.head_cfg.critic.configs.output_size = env_info.action_space.n
         self.optim_cfg = optim_cfg
         self.gradient_clip = hyper_params.gradient_clip
+        self.trust_region = trust_region
 
         self._init_network()
 
@@ -63,6 +66,10 @@ class ACERLearner(Learner):
         self.critic_optim = optim.Adam(
             self.critic.parameters(), lr=self.optim_cfg.lr, eps=self.optim_cfg.adam_eps
         )
+        
+        self.actor_target = Brain(self.backbone_cfg.actor, self.head_cfg.actor).to(self.device)
+        self.actor_target.load_state_dict(self.actor.state_dict())
+
 
         if self.load_from is not None:
             self.load_params(self.load_from)
@@ -77,6 +84,7 @@ class ACERLearner(Learner):
         done = done.to(self.device)
 
         pi = F.softmax(self.actor(state), 1)
+
         q = self.critic(state)
         q_i = q.gather(1, action)
         pi_i = pi.gather(1, action)
@@ -101,7 +109,16 @@ class ACERLearner(Learner):
 
         value_loss = torch.sqrt((q_i - q_ret).pow(2)).mean() * 0.5
 
-        loss = loss_f.mean() + loss_bc.sum(1).mean() + value_loss
+        if self.trust_region.use_trust_region:
+            g = loss_f + loss_bc
+            pi_target = F.softmax(self.actor_target(state), 1)
+            # gradient of partial Q KL(P || Q) = - P / Q
+            k = - pi_target / (pi + 1e-8)
+            k_dot_g = k * g
+            tr = g - ((k_dot_g - self.trust_region.delta) / torch.norm(k)).clamp(max=0) * k
+            loss = tr.mean() + value_loss
+        else:
+            loss = loss_f.mean() + loss_bc.sum(1).mean() + value_loss
 
         self.actor_optim.zero_grad()
         self.critic_optim.zero_grad()
@@ -121,6 +138,8 @@ class ACERLearner(Learner):
                 return loss
         self.actor_optim.step()
         self.critic_optim.step()
+
+        common_utils.soft_update(self.actor, self.actor_target, self.hyper_params.tau)
 
         return loss
 
