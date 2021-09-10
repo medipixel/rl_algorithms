@@ -1,5 +1,7 @@
 from .a2c.agent import A2CAgent
 from .a2c.learner import A2CLearner
+from .acer.agent import ACERAgent
+from .acer.learner import ACERLearner
 from .bc.ddpg_agent import BCDDPGAgent
 from .bc.ddpg_learner import BCDDPGLearner
 from .bc.her import LunarLanderContinuousHER, ReacherHER
@@ -76,5 +78,7 @@ __all__ = [
     "ApeX",
     "DQNWorker",
     "DQNLogger",
+    "ACERLearner",
+    "ACERAgent",
     "DistillationDQNAgent",
 ]
