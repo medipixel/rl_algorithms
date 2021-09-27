@@ -120,8 +120,10 @@ See <a href="https://app.wandb.ai/medipixel_rl/LunarLander-v2/reports/200626-int
 <details><summary><b>LunarLander-v2:ACER, RainbowDQN, R2D1</b></summary>
 <p><br>
 See <a herf="https://wandb.ai/chaehyeuk-lee/LunarLander-v2/reports/LunarLander-v2-ACER--VmlldzoxMDU4OTQ1?accessToken=yxrr1h1t2d4n3j22hjz4ktzzgkpuhrm7txlyfpl3jb74les23vbfovvw5g64xgtg">W&B log</a> for more details. (The performance is measured on the commit <a href="https://github.com/medipixel/rl_algorithms/pull/298/commits/82fae77f55f94bb4bc3fb7fc9c44b54dc232c4ff">82fae77</a>)
-![lunarlander-v2_acer]()
+
+![lunarlander-v2_acer](https://user-images.githubusercontent.com/48741026/134847201-c7ce6d9f-e930-497f-9473-05da7620095b.png)
 </p>
+
 </details>
 
 <details><summary><b>LunarLanderContinuous-v2: A2C, PPO, DDPG, TD3, SAC</b></summary>
