@@ -73,6 +73,7 @@ This project follows the [all-contributors](https://github.com/all-contributors/
 11. [Distributed Pioritized Experience Replay (Ape-X)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/common/apex)
 12. [Policy Distillation](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/distillation)
 13. [Generative Adversarial Imitation Learning (GAIL)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/gail)
+14. [Sample Efficient Actor-Critic with Experience Replay (ACER)](https://github.com/medipixel/rl_algorithms/tree/master/rl_algorithms/acer)
 
 ## Performance
 
@@ -114,6 +115,15 @@ See <a href="https://app.wandb.ai/medipixel_rl/LunarLander-v2/reports/200626-int
 
 ![lunarlander-v2_dqn](https://user-images.githubusercontent.com/17582508/85815561-a5f3ec00-b7a3-11ea-8d7c-8d54953d0c07.png)
 </p>
+</details>
+
+<details><summary><b>LunarLander-v2:ACER, RainbowDQN, R2D1</b></summary>
+<p><br>
+See <a herf="https://wandb.ai/chaehyeuk-lee/LunarLander-v2/reports/LunarLander-v2-ACER--VmlldzoxMDU4OTQ1?accessToken=yxrr1h1t2d4n3j22hjz4ktzzgkpuhrm7txlyfpl3jb74les23vbfovvw5g64xgtg">W&B log</a> for more details. (The performance is measured on the commit <a href="https://github.com/medipixel/rl_algorithms/pull/298/commits/82fae77f55f94bb4bc3fb7fc9c44b54dc232c4ff">82fae77</a>)
+
+![lunarlander-v2_acer](https://user-images.githubusercontent.com/48741026/134847201-c7ce6d9f-e930-497f-9473-05da7620095b.png)
+</p>
+
 </details>
 
 <details><summary><b>LunarLanderContinuous-v2: A2C, PPO, DDPG, TD3, SAC</b></summary>
@@ -323,3 +333,4 @@ To cite this repository in publications:
 20. [Horgan et al., "Distributed Prioritized Experience Replay." in International Conference on Learning Representations, 2018](https://arxiv.org/pdf/1803.00933.pdf)
 21. [Simonyan et al., "Deep Inside Convolutional Networks: Visualising Image Classification Models and Saliency Maps", 2013](https://arxiv.org/pdf/1312.6034.pdf)
 22. [Ho et al., "Generative adversarial imitation learning", 2016](https://arxiv.org/abs/1606.03476)
+23. [Wang, Ziyu, et al. "Sample efficient actor-critic with experience replay", 2016.](https://arxiv.org/pdf/1611.01224.pdf)
