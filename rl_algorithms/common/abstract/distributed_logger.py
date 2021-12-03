@@ -129,7 +129,7 @@ class DistributedLogger(ABC):
             max_episode_steps=self.max_episode_steps,
         )
         wandb.config.update(additional_log)
-        shutil.copy(self.log_cfg.cfg_path, os.path.join(wandb.run.dir, "config.py"))
+        shutil.copy(self.log_cfg.cfg_path, os.path.join(wandb.run.dir, "config.yaml"))
 
     def recv_log_info(self):
         """Receive info from learner."""
