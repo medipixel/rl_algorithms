@@ -157,7 +157,7 @@ class Agent(ABC):
                 step += 1
 
             print(
-                "[INFO] test %d\tstep: %d\ttotal score: %d" % (i_episode, step, score)
+                "[INFO] test %d\tstep: %d\ttotal score: %.2f" % (i_episode, step, score)
             )
             score_list.append(score)
 
