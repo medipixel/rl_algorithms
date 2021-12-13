@@ -70,7 +70,7 @@ class Learner(BaseLearner):
             os.makedirs(self.ckpt_path, exist_ok=True)
 
             # save configuration
-            shutil.copy(log_cfg.cfg_path, os.path.join(self.ckpt_path, "config.py"))
+            shutil.copy(log_cfg.cfg_path, os.path.join(self.ckpt_path, "config.yaml"))
 
     @abstractmethod
     def _init_network(self):
