@@ -3,7 +3,7 @@
    This is example for using custom agent.
    In this example, custom agent use state as exponential.
    You can customize any function e.g) select_aciton, train ... etc.
-   
+
    To use custom agent just decorate class to build and import in main function.
 
     - Author: Jiseong Han
