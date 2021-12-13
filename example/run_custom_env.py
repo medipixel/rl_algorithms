@@ -118,12 +118,12 @@ class CustomEnv(gym.Env):
         )
 
 
-def main(env):
+def main(custom_env):
     """Main."""
     args = parse_args()
 
-    env_name = type(env).__name__
-    env, max_episode_steps = env_utils.set_env(env, args.max_episode_steps)
+    env_name = type(custom_env).__name__
+    env, max_episode_steps = env_utils.set_env(custom_env, args.max_episode_steps)
 
     # set a random seed
     common_utils.set_random_seed(args.seed, env)
@@ -170,7 +170,6 @@ def main(env):
 if __name__ == "__main__":
     ###################################################################################
     # To use custom agent and learner, import custom agent and learner.
-    #
     from custom_agent import CustomDQN  # noqa: F401
     from custom_learner import CustomDQNLearner  # noqa: F401
 
