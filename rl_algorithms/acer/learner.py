@@ -9,7 +9,7 @@ import torch.optim as optim
 from rl_algorithms.common.abstract.learner import Learner
 import rl_algorithms.common.helper_functions as common_utils
 from rl_algorithms.common.networks.brain import Brain
-from rl_algorithms.registry import LEARNERS
+from rl_algorithms.registry import LEARNERS, build_backbone
 from rl_algorithms.utils.config import ConfigDict
 
 
@@ -55,10 +55,39 @@ class ACERLearner(Learner):
 
     def _init_network(self):
         """Initialize network and optimizer."""
-        self.actor = Brain(self.backbone_cfg.actor, self.head_cfg.actor).to(self.device)
-        self.critic = Brain(self.backbone_cfg.critic, self.head_cfg.critic).to(
-            self.device
-        )
+        if self.backbone_cfg.shared_actor_critic:
+            shared_backbone = build_backbone(self.backbone_cfg.shared_actor_critic)
+            self.actor = Brain(
+                self.backbone_cfg.shared_actor_critic,
+                self.head_cfg.actor,
+                shared_backbone,
+            )
+            self.critic = Brain(
+                self.backbone_cfg.shared_actor_critic,
+                self.head_cfg.critic,
+                shared_backbone,
+            )
+            self.actor_target = Brain(
+                self.backbone_cfg.shared_actor_critic,
+                self.head_cfg.actor,
+                shared_backbone,
+            )
+
+        else:
+            self.actor = Brain(self.backbone_cfg.actor, self.head_cfg.actor).to(
+                self.device
+            )
+            self.critic = Brain(self.backbone_cfg.critic, self.head_cfg.critic).to(
+                self.device
+            )
+            self.actor_target = Brain(self.backbone_cfg.actor, self.head_cfg.actor).to(
+                self.device
+            )
+        self.actor = self.actor.to(self.device)
+        self.actor_target = self.actor_target.to(self.device)
+        self.critic = self.critic.to(self.device)
+
+        self.actor_target.load_state_dict(self.actor.state_dict())
         # create optimizer
         self.actor_optim = optim.Adam(
             self.actor.parameters(), lr=self.optim_cfg.lr, eps=self.optim_cfg.adam_eps
@@ -66,11 +95,6 @@ class ACERLearner(Learner):
         self.critic_optim = optim.Adam(
             self.critic.parameters(), lr=self.optim_cfg.lr, eps=self.optim_cfg.adam_eps
         )
-
-        self.actor_target = Brain(self.backbone_cfg.actor, self.head_cfg.actor).to(
-            self.device
-        )
-        self.actor_target.load_state_dict(self.actor.state_dict())
 
         if self.load_from is not None:
             self.load_params(self.load_from)
@@ -85,14 +109,16 @@ class ACERLearner(Learner):
         done = done.to(self.device)
 
         pi = F.softmax(self.actor(state), 1)
+        log_pi = torch.log(pi + 1e-8)
 
         q = self.critic(state)
         q_i = q.gather(1, action)
         pi_i = pi.gather(1, action)
+        log_pi_i = torch.log(pi_i + 1e-8)
 
         with torch.no_grad():
             v = (q * pi).sum(1).unsqueeze(1)
-            rho = pi / (prob + 1e-8)
+            rho = torch.exp(log_pi - torch.log(prob + 1e-8))
         rho_i = rho.gather(1, action)
         rho_bar = rho_i.clamp(max=self.hyper_params.c)
 
@@ -100,11 +126,11 @@ class ACERLearner(Learner):
             reward, done, q_i, v, rho_bar, self.hyper_params.gamma
         ).to(self.device)
 
-        loss_f = -rho_bar * torch.log(pi_i + 1e-8) * (q_ret - v)
+        loss_f = -rho_bar * log_pi_i * (q_ret - v)
         loss_bc = (
             -(1 - (self.hyper_params.c / rho)).clamp(min=0)
             * pi.detach()
-            * torch.log(pi + 1e-8)
+            * log_pi
             * (q.detach() - v)
         )
 
@@ -114,7 +140,7 @@ class ACERLearner(Learner):
             g = loss_f + loss_bc
             pi_target = F.softmax(self.actor_target(state), 1)
             # gradient of partial Q KL(P || Q) = - P / Q
-            k = -pi_target / (pi + 1e-8)
+            k = -(torch.exp(torch.log(pi_target + 1e-8) - (log_pi)))
             k_dot_g = k * g
             tr = (
                 g
