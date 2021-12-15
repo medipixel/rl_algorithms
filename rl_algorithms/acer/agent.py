@@ -4,7 +4,6 @@ import gym
 import numpy as np
 import torch
 from torch.distributions import Categorical
-import torch.nn.functional as F
 import wandb
 
 from rl_algorithms.acer.buffer import ReplayMemory
