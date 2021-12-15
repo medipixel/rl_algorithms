@@ -159,6 +159,7 @@ class ACERAgent(Agent):
 
             if self.i_episode % self.save_period == 0:
                 self.learner.save_params(self.i_episode)
+                self.interim_test()
 
         self.env.close()
         self.learner.save_params(self.i_episode)
