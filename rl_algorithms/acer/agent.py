@@ -93,8 +93,6 @@ class ACERAgent(Agent):
             prob = F.softmax(self.learner.actor_target(state).squeeze(), 0) + 1e-8
         action_dist = Categorical(prob)
         selected_action = action_dist.sample().item()
-        if self.is_test:
-            return selected_action
         return selected_action, prob.cpu().numpy()
 
     def step(self, action: int) -> Tuple[np.ndarray, np.float64, bool, dict]:
@@ -159,7 +157,6 @@ class ACERAgent(Agent):
 
             if self.i_episode % self.save_period == 0:
                 self.learner.save_params(self.i_episode)
-                self.interim_test()
 
         self.env.close()
         self.learner.save_params(self.i_episode)
