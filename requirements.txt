@@ -1,4 +1,4 @@
-numpy==1.18.0
+numpy==1.22.0
 torch==1.6.0
 gym==0.17.3
 atari-py==0.2.6
