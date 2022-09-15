@@ -1,5 +1,8 @@
 FROM nvidia/cuda:10.2-cudnn7-devel-ubuntu18.04
 
+RUN rm /etc/apt/sources.list.d/cuda.list
+RUN rm /etc/apt/sources.list.d/nvidia-ml.list
+
 RUN apt-get update
 RUN apt-get install -y software-properties-common vim
 RUN apt-get install -y libsm6 libxext6 libxrender-dev libusb-1.0-0-dev && apt-get update
