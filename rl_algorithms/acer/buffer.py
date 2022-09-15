@@ -40,13 +40,13 @@ class ReplayMemory(BaseBuffer):
         If the buffer is empty, it is respectively initialized by size of arguments.
         """
         if self.num_in_buffer == 0:
-            state, action, reward, prob, done_mask = seq_data[0]
+            prob, state, action, reward, done_mask = seq_data[0]
             self._initialize_buffers(state, prob)
 
         self.idx = (self.idx + 1) % (self.buffer_size - 1)
 
         for i, transition in enumerate(seq_data):
-            state, action, reward, prob, done_mask = transition
+            prob, state, action, reward, done_mask = transition
             self.obs_buf[self.idx][i] = state
             self.acts_buf[self.idx][i] = action
             self.rews_buf[self.idx][i] = reward

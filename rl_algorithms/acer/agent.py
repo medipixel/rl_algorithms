@@ -4,7 +4,6 @@ import gym
 import numpy as np
 import torch
 from torch.distributions import Categorical
-import torch.nn.functional as F
 import wandb
 
 from rl_algorithms.acer.buffer import ReplayMemory
@@ -85,15 +84,17 @@ class ACERAgent(Agent):
         self.memory = ReplayMemory(
             self.hyper_params.buffer_size, self.hyper_params.n_rollout
         )
+        self.transition = []
 
     def select_action(self, state: np.ndarray) -> Tuple[int, torch.Tensor]:
         """Select action from input space."""
         state = numpy2floattensor(state, self.learner.device)
         with torch.no_grad():
-            prob = F.softmax(self.learner.actor_target(state).squeeze(), 0) + 1e-8
-        action_dist = Categorical(prob)
+            logits = self.learner.actor_target(state)
+        action_dist = Categorical(logits=logits)
         selected_action = action_dist.sample().item()
-        return selected_action, prob.cpu().numpy()
+        self.transition = [action_dist.probs.cpu().numpy()]
+        return selected_action
 
     def step(self, action: int) -> Tuple[np.ndarray, np.float64, bool, dict]:
         """Take an action and return the reponse of the env"""
@@ -130,12 +131,12 @@ class ACERAgent(Agent):
                     if self.is_render and self.i_episode >= self.render_after:
                         self.env.render()
 
-                    action, prob = self.select_action(state)
+                    action = self.select_action(state)
                     next_state, reward, done, _ = self.step(action)
                     done_mask = 0.0 if done else 1.0
                     self.episode_step += 1
-                    transition = (state, action, reward / 100.0, prob, done_mask)
-                    seq_data.append(transition)
+                    self.transition.extend((state, action, reward / 100.0, done_mask))
+                    seq_data.append(self.transition)
                     state = next_state
                     score += reward
                     if done:
@@ -157,6 +158,7 @@ class ACERAgent(Agent):
 
             if self.i_episode % self.save_period == 0:
                 self.learner.save_params(self.i_episode)
+                self.interim_test()
 
         self.env.close()
         self.learner.save_params(self.i_episode)
