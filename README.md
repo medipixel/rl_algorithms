@@ -95,7 +95,7 @@ See [W&B Log](https://app.wandb.ai/curt-park/dqn/reports?view=curt-park%2FPong%2
 
 ![pong_dqn](https://user-images.githubusercontent.com/17582508/56282434-1e93fd00-614a-11e9-9c31-af32e119d5b6.png)
 
-**RainbowIQN with ResNet**'s performance and learning speed were similar to those of RainbowIQN. Also we confirmed that **R2D1 (w/ Dueling, PER)** converges well in the Pong enviornment, though not as fast as RainbowIQN (in terms of update step).
+**RainbowIQN with ResNet**'s performance and learning speed were similar to those of RainbowIQN. Also we confirmed that **R2D1 (w/ Dueling, PER)** converges well in the Pong environment, though not as fast as RainbowIQN (in terms of update step).
 
 Although we were only able to test **Ape-X DQN (w/ Dueling)** with 4 workers due to limitations to computing power, we observed a significant speed-up in carrying out update steps (with batch size 512). Ape-X DQN learns Pong game in about 2 hours, compared to 4 hours for serial Dueling DQN.
 
